@@ -7,6 +7,10 @@
     },
     "packages/*": {
       "project": ["src/**/*.{ts,tsx}"]
+    },
+    "spikes/*": {
+      "entry": ["src/*.ts"],
+      "project": ["src/**/*.{ts,tsx}"]
     }
   }
 }

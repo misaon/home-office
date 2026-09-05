@@ -22,7 +22,12 @@
     "typescript/no-non-null-assertion": "error",
     "typescript/consistent-type-imports": "error",
     "typescript/consistent-type-definitions": ["error", "type"],
-    "typescript/no-floating-promises": "error",
+    "typescript/no-floating-promises": [
+      "error",
+      {
+        "ignoreVoid": true
+      }
+    ],
     "typescript/no-misused-promises": "error",
     "typescript/await-thenable": "error",
     "typescript/no-unnecessary-condition": "error",
@@ -33,7 +38,24 @@
     "typescript/no-unsafe-call": "error",
     "typescript/no-unsafe-return": "error",
     "typescript/no-unsafe-argument": "error",
-    "unicorn/filename-case": ["error", { "case": "kebabCase" }]
+    "unicorn/filename-case": [
+      "error",
+      {
+        "case": "kebabCase"
+      }
+    ],
+    "typescript/prefer-readonly-parameter-types": "off",
+    "eslint/max-lines-per-function": [
+      "error",
+      {
+        "max": 120,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ],
+    "unicorn/no-useless-undefined": "off",
+    "eslint/require-await": "off",
+    "typescript/require-await": "error"
   },
   "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/build/**", "**/artifacts/**"]
 }

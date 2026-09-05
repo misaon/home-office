@@ -9,11 +9,16 @@
       "spikes/*"
     ],
     "catalog": {
+      "@orpc/client": "1.15.0",
+      "@orpc/contract": "1.15.0",
+      "@orpc/server": "1.15.0",
       "@types/bun": "1.4.1",
+      "electrobun": "2.0.1",
       "knip": "6.34.0",
       "oxfmt": "0.66.0",
       "oxlint": "1.81.0",
       "oxlint-tsgolint": "7.0.2001",
+      "pixi.js": "8.20.1",
       "typescript": "7.0.2",
       "zod": "4.5.4"
     }
