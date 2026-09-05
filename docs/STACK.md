@@ -1,0 +1,73 @@
+# Home Office — Technology Stack
+
+**Verified online on 2026-09-06** against the npm registry and vendor documentation. Every row states *why* it was chosen and *what was rejected*, so future agents do not re-litigate decisions without new facts. Re-verify before bumping any major version.
+
+Local environment at planning time: macOS 26.6.2 (Apple Silicon), Bun 1.4.2, Docker Desktop 29.7.2 (Engine API 1.55, 12 CPUs, ~8 GB VM RAM, Swarm mode active but **unused**), Claude Code 2.1.261 (Team plan, ECC plugin installed at user scope), Node 24.14 (present, not used at runtime), WebStorm 2026.2 (native TypeScript 7 support), `gh` CLI authenticated.
+
+## Runtime, language, tooling
+
+| Layer | Choice | Version | Why | Rejected |
+|---|---|---|---|---|
+| Runtime | **Bun** | 1.4.2 | Rust rewrite (1.4), native TS, `bun:sqlite`, `Bun.serve` (WS, HTTP/2), `fetch({ unix })` for the Docker socket, `bun build --compile` cross-targets incl. `bun-linux-arm64-musl`, `Bun.Terminal` (PTY), `Bun.cron`, `Bun.randomUUIDv7()`, workspace catalogs, isolated installs, `bun run --parallel`. | Node 24 (no built-ins above), Deno |
+| Language | **TypeScript** | 7.0.2 | Native Go `tsc` (~10× faster), `strict` default, `types: []` default. **No programmatic compiler API until 7.1** → no tooling that links the TS API (ts-morph, typescript-eslint). | staying on 6.x |
+| Linter | **oxlint** + **oxlint-tsgolint** | 1.81.0 / 7.0.2001 | Type-aware linting built on tsgo (tracks TS 7.0.2), 59/61 typescript-eslint type-aware rules, 12–18× faster than ESLint. | Biome 2.5.12 (type inference is an approximation, not tsgo); ESLint (TS 7 API not available) |
+| Formatter | **oxfmt** | 0.66.0 | Same Oxc family, Prettier-compatible output. | Biome format, Prettier |
+| Dead code | **knip** | 6.34.0 | Unused files/exports/deps in monorepos; enforces "no duplicates" goal. | ts-prune (abandoned) |
+| Monorepo | **Bun workspaces** + catalogs + isolated linker | — | Single tool; `catalog:` pins versions once; `bun run --filter`/`--parallel`. | Turborepo 2.10 (add later only if CI caching is needed), Nx, pnpm |
+| Schema | **Zod** | 4.5.4 | Standard Schema; largest ecosystem (oRPC, drizzle-zod); v4 is ~4× faster than v3; `zod/mini` available for the webview. | ArkType 2.2.3 (fastest, smaller ecosystem), Valibot 1.4.2 |
+| RPC | **oRPC** | 1.15.0 | Contract-first, Standard Schema, WebSocket adapter for `Bun.serve`, event iterators for server→client streams, ~4.8× tRPC throughput over WS, OpenAPI for free. | tRPC 11, Hono RPC, raw JSON-RPC |
+| Persistence | **bun:sqlite** (WAL) + **Drizzle ORM** | 0.45.2 / kit 0.31.10 | Zero native deps, embedded, fast; Drizzle is type-safe and supports `bun:sqlite` natively. Drizzle 1.0 is still beta → use the stable 0.45 API only. | PGlite, better-sqlite3, Prisma |
+| IDs | `Bun.randomUUIDv7()` | built-in | Time-ordered, sortable, zero dependency. | ulid, nanoid |
+| Logging | **pino** | 10.3.1 | Structured NDJSON, runs on Bun, cheap. | winston, console |
+| Validation of env/config | Zod | — | one schema library everywhere | dotenv-expand etc. |
+
+## Desktop and UI
+
+| Layer | Choice | Version | Why | Rejected |
+|---|---|---|---|---|
+| Desktop shell | **Electrobun** (`build.mainProcess: "bun"`) | 2.0.1 stable (2.0.2 betas active) | Pure TypeScript; main process **is** our Bun daemon (no sidecar); system WKWebView; typed RPC (`BrowserView.defineRPC` / `Electroview.defineRPC`); binary-patch updater; unsigned builds allowed (`build.mac.codesign: false`). macOS 14+. Risk: young project, single primary maintainer. | Tauri 2.11.4 + Bun sidecar (mature fallback if Electrobun blocks us), Electron |
+| UI framework | **React** + **React Compiler** | 19.2.8 / 1.0.0 | Industry standard, compiler removes manual memoization; Bun bundler has `--react-compiler`. | Solid 1.9 (2.0 still experimental), Svelte 5.57 |
+| Styling | **Tailwind CSS** | 4.3.3 | CSS-first config, `bun-plugin-tailwind` for the Bun bundler. | CSS modules only |
+| State | **Zustand** | 5.0.15 | Tiny store usable outside React (the Pixi scene subscribes without re-rendering React). | Redux, TanStack Store 0.11 |
+| 2D rendering | **PixiJS** | 8.20.1 | WebGPU → WebGL → Canvas fallback, `cacheAsTexture` for static tile layers, sprite batching, tagged text. | Phaser (opinionated, heavier), Excalibur |
+| Icons | lucide-react | 1.41.0 | — | — |
+| Bundler (webview) | **Bun bundler** (HTML entrypoints, HMR, React Compiler, Tailwind plugin) | 1.4.2 | One toolchain; the same static UI bundle is served by the daemon in CLI/server mode. | Vite 8.2.2 (Rolldown) — fallback if a Bun bundler gap appears |
+| Terminal view (later) | @xterm/xterm | 6.0.0 | Agent terminal inspector fed by `Bun.Terminal` / container logs. | — |
+| Art style | LimeZu *Modern Office* style, 16×16 top-down, rendered at 3× | — | User supplies AI-generated sprites in this style. Note: LimeZu characters ship in *Modern Interiors*, not *Modern Office*; we generate our own. | — |
+
+## Agents, sandboxing, integrations
+
+| Layer | Choice | Version | Why | Rejected |
+|---|---|---|---|---|
+| Primary agent runtime | **Claude Code CLI, headless** (`claude -p --input-format stream-json --output-format stream-json`) | 2.1.261 | Official binary; subscription auth via `claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN` (one-year token, Pro/Max/Team/Enterprise, "for CI pipelines and scripts"). Alpine 3.19+ officially supported (apk repo `downloads.claude.ai/claude-code/apk/stable`, `linux-arm64-musl`). | **Claude Agent SDK 0.3.261** — docs: "Anthropic does not allow third party developers to offer claude.ai login … including agents built on the Claude Agent SDK." Kept only as a future API-key option. `--bare` mode (does not read the OAuth token). |
+| Provider abstraction | **ACP-shaped `AgentRuntime` interface**; generic ACP adapter later | @agentclientprotocol/sdk 1.4.0 | ACP = JSON-RPC 2.0 over stdio, 40+ agents. Gemini CLI 0.58 (`--acp`), OpenCode 1.18 (`opencode acp`, local models via Ollama/LM Studio/llama.cpp), Codex 0.153 (`codex exec --json` / codex-acp 0.16). | Writing bespoke adapters per CLI first |
+| Skills for agents | **ECC** (MIT), curated per role | pinned commit | 286 skills / 68 agents is too much context; we vendor a small per-role subset into `packages/agent-kit` and load via `--plugin-dir`. | installing the full ECC marketplace plugin in containers |
+| Token compression | **RTK** (Rust Token Killer) | 0.28.2 (Apache-2.0) | PreToolUse hook rewrites Bash commands to compressed equivalents; 60–90% savings on git/test/build output. Prebuilt binaries exist for x86_64-musl and aarch64-gnu only → build from source in a multi-stage image for aarch64-musl. | — |
+| Containers | **Docker Engine API** over unix socket via Bun `fetch({ unix })` | API 1.55 (latest 1.56) | Zero dependencies; ephemeral container per session; exact lifecycle/GC control; portable interface to GCP later. Swarm services rejected (long-running replica model, Docker 29 Swarm regressions, ecosystem treats Swarm as legacy). | dockerode 5.0.1, Swarm services, Compose |
+| Base image | **Alpine 3.22** (arm64, musl) | — | User requirement; officially supported by Claude Code (`apk add bash curl libgcc libstdc++ ripgrep`, `USE_BUILTIN_RIPGREP=0`). | debian-slim |
+| Agent-side helper | `ho-runner` compiled with `bun build --compile --target=bun-linux-arm64-musl` | — | Connects **outbound** to the daemon over WebSocket, spawns `claude`, relays stream-json; avoids Docker attach/hijack complexity and keeps the OAuth token out of image/container/exec metadata. | docker attach / exec hijack |
+| MCP server (daemon → agents) | @modelcontextprotocol/sdk | 1.30.0 | Streamable HTTP MCP server exposing `ho_*` tools (delegate/handoff/report/ask); tool definitions are deferred by Claude Code's tool search, so context cost is low. | file-based mailboxes |
+| GitHub intake | `gh` CLI on the host | installed | Already authenticated; no extra tokens. | Octokit + PAT |
+| CI/CD | GitHub Actions: `ubuntu-latest` (checks), `macos-26` (arm64 desktop build → Releases) | — | macOS 26 arm64 runners are GA. Agent image is built locally on first run (no registry needed); GHCR publish optional later. | — |
+
+## Rejected or deferred (with reason)
+
+- **Effect** 3.22 — powerful but heavy for a codebase that must stay simple; revisit only for the scheduler if needed.
+- **Tests now** — user decision: prototype first, write `bun test` suites at the end (Phase 8).
+- **Code signing / notarization** — no Apple developer account; unsigned DMG/zip; users run `xattr -cr` once.
+- **Apple `container` / OrbStack** — Docker Desktop is what is installed; the `SandboxProvider` interface keeps the door open.
+
+## Sources (fetched 2026-09-05/06)
+
+- Claude Code: headless https://code.claude.com/docs/en/headless · auth https://code.claude.com/docs/en/authentication · setup https://code.claude.com/docs/en/setup · CLI https://code.claude.com/docs/en/cli-reference · costs https://code.claude.com/docs/en/costs · MCP https://code.claude.com/docs/en/mcp · model config https://code.claude.com/docs/en/model-config · network https://code.claude.com/docs/en/network-config · devcontainer https://code.claude.com/docs/en/devcontainer · plugins https://code.claude.com/docs/en/plugins · Agent SDK policy https://code.claude.com/docs/en/agent-sdk/overview · streaming input https://code.claude.com/docs/en/agent-sdk/streaming-vs-single-mode · Team seats https://support.claude.com/en/articles/11845131-use-claude-code-with-your-team-or-enterprise-plan
+- Bun: https://bun.com/blog/bun-v1.4 · https://bun.sh/blog/bun-v1.4.2 · fetch unix https://bun.com/docs/api/fetch · executables https://bun.com/docs/bundler/executables · catalogs https://bun.com/docs/install/catalogs · isolated installs https://bun.com/docs/install/isolated · fullstack https://bun.com/docs/bundler/fullstack
+- TypeScript 7 https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/ · WebStorm 2026.2 https://blog.jetbrains.com/webstorm/2026/07/webstorm-2026-2/
+- Oxc: type-aware stable https://oxc.rs/blog/2026-07-22-type-aware-linting-stable · https://oxc.rs/docs/guide/usage/linter/type-aware.html
+- Electrobun: https://github.com/blackboardsh/electrobun · build config https://framework.blackboard.sh/electrobun/apis/cli/build-configuration/ · architecture https://framework.blackboard.sh/electrobun/guides/architecture/overview/ · code signing https://framework.blackboard.sh/electrobun/guides/code-signing/ · releases https://github.com/blackboardsh/electrobun/releases
+- Tauri (fallback) https://github.com/tauri-apps/tauri/releases · PixiJS https://github.com/pixijs/pixijs/releases · React https://react.dev/versions · oRPC https://orpc.dev/docs/adapters/websocket · Drizzle https://orm.drizzle.team/docs/latest-releases
+- Docker Engine API https://docs.docker.com/reference/api/engine/version-history/ · Swarm status https://www.virtualizationhowto.com/2026/03/is-docker-swarm-still-safe-in-2026/
+- ACP https://agentclientprotocol.com/protocol/overview · https://agentclientprotocol.com/get-started/agents · Zed https://zed.dev/blog/claude-code-via-acp
+- Codex non-interactive https://learn.chatgpt.com/docs/non-interactive-mode · Gemini CLI headless https://geminicli.com/docs/cli/headless/ · OpenCode https://opencode.ai/docs/cli/ · https://opencode.ai/docs/providers/
+- Token efficiency: RTK https://github.com/rtk-ai/rtk · GitHub Copilot harness https://github.blog/ai-and-ml/github-copilot/how-we-make-ai-coding-more-cost-efficient-without-sacrificing-task-quality/ · VS Code https://code.visualstudio.com/blogs/2026/06/17/improving-token-efficiency-in-github-copilot
+- ECC https://github.com/affaan-m/ecc · Munder Difflin (inspiration, not copied) https://github.com/chaitanyagiri/munder-difflin · LimeZu Modern Office https://limezu.itch.io/modernoffice
+- GitHub runners https://github.blog/changelog/2026-02-26-macos-26-is-now-generally-available-for-github-hosted-runners/
