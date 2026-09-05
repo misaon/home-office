@@ -7,11 +7,11 @@ A local multi-agent harness with a pixel-art office. AI agents (your "employees"
 
 ## Documents
 
-| File | What it answers |
-|---|---|
-| [docs/PLAN.md](docs/PLAN.md) | What we build, in which order, with acceptance criteria and a running log |
+| File                                         | What it answers                                                                                  |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| [docs/PLAN.md](docs/PLAN.md)                 | What we build, in which order, with acceptance criteria and a running log                        |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it works: processes, interfaces, protocols, simulation, security, resource and token hygiene |
-| [docs/STACK.md](docs/STACK.md) | Which technologies and versions, why, what was rejected, sources |
-| [docs/CONVENTIONS.md](docs/CONVENTIONS.md) | Coding, typing, linting, security and workflow rules |
+| [docs/STACK.md](docs/STACK.md)               | Which technologies and versions, why, what was rejected, sources                                 |
+| [docs/CONVENTIONS.md](docs/CONVENTIONS.md)   | Coding, typing, linting, security and workflow rules                                             |
 
 AI agents: start with `AGENTS.md` (created in Phase 0), then `docs/PLAN.md`.

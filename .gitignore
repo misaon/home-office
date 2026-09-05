@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+artifacts/
+out/
+.idea/
+.vscode/
+.DS_Store
+*.log
+.env
+.env.*
+.claude/settings.local.json

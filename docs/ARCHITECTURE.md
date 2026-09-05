@@ -1,6 +1,6 @@
 # Home Office — Architecture
 
-Home Office (HO) is a local multi-agent harness: a Bun daemon orchestrates AI coding agents that run inside isolated Docker containers, and a desktop app renders the team as a pixel-art office (LimeZu *Modern Office* style, 16×16 tiles). The office is a **projection of the event stream**; nothing in the simulation is authoritative.
+Home Office (HO) is a local multi-agent harness: a Bun daemon orchestrates AI coding agents that run inside isolated Docker containers, and a desktop app renders the team as a pixel-art office (LimeZu _Modern Office_ style, 16×16 tiles). The office is a **projection of the event stream**; nothing in the simulation is authoritative.
 
 Decisions taken with the owner on 2026-09-06: Electrobun desktop shell · Docker Engine API directly (no Swarm services) · **one floor per project** with an elevator · isolated clone per task with results pushed as branches. See `docs/PLAN.md` § Decisions.
 
@@ -85,16 +85,16 @@ Package names use the `@ho/*` scope. Only `apps/*` may depend on `@ho/daemon`; a
 
 ## 4. Domain model
 
-| Entity | Key fields | Notes |
-|---|---|---|
-| **Project** | `id`, `name`, `repo: { kind: "local", path } \| { kind: "git", url }`, `defaultBranch`, `floorTemplateId`, `settings` (caches, budgets) | One floor per project. |
-| **Agent** (persona) | `id`, `name`, `role` (`boss` \| `worker` \| `reviewer` \| `clerk`…), `appearance` (sprite set, gender), `provider` (`claude-code` \| `acp:<agent>`), `model`, `effort`, `basePrompt`, `skillPack`, `budgets` (max turns/task, concurrent sessions), `projects[]` | Exactly one `boss`. Personas are config; compute is per session. |
-| **Task** | `id`, `projectId`, `parentId?`, `title`, `brief`, `status`, `assigneeId?`, `source` (`chat` \| `mail:<connector>` \| `delegation`), `artifacts` (branch, PR URL, report), `priority`, timestamps | Status machine: `inbox → planned → assigned → in_progress → review → done` with side exits `blocked`, `failed`, `cancelled`. |
-| **Session** | `id`, `taskId`, `agentId`, `sandboxId`, `runtimeSessionId` (Claude session UUID), `state`, `usage` (input/output/cache tokens, turns, wall time), `containerId`, `volumeId` | A session is one container lifetime working on one task. |
-| **Handoff** | `id`, `taskId`, `fromAgentId`, `toAgentId`, `brief`, `state` | Drives the "walk over and hand the folder" animation. |
-| **MailItem** | `id`, `connector`, `externalId`, `payload`, `state` | Postman/mailbox pipeline (Phase 6). |
-| **ChatMessage** | `id`, `author` (`human` \| agentId), `text`, `taskId?` | Right-hand chat with the boss. |
-| **Event** | `id` (UUIDv7), `type`, `payload`, `at` (ISO-8601), `correlationId`, `causationId`, `actor` | Append-only. Types are a Zod discriminated union in `@ho/protocol` (e.g. `task.created`, `task.assigned`, `session.started`, `agent.tool_call`, `handoff.started`, `usage.recorded`, `mail.received`). |
+| Entity              | Key fields                                                                                                                                                                                                                                                       | Notes                                                                                                                                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Project**         | `id`, `name`, `repo: { kind: "local", path } \| { kind: "git", url }`, `defaultBranch`, `floorTemplateId`, `settings` (caches, budgets)                                                                                                                          | One floor per project.                                                                                                                                                                                 |
+| **Agent** (persona) | `id`, `name`, `role` (`boss` \| `worker` \| `reviewer` \| `clerk`…), `appearance` (sprite set, gender), `provider` (`claude-code` \| `acp:<agent>`), `model`, `effort`, `basePrompt`, `skillPack`, `budgets` (max turns/task, concurrent sessions), `projects[]` | Exactly one `boss`. Personas are config; compute is per session.                                                                                                                                       |
+| **Task**            | `id`, `projectId`, `parentId?`, `title`, `brief`, `status`, `assigneeId?`, `source` (`chat` \| `mail:<connector>` \| `delegation`), `artifacts` (branch, PR URL, report), `priority`, timestamps                                                                 | Status machine: `inbox → planned → assigned → in_progress → review → done` with side exits `blocked`, `failed`, `cancelled`.                                                                           |
+| **Session**         | `id`, `taskId`, `agentId`, `sandboxId`, `runtimeSessionId` (Claude session UUID), `state`, `usage` (input/output/cache tokens, turns, wall time), `containerId`, `volumeId`                                                                                      | A session is one container lifetime working on one task.                                                                                                                                               |
+| **Handoff**         | `id`, `taskId`, `fromAgentId`, `toAgentId`, `brief`, `state`                                                                                                                                                                                                     | Drives the "walk over and hand the folder" animation.                                                                                                                                                  |
+| **MailItem**        | `id`, `connector`, `externalId`, `payload`, `state`                                                                                                                                                                                                              | Postman/mailbox pipeline (Phase 6).                                                                                                                                                                    |
+| **ChatMessage**     | `id`, `author` (`human` \| agentId), `text`, `taskId?`                                                                                                                                                                                                           | Right-hand chat with the boss.                                                                                                                                                                         |
+| **Event**           | `id` (UUIDv7), `type`, `payload`, `at` (ISO-8601), `correlationId`, `causationId`, `actor`                                                                                                                                                                       | Append-only. Types are a Zod discriminated union in `@ho/protocol` (e.g. `task.created`, `task.assigned`, `session.started`, `agent.tool_call`, `handoff.started`, `usage.recorded`, `mail.received`). |
 
 Office-only state (positions, current behaviour, emotion) is **not** persisted; it is derived in `@ho/sim` from events plus a seeded RNG, so a restart re-derives a plausible scene.
 
@@ -106,28 +106,28 @@ interface SandboxProvider {
   readonly id: "docker" | "gcp" | (string & {});
   ensureImage(spec: ImageSpec, onProgress?: (p: BuildProgress) => void): Promise<ImageRef>;
   createVolume(spec: VolumeSpec): Promise<VolumeRef>;
-  create(spec: SandboxSpec): Promise<SandboxHandle>;      // image, volumes, limits, network, labels, env (non-secret), user
+  create(spec: SandboxSpec): Promise<SandboxHandle>; // image, volumes, limits, network, labels, env (non-secret), user
   start(h: SandboxHandle): Promise<void>;
   exec(h: SandboxHandle, cmd: readonly string[], opts?: ExecOpts): Promise<ExecResult>; // detached or short-lived only
   stop(h: SandboxHandle, graceSeconds?: number): Promise<void>;
   remove(h: SandboxHandle): Promise<void>;
   removeVolume(v: VolumeRef): Promise<void>;
   stats(h: SandboxHandle): Promise<ResourceStats>;
-  prune(policy: PrunePolicy): Promise<PruneReport>;       // by label + age; images/volumes/containers
-  health(): Promise<ProviderHealth>;                       // API version, disk usage, reachable
+  prune(policy: PrunePolicy): Promise<PruneReport>; // by label + age; images/volumes/containers
+  health(): Promise<ProviderHealth>; // API version, disk usage, reachable
 }
 
 // Which brain
 interface AgentRuntime {
   readonly id: "claude-code" | "acp" | (string & {});
-  capabilities(): RuntimeCapabilities;                     // resume, images, structuredOutput, effortLevels, models
+  capabilities(): RuntimeCapabilities; // resume, images, structuredOutput, effortLevels, models
   open(spec: RuntimeSessionSpec, channel: RunnerChannel): Promise<RuntimeSession>;
 }
 interface RuntimeSession {
   prompt(input: PromptInput, signal: AbortSignal): AsyncIterable<RuntimeEvent>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
-  readonly resumeToken: string | null;                     // Claude session id for --resume
+  readonly resumeToken: string | null; // Claude session id for --resume
 }
 // Normalised events every runtime must emit
 type RuntimeEvent =
@@ -147,9 +147,20 @@ interface IntakeConnector {
   acknowledge(item: MailItem, outcome: IntakeOutcome): Promise<void>; // comment/label back
 }
 
-interface SecretStore { get(key: SecretKey): Promise<string | null>; set(key: SecretKey, v: string): Promise<void>; delete(key: SecretKey): Promise<void>; }
-interface EventStore { append(events: NewEvent[]): Promise<Event[]>; read(from: EventId | null, filter?: EventFilter): AsyncIterable<Event>; subscribe(filter?: EventFilter): AsyncIterable<Event>; }
-interface Clock { now(): Date; after(ms: number, signal?: AbortSignal): Promise<void>; }
+interface SecretStore {
+  get(key: SecretKey): Promise<string | null>;
+  set(key: SecretKey, v: string): Promise<void>;
+  delete(key: SecretKey): Promise<void>;
+}
+interface EventStore {
+  append(events: NewEvent[]): Promise<Event[]>;
+  read(from: EventId | null, filter?: EventFilter): AsyncIterable<Event>;
+  subscribe(filter?: EventFilter): AsyncIterable<Event>;
+}
+interface Clock {
+  now(): Date;
+  after(ms: number, signal?: AbortSignal): Promise<void>;
+}
 ```
 
 ## 6. Claude Code runtime adapter
@@ -196,7 +207,7 @@ For `repo.kind = "git"` projects the bridge clones from/pushes to the remote URL
 
 ## 9. Office simulation (`@ho/sim`, pure)
 
-- **Building = floors.** Floor 0 *Lobby*: boss office, reception with the **Board**, mailroom with mailbox, kitchen, relax room, smoking room, toilets, elevator. Floors 1..N: one per project from a **floor template** (desk clusters with monitors, whiteboard showing the project's board summary, kitchenette, toilet, elevator). Templates are JSON (tile layers + furniture + walkable mask + named anchors), so layouts change without code.
+- **Building = floors.** Floor 0 _Lobby_: boss office, reception with the **Board**, mailroom with mailbox, kitchen, relax room, smoking room, toilets, elevator. Floors 1..N: one per project from a **floor template** (desk clusters with monitors, whiteboard showing the project's board summary, kitchenette, toilet, elevator). Templates are JSON (tile layers + furniture + walkable mask + named anchors), so layouts change without code.
 - **Elevator.** Cross-floor movement: walk to elevator → doors → hidden for `travelTime` → appear on target floor. Handoffs across projects and coffee trips to the Lobby use it. A tiny building strip in the UI shows who is on which floor.
 - **Movement.** Grid A* per floor (walkable mask), 4-direction sprites, smooth interpolation, reservation of seats/anchors to avoid two agents on one chair.
 - **Behaviour model.** Utility-based selection over needs (`coffee`, `restroom`, `smoke`, `relax`, `social`, `sleep`) driven by seeded RNG and time since last visit; overridden by **intents** from events: `session.started → go to desk on the project floor and type`, `handoff.started → walk to target (elevator if needed), hand folder, target receives`, `rate_limited/off-hours → sleep at relax room`, `ho_ask_human → question bubble at desk`, `task.done → celebrate`. Idle agents wander, chat in pairs (speech bubbles), make coffee.
