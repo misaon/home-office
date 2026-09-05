@@ -6,6 +6,8 @@
     "**/dist/**",
     "**/build/**",
     "**/artifacts/**",
-    "bun.lock"
+    "bun.lock",
+    "**/.hutch/**",
+    "**/.cottontail-tmp/**"
   ]
 }

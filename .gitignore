@@ -10,3 +10,6 @@ out/
 .env
 .env.*
 .claude/settings.local.json
+.hutch/
+.cottontail-tmp/
+hutch.lock

@@ -20,6 +20,13 @@
         "zod": "catalog:",
       },
     },
+    "spikes/s1-claude-alpine": {
+      "name": "@ho/spike-s1-claude-alpine",
+      "version": "0.0.0",
+      "dependencies": {
+        "zod": "catalog:",
+      },
+    },
     "spikes/s2-electrobun": {
       "name": "@ho/spike-s2-electrobun",
       "version": "0.0.0",
@@ -72,6 +79,8 @@
     "@emnapi/wasi-threads": ["@emnapi/wasi-threads@1.2.2", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-c95qOXkHdydNKhscBTebqEC1CVAZpyqOfVfBzQ1qgzyl3gfeldUjIggDbIZgDKsHLgnsM+igH7TJ/eAasaVuMA=="],
 
     "@ho/protocol": ["@ho/protocol@workspace:packages/protocol"],
+
+    "@ho/spike-s1-claude-alpine": ["@ho/spike-s1-claude-alpine@workspace:spikes/s1-claude-alpine"],
 
     "@ho/spike-s2-electrobun": ["@ho/spike-s2-electrobun@workspace:spikes/s2-electrobun"],
 

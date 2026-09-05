@@ -31,7 +31,8 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "knip": "knip",
-    "setup": "git config core.hooksPath .githooks"
+    "setup": "git config core.hooksPath .githooks",
+    "assets:manifest": "bun run scripts/assets-manifest.ts"
   },
   "devDependencies": {
     "@types/bun": "catalog:",

@@ -12,5 +12,6 @@
       "entry": ["src/*.ts"],
       "project": ["src/**/*.{ts,tsx}"]
     }
-  }
+  },
+  "ignore": ["**/.hutch/**", "**/.cottontail-tmp/**"]
 }

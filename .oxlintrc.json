@@ -57,5 +57,12 @@
     "eslint/require-await": "off",
     "typescript/require-await": "error"
   },
-  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/build/**", "**/artifacts/**"]
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/artifacts/**",
+    "**/.hutch/**",
+    "**/.cottontail-tmp/**"
+  ]
 }
