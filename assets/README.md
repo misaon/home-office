@@ -24,15 +24,14 @@ Examples: `characters/agent-a/walk_s_f0.png`, `furniture/desk-monitor/type_f1.pn
 
 ## Frame sizes
 
-- Characters: 32×32 canvas per frame, feet at the bottom centre (row 30), so heads can overlap walls.
-- Tiles and small props: 16×16. Large furniture: multiples of 16, currently at most 64×64 per frame in the importer (e.g. 32×16 desk, 32×32 sofa).
+- Asset dimensions are chosen per finished object. They must be recorded with the object's pivot, sorting baseline, interaction anchors and collision footprint; the importer does not impose a fixed canvas size or a furniture maximum.
 - Emotion bubbles: 16×16.
 
 ## Delivery format from image generators (`@8x` strips)
 
 Image models cannot emit true 16×16 canvases, so generated art is delivered **8× scaled** on a pixel grid (every logical pixel is an 8×8 block) with a transparent background (fallback: solid `#FF00FF`, which the importer keys out):
 
-- single frame: `<animation>[_<dir>]_f0@8x.png` (a 32×32 character frame arrives as 256×256, a 16×16 tile as 128×128)
+- single frame: `<animation>[_<dir>]_f0@8x.png`; the native output dimensions are determined by the supplied artwork after the optional 8× reduction.
 - animation: one **horizontal strip** `<animation>[_<dir>]_strip<N>@8x.png`, N equal frames side by side, no gaps, no borders
 - wall autotile: `autotile3x3@8x.png` (48×48 logical: a 3×3 set of corners, edges and centre)
 - only directions `s`, `n`, `e` are drawn; `w` is the renderer flipping `e`

@@ -12,31 +12,6 @@ const NAME =
 const AUTOTILE = /^autotile3x3(?<scale>@8x)?\.png$/u;
 const TILE = 16;
 
-const expectedFrame = (category: string, w: number, h: number): string | null => {
-  switch (category) {
-    case "characters": {
-      return w === 32 && h === 32
-        ? null
-        : `character frames must be 32×32, got ${String(w)}×${String(h)}`;
-    }
-    case "bubbles":
-    case "props":
-    case "tiles": {
-      return w === TILE && h === TILE
-        ? null
-        : `${category} must be 16×16, got ${String(w)}×${String(h)}`;
-    }
-    case "furniture": {
-      return w % TILE === 0 && h % TILE === 0 && w <= 64 && h <= 64
-        ? null
-        : `furniture must be multiples of 16 up to 64, got ${String(w)}×${String(h)}`;
-    }
-    default: {
-      return `unknown category "${category}"`;
-    }
-  }
-};
-
 const hasAlpha = (img: Rgba): boolean => {
   for (let i = 3; i < img.data.length; i += 4) {
     if ((img.data[i] ?? 255) < 255) {
@@ -91,9 +66,8 @@ for (const file of files) {
         );
       }
       const frameWidth = whole.width / stripCount;
-      const problem = expectedFrame(category, frameWidth, whole.height);
-      if (problem !== null) {
-        throw new Error(`${file}: ${problem}`);
+      if (frameWidth <= 0 || whole.height <= 0) {
+        throw new Error(`${file}: frame dimensions must be positive`);
       }
       const first = match.groups["frame"] === undefined ? 0 : Number(match.groups["frame"]);
       for (let i = 0; i < stripCount; i += 1) {
