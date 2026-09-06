@@ -133,8 +133,9 @@ function structure(p: OfficePlan): void {
   wall(p, 0, 22, 10, 8);
   // Continuous backdrop joins the elevator shaft at x=9; entry stays on the right.
   wall(p, 9, 21, 16, 1);
-  wall(p, 1, 35, 5, 6);
-  wall(p, 5, 35, 5, 6);
+  // Both stalls share the restroom's north wall; no passage behind them.
+  wall(p, 1, 33, 5, 6);
+  wall(p, 5, 33, 5, 6);
   wall(p, 70, 20, 10, 1);
   door(p, "boss", { x: 10, y: 15, w: 3, h: 1 });
   door(p, "dev", { x: 34, y: 15, w: 4, h: 1 }, "sliding");
@@ -146,8 +147,8 @@ function structure(p: OfficePlan): void {
   door(p, "lounge", { x: 26, y: 33, w: 3, h: 1 });
   door(p, "call-1", { x: 29, y: 23, w: 1, h: 2 });
   door(p, "call-2", { x: 29, y: 29, w: 1, h: 2 });
-  door(p, "stall-1", { x: 2, y: 40, w: 2, h: 1 });
-  door(p, "stall-2", { x: 6, y: 40, w: 2, h: 1 });
+  door(p, "stall-1", { x: 2, y: 38, w: 2, h: 1 });
+  door(p, "stall-2", { x: 6, y: 38, w: 2, h: 1 });
   door(p, "elevator", { x: 3, y: 29, w: 4, h: 1 }, "elevator");
   // The kitchen opens into the corridor on its west side (owner's annotated plan).
   for (let y = 21; y < 33; y += 1) {
@@ -203,8 +204,8 @@ function sharedSpaces(p: OfficePlan): void {
   object(p, "dining", "JÍDELNA", "boss-desk", { x: 59, y: 28, w: 6, h: 2 });
   anchor(p, "dining", "relax", { x: 61, y: 31 });
   for (const x of [2, 6]) {
-    object(p, `wc-${String(x)}`, "WC", "toilet", { x, y: 36, w: 2, h: 2 });
-    anchor(p, `wc-${String(x)}`, "restroom", { x, y: 38 });
+    object(p, `wc-${String(x)}`, "WC", "toilet", { x, y: 34, w: 2, h: 2 });
+    anchor(p, `wc-${String(x)}`, "restroom", { x, y: 36 });
   }
   object(p, "sinks", "UMYVADLA", "sink", { x: 17, y: 37, w: 2, h: 4 });
   anchor(p, "sinks", "wander", { x: 16, y: 39 }, "e");

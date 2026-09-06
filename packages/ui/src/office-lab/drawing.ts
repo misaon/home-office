@@ -20,8 +20,9 @@ export function architecture(plan: OfficePlan): Container {
     g.rect((r.x + 1) * TILE, (r.y + 1) * TILE, (r.w - 2) * TILE, (r.h - 2) * TILE).fill(
       r.surface === "wood" ? 0x9c6743 : r.surface === "tile" ? 0xb7a48a : 0x315e5b,
     );
+    const labelX = r.x + (r.id === "toilets" ? 10 : 1);
     layer.addChild(
-      label(r.label, (r.x + 1) * TILE + 4, (r.y + 1) * TILE + 3, "#f2ddbe", r.w < 6 ? 7 : 10),
+      label(r.label, labelX * TILE + 4, (r.y + 1) * TILE + 3, "#f2ddbe", r.w < 6 ? 7 : 10),
     );
   }
   for (let y = 0; y < plan.template.height; y += 1) {
