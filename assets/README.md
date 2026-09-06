@@ -84,7 +84,8 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
 ## Generating with an image model
 
 Image models cannot emit exact small canvases, so they never write into `assets/src` directly. They deliver
-**large PNGs with a transparent background** and `bun run assets:import` turns them into contract files:
+**large PNGs with a transparent background**, saved as `assets/inbox/<key>.png` (the originals are versioned so a
+sprite can be re-cut after a contract change), and `bun run assets:import` turns them into contract files:
 
 ```
 bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--frames N] [--cells WxH] [--no-key]
