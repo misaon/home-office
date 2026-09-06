@@ -1,3 +1,5 @@
+import type { ProviderHealth, ResourceSnapshot } from "@ho/protocol";
+
 /** Where agent sessions run. Docker locally today; a cloud provider tomorrow with the same shape. */
 
 export type ImageSpec = {
@@ -47,16 +49,7 @@ export type PruneScope = {
 };
 export type PruneReport = { containers: string[]; volumes: string[]; images: string[] };
 
-export type ProviderHealth =
-  | { ok: true; version: string; apiVersion: string; os: string; arch: string }
-  | { ok: false; message: string };
-
-export type ResourceSnapshot = {
-  containers: number;
-  volumes: number;
-  imagesBytes: number;
-  volumesBytes: number;
-};
+export type { ProviderHealth, ResourceSnapshot } from "@ho/protocol";
 
 export type BuildProgress = { line: string };
 

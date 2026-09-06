@@ -40,6 +40,8 @@
       "dependencies": {
         "@ho/core": "workspace:*",
         "@ho/protocol": "workspace:*",
+        "@ho/runtime-claude-code": "workspace:*",
+        "@ho/sandbox-docker": "workspace:*",
         "@ho/secrets": "workspace:*",
         "@ho/store": "workspace:*",
         "@orpc/server": "catalog:",

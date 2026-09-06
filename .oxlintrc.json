@@ -57,7 +57,13 @@
     "eslint/require-await": "off",
     "typescript/require-await": "error",
     "eslint/no-await-in-loop": "off",
-    "typescript/ban-types": "off"
+    "typescript/ban-types": "off",
+    "import/max-dependencies": [
+      "error",
+      {
+        "max": 20
+      }
+    ]
   },
   "ignorePatterns": [
     "**/node_modules/**",

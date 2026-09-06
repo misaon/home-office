@@ -16,6 +16,9 @@ export const USAGE = `ho — Home Office command line
   ho task move <task-id> <status> [--reason <text>]
   ho chat <text> [--project <project>]
   ho tail [--after <seq>]
+  ho session list | show <id> | watch [<session-id>|all]
+  ho doctor                                   docker, images, secrets, sessions, disk
+  ho image build                              build the agent and git-bridge images
 `;
 
 export const subcommand = (

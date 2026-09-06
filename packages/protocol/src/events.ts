@@ -5,12 +5,15 @@ import {
   ChatMessage,
   IsoDateTime,
   Project,
+  Session,
+  SessionState,
   Task,
   TaskArtifacts,
   TaskPriority,
   TaskStatus,
+  Usage,
 } from "./domain.ts";
-import { AgentId, EventId, ProjectId, TaskId } from "./ids.ts";
+import { AgentId, EventId, ProjectId, SessionId, TaskId } from "./ids.ts";
 
 /** Who caused an event. Agents act through the daemon; the daemon itself is `system`. */
 export const Actor = z.discriminatedUnion("kind", [
@@ -62,6 +65,22 @@ export const DomainEvent = z.discriminatedUnion("type", [
   event("task.artifacts_changed", { taskId: TaskId, artifacts: TaskArtifacts }),
 
   event("chat.message_posted", { message: ChatMessage, author: Author }),
+
+  event("session.started", { session: Session }),
+  event("session.state_changed", {
+    sessionId: SessionId,
+    state: SessionState,
+    runtimeSessionId: z.string().optional(),
+    sandboxId: z.string().optional(),
+    reason: z.string().max(2000).optional(),
+  }),
+  event("session.usage_recorded", { sessionId: SessionId, usage: Usage }),
+  event("session.ended", {
+    sessionId: SessionId,
+    state: z.enum(["stopped", "failed"]),
+    endedAt: IsoDateTime,
+    reason: z.string().max(2000).optional(),
+  }),
 ]);
 export type DomainEvent = z.infer<typeof DomainEvent>;
 export type DomainEventType = DomainEvent["type"];

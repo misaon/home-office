@@ -1,9 +1,11 @@
 import {
   assignTask,
   createAgent,
+  createChannel,
   createProject,
   createTask,
   editTask,
+  isSessionActive,
   postChatMessage,
   removeAgent,
   removeProject,
@@ -14,8 +16,8 @@ import {
 } from "@ho/core";
 import { contract, type StoredEvent } from "@ho/protocol";
 import { implement, ORPCError } from "@orpc/server";
-import type { RpcContext } from "./context.ts";
 import { DomainFailure } from "../errors.ts";
+import type { RpcContext } from "./context.ts";
 
 const os = implement(contract).$context<RpcContext>();
 
@@ -52,6 +54,29 @@ const guarded = os.middleware(async ({ next }) => {
 
 const base = os.use(guarded);
 const HUMAN = { kind: "human" } as const;
+const MANAGED = { "ho.managed": "true" } as const;
+
+/** Bridges a callback-style producer into an async generator without dropping lines. */
+async function* linesFrom(
+  run: (onLine: (line: string) => void) => Promise<void>,
+  signal: AbortSignal | undefined,
+): AsyncGenerator<{ line: string }> {
+  const channel = createChannel<{ line: string }>(signal);
+  const state: { failure: Error | null } = { failure: null };
+  void run((line) => {
+    channel.push({ line });
+  })
+    .catch((error: unknown) => {
+      state.failure = error instanceof Error ? error : new Error(String(error));
+    })
+    .finally(() => {
+      channel.close();
+    });
+  yield* channel.iterate();
+  if (state.failure !== null) {
+    throw state.failure;
+  }
+}
 
 export const router = base.router({
   system: {
@@ -64,6 +89,24 @@ export const router = base.router({
         Math.round(context.office.clock.now().getTime() - new Date(context.startedAt).getTime()),
       ),
     })),
+    doctor: base.system.doctor.handler(async ({ context }) => {
+      const provider = await context.provider.health();
+      return {
+        provider,
+        images: provider.ok ? await context.imageStatus() : [],
+        secrets: {
+          anthropicOauthToken: (await context.secrets.get("anthropic-oauth-token")) !== null,
+        },
+        sessions: {
+          active: context.sessions.activeCount,
+          max: context.config.scheduler.maxConcurrentSessions,
+        },
+        resources: provider.ok ? await context.provider.snapshot(MANAGED) : null,
+      };
+    }),
+    buildImages: base.system.buildImages.handler(({ context, signal }) =>
+      linesFrom(context.buildImages, signal),
+    ),
   },
   projects: {
     list: base.projects.list.handler(({ context }) => [...context.office.model.projects.values()]),
@@ -119,6 +162,20 @@ export const router = base.router({
     setArtifacts: base.tasks.setArtifacts.handler(({ input, context }) =>
       context.office.execute(HUMAN, (m, ctx) => setTaskArtifacts(m, input, ctx)),
     ),
+  },
+  sessions: {
+    list: base.sessions.list.handler(({ input, context }) =>
+      [...context.office.model.sessions.values()].filter(
+        (s) =>
+          (input.taskId === undefined || s.taskId === input.taskId) &&
+          (input.active === undefined || isSessionActive(s.state) === input.active),
+      ),
+    ),
+    stream: base.sessions.stream.handler(async function* ({ input, context, signal }) {
+      for await (const live of context.sessions.stream(input.sessionId ?? null, signal)) {
+        yield live;
+      }
+    }),
   },
   chat: {
     history: base.chat.history.handler(({ input, context }) =>

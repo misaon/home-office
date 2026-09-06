@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
-# Home Office agent image: Alpine + Claude Code (official apk repo) + git, non-root user.
-# Spike S1 version; RTK, ho-runner and role plugins are added in Phase 2.
+# Home Office agent image: Alpine + Claude Code (official apk repo) + git + ho-runner, non-root user.
+# The build context must contain bin/ho-runner (compiled by the daemon / `ho image build`).
 FROM alpine:3.22
 
 RUN apk add --no-cache bash curl ca-certificates libgcc libstdc++ ripgrep git openssh-client \
@@ -9,8 +9,10 @@ RUN apk add --no-cache bash curl ca-certificates libgcc libstdc++ ripgrep git op
  && echo "https://downloads.claude.ai/claude-code/apk/stable" >> /etc/apk/repositories \
  && apk add --no-cache claude-code \
  && adduser -D -u 1000 agent \
- && mkdir -p /work \
- && chown agent:agent /work
+ && mkdir -p /work /home/agent/.claude \
+ && chown -R agent:agent /work /home/agent
+
+COPY --chmod=0755 bin/ho-runner /usr/local/bin/ho-runner
 
 USER agent
 WORKDIR /work
@@ -23,4 +25,4 @@ ENV HOME=/home/agent \
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
     ENABLE_CLAUDEAI_MCP_SERVERS=false
 
-CMD ["claude", "--version"]
+CMD ["/usr/local/bin/ho-runner"]

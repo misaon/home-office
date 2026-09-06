@@ -20,7 +20,19 @@ export const DaemonConfig = z.object({
   docker: z
     .object({
       socket: z.string().min(1).default("/var/run/docker.sock"),
-      agentImage: z.string().min(1).default("ho/agent:latest"),
+      platform: z.string().min(1).default("linux/arm64"),
+      network: z.string().min(1).default("ho-agents"),
+      agentImage: z.string().min(1).default("ho/agent:dev"),
+      bridgeImage: z.string().min(1).default("ho/git-bridge:dev"),
+      /** How sandboxes reach the daemon; Docker Desktop resolves this to the host loopback. */
+      gatewayHost: z.string().min(1).default("host.docker.internal"),
+    })
+    .prefault({}),
+  limits: z
+    .object({
+      memoryMb: z.int().positive().default(2048),
+      cpus: z.number().positive().default(2),
+      pids: z.int().positive().default(512),
     })
     .prefault({}),
 });

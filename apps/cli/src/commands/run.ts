@@ -3,6 +3,9 @@ import { line, print } from "../output.ts";
 import { agent } from "./agent.ts";
 import { chat } from "./chat.ts";
 import { daemon } from "./daemon.ts";
+import { doctor } from "./doctor.ts";
+import { image } from "./image.ts";
+import { session } from "./session.ts";
 import { project } from "./project.ts";
 import { tail } from "./tail.ts";
 import { task } from "./task.ts";
@@ -39,6 +42,18 @@ export async function run(argv: readonly string[]): Promise<void> {
     }
     case "tail": {
       await tail(rest);
+      return;
+    }
+    case "session": {
+      await session(rest);
+      return;
+    }
+    case "doctor": {
+      await doctor();
+      return;
+    }
+    case "image": {
+      await image(rest);
       return;
     }
     case undefined:

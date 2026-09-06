@@ -1,13 +1,19 @@
+import { createIdFactory } from "@ho/core";
+import { createClaudeCodeRuntime } from "@ho/runtime-claude-code";
+import { createDockerProvider } from "@ho/sandbox-docker";
 import { createSecretStore } from "@ho/secrets";
 import { createSqliteEventStore, openDatabase } from "@ho/store";
-import { createIdFactory } from "@ho/core";
 import { chmod, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { type DaemonConfig, loadConfig, resolveHome } from "./config.ts";
+import { agentImageSpec, bridgeImageSpec, ensureImages } from "./images.ts";
 import { createLogger } from "./logger.ts";
 import { Office } from "./office.ts";
+import { RunnerGateway } from "./runner-gateway.ts";
+import { startScheduler } from "./scheduler.ts";
 import { startServer } from "./server.ts";
+import { SessionManager } from "./sessions.ts";
 
 export { DaemonConfig, loadConfig, resolveHome } from "./config.ts";
 export { Office } from "./office.ts";
@@ -57,21 +63,69 @@ export async function startDaemon(
   const store = createSqliteEventStore(database.db, { ids, clock });
   const office = await Office.open(store, clock, log);
   const secrets = createSecretStore(home);
-  log.debug(
-    { secretStore: process.platform === "darwin" ? "keychain" : "file" },
-    "secret store ready",
-  );
-  void secrets;
+  const provider = createDockerProvider({
+    socket: config.docker.socket,
+    platform: config.docker.platform,
+  });
+  const runtime = createClaudeCodeRuntime({
+    clock,
+    onStderr: (text) => {
+      log.debug({ stderr: text.slice(0, 500) }, "claude stderr");
+    },
+  });
+  const gateway = new RunnerGateway(clock, log);
 
   const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url");
   const startedAt = clock.now().toISOString();
+  // The port is known only after listening; sessions read the URL lazily through this holder.
+  const gatewayUrl = { value: "" };
+  const sessions = new SessionManager({
+    office,
+    provider,
+    runtime,
+    gateway,
+    secrets,
+    config,
+    log,
+    get gatewayUrl() {
+      return gatewayUrl.value;
+    },
+  });
+
+  const imageStatus = async (): Promise<{ ref: string; present: boolean; upToDate: boolean }[]> => {
+    const specs = [await agentImageSpec(config), await bridgeImageSpec(config)];
+    const { createDockerApi } = await import("@ho/sandbox-docker");
+    const { imageHash } = await import("./images-hash.ts");
+    const api = createDockerApi(config.docker.socket);
+    return Promise.all(
+      specs.map(async (spec) => {
+        const hash = await imageHash(api, spec.ref);
+        return { ref: spec.ref, present: hash !== null, upToDate: hash === spec.contentHash };
+      }),
+    );
+  };
+
   const server = startServer({
     host: config.host,
     port: config.port,
     token,
-    context: { office, version: VERSION, startedAt },
+    gateway,
     log,
+    context: {
+      office,
+      sessions,
+      provider,
+      secrets,
+      config,
+      version: VERSION,
+      startedAt,
+      buildImages: (onLine) => ensureImages(provider, config, onLine),
+      imageStatus,
+    },
   });
+  gatewayUrl.value = `ws://${config.docker.gatewayHost}:${String(server.port)}`;
+  const scheduler = startScheduler(office, sessions, config, log);
+
   const info: DaemonInfo = {
     host: config.host,
     port: server.port,
@@ -90,6 +144,8 @@ export async function startDaemon(
     }
     stopped = true;
     log.info("daemon stopping");
+    scheduler.stop();
+    await sessions.stopAll();
     await server.stop();
     database.close();
     await rm(daemonInfoPath(home), { force: true });

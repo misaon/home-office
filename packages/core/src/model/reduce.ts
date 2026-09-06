@@ -77,6 +77,51 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
       model.chat.push(event.payload.message);
       break;
     }
+    case "session.started": {
+      model.sessions.set(event.payload.session.id, event.payload.session);
+      break;
+    }
+    case "session.state_changed": {
+      const session = model.sessions.get(event.payload.sessionId);
+      if (session !== undefined) {
+        const { runtimeSessionId, sandboxId } = event.payload;
+        model.sessions.set(session.id, {
+          ...session,
+          state: event.payload.state,
+          ...(runtimeSessionId === undefined ? {} : { runtimeSessionId }),
+          ...(sandboxId === undefined ? {} : { sandboxId }),
+        });
+      }
+      break;
+    }
+    case "session.usage_recorded": {
+      const session = model.sessions.get(event.payload.sessionId);
+      if (session !== undefined) {
+        const u = event.payload.usage;
+        model.sessions.set(session.id, {
+          ...session,
+          usage: {
+            inputTokens: session.usage.inputTokens + u.inputTokens,
+            outputTokens: session.usage.outputTokens + u.outputTokens,
+            cacheReadTokens: session.usage.cacheReadTokens + u.cacheReadTokens,
+            cacheWriteTokens: session.usage.cacheWriteTokens + u.cacheWriteTokens,
+            turns: session.usage.turns + u.turns,
+          },
+        });
+      }
+      break;
+    }
+    case "session.ended": {
+      const session = model.sessions.get(event.payload.sessionId);
+      if (session !== undefined) {
+        model.sessions.set(session.id, {
+          ...session,
+          state: event.payload.state,
+          endedAt: event.payload.endedAt,
+        });
+      }
+      break;
+    }
   }
   model.lastSeq = event.seq;
 }

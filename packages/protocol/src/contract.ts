@@ -6,13 +6,15 @@ import {
   ChatMessage,
   IsoDateTime,
   Project,
+  Session,
   Task,
   TaskArtifacts,
   TaskPriority,
   TaskStatus,
 } from "./domain.ts";
 import { StoredEvent } from "./events.ts";
-import { AgentId, ProjectId, TaskId } from "./ids.ts";
+import { AgentId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import { Doctor, LiveEvent } from "./runtime-events.ts";
 
 // ---- shared errors ------------------------------------------------------------------------------
 
@@ -100,6 +102,14 @@ export const ChatSendInput = z.object({
 export type ChatSendInput = z.infer<typeof ChatSendInput>;
 export const ChatHistoryInput = z.object({ limit: z.int().positive().max(500).default(100) });
 
+export const SessionListInput = z.object({
+  taskId: TaskId.optional(),
+  active: z.boolean().optional(),
+});
+export type SessionListInput = z.infer<typeof SessionListInput>;
+export const SessionStreamInput = z.object({ sessionId: SessionId.optional() });
+export type SessionStreamInput = z.infer<typeof SessionStreamInput>;
+
 export const EventsSubscribeInput = z.object({ afterSeq: z.int().nonnegative().optional() });
 export type EventsSubscribeInput = z.infer<typeof EventsSubscribeInput>;
 
@@ -118,6 +128,9 @@ const base = oc.errors(errors);
 export const contract = {
   system: {
     health: base.output(Health),
+    doctor: base.output(Doctor),
+    /** Builds (or refreshes) the agent and git-bridge images, streaming build output. */
+    buildImages: base.output(eventIterator(z.object({ line: z.string() }))),
   },
   projects: {
     list: base.output(z.array(Project)),
@@ -145,6 +158,11 @@ export const contract = {
     send: base
       .input(ChatSendInput)
       .output(z.object({ message: ChatMessage, task: Task.nullable() })),
+  },
+  sessions: {
+    list: base.input(SessionListInput).output(z.array(Session)),
+    /** Live, provider-agnostic runtime events of one or all sessions (not persisted). */
+    stream: base.input(SessionStreamInput).output(eventIterator(LiveEvent)),
   },
   events: {
     /** Replays stored events after `afterSeq`, then stays open for live events. */

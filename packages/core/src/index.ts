@@ -1,7 +1,9 @@
+export * from "./async-channel.ts";
 export * from "./commands/agents.ts";
 export * from "./commands/chat.ts";
 export * from "./commands/context.ts";
 export * from "./commands/projects.ts";
+export * from "./commands/sessions.ts";
 export * from "./commands/tasks.ts";
 export * from "./errors.ts";
 export * from "./ids.ts";
@@ -11,4 +13,5 @@ export * from "./ports.ts";
 export * from "./result.ts";
 export * from "./runtime.ts";
 export * from "./sandbox.ts";
+export * from "./scheduler.ts";
 export * from "./tasks/transitions.ts";

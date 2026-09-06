@@ -1,4 +1,11 @@
-import type { Cancellation, Clock, EventFilter, EventStore, IdFactory } from "@ho/core";
+import {
+  type Cancellation,
+  type Clock,
+  createChannel,
+  type EventFilter,
+  type EventStore,
+  type IdFactory,
+} from "@ho/core";
 import { type NewEvent, StoredEvent } from "@ho/protocol";
 import { and, asc, gt, inArray, max } from "drizzle-orm";
 import type { HoDatabase } from "./database.ts";
@@ -24,49 +31,6 @@ const toStored = (row: Row): StoredEvent =>
 
 const matches = (filter: EventFilter | undefined, event: StoredEvent): boolean =>
   filter?.types === undefined || filter.types.includes(event.type);
-
-/** Async queue with back-pressure-free buffering; one per live subscriber. */
-function channel<T>(signal?: Cancellation): {
-  push: (item: T) => void;
-  iterate: () => AsyncIterable<T>;
-  close: () => void;
-} {
-  const buffer: T[] = [];
-  let pending: PromiseWithResolvers<void> | null = null;
-  let closed = false;
-  const notify = (): void => {
-    pending?.resolve();
-    pending = null;
-  };
-  const close = (): void => {
-    closed = true;
-    notify();
-  };
-  signal?.addEventListener("abort", close);
-  return {
-    push: (item) => {
-      if (!closed) {
-        buffer.push(item);
-        notify();
-      }
-    },
-    close,
-    iterate: async function* () {
-      for (;;) {
-        const next = buffer.shift();
-        if (next !== undefined) {
-          yield next;
-          continue;
-        }
-        if (closed) {
-          return;
-        }
-        pending = Promise.withResolvers<void>();
-        await pending.promise;
-      }
-    },
-  };
-}
 
 export function createSqliteEventStore(
   db: HoDatabase,
@@ -139,7 +103,7 @@ export function createSqliteEventStore(
   }
 
   const subscribe = (filter?: EventFilter, signal?: Cancellation): AsyncIterable<StoredEvent> => {
-    const chan = channel<StoredEvent>(signal);
+    const chan = createChannel<StoredEvent>(signal);
     const subscriber: Subscriber = { filter, push: chan.push };
     subscribers.add(subscriber);
     signal?.addEventListener("abort", () => {
