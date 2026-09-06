@@ -12,14 +12,14 @@ export class Workstation {
   readonly #pairs: WorkstationPair[] = [];
 
   constructor(sprites: SpriteLibrary, desks: readonly PlanObject[]) {
-    const texture = (name: string): Texture => {
-      const result = sprites.frames(`furniture/sample-${name}-v1`, "static")?.[0];
+    const texture = (name: string, version = "v2"): Texture => {
+      const result = sprites.frames(`furniture/sample-${name}-${version}`, "static")?.[0];
       if (result === undefined) {
         throw new Error(`Missing workstation sample: ${name}`);
       }
       return result;
     };
-    const carpet = texture("carpet");
+    const carpet = texture("carpet", "v1");
     const deskTexture = texture("desk");
     const chairTexture = texture("chair");
     for (const item of desks.filter((candidate) => /^dev-\d$/u.test(candidate.id))) {
@@ -42,8 +42,8 @@ export class Workstation {
         zIndex: (item.at.y + 3) * 16 - 1,
         eventMode: "none",
       });
-      desk.scale.set(1.5);
-      chair.scale.set(1.5);
+      desk.scale.set(0.136);
+      chair.scale.set(0.08);
       chair.anchor.set(0.5, 1);
       this.objects.addChild(desk, chair);
       this.#pairs.push({ desk, chair, id: item.id });
