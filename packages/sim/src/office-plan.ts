@@ -150,7 +150,12 @@ function structure(p: OfficePlan): void {
   door(p, "stall-1", { x: 2, y: 40, w: 2, h: 1 });
   door(p, "stall-2", { x: 6, y: 40, w: 2, h: 1 });
   door(p, "elevator", { x: 3, y: 29, w: 4, h: 1 }, "elevator");
-  p.glass.push({ x: 55, y: 33, w: 14, h: 1 });
+  // The kitchen opens into the corridor on its west side (owner's annotated plan).
+  for (let y = 21; y < 33; y += 1) {
+    p.template.walls[y * p.template.width + 54] = 0;
+  }
+  // Fixed glazing spans the corridor too, joining the meeting-room wall at x=48.
+  p.glass.push({ x: 49, y: 33, w: 20, h: 1 });
   // Glazing is a solid boundary even when its visual representation is transparent.
   for (const pane of p.glass) {
     wall(p, pane.x, pane.y, pane.w, pane.h);
