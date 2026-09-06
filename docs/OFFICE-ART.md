@@ -55,31 +55,32 @@ trims the transparent margins, scales the art to the footprint at `CELL_PX` and 
 art the moment its key exists; `bun run assets:manifest` lists what is still missing with the size it needs.
 Object keys and footprints (width × height in cells; art may rise above the footprint, never sideways or below):
 
-| Key                  | Footprint | Count | Notes                                                                     |
-| -------------------- | --------- | ----- | ------------------------------------------------------------------------- |
-| `desk-n`             | 5 × 3     | 6     | developer desk, seat south of it, screen faces the viewer                 |
-| `desk-pair`          | 5 × 6     | 2     | QA / analyst shared desk, one seat at each end, two monitors back to back |
-| `desk-boss`          | 6 × 3     | 1     | boss desk, seat north of it, monitor seen from behind                     |
-| `chair-n`, `chair-s` | 1 × 1     | 8 / 3 | empty chairs; the seated pose belongs to characters                       |
-| `elevator`           | 8 × 6     | 1     | doors open toward the threshold below                                     |
-| `reception-desk`     | 8 × 2     | 1     | company name is a runtime overlay                                         |
-| `mailbox`            | 1 × 1     | 1     | animations `empty` and `full`                                             |
-| `bookshelf`          | 3 × 2     | 3     |                                                                           |
-| `sofa`               | 5 × 2     | 1     | boss visitors                                                             |
-| `meeting-table`      | 7 × 3     | 1     |                                                                           |
-| `kitchen-units`      | 11 × 2    | 1     |                                                                           |
-| `dining-table`       | 6 × 2     | 1     |                                                                           |
-| `toilet`             | 2 × 2     | 2     |                                                                           |
-| `sinks`              | 2 × 4     | 1     |                                                                           |
-| `dryer-bin`          | 1 × 2     | 1     |                                                                           |
-| `tv`                 | 1 × 4     | 1     | TV with the console                                                       |
-| `sofa-lounge`        | 3 × 5     | 1     |                                                                           |
-| `foosball`           | 4 × 5     | 1     | four rods per player                                                      |
-| `call-desk`          | 2 × 1     | 2     |                                                                           |
-| `hot-tub`            | 5 × 6     | 1     |                                                                           |
-| `grill`              | 3 × 2     | 1     |                                                                           |
-| `outdoor-table`      | 7 × 4     | 1     |                                                                           |
-| `ashtray`            | 1 × 1     | 1     |                                                                           |
+| Key                  | Footprint           | Count | Notes                                                                                |
+| -------------------- | ------------------- | ----- | ------------------------------------------------------------------------------------ |
+| `desk-n`             | 5 × 3               | 6     | developer desk, seat south of it, screen faces the viewer                            |
+| `desk-pair`          | 5 × 6               | 2     | QA / analyst shared desk, one seat at each end, two monitors back to back            |
+| `desk-boss`          | 6 × 3               | 1     | boss desk, seat north of it, monitor seen from behind                                |
+| `chair-n`, `chair-s` | 1 × 1, art 1.5 wide | 8 / 2 | empty chairs centred on the seat (36 px wide); the seated pose belongs to characters |
+| `chair-boss`         | 1 × 1, art 1.5 wide | 1     | the boss's executive chair, seen from the front                                      |
+| `elevator`           | 8 × 6               | 1     | doors open toward the threshold below                                                |
+| `reception-desk`     | 8 × 2               | 1     | company name is a runtime overlay                                                    |
+| `mailbox`            | 1 × 1               | 1     | animations `empty` and `full`                                                        |
+| `bookshelf`          | 3 × 2               | 3     |                                                                                      |
+| `sofa`               | 5 × 2               | 1     | boss visitors                                                                        |
+| `meeting-table`      | 7 × 3               | 1     |                                                                                      |
+| `kitchen-units`      | 11 × 2              | 1     |                                                                                      |
+| `dining-table`       | 6 × 2               | 1     |                                                                                      |
+| `toilet`             | 2 × 2               | 2     |                                                                                      |
+| `sinks`              | 2 × 4               | 1     |                                                                                      |
+| `dryer-bin`          | 1 × 2               | 1     |                                                                                      |
+| `tv`                 | 1 × 4               | 1     | TV with the console                                                                  |
+| `sofa-lounge`        | 3 × 5               | 1     |                                                                                      |
+| `foosball`           | 4 × 5               | 1     | four rods per player                                                                 |
+| `call-desk`          | 2 × 1               | 2     |                                                                                      |
+| `hot-tub`            | 5 × 6               | 1     |                                                                                      |
+| `grill`              | 3 × 2               | 1     |                                                                                      |
+| `outdoor-table`      | 7 × 4               | 1     |                                                                                      |
+| `ashtray`            | 1 × 1               | 1     |                                                                                      |
 
 Characters: sets `boss`, `agent-a`, `agent-b`, `agent-c` and `postman` are the placeholders in use today (32 × 32
 frames from the 16 px era; the renderer scales any set to two cells tall). A delivered set replaces one by name: 2 × 2-cell frames,
