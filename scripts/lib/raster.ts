@@ -44,7 +44,24 @@ export function hasTransparency(img: Rgba): boolean {
 
 type Box = { x: number; y: number; w: number; h: number };
 
-/** Bounding box of the non-transparent pixels, or null for an empty image. */
+/**
+ * Generators leave an invisible halo (alpha 1–15) far outside the object; below this alpha a pixel counts as
+ * empty for trimming and is cleared so it cannot tint edges when resampling.
+ */
+export const ALPHA_MIN = 16;
+
+/** Clears the faint halo (alpha below `ALPHA_MIN`) so bounds and resampling see only the visible object. */
+export function clearFaint(img: Rgba): Rgba {
+  const out: Rgba = { width: img.width, height: img.height, data: new Uint8Array(img.data) };
+  for (let i = 3; i < out.data.length; i += 4) {
+    if ((out.data[i] ?? 0) < ALPHA_MIN) {
+      out.data[i] = 0;
+    }
+  }
+  return out;
+}
+
+/** Bounding box of the visible pixels (alpha ≥ `ALPHA_MIN`), or null for an empty image. */
 export function opaqueBounds(img: Rgba): Box | null {
   let x0 = img.width;
   let y0 = img.height;
@@ -52,7 +69,7 @@ export function opaqueBounds(img: Rgba): Box | null {
   let y1 = -1;
   for (let y = 0; y < img.height; y += 1) {
     for (let x = 0; x < img.width; x += 1) {
-      if ((img.data[px(img, x, y) + 3] ?? 0) > 0) {
+      if ((img.data[px(img, x, y) + 3] ?? 0) >= ALPHA_MIN) {
         x0 = Math.min(x0, x);
         y0 = Math.min(y0, y);
         x1 = Math.max(x1, x);

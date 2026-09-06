@@ -90,7 +90,8 @@ Image models cannot emit exact small canvases, so they never write into `assets/
 bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--frames N] [--cells WxH] [--no-key]
 ```
 
-- Uses the delivered alpha, trims the art, scales it with an area-averaging filter to the footprint width
+- Uses the delivered alpha, trims the art to the visible object (alpha below 16/255 counts as empty — generators
+  leave an invisible halo far outside the object), scales it with an area-averaging filter to the footprint width
   (furniture) or into the 2 × 2 canvas (characters) or 1 × 1 (bubbles), anchors it bottom-left or bottom-centre,
   writes the frames and refreshes the manifest. `--frames N` splits a horizontal strip of equal frames;
   `--cells WxH` overrides the size for objects outside the plan.

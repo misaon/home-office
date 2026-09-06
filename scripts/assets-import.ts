@@ -14,7 +14,9 @@ import { describeManifest, writeManifest } from "./lib/manifest.ts";
 import { encodePng, type Rgba } from "./lib/png.ts";
 import { decodePng } from "./lib/png-decode.ts";
 import {
+  ALPHA_MIN,
   type Anchor,
+  clearFaint,
   crop,
   hasKeyBackground,
   hasTransparency,
@@ -166,6 +168,7 @@ if (!hasTransparency(image)) {
     `${source} has no transparent pixel: the background is baked in (a painted checkerboard?). Re-export with a real alpha channel, or on a flat #FF00FF background.`,
   );
 }
+image = clearFaint(image);
 const dir = `assets/src/${target.category}/${target.sprite}`;
 await mkdir(dir, { recursive: true });
 const report: string[] = [
@@ -180,6 +183,11 @@ for (const [index, raw] of splitStrip(image, frameCount).entries()) {
   const { frame, scale } = fit(art, target);
   const file = `${dir}/${target.animation}_f${String(index)}.png`;
   await Bun.write(file, encodePng(frame));
+  if (target.trim) {
+    report.push(
+      `  trimmed to the visible object (alpha ≥ ${String(ALPHA_MIN)}): ${String(bounds.w)}×${String(bounds.h)} px at (${String(bounds.x)}, ${String(bounds.y)})`,
+    );
+  }
   const overhang =
     target.height === null
       ? ` (${(frame.height / CELL_PX - target.footprintCells).toFixed(1)} cells above the footprint)`
