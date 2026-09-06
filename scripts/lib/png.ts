@@ -75,6 +75,42 @@ const chunk = (type: string, data: Uint8Array): Uint8Array => {
   return out;
 };
 
+const paethPredict = (a: number, b: number, c: number): number => {
+  const p = a + b - c;
+  const pa = Math.abs(p - a);
+  const pb = Math.abs(p - b);
+  const pc = Math.abs(p - c);
+  return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+};
+
+/**
+ * Filters one RGBA8 scanline with PNG filter `type` (0 none, 1 Sub, 2 Up, 3 Average, 4 Paeth) into `out`
+ * and returns the sum of absolute values — the standard heuristic for picking the filter per row.
+ */
+function filterRow(cur: Uint8Array, prev: Uint8Array, type: number, out: Uint8Array): number {
+  let sum = 0;
+  for (let i = 0; i < cur.length; i += 1) {
+    const x = cur[i] ?? 0;
+    const a = i >= 4 ? (cur[i - 4] ?? 0) : 0;
+    const b = prev[i] ?? 0;
+    const c = i >= 4 ? (prev[i - 4] ?? 0) : 0;
+    let predicted = 0;
+    if (type === 1) {
+      predicted = a;
+    } else if (type === 2) {
+      predicted = b;
+    } else if (type === 3) {
+      predicted = (a + b) >> 1;
+    } else if (type === 4) {
+      predicted = paethPredict(a, b, c);
+    }
+    const v = (x - predicted) & 0xff;
+    out[i] = v;
+    sum += v < 128 ? v : 256 - v;
+  }
+  return sum;
+}
+
 export function encodePng(img: Rgba): Uint8Array {
   const ihdr = new Uint8Array(13);
   const v = new DataView(ihdr.buffer);
@@ -83,9 +119,22 @@ export function encodePng(img: Rgba): Uint8Array {
   ihdr.set([8, 6, 0, 0, 0], 8);
   const stride = img.width * 4;
   const raw = new Uint8Array(img.height * (stride + 1));
+  const candidate = new Uint8Array(stride);
+  let prev: Uint8Array = new Uint8Array(stride);
   for (let y = 0; y < img.height; y += 1) {
-    raw[y * (stride + 1)] = 0;
-    raw.set(img.data.subarray(y * stride, (y + 1) * stride), y * (stride + 1) + 1);
+    const cur = img.data.subarray(y * stride, (y + 1) * stride);
+    let best = 0;
+    let bestSum = Number.POSITIVE_INFINITY;
+    for (let type = 0; type <= 4; type += 1) {
+      const sum = filterRow(cur, prev, type, candidate);
+      if (sum < bestSum) {
+        bestSum = sum;
+        best = type;
+        raw.set(candidate, y * (stride + 1) + 1);
+      }
+    }
+    raw[y * (stride + 1)] = best;
+    prev = cur;
   }
   const deflated = Bun.deflateSync(raw, { level: 9 });
   const zlib = new Uint8Array(deflated.length + 6);

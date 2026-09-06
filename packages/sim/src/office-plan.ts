@@ -137,12 +137,19 @@ class Plan {
     this.plan.template.anchors.push(anchor);
   }
 
-  /** A four-cell desk with its chair; the seat faces the monitor (`facing` = where the person looks). */
-  desk(id: string, label: string, x: number, y: number, facing: "n" | "s", group?: string): void {
-    this.object(id, label, `desk-${facing}`, { x, y, w: 4, h: 2 }, facing);
-    const seat = { x: x + 1, y: facing === "s" ? y - 1 : y + 2 };
+  /**
+   * A workplace: the desk sprite with its footprint, one chair on `seat` and the desk anchor there. `facing` is
+   * where the sitter looks (the chair sprite follows it); footprints are measured from the approved reference.
+   */
+  seat(
+    id: string,
+    seat: Point,
+    facing: "n" | "s",
+    group?: string,
+    kind: "desk" | "boss-desk" = "desk",
+  ): void {
     this.object(`${id}-chair`, "", `chair-${facing}`, { ...seat, w: 1, h: 1 }, facing, false);
-    this.anchor(id, id === "boss-desk" ? "boss-desk" : "desk", seat, facing, group);
+    this.anchor(id, kind, seat, facing, group);
   }
 }
 
@@ -191,14 +198,30 @@ function structure(p: Plan): void {
 }
 
 function workplaces(p: Plan): void {
-  p.desk("boss-desk", "BOSS", 4, 6, "s");
-  for (const [i, x] of [18, 24, 30, 38, 44, 50].entries()) {
-    p.desk(`dev-${String(i + 1)}`, `DEV ${String(i + 1)}`, x, 7, "n", "dev");
+  // Boss: a six-cell desk seen with the monitor's back, the boss sits north of it facing the room.
+  p.object("boss-desk", "BOSS", "desk-boss", { x: 3, y: 7, w: 6, h: 3 }, "s");
+  p.seat("boss-desk", { x: 6, y: 6 }, "s", undefined, "boss-desk");
+  // Developers: two rows of three touching desks (5 × 3 each), the seat south of the desk facing the screen.
+  for (const [i, x] of [19, 24, 29, 39, 44, 49].entries()) {
+    const id = `dev-${String(i + 1)}`;
+    p.object(id, `DEV ${String(i + 1)}`, "desk-n", { x, y: 7, w: 5, h: 3 }, "n");
+    p.seat(id, { x: x + 2, y: 10 }, "n", "dev");
   }
-  p.desk("qa-1", "QA 1", 59, 5, "s", "qa");
-  p.desk("qa-2", "QA 2", 59, 8, "n", "qa");
-  p.desk("analyst-1", "AN 1", 71, 5, "s", "analyst");
-  p.desk("analyst-2", "AN 2", 71, 8, "n", "analyst");
+  // QA and analysts: one long shared desk per room (5 × 6) with a seat at each end, facing each other.
+  for (const [room, x] of [
+    ["qa", 60],
+    ["analyst", 72],
+  ] as const) {
+    p.object(
+      `${room}-desk`,
+      room === "qa" ? "QA · 2" : "AN · 2",
+      "desk-pair",
+      { x, y: 7, w: 5, h: 6 },
+      "s",
+    );
+    p.seat(`${room}-1`, { x: x + 2, y: 6 }, "s", room);
+    p.seat(`${room}-2`, { x: x + 2, y: 13 }, "n", room);
+  }
   p.object("boss-visitors", "HOSTÉ", "sofa", { x: 4, y: 11, w: 5, h: 2 });
   p.anchor("boss-visitors", "sleep", { x: 6, y: 13 }, "n");
   for (const x of [17, 39, 51]) {

@@ -39,11 +39,12 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   footprint**. Art may rise above the footprint (a monitor, a tall shelf, the elevator's frame); it never extends
   below or to the sides. A wrong width is scaled to the footprint and reported in the red banner.
 - One frame per state, `static_f0.png` for most objects; the mailbox has `empty_f0.png` and `full_f0.png`.
-- Desks: `desk-n` seats the person **south** of the desk facing north (the viewer sees the person's back and the
-  monitor's screen); `desk-s` seats the person **north** of the desk facing south (the viewer sees the monitor's back
-  and the person's face above it). The desk is drawn over whoever sits north of it, so a `desk-s` overhang of up to
-  one cell hides the sitter's chest, not the head. Empty chairs are separate 1 × 1 sprites (`chair-n`, `chair-s`);
-  the seated pose belongs to the character.
+- Desks (footprints measured from the reference): `desk-n` (5 × 3) is the developer desk — the person sits
+  **south** of it facing north, so the viewer sees their back and the monitor's screen. `desk-pair` (5 × 6) is the
+  shared QA / analyst desk with a seat at each end and two monitors back to back. `desk-boss` (6 × 3) has the
+  boss **north** of it facing the room, the monitor seen from behind. A desk is drawn over whoever sits north of it,
+  so an upward overhang hides that sitter's chest, not the head. Empty chairs are separate 1 × 1 sprites
+  (`chair-n`, `chair-s`); the seated pose belongs to the character.
 
 **Characters**
 
@@ -55,19 +56,19 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   `type` 180 ms, `celebrate` 250 ms, `idle` 600 ms, `sleep` 900 ms, everything else 320 ms.
 - Activities the simulation actually uses, with the facings it asks for:
 
-  | Activity              | Facings requested                        | Who                                  |
-  | --------------------- | ---------------------------------------- | ------------------------------------ |
-  | `idle`                | n, s, e (+ mirrored w)                   | everyone; also the fallback pose     |
-  | `walk`                | n, s, e (+ mirrored w)                   | everyone                             |
-  | `type`                | n at `desk-n`, s at `desk-s`             | agents at work                       |
-  | `drink`               | n (kitchen counter, grill)               | coffee break                         |
-  | `restroom`            | n                                        | toilets                              |
-  | `smoke`               | e                                        | terrace ashtray                      |
-  | `relax`               | n, e, w (sofa, foosball, hot tub, darts) | breaks                               |
-  | `sleep`               | n (boss sofa), w (lounge sofa)           | rate-limited or off-hours agents     |
-  | `handover`, `receive` | towards the other person, any            | handoffs, mail pickup                |
-  | `celebrate`           | s                                        | finished work                        |
-  | `drop`                | n                                        | the postman at the reception counter |
+  | Activity              | Facings requested                                       | Who                                  |
+  | --------------------- | ------------------------------------------------------- | ------------------------------------ |
+  | `idle`                | n, s, e (+ mirrored w)                                  | everyone; also the fallback pose     |
+  | `walk`                | n, s, e (+ mirrored w)                                  | everyone                             |
+  | `type`                | n at `desk-n`, s and n at `desk-pair`, s at `desk-boss` | agents at work                       |
+  | `drink`               | n (kitchen counter, grill)                              | coffee break                         |
+  | `restroom`            | n                                                       | toilets                              |
+  | `smoke`               | e                                                       | terrace ashtray                      |
+  | `relax`               | n, e, w (sofa, foosball, hot tub, darts)                | breaks                               |
+  | `sleep`               | n (boss sofa), w (lounge sofa)                          | rate-limited or off-hours agents     |
+  | `handover`, `receive` | towards the other person, any                           | handoffs, mail pickup                |
+  | `celebrate`           | s                                                       | finished work                        |
+  | `drop`                | n                                                       | the postman at the reception counter |
 
   Minimum for a usable set: `idle_s`. Recommended full set: `idle` and `walk` in n/s/e, `type` in n/s, and a `_s`
   version of every other activity (it is used for every facing through the fallback). Two frames suffice for

@@ -9,6 +9,8 @@ const FRAME = /^(?<animation>[a-z]+(?:_[nsew])?)_f(?<frame>\d+)\.png$/u;
 type Manifest = {
   version: 1;
   tileSize: number;
+  /** Write time; the UI appends it to frame URLs so a re-imported sprite is never served from the browser cache. */
+  revision: number;
   sprites: Record<string, Record<string, string[]>>;
 };
 
@@ -46,7 +48,7 @@ export async function writeManifest(): Promise<{
   problems: string[];
   missing: Missing[];
 }> {
-  const manifest: Manifest = { version: 1, tileSize: CELL_PX, sprites: {} };
+  const manifest: Manifest = { version: 1, tileSize: CELL_PX, revision: Date.now(), sprites: {} };
   const problems: string[] = [];
   const files = [...new Glob("**/*.png").scanSync(SRC)].toSorted();
   for (const file of files) {

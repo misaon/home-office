@@ -4,6 +4,8 @@ import { z } from "zod";
 
 const Manifest = z.object({
   tileSize: z.int().positive(),
+  /** Write time of the manifest; appended to frame URLs so re-imported art bypasses the browser cache. */
+  revision: z.number().optional(),
   sprites: z.record(z.string(), z.record(z.string(), z.array(z.string()))),
 });
 
@@ -27,18 +29,29 @@ export class SpriteLibrary {
   readonly #animations = new Map<string, string[]>();
 
   async load(): Promise<void> {
-    TextureSource.defaultOptions.scaleMode = "nearest";
-    const response = await fetch("/assets/dist/manifest.json");
+    // The stage is drawn at a fractional scale (fit to the pane, D20 density); linear sampling keeps the
+    // painterly art smooth where nearest would drop rows and shimmer.
+    TextureSource.defaultOptions.scaleMode = "linear";
+    const response = await fetch("/assets/dist/manifest.json", { cache: "no-store" });
     if (!response.ok) {
       throw new Error(`manifest: HTTP ${String(response.status)}`);
     }
     const manifest = Manifest.parse(await response.json());
+    const revision = String(manifest.revision ?? 0);
     const jobs: Promise<void>[] = [];
     for (const [key, animations] of Object.entries(manifest.sprites)) {
       this.#animations.set(key, Object.keys(animations));
       for (const [animation, frames] of Object.entries(animations)) {
         jobs.push(
-          Promise.all(frames.map((path) => Assets.load<Texture>(`/${path}`))).then((textures) => {
+          Promise.all(
+            frames.map((path) =>
+              Assets.load<Texture>({
+                alias: path,
+                src: `/${path}?r=${revision}`,
+                loadParser: "loadTextures",
+              }),
+            ),
+          ).then((textures) => {
             this.#clips.set(`${key}/${animation}`, textures);
           }),
         );
