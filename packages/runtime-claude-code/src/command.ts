@@ -45,8 +45,6 @@ export function claudeArgv(
     String(spec.maxTurns),
     "--permission-mode",
     "bypassPermissions",
-    "--permission-prompts",
-    "none",
     "--setting-sources",
     "user",
     "--settings",

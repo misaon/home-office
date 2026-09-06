@@ -79,6 +79,11 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     [LABELS.kind]: "task-volume",
     [LABELS.session]: ctx.session.id,
   });
+  await provider.createVolume(`${volume}-claude`, {
+    [LABELS.managed]: "true",
+    [LABELS.kind]: "claude-config",
+    [LABELS.session]: ctx.session.id,
+  });
   await cloneIntoVolume(provider, config, ctx.project, volume, branch);
   const issued = gateway.issue(ctx.session.id, ctx.signal);
   const sandbox = await provider.start(

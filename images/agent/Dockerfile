@@ -6,7 +6,7 @@ FROM alpine:3.22
 RUN apk add --no-cache bash curl ca-certificates libgcc libstdc++ ripgrep git openssh-client \
  && wget -qO /etc/apk/keys/claude-code.rsa.pub https://downloads.claude.ai/keys/claude-code.rsa.pub \
  && echo "395759c1f7449ef4cdef305a42e820f3c766d6090d142634ebdb049f113168b6  /etc/apk/keys/claude-code.rsa.pub" | sha256sum -c - \
- && echo "https://downloads.claude.ai/claude-code/apk/stable" >> /etc/apk/repositories \
+ && echo "https://downloads.claude.ai/claude-code/apk/latest" >> /etc/apk/repositories \
  && apk add --no-cache claude-code \
  && adduser -D -u 1000 agent \
  && mkdir -p /work /home/agent/.claude \
