@@ -1,6 +1,12 @@
 # Assets
 
-Pixel-art sources for the office, in the LimeZu _Modern Office_ style: **16×16 tiles**, top-down, PNG with alpha, rendered at 3× in the app. The owner generates sprites with AI tools; this folder defines the contract so generated files drop in without code changes.
+## Approved office design
+
+[office-base-v1.png](reference/office-base-v1.png) is the owner's approved visual reference (2026-09-06). Keep it unchanged and use [the office art production plan](../docs/OFFICE-ART.md) for the verified renderer contract, room requirements and conversion sequence. This concept image is separate from runtime sprites in `src/`.
+
+## Current runtime contract
+
+Pixel-art sources for the office, inspired by LimeZu _Modern Office_: **16×16 tiles**, top-down, PNG with alpha, rendered at integer zoom in the app. The owner generates sprites with AI tools; this folder defines the current import contract. New object behaviours and sizes can require renderer or importer changes; see the production plan above.
 
 ## Layout and naming
 
@@ -19,7 +25,7 @@ Examples: `characters/agent-a/walk_s_f0.png`, `furniture/desk-monitor/type_f1.pn
 ## Frame sizes
 
 - Characters: 32×32 canvas per frame, feet at the bottom centre (row 30), so heads can overlap walls.
-- Tiles and small props: 16×16. Large furniture: multiples of 16 (e.g. 32×16 desk, 32×32 sofa).
+- Tiles and small props: 16×16. Large furniture: multiples of 16, currently at most 64×64 per frame in the importer (e.g. 32×16 desk, 32×32 sofa).
 - Emotion bubbles: 16×16.
 
 ## Delivery format from image generators (`@8x` strips)
@@ -49,7 +55,7 @@ Drop the files under `assets/inbox/<category>/<sprite>/`; `bun run assets:import
 }
 ```
 
-The UI loads textures per file (PixiJS batches up to 16 textures per draw call, plenty for this scene); atlas packing is a later optimisation, not a prerequisite.
+The UI currently loads PNG textures individually. Atlas packing is a later optimisation; measure the completed scene before deciding it is required.
 
 ## Attribution
 
