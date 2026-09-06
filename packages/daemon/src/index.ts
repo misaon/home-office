@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { type DaemonConfig, loadConfig, resolveHome } from "./config.ts";
 import { agentImageSpec, bridgeImageSpec, ensureImages } from "./images.ts";
+import { startGc } from "./gc.ts";
 import { createLogger } from "./logger.ts";
 import { Office } from "./office.ts";
 import { RunnerGateway } from "./runner-gateway.ts";
@@ -62,7 +63,7 @@ export async function startDaemon(
   const database = openDatabase(join(home, "ho.db"));
   const store = createSqliteEventStore(database.db, { ids, clock });
   const office = await Office.open(store, clock, log);
-  const secrets = createSecretStore(home);
+  const secrets = createSecretStore(home, config.secrets.store);
   const provider = createDockerProvider({
     socket: config.docker.socket,
     platform: config.docker.platform,
@@ -105,6 +106,7 @@ export async function startDaemon(
     );
   };
 
+  const gc = startGc(provider, config, log);
   const server = startServer({
     host: config.host,
     port: config.port,
@@ -121,6 +123,7 @@ export async function startDaemon(
       startedAt,
       buildImages: (onLine) => ensureImages(provider, config, onLine),
       imageStatus,
+      gc: () => gc.runOnce(),
     },
   });
   gatewayUrl.value = `ws://${config.docker.gatewayHost}:${String(server.port)}`;
@@ -145,6 +148,7 @@ export async function startDaemon(
     stopped = true;
     log.info("daemon stopping");
     scheduler.stop();
+    gc.stop();
     await sessions.stopAll();
     await server.stop();
     database.close();

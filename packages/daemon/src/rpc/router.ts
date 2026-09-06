@@ -14,7 +14,7 @@ import {
   updateAgent,
   updateProject,
 } from "@ho/core";
-import { contract, type StoredEvent } from "@ho/protocol";
+import { contract, SecretKeyName, type StoredEvent } from "@ho/protocol";
 import { implement, ORPCError } from "@orpc/server";
 import { DomainFailure } from "../errors.ts";
 import type { RpcContext } from "./context.ts";
@@ -107,6 +107,25 @@ export const router = base.router({
     buildImages: base.system.buildImages.handler(({ context, signal }) =>
       linesFrom(context.buildImages, signal),
     ),
+    gc: base.system.gc.handler(({ context }) => context.gc()),
+  },
+  secrets: {
+    status: base.secrets.status.handler(async ({ context }) => {
+      const present = await Promise.all(
+        SecretKeyName.options.map(async (key) =>
+          (await context.secrets.get(key)) === null ? null : key,
+        ),
+      );
+      return { present: present.filter((key): key is SecretKeyName => key !== null) };
+    }),
+    set: base.secrets.set.handler(async ({ input, context }) => {
+      await context.secrets.set(input.key, input.value);
+      return { key: input.key };
+    }),
+    delete: base.secrets.delete.handler(async ({ input, context }) => {
+      await context.secrets.delete(input.key);
+      return { key: input.key };
+    }),
   },
   projects: {
     list: base.projects.list.handler(({ context }) => [...context.office.model.projects.values()]),

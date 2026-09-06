@@ -28,6 +28,12 @@ export const DaemonConfig = z.object({
       gatewayHost: z.string().min(1).default("host.docker.internal"),
     })
     .prefault({}),
+  secrets: z
+    .object({
+      /** `auto` picks the Keychain on macOS and a 0600 file elsewhere. */
+      store: z.enum(["auto", "keychain", "file"]).default("auto"),
+    })
+    .prefault({}),
   limits: z
     .object({
       memoryMb: z.int().positive().default(2048),

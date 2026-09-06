@@ -13,4 +13,5 @@ export type RpcContext = {
   startedAt: string;
   buildImages: (onLine: (line: string) => void) => Promise<void>;
   imageStatus: () => Promise<{ ref: string; present: boolean; upToDate: boolean }[]>;
+  gc: () => Promise<{ containers: string[]; volumes: string[]; images: string[] }>;
 };

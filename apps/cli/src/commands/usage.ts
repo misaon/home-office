@@ -19,6 +19,8 @@ export const USAGE = `ho — Home Office command line
   ho session list | show <id> | watch [<session-id>|all]
   ho doctor                                   docker, images, secrets, sessions, disk
   ho image build                              build the agent and git-bridge images
+  ho secret status | set <key> | rm <key>     keys: anthropic-oauth-token, anthropic-api-key (value via stdin or hidden prompt)
+  ho gc                                       remove stopped sandboxes, expired volumes, dangling images
 `;
 
 export const subcommand = (

@@ -5,11 +5,16 @@ import { createKeychainSecretStore } from "./keychain.ts";
 
 export { createFileSecretStore, createKeychainSecretStore };
 
-/** Keychain on macOS, a 0600 file elsewhere. */
+export type SecretStoreKind = "auto" | "keychain" | "file";
+
+/** Keychain on macOS, a 0600 file elsewhere; `kind` overrides the platform default (tests, servers). */
 export const createSecretStore = (
   home: string,
+  kind: SecretStoreKind = "auto",
   platform: NodeJS.Platform = process.platform,
-): SecretStore =>
-  platform === "darwin"
+): SecretStore => {
+  const useKeychain = kind === "keychain" || (kind === "auto" && platform === "darwin");
+  return useKeychain
     ? createKeychainSecretStore()
     : createFileSecretStore(join(home, "secrets.json"));
+};

@@ -110,6 +110,9 @@ export type SessionListInput = z.infer<typeof SessionListInput>;
 export const SessionStreamInput = z.object({ sessionId: SessionId.optional() });
 export type SessionStreamInput = z.infer<typeof SessionStreamInput>;
 
+export const SecretKeyName = z.enum(["anthropic-oauth-token", "anthropic-api-key"]);
+export type SecretKeyName = z.infer<typeof SecretKeyName>;
+
 export const EventsSubscribeInput = z.object({ afterSeq: z.int().nonnegative().optional() });
 export type EventsSubscribeInput = z.infer<typeof EventsSubscribeInput>;
 
@@ -131,6 +134,14 @@ export const contract = {
     doctor: base.output(Doctor),
     /** Builds (or refreshes) the agent and git-bridge images, streaming build output. */
     buildImages: base.output(eventIterator(z.object({ line: z.string() }))),
+    /** Removes stopped sandboxes, expired task volumes and dangling images. */
+    gc: base.output(
+      z.object({
+        containers: z.array(z.string()),
+        volumes: z.array(z.string()),
+        images: z.array(z.string()),
+      }),
+    ),
   },
   projects: {
     list: base.output(z.array(Project)),
@@ -163,6 +174,13 @@ export const contract = {
     list: base.input(SessionListInput).output(z.array(Session)),
     /** Live, provider-agnostic runtime events of one or all sessions (not persisted). */
     stream: base.input(SessionStreamInput).output(eventIterator(LiveEvent)),
+  },
+  secrets: {
+    status: base.output(z.object({ present: z.array(SecretKeyName) })),
+    set: base
+      .input(z.object({ key: SecretKeyName, value: z.string().min(1) }))
+      .output(z.object({ key: SecretKeyName })),
+    delete: base.input(z.object({ key: SecretKeyName })).output(z.object({ key: SecretKeyName })),
   },
   events: {
     /** Replays stored events after `afterSeq`, then stays open for live events. */
