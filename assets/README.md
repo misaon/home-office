@@ -43,8 +43,10 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   **south** of it facing north, so the viewer sees their back and the monitor's screen. `desk-pair` (5 × 6) is the
   shared QA / analyst desk with a seat at each end and two monitors back to back. `desk-boss` (6 × 3) has the
   boss **north** of it facing the room, the monitor seen from behind. A desk is drawn over whoever sits north of it,
-  so an upward overhang hides that sitter's chest, not the head. Empty chairs are separate 1 × 1 sprites
-  (`chair-n`, `chair-s`); the seated pose belongs to the character.
+  so an upward overhang hides that sitter's chest, not the head. Empty chairs are separate sprites (`chair-n`
+  seen from behind, `chair-s` from the front) on a 1 × 1 seat with art **1.5 cells wide** (36 px), centred on the
+  seat — the one case where art is wider than its footprint (`artWidth` in the plan); the seated pose belongs to
+  the character.
 
 **Characters**
 

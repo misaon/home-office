@@ -1,5 +1,5 @@
 import { findPath, key, samePoint, type Point } from "./grid.ts";
-import type { OfficePlan } from "./office-plan.ts";
+import type { OfficePlan } from "./office-builder.ts";
 import { gridFor } from "./templates.ts";
 
 export type OfficeAudit = {

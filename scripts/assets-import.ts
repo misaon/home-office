@@ -100,17 +100,19 @@ function resolveTarget(key: string, cells: { w: number; h: number } | null): Tar
       trim: true,
     };
   }
-  const footprint = cells ?? officePlan().objects.find((o) => o.sprite === `${category}/${sprite}`);
+  const footprint: { w: number; h: number; artWidth?: number } | undefined =
+    cells ?? officePlan().objects.find((o) => o.sprite === `${category}/${sprite}`);
   if (footprint === undefined) {
     return fail(
       `"${category}/${sprite}" is not in the office plan; pass --cells WxH for objects outside it`,
     );
   }
+  const artWidth = footprint.artWidth ?? footprint.w;
   return {
     category,
     sprite,
     animation,
-    width: footprint.w * CELL_PX,
+    width: Math.round(artWidth * CELL_PX),
     height: null,
     footprintCells: footprint.h,
     anchor: "bottom-left",

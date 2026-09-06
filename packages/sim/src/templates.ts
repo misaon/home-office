@@ -30,6 +30,11 @@ export type Furniture = {
   w: number;
   h: number;
   blocks: boolean;
+  /**
+   * Width of the art in cells when it is wider than the footprint (a chair around a one-cell seat); the sprite
+   * is then centred on the footprint instead of pinned to its bottom-left corner.
+   */
+  artWidth?: number;
 };
 
 export type FloorTemplate = {

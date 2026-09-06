@@ -34,8 +34,8 @@ function missingFurniture(sprites: Manifest["sprites"]): Missing[] {
     byKey.set(item.sprite, {
       key: item.sprite,
       count: 1,
-      cells: `${String(item.w)} × ${String(item.h)}`,
-      pixels: `${String(item.w * CELL_PX)} × ${String(item.h * CELL_PX)}`,
+      cells: `${String(item.w)} × ${String(item.h)}${item.artWidth === undefined ? "" : ` (art ${String(item.artWidth)} wide)`}`,
+      pixels: `${String(Math.round((item.artWidth ?? item.w) * CELL_PX))} × ${String(item.h * CELL_PX)}`,
     });
   }
   return [...byKey.values()];

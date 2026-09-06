@@ -39,14 +39,22 @@ export function createPlanView(
       objects.addChild(standIn(item));
       continue;
     }
-    const sprite = new Sprite({ texture, x: item.at.x * TILE, y: (item.at.y + item.h) * TILE });
-    sprite.anchor.set(0, 1);
-    // Art is drawn at its own pixel size; a delivery at the wrong width is scaled to the footprint and reported.
-    const scale = fitScale(texture.width, item.w * TILE);
+    // Art sits with its bottom-left corner on the footprint's bottom-left cell; art declared wider than the
+    // footprint (chairs) is centred on it instead. A wrong width is scaled to the contract size and reported.
+    const bottom = (item.at.y + item.h) * TILE;
+    const artWidth = (item.artWidth ?? item.w) * TILE;
+    const sprite =
+      item.artWidth === undefined
+        ? new Sprite({ texture, x: item.at.x * TILE, y: bottom, anchor: { x: 0, y: 1 } })
+        : new Sprite({
+            texture,
+            x: (item.at.x + item.w / 2) * TILE,
+            y: bottom,
+            anchor: { x: 0.5, y: 1 },
+          });
+    const scale = fitScale(texture.width, artWidth);
     if (scale !== 1) {
-      report(
-        `${item.sprite} is ${String(texture.width)} px wide, footprint ${String(item.w * TILE)} px`,
-      );
+      report(`${item.sprite} is ${String(texture.width)} px wide, expected ${String(artWidth)} px`);
       sprite.scale.set(scale);
     }
     sprite.zIndex = (item.at.y + item.h) * TILE - (item.blocks ? 1 : 3);

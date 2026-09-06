@@ -1,5 +1,4 @@
-import type { Facing, Point } from "./grid.ts";
-import type { Anchor, AnchorKind, FloorTemplate, Furniture } from "./templates.ts";
+import { type OfficePlan, Plan } from "./office-builder.ts";
 
 /** The whole company works on one floor: the owner-approved office (docs/OFFICE-ART.md). */
 export const OFFICE_FLOOR_ID = "office";
@@ -11,147 +10,11 @@ export const OFFICE_FLOOR_ID = "office";
  */
 export const CELL_PX = 24;
 
-export type PlanRect = { x: number; y: number; w: number; h: number };
-export type Surface = "office" | "tile" | "wood" | "carpet";
-export type PlanRoom = PlanRect & { id: string; label: string; surface: Surface };
-/** A placed object with its label and orientation; `sprite` doubles as the delivery key for real art. */
-export type PlanObject = Furniture & { id: string; label: string; facing: Facing };
-export type PlanDoor = PlanRect & { id: string; kind: "door" | "sliding" | "elevator" };
-export type OfficePlan = {
-  template: FloorTemplate;
-  rooms: PlanRoom[];
-  objects: PlanObject[];
-  doors: PlanDoor[];
-  /** Fixed glazing: impassable like a wall, drawn as tall translucent panels. */
-  glass: PlanRect[];
-};
-
 const WIDTH = 80;
 const HEIGHT = 46;
-const SURFACE_TILE: Record<Surface, string> = {
-  office: "tiles/floor-office",
-  carpet: "tiles/floor-carpet",
-  tile: "tiles/floor-tile",
-  wood: "tiles/floor-wood",
-};
-
 /** Seat zones map to agent roles: developers work at dev desks, reviewers in QA, clerks with the analysts. */
 export const SEAT_GROUPS = ["dev", "qa", "analyst"] as const;
 export type SeatGroup = (typeof SEAT_GROUPS)[number];
-
-class Plan {
-  readonly plan: OfficePlan;
-
-  constructor() {
-    this.plan = {
-      template: {
-        id: OFFICE_FLOOR_ID,
-        name: "Office",
-        width: WIDTH,
-        height: HEIGHT,
-        floor: Array.from({ length: WIDTH * HEIGHT }, () => SURFACE_TILE.office),
-        walls: new Uint8Array(WIDTH * HEIGHT),
-        furniture: [],
-        anchors: [],
-      },
-      rooms: [],
-      objects: [],
-      doors: [],
-      glass: [],
-    };
-  }
-
-  /** Walls on the rectangle's perimeter. */
-  wall(rect: PlanRect): void {
-    const { walls, width } = this.plan.template;
-    for (let y = rect.y; y < rect.y + rect.h; y += 1) {
-      for (let x = rect.x; x < rect.x + rect.w; x += 1) {
-        if (
-          x === rect.x ||
-          x === rect.x + rect.w - 1 ||
-          y === rect.y ||
-          y === rect.y + rect.h - 1
-        ) {
-          walls[y * width + x] = 1;
-        }
-      }
-    }
-  }
-
-  clear(rect: PlanRect): void {
-    const { walls, width } = this.plan.template;
-    for (let y = rect.y; y < rect.y + rect.h; y += 1) {
-      for (let x = rect.x; x < rect.x + rect.w; x += 1) {
-        walls[y * width + x] = 0;
-      }
-    }
-  }
-
-  /** A walled room; `open` rooms only paint their floor (reception, terrace, spa). */
-  room(id: string, label: string, rect: PlanRect, surface: Surface = "carpet", open = false): void {
-    this.plan.rooms.push({ id, label, ...rect, surface });
-    if (!open) {
-      this.wall(rect);
-    }
-    const { floor, width } = this.plan.template;
-    for (let y = rect.y + 1; y < rect.y + rect.h - 1; y += 1) {
-      for (let x = rect.x + 1; x < rect.x + rect.w - 1; x += 1) {
-        floor[y * width + x] = SURFACE_TILE[surface];
-      }
-    }
-  }
-
-  door(id: string, rect: PlanRect, kind: PlanDoor["kind"] = "door"): void {
-    this.plan.doors.push({ id, ...rect, kind });
-    this.clear(rect);
-  }
-
-  glass(rect: PlanRect): void {
-    this.plan.glass.push(rect);
-    this.wall(rect);
-  }
-
-  object(
-    id: string,
-    label: string,
-    sprite: string,
-    rect: PlanRect,
-    facing: Facing = "s",
-    blocks = true,
-  ): void {
-    this.plan.objects.push({
-      id,
-      label,
-      sprite: `furniture/${sprite}`,
-      animation: "static",
-      at: { x: rect.x, y: rect.y },
-      w: rect.w,
-      h: rect.h,
-      blocks,
-      facing,
-    });
-  }
-
-  anchor(id: string, kind: AnchorKind, at: Point, facing: Facing = "n", group?: string): void {
-    const anchor: Anchor = { id, kind, at, facing, ...(group === undefined ? {} : { group }) };
-    this.plan.template.anchors.push(anchor);
-  }
-
-  /**
-   * A workplace: the desk sprite with its footprint, one chair on `seat` and the desk anchor there. `facing` is
-   * where the sitter looks (the chair sprite follows it); footprints are measured from the approved reference.
-   */
-  seat(
-    id: string,
-    seat: Point,
-    facing: "n" | "s",
-    group?: string,
-    kind: "desk" | "boss-desk" = "desk",
-  ): void {
-    this.object(`${id}-chair`, "", `chair-${facing}`, { ...seat, w: 1, h: 1 }, facing, false);
-    this.anchor(id, kind, seat, facing, group);
-  }
-}
 
 function structure(p: Plan): void {
   p.wall({ x: 0, y: 0, w: WIDTH, h: HEIGHT });
@@ -282,9 +145,9 @@ function sharedSpaces(p: Plan): void {
   }
 }
 
-/** The approved composition on a navigable 80×46 grid, 16 px per cell; art is looked up by object sprite key. */
+/** The approved composition on a navigable 80×46 grid, `CELL_PX` px per cell; art is looked up by object sprite key. */
 export function officePlan(): OfficePlan {
-  const p = new Plan();
+  const p = new Plan(OFFICE_FLOOR_ID, WIDTH, HEIGHT);
   structure(p);
   workplaces(p);
   sharedSpaces(p);
