@@ -2,7 +2,7 @@
 import { type Actor, type OfficePlan, type PlanDoor, type Point, type World } from "@ho/sim";
 import { Container, Graphics, Rectangle, type Text } from "pixi.js";
 import type { FloorView } from "../office/scene.ts";
-import { architecture, furniture, label, TILE } from "./drawing.ts";
+import { architecture, furniture, glassWall, label, TILE } from "./drawing.ts";
 
 type DoorView = { spec: PlanDoor; graphic: Graphics; amount: number };
 
@@ -29,6 +29,9 @@ export class PlanView {
     const objects = new Container({ sortableChildren: true, eventMode: "passive" });
     for (const f of plan.objects) {
       objects.addChild(furniture(f));
+    }
+    for (const pane of plan.glass) {
+      objects.addChild(glassWall(pane));
     }
     for (const spec of plan.doors) {
       const graphic = new Graphics({ x: spec.x * TILE, y: spec.y * TILE });

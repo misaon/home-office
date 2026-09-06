@@ -1,5 +1,5 @@
 /* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
-import type { OfficePlan, PlanObject } from "@ho/sim";
+import type { OfficePlan, PlanObject, PlanRect } from "@ho/sim";
 import { Container, Graphics, Text } from "pixi.js";
 
 export const TILE = 16;
@@ -27,6 +27,13 @@ export function architecture(plan: OfficePlan): Container {
   for (let y = 0; y < plan.template.height; y += 1) {
     for (let x = 0; x < plan.template.width; x += 1) {
       if (plan.template.walls[y * plan.template.width + x] === 1) {
+        if (
+          plan.glass.some(
+            (pane) => x >= pane.x && x < pane.x + pane.w && y >= pane.y && y < pane.y + pane.h,
+          )
+        ) {
+          continue;
+        }
         const horizontal =
           (x > 0 && plan.template.walls[y * plan.template.width + x - 1] === 1) ||
           (x < plan.template.width - 1 &&
@@ -40,15 +47,33 @@ export function architecture(plan: OfficePlan): Container {
       }
     }
   }
-  for (const glass of plan.glass) {
-    g.rect(glass.x * TILE, glass.y * TILE, glass.w * TILE, 16).fill(0x335d6b);
-    for (let x = glass.x; x < glass.x + glass.w; x += 2) {
-      g.rect(x * TILE + 2, glass.y * TILE + 2, 28, 11).fill({ color: 0x8de0df, alpha: 0.65 });
-    }
-  }
   layer.addChildAt(g, 0);
   layer.addChild(label("HLAVNÍ CHODBA · 4 POLE", 18 * TILE, 17 * TILE, "#543824", 9));
   return layer;
+}
+
+/** Fixed full-height glazing, sorted in front of people inside the kitchen. */
+export function glassWall(pane: PlanRect): Graphics {
+  const height = 3 * TILE;
+  const width = pane.w * TILE;
+  const bottom = (pane.y + pane.h) * TILE;
+  const g = new Graphics({ x: pane.x * TILE, y: bottom - height, zIndex: bottom - 1 });
+  g.rect(0, 0, width, height).fill({ color: 0x8de0df, alpha: 0.35 });
+  for (let x = 0; x < width; x += 2 * TILE) {
+    const panelWidth = Math.min(2 * TILE, width - x);
+    g.rect(x, 0, 3, height)
+      .fill(0x335d6b)
+      .moveTo(x + 6, height - 8)
+      .lineTo(x + panelWidth - 6, 8)
+      .stroke({ color: 0xd7ffff, width: 2, alpha: 0.65 });
+  }
+  g.rect(0, 0, width, 3)
+    .fill(0x335d6b)
+    .rect(0, height - 4, width, 4)
+    .fill(0x335d6b)
+    .rect(width - 3, 0, 3, height)
+    .fill(0x335d6b);
+  return g;
 }
 
 function desk(g: Graphics, f: PlanObject): void {

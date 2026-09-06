@@ -131,8 +131,8 @@ function structure(p: OfficePlan): void {
   );
   // Elevator shaft is physically part of the lobby wall.
   wall(p, 0, 22, 10, 8);
-  // Reception backdrop, open at the sides.
-  wall(p, 11, 21, 14, 1);
+  // Continuous backdrop joins the elevator shaft at x=9; entry stays on the right.
+  wall(p, 9, 21, 16, 1);
   wall(p, 1, 35, 5, 6);
   wall(p, 5, 35, 5, 6);
   wall(p, 70, 20, 10, 1);
@@ -151,6 +151,10 @@ function structure(p: OfficePlan): void {
   door(p, "stall-2", { x: 6, y: 40, w: 2, h: 1 });
   door(p, "elevator", { x: 3, y: 29, w: 4, h: 1 }, "elevator");
   p.glass.push({ x: 55, y: 33, w: 14, h: 1 });
+  // Glazing is a solid boundary even when its visual representation is transparent.
+  for (const pane of p.glass) {
+    wall(p, pane.x, pane.y, pane.w, pane.h);
+  }
   anchor(p, "elevator", "elevator", { x: 4, y: 30 });
 }
 

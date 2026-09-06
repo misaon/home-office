@@ -79,5 +79,14 @@ export function auditOffice(plan: OfficePlan): OfficeAudit {
   if (result.disconnected.length > 0) {
     result.issues.push(`${String(result.disconnected.length)} disconnected floor cells`);
   }
+  for (const pane of plan.glass) {
+    for (let y = pane.y; y < pane.y + pane.h; y += 1) {
+      for (let x = pane.x; x < pane.x + pane.w; x += 1) {
+        if (grid.isWalkable({ x, y })) {
+          result.issues.push(`Walkable glass wall: ${String(x)},${String(y)}`);
+        }
+      }
+    }
+  }
   return result;
 }
