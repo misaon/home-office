@@ -4,6 +4,13 @@ import type { Anchor, AnchorKind, FloorTemplate, Furniture } from "./templates.t
 /** The whole company works on one floor: the owner-approved office (docs/OFFICE-ART.md). */
 export const OFFICE_FLOOR_ID = "office";
 
+/**
+ * Art density (D20): pixels per cell in every delivered sprite (assets/README.md). The renderer draws the floor
+ * at this scale, `bun run assets:import` sizes sprites by it and the manifest records it. Characters are 2 × 2
+ * cells, bubbles 1 × 1. 24 sits close to the approved reference (≈21) and near 1:1 on a Retina laptop pane.
+ */
+export const CELL_PX = 24;
+
 export type PlanRect = { x: number; y: number; w: number; h: number };
 export type Surface = "office" | "tile" | "wood" | "carpet";
 export type PlanRoom = PlanRect & { id: string; label: string; surface: Surface };

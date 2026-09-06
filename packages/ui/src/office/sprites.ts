@@ -9,6 +9,10 @@ const Manifest = z.object({
 
 export type Clip = { textures: Texture[]; flip: boolean; frameMs: number };
 
+/** 1 for art delivered at the contract size; otherwise the uniform factor that brings it to `target` pixels. */
+export const fitScale = (actual: number, target: number): number =>
+  actual > 0 && actual !== target ? target / actual : 1;
+
 const FRAME_MS: Partial<Record<Activity, number>> = {
   walk: 140,
   type: 180,

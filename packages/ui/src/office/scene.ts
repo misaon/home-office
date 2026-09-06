@@ -1,12 +1,14 @@
 import type { AgentId } from "@ho/protocol";
 import type { Actor, Floor, World } from "@ho/sim";
 import { Application, Container, Sprite, Text, type Texture } from "pixi.js";
-import type { SpriteLibrary } from "./sprites.ts";
+import { fitScale, type SpriteLibrary } from "./sprites.ts";
+import { TILE } from "./stand-ins.ts";
 
-const TILE = 16;
+/** Characters stand two cells tall, bubbles one cell; other sizes are scaled to fit (see #fitTexture). */
+const CHARACTER_PX = 2 * TILE;
 const LABEL_STYLE = {
   fontFamily: "monospace",
-  fontSize: 6,
+  fontSize: Math.round(TILE * 0.4),
   fill: "#ffffff",
   stroke: { color: "#000000", width: 2 },
 };
@@ -52,6 +54,9 @@ export class OfficeScene {
       antialias: false,
       roundPixels: true,
       preference: "webgl",
+      // Device pixels, not CSS pixels: on a Retina display the art is sampled once, not upscaled by the browser.
+      resolution: window.devicePixelRatio,
+      autoDensity: true,
     });
     this.app.ticker.maxFPS = 30;
     host.append(this.app.canvas);
@@ -111,7 +116,7 @@ export class OfficeScene {
     const scale = width / view.width;
     const floorHeight = Math.ceil(view.height * scale);
     const height = Math.max(host.clientHeight, floorHeight);
-    if (this.app.renderer.width !== width || this.app.renderer.height !== height) {
+    if (this.app.screen.width !== width || this.app.screen.height !== height) {
       this.app.renderer.resize(width, height);
       this.app.stage.hitArea = this.app.screen;
     }
@@ -132,7 +137,7 @@ export class OfficeScene {
     });
     const body = new Sprite();
     body.anchor.set(0.5, 1);
-    const bubble = new Sprite({ visible: false, y: -34 });
+    const bubble = new Sprite({ visible: false, y: -(CHARACTER_PX + 2) });
     bubble.anchor.set(0.5, 1);
     const label = new Text({ text: name, style: LABEL_STYLE, resolution: 4, y: 1 });
     label.anchor.set(0.5, 0);
@@ -165,7 +170,8 @@ export class OfficeScene {
       if (texture !== undefined && view.body.texture !== texture) {
         view.body.texture = texture;
       }
-      view.body.scale.x = clip.flip ? -1 : 1;
+      const size = fitScale(view.body.texture.height, CHARACTER_PX);
+      view.body.scale.set(clip.flip ? -size : size, size);
     }
     const emotion = actor.emotion?.kind ?? null;
     const bubbleTexture: Texture | undefined =
@@ -173,6 +179,7 @@ export class OfficeScene {
     view.bubble.visible = bubbleTexture !== undefined;
     if (bubbleTexture !== undefined && view.bubble.texture !== bubbleTexture) {
       view.bubble.texture = bubbleTexture;
+      view.bubble.scale.set(fitScale(bubbleTexture.height, TILE));
     }
     view.label.style.fill = selected ? "#ffd166" : "#ffffff";
   }

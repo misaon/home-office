@@ -5,6 +5,7 @@
     "": {
       "name": "home-office",
       "devDependencies": {
+        "@ho/sim": "workspace:*",
         "@types/bun": "catalog:",
         "bun-plugin-tailwind": "catalog:",
         "knip": "catalog:",
@@ -162,34 +163,6 @@
         "@types/react-dom": "catalog:",
       },
     },
-    "spikes/s1-claude-alpine": {
-      "name": "@ho/spike-s1-claude-alpine",
-      "version": "0.0.0",
-      "dependencies": {
-        "zod": "catalog:",
-      },
-    },
-    "spikes/s3-docker-api": {
-      "name": "@ho/spike-s3-docker-api",
-      "version": "0.0.0",
-      "dependencies": {
-        "zod": "catalog:",
-      },
-    },
-    "spikes/s4-orpc-ws": {
-      "name": "@ho/spike-s4-orpc-ws",
-      "version": "0.0.0",
-      "dependencies": {
-        "@orpc/client": "catalog:",
-        "@orpc/contract": "catalog:",
-        "@orpc/server": "catalog:",
-        "zod": "catalog:",
-      },
-    },
-    "spikes/s5-git-bridge": {
-      "name": "@ho/spike-s5-git-bridge",
-      "version": "0.0.0",
-    },
     "spikes/s6-acp-mock": {
       "name": "@ho/spike-s6-acp-mock",
       "version": "0.0.0",
@@ -319,14 +292,6 @@
     "@ho/secrets": ["@ho/secrets@workspace:packages/secrets"],
 
     "@ho/sim": ["@ho/sim@workspace:packages/sim"],
-
-    "@ho/spike-s1-claude-alpine": ["@ho/spike-s1-claude-alpine@workspace:spikes/s1-claude-alpine"],
-
-    "@ho/spike-s3-docker-api": ["@ho/spike-s3-docker-api@workspace:spikes/s3-docker-api"],
-
-    "@ho/spike-s4-orpc-ws": ["@ho/spike-s4-orpc-ws@workspace:spikes/s4-orpc-ws"],
-
-    "@ho/spike-s5-git-bridge": ["@ho/spike-s5-git-bridge@workspace:spikes/s5-git-bridge"],
 
     "@ho/spike-s6-acp-mock": ["@ho/spike-s6-acp-mock@workspace:spikes/s6-acp-mock"],
 

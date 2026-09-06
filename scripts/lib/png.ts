@@ -3,7 +3,8 @@
 
 export type Rgba = { width: number; height: number; data: Uint8Array };
 
-const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+export const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+export const u32 = (view: DataView, at: number): number => view.getUint32(at);
 
 const CRC_TABLE = new Uint32Array(256);
 for (let n = 0; n < 256; n += 1) {
@@ -36,7 +37,7 @@ export const blank = (width: number, height: number): Rgba => ({
   data: new Uint8Array(width * height * 4),
 });
 
-const setPixel = (
+export const setPixel = (
   img: Rgba,
   x: number,
   y: number,

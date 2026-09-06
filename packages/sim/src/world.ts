@@ -7,7 +7,6 @@ import { type Anchor, type AnchorKind, type FloorTemplate, gridFor } from "./tem
 export type Activity =
   | "idle"
   | "walk"
-  | "sit"
   | "type"
   | "drink"
   | "sleep"

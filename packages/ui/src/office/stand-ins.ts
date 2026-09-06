@@ -1,8 +1,9 @@
 /* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
-import type { PlanObject, PlanRect, PlanRoom } from "@ho/sim";
+import { CELL_PX, type PlanObject, type PlanRect, type PlanRoom } from "@ho/sim";
 import { Container, Graphics, Text } from "pixi.js";
 
-export const TILE = 16;
+/** Pixels per cell on the stage: the art density every sprite is delivered at. */
+export const TILE = CELL_PX;
 
 /** Approved palette (docs/OFFICE-ART.md): warm orange floors, teal furniture, dark wall caps. */
 const PALETTE = {

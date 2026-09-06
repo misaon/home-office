@@ -45,7 +45,11 @@ export function OfficeCanvas(): React.JSX.Element {
       if (bridge.layoutIssues.length > 0) {
         useUi.getState().setError(`office layout: ${bridge.layoutIssues.join("; ")}`);
       }
-      const created = new OfficeScene(sprites, () => createPlanView(bridge.plan, sprites));
+      const created = new OfficeScene(sprites, () =>
+        createPlanView(bridge.plan, sprites, (issue) => {
+          useUi.getState().setError(`sprite: ${issue}`);
+        }),
+      );
       await created.init(element);
       if (state.disposed) {
         created.destroy();

@@ -2,7 +2,7 @@
 import type { OfficePlan, PlanDoor, PlanObject, World } from "@ho/sim";
 import { Container, Graphics, Sprite } from "pixi.js";
 import type { FloorView } from "./scene.ts";
-import type { SpriteLibrary } from "./sprites.ts";
+import { fitScale, type SpriteLibrary } from "./sprites.ts";
 import { architecture, glassWall, standIn, TILE } from "./stand-ins.ts";
 
 type DoorView = { spec: PlanDoor; graphic: Graphics; amount: number };
@@ -16,7 +16,11 @@ const NEAR_CELLS = 3;
  * and one node per object — the delivered sprite when `furniture/<key>` exists in the manifest, a
  * geometric stand-in otherwise. Objects with state (the mailbox) swap textures when their animation changes.
  */
-export function createPlanView(plan: OfficePlan, sprites: SpriteLibrary): FloorView {
+export function createPlanView(
+  plan: OfficePlan,
+  sprites: SpriteLibrary,
+  report: (issue: string) => void,
+): FloorView {
   const { template } = plan;
   const root = new Container({ visible: false });
   const floor = architecture(
@@ -37,6 +41,14 @@ export function createPlanView(plan: OfficePlan, sprites: SpriteLibrary): FloorV
     }
     const sprite = new Sprite({ texture, x: item.at.x * TILE, y: (item.at.y + item.h) * TILE });
     sprite.anchor.set(0, 1);
+    // Art is drawn at its own pixel size; a delivery at the wrong width is scaled to the footprint and reported.
+    const scale = fitScale(texture.width, item.w * TILE);
+    if (scale !== 1) {
+      report(
+        `${item.sprite} is ${String(texture.width)} px wide, footprint ${String(item.w * TILE)} px`,
+      );
+      sprite.scale.set(scale);
+    }
     sprite.zIndex = (item.at.y + item.h) * TILE - (item.blocks ? 1 : 3);
     objects.addChild(sprite);
     views.push({ item, sprite, animation: item.animation });

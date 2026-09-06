@@ -25,7 +25,7 @@ production geometry lives in code and every destination must be reachable.
 ## How the office is built (D19)
 
 - **One floor.** The whole company works in this office; projects are columns on the Board, not floors. The
-  plan is pure data in `packages/sim/src/office-plan.ts`: 80 × 46 cells of 16 px (1280 × 736), rooms, walls,
+  plan is pure data in `packages/sim/src/office-plan.ts`: 80 × 46 cells of 24 px (1920 × 1104, D20), rooms, walls,
   doors, glass, 41 objects and 39 anchors. `auditOffice` checks reachability from the elevator on start and the
   UI shows a red banner if a layout change breaks a route.
 - **Seats by role.** The boss has the boss office; workers take `dev` desks, reviewers `qa`, clerks `analyst`;
@@ -38,17 +38,22 @@ production geometry lives in code and every destination must be reachable.
 - **Rendering.** `packages/ui/src/office/plan-view.ts` draws the architecture once (cached), glass panels and
   doors that slide open when somebody is within three cells, and one node per object: the delivered sprite when
   `furniture/<key>` is in the manifest, otherwise a geometric stand-in from `stand-ins.ts` in the approved palette.
-  Room labels are part of the stand-in stage and go away with real art.
-- **Camera.** Integer zoom when the whole floor fits, otherwise scaled down to fit the canvas; the 400 px side
-  panel eats most laptop screens, so a collapsible panel is on the tuning list.
+  Art is drawn at its own pixel size (`CELL_PX` per cell, D20); a sprite delivered at the wrong width is scaled to
+  its footprint and reported in the red banner. Room labels are part of the stand-in stage and go away with real
+  art.
+- **Camera.** The floor always spans the pane's full width, uniformly scaled and never cropped; when it is taller
+  than the pane, the pane scrolls. The canvas renders at the device's pixel ratio, so Retina displays sample the
+  art once instead of upscaling a blurry canvas. A collapsible side panel is on the tuning list.
 - **Live view.** `bun run ui:watch` rebuilds on every change and the page reloads itself (development builds
   only); `ho daemon --ui` serves it.
 
 ## Sprite deliveries
 
-Sprites are delivered as native PNGs straight into `assets/src` (contract in `assets/README.md`). The renderer
-switches an object from stand-in to art the moment its key exists; `bun run assets:manifest` lists what is still
-missing. Object keys and footprints (width × height in cells; art may overhang upwards):
+Generated images never land in `assets/src` by hand: `bun run assets:import <png> furniture/<key>/static`
+keys out the magenta background, scales the art to the footprint at `CELL_PX` and writes the contract file
+(`assets/README.md` has the full contract and the prompt rules). The renderer switches an object from stand-in to
+art the moment its key exists; `bun run assets:manifest` lists what is still missing with the size it needs.
+Object keys and footprints (width × height in cells; art may rise above the footprint, never sideways or below):
 
 | Key                  | Footprint | Count | Notes                                               |
 | -------------------- | --------- | ----- | --------------------------------------------------- |
@@ -75,8 +80,10 @@ missing. Object keys and footprints (width × height in cells; art may overhang 
 | `outdoor-table`      | 7 × 4     | 1     |                                                     |
 | `ashtray`            | 1 × 1     | 1     |                                                     |
 
-Characters: sets `boss`, `agent-a`, `agent-b`, `agent-c` and `postman` are the placeholders in use today; a
-delivered set with the same animation names replaces one by dropping its files in.
+Characters: sets `boss`, `agent-a`, `agent-b`, `agent-c` and `postman` are the placeholders in use today (32 × 32
+frames from the 16 px era; the renderer scales any set to two cells tall). A delivered set replaces one by name: 2 × 2-cell frames,
+`bun run assets:import <strip.png> characters/<set>/<activity>_<dir> --frames N`. The activities and facings the
+simulation asks for are tabulated in `assets/README.md`; `idle_s` alone already renders, the rest falls back to it.
 
 ## Later
 
