@@ -212,6 +212,17 @@ export const router = base.router({
       context.office.execute(HUMAN, (m, ctx) => postChatMessage(m, input, ctx)),
     ),
   },
+  mail: {
+    list: base.mail.list.handler(({ input, context }) =>
+      [...context.office.model.mail.values()].filter(
+        (m) => input.projectId === undefined || m.projectId === input.projectId,
+      ),
+    ),
+  },
+  intake: {
+    poll: base.intake.poll.handler(({ input, context }) => context.intake.pollNow(input.projectId)),
+    status: base.intake.status.handler(({ context }) => context.intake.status()),
+  },
   events: {
     head: base.events.head.handler(async ({ context }) => ({
       seq: await context.office.store.lastSeq(),
@@ -259,6 +270,10 @@ export const router = base.router({
       }
     }),
     handoffDelivered: base.office.handoffDelivered.handler(({ input, context }) => {
+      context.gate.delivered(input.taskId, context.office.clock.now().toISOString());
+      return { ok: true as const };
+    }),
+    mailDelivered: base.office.mailDelivered.handler(({ input, context }) => {
       context.gate.delivered(input.taskId, context.office.clock.now().toISOString());
       return { ok: true as const };
     }),

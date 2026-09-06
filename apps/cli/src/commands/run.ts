@@ -6,6 +6,7 @@ import { daemon } from "./daemon.ts";
 import { doctor } from "./doctor.ts";
 import { gc } from "./gc.ts";
 import { image } from "./image.ts";
+import { intake, mail } from "./intake.ts";
 import { session } from "./session.ts";
 import { project } from "./project.ts";
 import { secret } from "./secret.ts";
@@ -59,6 +60,14 @@ export async function run(argv: readonly string[]): Promise<void> {
     }
     case "image": {
       await image(rest);
+      return;
+    }
+    case "intake": {
+      await intake(rest);
+      return;
+    }
+    case "mail": {
+      await mail(rest);
       return;
     }
     case "secret": {

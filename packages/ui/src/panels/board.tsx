@@ -1,3 +1,4 @@
+import { mailForTask } from "@ho/core";
 import { ProjectId, type Task, type TaskStatus } from "@ho/protocol";
 import { useState } from "react";
 import { type Snapshot, useUi } from "../store.ts";
@@ -14,6 +15,7 @@ function TaskCard({ task, snapshot }: { task: Task; snapshot: Snapshot }): React
   const selectAgent = useUi((s) => s.selectAgent);
   const assignee = task.assigneeId === undefined ? undefined : snapshot.agents.get(task.assigneeId);
   const reviewer = task.reviewerId === undefined ? undefined : snapshot.agents.get(task.reviewerId);
+  const mail = mailForTask(snapshot, task);
   return (
     <div className="rounded border border-line bg-panel p-2 text-xs">
       <div className="font-medium">{task.title}</div>
@@ -21,6 +23,16 @@ function TaskCard({ task, snapshot }: { task: Task; snapshot: Snapshot }): React
         <span>{task.status}</span>
         <span>{task.priority}</span>
         {task.kind === "triage" ? <span>triage</span> : null}
+        {mail === undefined ? null : (
+          <a
+            className="text-sky-300 hover:underline"
+            href={mail.url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            issue #{mail.externalId}
+          </a>
+        )}
         {task.reviewRounds > 0 ? <span>rounds {task.reviewRounds}</span> : null}
       </div>
       {assignee === undefined ? null : (

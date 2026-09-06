@@ -4,7 +4,9 @@ import {
   Agent,
   Budgets,
   ChatMessage,
+  IntakePolicy,
   IsoDateTime,
+  MailItem,
   Project,
   PublishPolicy,
   Session,
@@ -15,6 +17,7 @@ import {
   Usage,
 } from "./domain.ts";
 import { StoredEvent } from "./events.ts";
+import { IntakePollResult, IntakeStatus } from "./intake.ts";
 import { AgentId, ProjectId, SessionId, TaskId } from "./ids.ts";
 import { Doctor, LiveEvent, ResourceInventory } from "./runtime-events.ts";
 
@@ -43,6 +46,7 @@ const ProjectFields = Project.pick({
   defaultBranch: true,
   floorTemplateId: true,
   publish: true,
+  intake: true,
 });
 export const ProjectCreateInput = ProjectFields;
 export type ProjectCreateInput = z.infer<typeof ProjectCreateInput>;
@@ -57,6 +61,7 @@ const ProjectPatch = z
     defaultBranch: Project.shape.defaultBranch.unwrap(),
     floorTemplateId: Project.shape.floorTemplateId.unwrap(),
     publish: PublishPolicy,
+    intake: IntakePolicy,
   })
   .partial();
 export const ProjectUpdateInput = z.object({ id: ProjectId, patch: ProjectPatch });
@@ -246,6 +251,16 @@ export const contract = {
       .output(z.object({ key: SecretKeyName })),
     delete: base.input(z.object({ key: SecretKeyName })).output(z.object({ key: SecretKeyName })),
   },
+  mail: {
+    list: base.input(z.object({ projectId: ProjectId.optional() })).output(z.array(MailItem)),
+  },
+  intake: {
+    /** Polls the enabled connectors now (one project or all); returns what arrived. */
+    poll: base
+      .input(z.object({ projectId: ProjectId.optional() }))
+      .output(z.array(IntakePollResult)),
+    status: base.output(z.array(IntakeStatus)),
+  },
   events: {
     /** Replays stored events after `afterSeq`, then stays open for live events. */
     subscribe: base.input(EventsSubscribeInput).output(eventIterator(StoredEvent)),
@@ -260,6 +275,10 @@ export const contract = {
      */
     presence: base.output(eventIterator(z.object({ at: IsoDateTime }))),
     handoffDelivered: base
+      .input(z.object({ taskId: TaskId }))
+      .output(z.object({ ok: z.literal(true) })),
+    /** The courier handed the mail to the boss; the triage session may start. */
+    mailDelivered: base
       .input(z.object({ taskId: TaskId }))
       .output(z.object({ ok: z.literal(true) })),
   },

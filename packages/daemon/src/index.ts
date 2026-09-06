@@ -8,13 +8,12 @@ import { join } from "node:path";
 import { type DaemonConfig, loadConfig, resolveHome } from "./config.ts";
 import { type DaemonInfo, removeDaemonInfo, writeDaemonInfo } from "./daemon-info.ts";
 import { resolveResources } from "./paths.ts";
-import { startGc } from "./gc.ts";
 import { createLogger } from "./logger.ts";
 import { HandoffGate } from "./handoff-gate.ts";
+import { startJobs } from "./jobs.ts";
 import { McpGateway } from "./mcp.ts";
 import { Office } from "./office.ts";
 import { RunnerGateway } from "./runner-gateway.ts";
-import { startScheduler } from "./scheduler.ts";
 import { createRpcContext } from "./rpc/context.ts";
 import { startServer } from "./server.ts";
 import { SessionManager } from "./sessions.ts";
@@ -98,7 +97,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     },
   });
 
-  const gc = startGc(provider, config, log);
+  const jobs = startJobs({ office, sessions, provider, config, gate, log });
   const server = startServer({
     host: config.host,
     port: config.port,
@@ -110,6 +109,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
       office,
       sessions,
       gate,
+      intake: jobs.intake,
       provider,
       secrets,
       config,
@@ -117,12 +117,11 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
       store,
       version: VERSION,
       startedAt,
-      gc: () => gc.runOnce(),
+      gc: jobs.gcOnce,
     }),
   });
   gatewayUrl.value = `ws://${config.docker.gatewayHost}:${String(server.port)}`;
   mcpUrl.value = `http://${config.docker.gatewayHost}:${String(server.port)}${McpGateway.path}`;
-  const scheduler = startScheduler(office, sessions, config, gate, log);
 
   const info: DaemonInfo = {
     host: config.host,
@@ -141,8 +140,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     }
     stopped = true;
     log.info("daemon stopping");
-    scheduler.stop();
-    gc.stop();
+    jobs.stop();
     await sessions.stopAll();
     await server.stop();
     database.close();

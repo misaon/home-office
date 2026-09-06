@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AgentId, ChatMessageId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import { AgentId, ChatMessageId, MailItemId, ProjectId, SessionId, TaskId } from "./ids.ts";
 
 export const IsoDateTime = z.iso.datetime();
 export type IsoDateTime = z.infer<typeof IsoDateTime>;
@@ -78,6 +78,26 @@ export const PublishPolicy = z.object({
 });
 export type PublishPolicy = z.infer<typeof PublishPolicy>;
 
+/** Where mail comes from: `github-issues` today; Jira and Linear connectors register their own ids later. */
+export const MailConnector = z.string().min(1).max(40);
+export type MailConnector = z.infer<typeof MailConnector>;
+export const GITHUB_ISSUES_CONNECTOR = "github-issues";
+
+/** GitHub Issues intake of one project: the postman brings matching open issues to the boss. */
+export const IntakePolicy = z.object({
+  enabled: z.boolean().default(false),
+  intervalSeconds: z.int().min(30).max(3600).default(120),
+  /** Only issues carrying every listed label are taken; empty takes every open issue. */
+  labels: z.array(z.string().min(1).max(50)).default([]),
+  /** Poll and report what would arrive without creating tasks or touching the issues. */
+  dryRun: z.boolean().default(false),
+  /** Label added to issues the office took; empty disables labelling. */
+  ackLabel: z.string().max(50).default("home-office"),
+  /** Comment on the issue when it is received, delegated and finished. */
+  comment: z.boolean().default(true),
+});
+export type IntakePolicy = z.infer<typeof IntakePolicy>;
+
 export const Budgets = z.object({
   maxTurnsPerTask: z.int().positive().default(60),
   maxConcurrentSessions: z.int().positive().default(1),
@@ -147,6 +167,7 @@ export const Project = z.object({
   defaultBranch: z.string().min(1).default("main"),
   floorTemplateId: z.string().min(1).default("project-default"),
   publish: PublishPolicy.prefault({}),
+  intake: IntakePolicy.prefault({}),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });
@@ -197,6 +218,34 @@ export const ChatMessage = z.object({
   at: IsoDateTime,
 });
 export type ChatMessage = z.infer<typeof ChatMessage>;
+
+/** What the office told the source about a mail item (issue comment, label). */
+export const MailOutcome = z.enum(["received", "delegated", "done", "blocked", "failed"]);
+export type MailOutcome = z.infer<typeof MailOutcome>;
+
+export const MailAck = z.object({
+  at: IsoDateTime,
+  outcome: MailOutcome,
+  detail: z.string().max(4000),
+});
+export type MailAck = z.infer<typeof MailAck>;
+
+/** One item the postman brought in: an issue that became a task. Bodies live in the task brief, not here. */
+export const MailItem = z.object({
+  id: MailItemId,
+  projectId: ProjectId,
+  connector: MailConnector,
+  /** Stable id at the source (the issue number); dedupes polls. */
+  externalId: z.string().min(1).max(100),
+  url: z.url(),
+  title: z.string().min(1).max(300),
+  author: z.string().max(100),
+  labels: z.array(z.string().max(50)),
+  receivedAt: IsoDateTime,
+  taskId: TaskId.optional(),
+  acks: z.array(MailAck).default([]),
+});
+export type MailItem = z.infer<typeof MailItem>;
 
 export const Session = z.object({
   id: SessionId,

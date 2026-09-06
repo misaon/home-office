@@ -155,6 +155,17 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
       model.chat.push(event.payload.message);
       break;
     }
+    case "mail.received": {
+      model.mail.set(event.payload.mail.id, event.payload.mail);
+      break;
+    }
+    case "mail.acknowledged": {
+      const mail = model.mail.get(event.payload.mailId);
+      if (mail !== undefined) {
+        model.mail.set(mail.id, { ...mail, acks: [...mail.acks, event.payload.ack] });
+      }
+      break;
+    }
     case "session.started":
     case "session.state_changed":
     case "session.usage_recorded":

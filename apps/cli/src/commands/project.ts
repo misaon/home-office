@@ -1,4 +1,4 @@
-import type { PublishPolicy, RepoSource } from "@ho/protocol";
+import type { IntakePolicy, PublishPolicy, RepoSource } from "@ho/protocol";
 import { parse, str } from "../args.ts";
 import { withClient } from "../client.ts";
 import { line, print } from "../output.ts";
@@ -40,9 +40,55 @@ const publishFrom = (
   };
 };
 
+const intakeFrom = (
+  flags: {
+    intake: string | undefined;
+    labels: string | undefined;
+    interval: string | undefined;
+    dryRun: string | undefined;
+  },
+  current: IntakePolicy,
+): IntakePolicy | undefined => {
+  if (
+    flags.intake === undefined &&
+    flags.labels === undefined &&
+    flags.interval === undefined &&
+    flags.dryRun === undefined
+  ) {
+    return undefined;
+  }
+  const interval = flags.interval === undefined ? undefined : Number(flags.interval);
+  if (interval !== undefined && !Number.isInteger(interval)) {
+    throw new Error(`--interval expects whole seconds, got "${flags.interval ?? ""}"`);
+  }
+  return {
+    ...current,
+    enabled: onOff(flags.intake) ?? current.enabled,
+    labels:
+      flags.labels === undefined
+        ? current.labels
+        : flags.labels
+            .split(",")
+            .map((l) => l.trim())
+            .filter((l) => l !== ""),
+    intervalSeconds: interval ?? current.intervalSeconds,
+    dryRun: onOff(flags.dryRun) ?? current.dryRun,
+  };
+};
+
 export async function project(args: readonly string[]): Promise<void> {
   const { sub, rest } = subcommand(args, "project");
-  const parsed = parse(rest, ["path", "url", "branch", "pr", "draft"]);
+  const parsed = parse(rest, [
+    "path",
+    "url",
+    "branch",
+    "pr",
+    "draft",
+    "intake",
+    "labels",
+    "interval",
+    "dry-run",
+  ]);
   await withClient(async (client) => {
     switch (sub) {
       case "list": {
@@ -50,7 +96,7 @@ export async function project(args: readonly string[]): Promise<void> {
           const source =
             p.repo.kind === "local" ? p.repo.path : p.repo.kind === "git" ? p.repo.url : "(office)";
           line(
-            `${p.id}  ${p.name}  ${source}  [${p.defaultBranch}]  publish=${p.publish.mode}${p.publish.mode === "pull-request" && p.publish.draft ? " (draft)" : ""}`,
+            `${p.id}  ${p.name}  ${source}  [${p.defaultBranch}]  publish=${p.publish.mode}${p.publish.mode === "pull-request" && p.publish.draft ? " (draft)" : ""}${p.intake.enabled ? `  intake=on/${String(p.intake.intervalSeconds)}s${p.intake.dryRun ? " (dry run)" : ""}` : ""}`,
           );
         }
         return;
@@ -85,12 +131,22 @@ export async function project(args: readonly string[]): Promise<void> {
           onOff(str(parsed, "draft")),
           current.publish,
         );
+        const intake = intakeFrom(
+          {
+            intake: str(parsed, "intake"),
+            labels: str(parsed, "labels"),
+            interval: str(parsed, "interval"),
+            dryRun: str(parsed, "dry-run"),
+          },
+          current.intake,
+        );
         print(
           await client.projects.update({
             id: current.id,
             patch: {
               ...(branch === undefined ? {} : { defaultBranch: branch }),
               ...(publish === undefined ? {} : { publish }),
+              ...(intake === undefined ? {} : { intake }),
             },
           }),
         );

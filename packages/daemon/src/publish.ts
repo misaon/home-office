@@ -1,12 +1,7 @@
+import { githubRepoFromUrl } from "@ho/core";
 import type { Project, Task, TaskArtifacts } from "@ho/protocol";
 import type { Logger } from "./logger.ts";
 import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
-
-/** `owner/name` for GitHub URLs (https or ssh); null for anything else. */
-const githubRepoFromUrl = (url: string): string | null => {
-  const match = /github\.com[/:]([^/]+)\/([^/]+?)(?:\.git)?$/u.exec(url);
-  return match === null ? null : `${match[1] ?? ""}/${match[2] ?? ""}`;
-};
 
 const run = async (argv: readonly string[], cwd?: string): Promise<string> => {
   const proc = Bun.spawn([...argv], {

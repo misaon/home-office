@@ -4,6 +4,8 @@ import type {
   AgentId,
   ChatMessage,
   LiveEvent,
+  MailItem,
+  MailItemId,
   Project,
   ProjectId,
   Session,
@@ -23,6 +25,7 @@ export type Snapshot = {
   tasks: ReadonlyMap<TaskId, Task>;
   sessions: ReadonlyMap<SessionId, Session>;
   chat: readonly ChatMessage[];
+  mail: ReadonlyMap<MailItemId, MailItem>;
 };
 
 /** The event-sourced read model, mutated in place by `applyEvent`; the simulation bridge reads it directly. */
@@ -34,6 +37,7 @@ const takeSnapshot = (): Snapshot => ({
   tasks: new Map(model.tasks),
   sessions: new Map(model.sessions),
   chat: [...model.chat],
+  mail: new Map(model.mail),
 });
 
 /** Recent live runtime events per session (the daemon does not persist them either). */

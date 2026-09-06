@@ -74,6 +74,40 @@ export async function agent(args: readonly string[]): Promise<void> {
         );
         return;
       }
+      case "set": {
+        const { projects, remaining } = splitProjects(rest);
+        const parsed = parse(remaining, ["model", "effort", "sprite", "prompt", "skills"]);
+        const ref = parsed.positionals[0];
+        if (ref === undefined) {
+          throw new Error("agent reference is required");
+        }
+        const current = await findAgent(client, ref);
+        const projectIds = await Promise.all(
+          projects.map(async (p) => (await findProject(client, p)).id),
+        );
+        const model = str(parsed, "model");
+        const effort = str(parsed, "effort");
+        const sprite = str(parsed, "sprite");
+        const prompt = str(parsed, "prompt");
+        const skills = str(parsed, "skills");
+        print(
+          await client.agents.update({
+            id: current.id,
+            patch: {
+              ...(model === undefined ? {} : { model }),
+              ...(effort === undefined ? {} : { effort: EffortLevel.parse(effort) }),
+              ...(sprite === undefined
+                ? {}
+                : { appearance: { ...current.appearance, spriteSet: sprite } }),
+              ...(prompt === undefined ? {} : { basePrompt: prompt }),
+              ...(skills === undefined ? {} : { skillPack: skills }),
+              // `--project` lists the full membership; repeat it for every project the agent keeps.
+              ...(projects.length === 0 ? {} : { projectIds }),
+            },
+          }),
+        );
+        return;
+      }
       case "rm": {
         const ref = rest[0];
         if (ref === undefined) {

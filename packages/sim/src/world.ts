@@ -13,6 +13,7 @@ export type Activity =
   | "sleep"
   | "handover"
   | "receive"
+  | "drop"
   | "celebrate"
   | "smoke"
   | "relax"
@@ -38,10 +39,20 @@ export type Step =
 
 export type SimEvent =
   | { kind: "handoff_delivered"; from: AgentId; to: AgentId }
-  | { kind: "arrived"; agentId: AgentId; anchorId: string | null };
+  | { kind: "arrived"; agentId: AgentId; anchorId: string | null }
+  /** The postman left the envelope in the mailbox. */
+  | { kind: "mail_dropped"; mailId: string }
+  /** A courier handed the envelope to the boss. */
+  | { kind: "mail_delivered"; mailId: string; by: AgentId; to: AgentId }
+  /** A visitor walked out; the host removes the actor. */
+  | { kind: "visitor_left"; actorId: AgentId };
+
+/** Agents are the office's staff; visitors (the postman) come and go and never idle around. */
+export type ActorKind = "agent" | "visitor";
 
 export type Actor = {
   id: AgentId;
+  kind: ActorKind;
   sprite: string;
   floorId: string;
   pos: Point;
@@ -116,13 +127,23 @@ export function release(world: World, actor: Actor): void {
   }
 }
 
-export function spawnActor(world: World, id: AgentId, sprite: string, floorId: string): Actor {
+export function spawnActor(
+  world: World,
+  id: AgentId,
+  sprite: string,
+  floorId: string,
+  options: { kind?: ActorKind; at?: Point } = {},
+): Actor {
   const floor = world.floors.get(floorId);
   const spawn =
-    floor === undefined ? { x: 3, y: 10 } : (anchorById(floor, "elevator")?.at ?? { x: 3, y: 10 });
+    options.at ??
+    (floor === undefined
+      ? { x: 3, y: 10 }
+      : (anchorById(floor, "elevator")?.at ?? { x: 3, y: 10 }));
   const at = nearestWalkable(world, floorId, spawn);
   const actor: Actor = {
     id,
+    kind: options.kind ?? "agent",
     sprite,
     floorId,
     pos: { ...at },

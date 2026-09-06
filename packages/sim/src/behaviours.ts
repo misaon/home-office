@@ -24,7 +24,7 @@ const DWELL: Record<
 
 /** Utility-style idle behaviour: satisfy the most pressing need, otherwise wander or stand around. */
 export function idleBehaviour(world: World, actor: Actor): void {
-  if (actor.work !== null) {
+  if (actor.work !== null || actor.kind === "visitor") {
     return;
   }
   const pressing = NEEDS.filter((n) => actor.needs[n] >= THRESHOLD).toSorted(

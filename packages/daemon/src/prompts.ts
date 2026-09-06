@@ -80,6 +80,7 @@ export const triagePrompt = (agent: Agent, office: Project, model: Model): strin
     `Team:\n${roster.join("\n") || "- (no other agents yet)"}`,
     `Projects:\n${projects.join("\n") || "- (no projects with repositories yet)"}`,
     "Protocol: for actionable requests call ho_delegate once per independent piece of work (clear title, brief with goal, acceptance criteria and constraints; assign a member of that project when one fits). Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to delegate. Use ho_list_agents / ho_list_projects when unsure. Finish with ho_report (status done, one-line summary) and stop.",
+    "Mail: some requests arrive as GitHub issues the postman brought in; their brief starts with the issue number, the project name and the link. Delegate them to that project (quote the issue link in the brief). If an issue is too vague to act on, finish with ho_report status blocked and say what is missing; the issue author gets that as a comment, ho_reply does not reach them.",
     "You do not write code yourself and you have no repository here.",
   ]
     .filter((line) => line !== "")

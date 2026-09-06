@@ -67,7 +67,7 @@ home-office/
 │  ├─ sandbox-docker/        # SandboxProvider for Docker Engine API (containers, volumes, networks, exec, stats, prune)
 │  ├─ runtime-claude-code/   # AgentRuntime for Claude Code headless (stream-json codec, session resume, usage, errors)
 │  ├─ runtime-acp/           # (Phase 7) generic ACP client runtime: Gemini CLI, OpenCode, Codex
-│  ├─ intake-github/         # (Phase 6) IntakeConnector polling GitHub Issues through `gh`
+│  ├─ intake-github/         # IntakeConnector polling GitHub Issues through the host's `gh` (comments/labels back)
 │  ├─ secrets/               # SecretStore: macOS Keychain (`security`), 0600 file fallback
 │  ├─ sim/                   # pure office simulation: floors, grid, A*, elevator, behaviours, emotions, event→intent
 │  ├─ ui/                    # React 19 + PixiJS 8 webview: office canvas, chat, board, floors, inspector, usage, settings
@@ -140,11 +140,11 @@ type RuntimeEvent =
   | { kind: "result"; ok: boolean; text: string; structured?: unknown; turns: number }
   | { kind: "error"; code: RuntimeErrorCode; message: string };
 
-// Where work comes from
+// Where work comes from (host-side adapters; the daemon dedupes against mail already in the log)
 interface IntakeConnector {
-  readonly id: "github-issues" | "jira" | (string & {});
-  poll(since: Cursor, signal: AbortSignal): Promise<{ items: MailItem[]; next: Cursor }>;
-  acknowledge(item: MailItem, outcome: IntakeOutcome): Promise<void>; // comment/label back
+  readonly id: MailConnector; // "github-issues" today
+  poll(project: Project, signal?: Cancellation): Promise<IntakeItem[]>; // open items matching project.intake
+  acknowledge(project: Project, mail: MailItem, ack: MailAck, signal?: Cancellation): Promise<void>; // comment/label back
 }
 
 interface SecretStore {
@@ -194,6 +194,7 @@ Sandbox extras: Claude settings travel inline (`--settings '<json>'`) and includ
 ## 7. Orchestration and the collaboration protocol
 
 - **The office project.** The daemon creates one project with `repo.kind = "none"` (name "Office", floor template `lobby`). It is the Lobby: triage tasks live there and its sessions have no repository.
+- **Mail loop (intake).** Projects with `intake.enabled` are polled on their interval by `@ho/intake-github` (`gh issue list --json …`, label filter, 50 newest open issues). A new issue becomes a `MailItem` (`mail.received`) and a triage task for the boss whose brief carries the issue; without a boss it lands in the project inbox as a work task. The office replies on the issue: received (comment + `intake.ackLabel`), delegated (per child task), and the outcome of mail-born work (done/blocked/failed with branch, PR link, report). `dryRun` polls and reports without creating anything. `ho intake poll|status`, `ho mail list`, Settings → project → intake.
 - **Boss loop (triage).** A human chat message without `projectId` or `taskId` becomes a `triage` task in the office project assigned to the boss; the scheduler starts a `triage` session whose prompt carries the roster (names, roles, skill packs, memberships, load) and the projects. The boss must act through tools: `ho_delegate` (one task per independent piece of work, assigned to a project member or left in the inbox), `ho_reply` (talk to the human), `ho_list_agents`, `ho_list_projects`, then `ho_report(done)`. The final text of a triage session is posted to chat when the boss did not already reply.
 - **Worker loop (work).** The session prompt names the branch and the protocol; the worker commits and calls `ho_report` (`review`, `done` or `blocked`, summary ≤ 1,500 chars). A report on a project with a reviewer member automatically assigns that reviewer and moves the task to `review`. When the agent ends without reporting, the daemon files the result text on its behalf. Branch push and delivery happen at this point (§ 8).
 - **Review loop.** The scheduler starts a `review` session for the task's reviewer (prompt: diff against the default branch, no edits) who calls `ho_review`: `approve` → `done`; `request_changes` → findings become a task note, `reviewRounds` increments, the task returns to `assigned` for the author (or `blocked` once the author's `maxReviewRounds` is exceeded). A review that ends without a verdict blocks the task for the human.
@@ -220,7 +221,7 @@ Sandbox extras: Claude settings travel inline (`--settings '<json>'`) and includ
 - **Behaviour model.** Utility-based selection over needs (`coffee`, `restroom`, `smoke`, `relax`, `social`, `sleep`) driven by seeded RNG and time since last visit; overridden by **intents** from events: `session.started → assignWork (desk on the project floor, the boss desk in the Lobby for triage) and type`, `handoff.requested → walk to the recipient (elevator if needed), hand over, emit handoff_delivered, recipient receives, both return to their desks`, `rate_limited → sleep at a relax spot until the next runtime event`, `task question note → question bubble until answered`, `session.ended → celebrate when it stopped cleanly`, `human chat message → envelope bubble on the boss`. Idle agents satisfy needs above a threshold (utility pick) or wander; chat pairs are a later polish.
 - **Emotions.** Derived: `focused` (tool calls flowing), `happy` (result ok), `frustrated` (errors/retries), `confused` (question pending), `sleepy` (rate limited), `relaxed` (idle). Rendered as bubble icons.
 - **Determinism and cost.** `tick(world, dtMs)` with the frame delta clamped to 250 ms, seeded RNG (mulberry32); `@ho/ui` renders at ≤30 fps and pauses the ticker when the window is hidden. Static tile layers are baked once per floor with `cacheAsTexture`.
-- **Postman** (Phase 6): a special non-agent character spawned by `mail.received`: enters, drops an envelope in the mailbox; the `clerk` role (or any idle worker) fetches it to the boss.
+- **Postman.** `mail.received` spawns a **visitor** actor (`Actor.kind = "visitor"`, never idles) at the Lobby's street door (`entrance` anchor in the top wall) who walks to the mailbox, drops the envelope (`mail_dropped`; the mailbox art switches to `full`), walks out and leaves (`visitor_left`). A courier (the clerk, else an idle colleague, else the boss) fetches it and hands it over (`mail_delivered`); the UI then calls `office.mailDelivered` and the boss's triage session starts. The same gate as handoffs applies (20 s cap; nothing waits without viewers).
 
 ## 10. UI (`@ho/ui`)
 

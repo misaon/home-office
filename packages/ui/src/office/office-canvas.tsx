@@ -1,11 +1,11 @@
 import type { AgentId } from "@ho/protocol";
 import { useEffect, useRef } from "react";
-import { model, useUi } from "../store.ts";
+import { useUi } from "../store.ts";
 import type { World } from "@ho/sim";
 import { bridge, sprites } from "./runtime.ts";
 import { OfficeScene } from "./scene.ts";
 
-const nameOf = (id: AgentId): string => model.agents.get(id)?.name ?? "?";
+const nameOf = (id: AgentId): string => bridge.nameOf(id);
 const HEADCOUNT_MS = 500;
 
 const headcounts = (world: World): Record<string, number> => {

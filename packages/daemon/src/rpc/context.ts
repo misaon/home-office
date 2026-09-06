@@ -5,6 +5,7 @@ import { ensureImages, type ImageStatus, imageStatus } from "../images.ts";
 import type { Resources } from "../paths.ts";
 import { usageSummary } from "../usage.ts";
 import type { HandoffGate } from "../handoff-gate.ts";
+import type { IntakeService } from "../intake.ts";
 import type { Office } from "../office.ts";
 import type { SessionManager } from "../sessions.ts";
 
@@ -12,6 +13,7 @@ export type RpcContext = {
   office: Office;
   sessions: SessionManager;
   gate: HandoffGate;
+  intake: IntakeService;
   provider: SandboxProvider;
   secrets: SecretStore;
   config: DaemonConfig;
@@ -28,6 +30,7 @@ export type RpcContextDeps = Pick<
   | "office"
   | "sessions"
   | "gate"
+  | "intake"
   | "provider"
   | "secrets"
   | "config"

@@ -2,6 +2,7 @@ import type { Project } from "@ho/protocol";
 import { useState } from "react";
 import { getClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
+import { IntakeSettings } from "./settings-intake.tsx";
 
 const describeRepo = (p: Project): string =>
   p.repo.kind === "none" ? "office" : p.repo.kind === "local" ? p.repo.path : p.repo.url;
@@ -76,6 +77,7 @@ export function ProjectsSettings(): React.JSX.Element {
             )}
           </div>
           <div className="truncate font-mono text-[10px] text-gray-400">{describeRepo(p)}</div>
+          {p.repo.kind === "none" ? null : <IntakeSettings project={p} />}
         </div>
       ))}
       <div className="rounded border border-dashed border-line p-2">

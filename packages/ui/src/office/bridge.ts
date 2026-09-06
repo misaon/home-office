@@ -1,4 +1,4 @@
-import { isSessionActive } from "@ho/core";
+import { createIdFactory, isSessionActive } from "@ho/core";
 import type { AgentId, LiveEvent, ProjectId, Session, StoredEvent, TaskId } from "@ho/protocol";
 import {
   addFloor,
@@ -22,9 +22,11 @@ import {
 } from "@ho/sim";
 import type { Client } from "../rpc.ts";
 import { model } from "../store.ts";
+import { MailFlow } from "./mail-flow.ts";
 
 type PendingHandoff = { from: AgentId; to: AgentId; taskId: TaskId };
 const MAX_DT_MS = 250;
+const POSTMAN_NAME = "Postman";
 
 /**
  * Turns the office's history and live stream into simulation intents, and reports the moments the
@@ -34,11 +36,36 @@ export class Bridge {
   readonly world = createWorld("home-office");
   #client: Client | null = null;
   readonly #pending: PendingHandoff[] = [];
+  readonly #mail: MailFlow;
   readonly #sleeping = new Set<AgentId>();
+  /** Visitor ids come from the same UUIDv7 factory as agents so the sim's branded ids stay honest. */
+  readonly #ids = createIdFactory(
+    { now: () => new Date() },
+    {
+      randomize: (bytes) => {
+        // The DOM signature wants a plain ArrayBuffer-backed view; fill a fresh one and copy.
+        bytes.set(crypto.getRandomValues(new Uint8Array(bytes.length)));
+      },
+    },
+  );
   #watching = true;
 
   constructor() {
     addFloor(this.world, lobbyTemplate());
+    this.#mail = new MailFlow(
+      this.world,
+      () => this.#ids.agent(),
+      (taskId) => {
+        this.#deliverMail(taskId);
+      },
+    );
+  }
+
+  /** Name shown above an actor: the agent's, or the visitor's role. */
+  nameOf(id: AgentId): string {
+    return this.world.actors.get(id)?.kind === "visitor"
+      ? POSTMAN_NAME
+      : (model.agents.get(id)?.name ?? "?");
   }
 
   attach(client: Client): void {
@@ -59,6 +86,7 @@ export class Bridge {
       for (const pending of this.#pending) {
         this.#deliver(pending.taskId);
       }
+      this.#mail.flush();
     }
   }
 
@@ -91,8 +119,8 @@ export class Bridge {
         actor.sprite = sprite;
       }
     }
-    for (const id of world.actors.keys()) {
-      if (!model.agents.has(id)) {
+    for (const [id, actor] of world.actors) {
+      if (actor.kind === "agent" && !model.agents.has(id)) {
         removeActor(world, id);
       }
     }
@@ -147,6 +175,8 @@ export class Bridge {
           setEmotion(this.world, boss.id, "envelope", 4000);
         }
       }
+    } else if (event.type === "mail.received") {
+      this.#mail.onMail(event.payload.mail, this.#watching);
     } else if (event.type.startsWith("project.") || event.type.startsWith("agent.")) {
       this.syncFromModel();
     }
@@ -176,6 +206,10 @@ export class Bridge {
     void this.#client?.office.handoffDelivered({ taskId }).catch(() => null);
   }
 
+  #deliverMail(taskId: TaskId): void {
+    void this.#client?.office.mailDelivered({ taskId }).catch(() => null);
+  }
+
   /** Advances the simulation and reports delivered handoffs. */
   tick(dtMs: number): void {
     tick(this.world, Math.min(dtMs, MAX_DT_MS), idleBehaviour);
@@ -189,6 +223,10 @@ export class Bridge {
             this.#deliver(pending.taskId);
           }
         }
+      } else if (event.kind === "visitor_left") {
+        removeActor(this.world, event.actorId);
+      } else {
+        this.#mail.onSimEvent(event);
       }
     }
   }

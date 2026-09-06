@@ -53,6 +53,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ho/core": "workspace:*",
+        "@ho/intake-github": "workspace:*",
         "@ho/protocol": "workspace:*",
         "@ho/runtime-claude-code": "workspace:*",
         "@ho/sandbox-docker": "workspace:*",
@@ -61,6 +62,15 @@
         "@modelcontextprotocol/sdk": "catalog:",
         "@orpc/server": "catalog:",
         "pino": "catalog:",
+        "zod": "catalog:",
+      },
+    },
+    "packages/intake-github": {
+      "name": "@ho/intake-github",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ho/core": "workspace:*",
+        "@ho/protocol": "workspace:*",
         "zod": "catalog:",
       },
     },
@@ -270,6 +280,8 @@
     "@ho/daemon": ["@ho/daemon@workspace:packages/daemon"],
 
     "@ho/desktop": ["@ho/desktop@workspace:apps/desktop"],
+
+    "@ho/intake-github": ["@ho/intake-github@workspace:packages/intake-github"],
 
     "@ho/protocol": ["@ho/protocol@workspace:packages/protocol"],
 

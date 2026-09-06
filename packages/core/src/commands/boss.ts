@@ -1,12 +1,13 @@
-import type {
-  Agent,
-  AgentId,
-  ChatMessage,
-  HoDelegateInput,
-  NewEvent,
-  Project,
-  Task,
-  TaskId,
+import {
+  type Agent,
+  type AgentId,
+  type ChatMessage,
+  type HoDelegateInput,
+  IntakePolicy,
+  type NewEvent,
+  type Project,
+  type Task,
+  type TaskId,
 } from "@ho/protocol";
 import { conflict, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
@@ -178,6 +179,7 @@ export function ensureOfficeProject(model: ReadModel, ctx: CommandContext): Comm
     defaultBranch: "main",
     floorTemplateId: "lobby",
     publish: { mode: "branch", draft: true },
+    intake: IntakePolicy.parse({}),
     createdAt: ctx.now,
     updatedAt: ctx.now,
   };

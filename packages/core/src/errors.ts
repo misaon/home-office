@@ -4,7 +4,7 @@ import type { TaskStatus } from "@ho/protocol";
 export type DomainError =
   | {
       code: "not_found";
-      entity: "project" | "agent" | "task" | "session" | "chat_message";
+      entity: "project" | "agent" | "task" | "session" | "chat_message" | "mail";
       id: string;
     }
   | { code: "conflict"; reason: string }

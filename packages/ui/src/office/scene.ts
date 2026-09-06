@@ -1,5 +1,5 @@
 import type { AgentId } from "@ho/protocol";
-import type { Actor, Floor, FloorTemplate, World } from "@ho/sim";
+import type { Actor, Floor, FloorTemplate, Furniture, World } from "@ho/sim";
 import { Application, Container, Sprite, Text, type Texture } from "pixi.js";
 import type { SpriteLibrary } from "./sprites.ts";
 
@@ -11,9 +11,12 @@ const LABEL_STYLE = {
   stroke: { color: "#000000", width: 2 },
 };
 
+/** A furniture sprite and the template entry it mirrors, so state changes (mailbox full) can swap the art. */
+type FurnitureView = { item: Furniture; sprite: Sprite; animation: string };
 export type FloorView = {
   root: Container;
   objects: Container;
+  furniture?: FurnitureView[];
   width: number;
   height: number;
   actorTexture?: (actor: Actor) => Texture | undefined;
@@ -103,6 +106,7 @@ export class OfficeScene {
     }
     tiles.cacheAsTexture(true);
     const objects = new Container({ sortableChildren: true });
+    const furniture: FurnitureView[] = [];
     for (const f of t.furniture) {
       const texture = this.#texture(f.sprite, f.animation) ?? this.#texture(f.sprite, "static");
       if (texture !== undefined) {
@@ -110,10 +114,11 @@ export class OfficeScene {
         sprite.anchor.set(0, 1);
         sprite.zIndex = (f.at.y + f.h) * TILE - (f.blocks ? 1 : 3);
         objects.addChild(sprite);
+        furniture.push({ item: f, sprite, animation: f.animation });
       }
     }
     root.addChild(tiles, objects);
-    return { root, objects, width: t.width * TILE, height: t.height * TILE };
+    return { root, objects, furniture, width: t.width * TILE, height: t.height * TILE };
   }
 
   syncFloors(world: World): void {
@@ -162,7 +167,11 @@ export class OfficeScene {
       existing.label.text = name;
       return existing;
     }
-    const root = new Container({ eventMode: "static", cursor: "pointer" });
+    const selectable = actor.kind === "agent";
+    const root = new Container({
+      eventMode: selectable ? "static" : "none",
+      cursor: selectable ? "pointer" : "default",
+    });
     const body = new Sprite();
     body.anchor.set(0.5, 1);
     const bubble = new Sprite({ visible: false, y: -34 });
@@ -222,6 +231,16 @@ export class OfficeScene {
     const current = this.#current === null ? undefined : this.#floors.get(this.#current);
     if (current !== undefined) {
       this.#fit(current);
+    }
+    // Furniture whose state changed (the mailbox filling up) swaps its texture; nothing else is touched.
+    for (const view of current?.furniture ?? []) {
+      if (view.animation !== view.item.animation) {
+        const texture = this.#texture(view.item.sprite, view.item.animation);
+        if (texture !== undefined) {
+          view.sprite.texture = texture;
+          view.animation = view.item.animation;
+        }
+      }
     }
     for (const actor of world.actors.values()) {
       this.#placeActor(actor, this.#ensureActor(actor, names(actor.id)), actor.id === selected);

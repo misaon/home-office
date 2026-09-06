@@ -2,6 +2,7 @@ export * from "./behaviours.ts";
 export * from "./emotions.ts";
 export * from "./grid.ts";
 export * from "./intents.ts";
+export * from "./mail.ts";
 export * from "./office-plan.ts";
 export * from "./office-audit.ts";
 export * from "./rng.ts";

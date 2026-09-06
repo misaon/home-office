@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@ho/core": "workspace:*",
+    "@ho/intake-github": "workspace:*",
     "@ho/protocol": "workspace:*",
     "@ho/runtime-claude-code": "workspace:*",
     "@ho/sandbox-docker": "workspace:*",

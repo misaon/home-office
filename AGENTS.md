@@ -20,7 +20,7 @@ containers, and an Electrobun desktop app that renders them as a pixel-art offic
 ## Layout
 
 `apps/*` (desktop, cli) · `packages/*` (protocol, core, store, daemon, sandbox-docker, runtime-claude-code,
-sim, ui, secrets, agent-kit, …) · `images/*` (Dockerfiles) · `spikes/*` (throwaway experiments) · `assets/`
+intake-github, sim, ui, secrets, agent-kit, …) · `images/*` (Dockerfiles) · `spikes/*` (throwaway experiments) · `assets/`
 (sprites) · `docs/`. Package scope is `@ho/*`; sources are executed as TypeScript, no build step except release
 binaries and the webview bundle.
 

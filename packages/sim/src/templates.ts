@@ -9,6 +9,7 @@ export type AnchorKind =
   | "relax"
   | "sleep"
   | "mailbox"
+  | "entrance"
   | "reception"
   | "whiteboard"
   | "elevator"
@@ -121,9 +122,11 @@ export function lobbyTemplate(): FloorTemplate {
   b.place("furniture/whiteboard", { x: 10, y: 1 }, 2, 2);
   b.anchor("whiteboard", { x: 11, y: 3 }, "n");
   b.place("furniture/plant", { x: 4, y: 1 }, 1, 2);
-  // Mailroom.
+  // Mailroom, with the street door the postman uses in the top wall.
   b.place("furniture/mailbox", { x: 19, y: 1 }, 1, 2, true, "empty");
   b.anchor("mailbox", { x: 19, y: 3 }, "n");
+  b.door(15, 0);
+  b.anchor("entrance", { x: 15, y: 0 }, "s", "entrance");
   // Boss office (top right).
   b.wallRect(25, 0, 15, 9);
   b.door(25, 5);

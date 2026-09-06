@@ -2,6 +2,8 @@ import type {
   Agent,
   AgentId,
   ChatMessage,
+  MailItem,
+  MailItemId,
   Project,
   ProjectId,
   Session,
@@ -17,6 +19,7 @@ export type ReadModel = {
   tasks: Map<TaskId, Task>;
   sessions: Map<SessionId, Session>;
   chat: ChatMessage[];
+  mail: Map<MailItemId, MailItem>;
   lastSeq: number;
 };
 
@@ -26,5 +29,6 @@ export const createReadModel = (): ReadModel => ({
   tasks: new Map(),
   sessions: new Map(),
   chat: [],
+  mail: new Map(),
   lastSeq: -1,
 });

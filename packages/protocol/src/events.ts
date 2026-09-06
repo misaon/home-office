@@ -5,6 +5,8 @@ import {
   Author,
   ChatMessage,
   IsoDateTime,
+  MailAck,
+  MailItem,
   Project,
   Session,
   SessionState,
@@ -15,7 +17,7 @@ import {
   TaskStatus,
   Usage,
 } from "./domain.ts";
-import { AgentId, EventId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import { AgentId, EventId, MailItemId, ProjectId, SessionId, TaskId } from "./ids.ts";
 
 const Envelope = z.object({
   id: EventId,
@@ -74,6 +76,10 @@ export const DomainEvent = z.discriminatedUnion("type", [
   }),
 
   event("chat.message_posted", { message: ChatMessage, author: Author }),
+
+  /** The postman's trigger: a connector delivered an item (its task is created in the same command). */
+  event("mail.received", { mail: MailItem }),
+  event("mail.acknowledged", { mailId: MailItemId, ack: MailAck }),
 
   event("session.started", { session: Session }),
   event("session.state_changed", {

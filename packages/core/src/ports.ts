@@ -1,4 +1,11 @@
-import type { NewEvent, StoredEvent } from "@ho/protocol";
+import type {
+  MailAck,
+  MailConnector,
+  MailItem,
+  NewEvent,
+  Project,
+  StoredEvent,
+} from "@ho/protocol";
 
 /** Structural stand-in for AbortSignal so the core needs neither DOM nor Node typings. */
 export type Cancellation = {
@@ -31,4 +38,28 @@ export type SecretStore = {
   get: (key: SecretKey) => Promise<string | null>;
   set: (key: SecretKey, value: string) => Promise<void>;
   delete: (key: SecretKey) => Promise<void>;
+};
+
+/** What a connector found at the source; the body goes into the task brief. */
+export type IntakeItem = {
+  externalId: string;
+  title: string;
+  body: string;
+  url: string;
+  author: string;
+  labels: string[];
+};
+
+/** Where work comes from besides the chat: GitHub Issues now, Jira/Linear later. */
+export type IntakeConnector = {
+  readonly id: MailConnector;
+  /** Open items matching the project's intake policy; the daemon dedupes against mail already received. */
+  poll: (project: Project, signal?: Cancellation) => Promise<IntakeItem[]>;
+  /** Tells the source what happened (comment, label). Failures are logged by the caller, never fatal. */
+  acknowledge: (
+    project: Project,
+    mail: MailItem,
+    ack: MailAck,
+    signal?: Cancellation,
+  ) => Promise<void>;
 };

@@ -1,4 +1,12 @@
-import { AgentId, ChatMessageId, EventId, ProjectId, SessionId, TaskId } from "@ho/protocol";
+import {
+  AgentId,
+  ChatMessageId,
+  EventId,
+  MailItemId,
+  ProjectId,
+  SessionId,
+  TaskId,
+} from "@ho/protocol";
 import type { Clock, Randomness } from "./ports.ts";
 
 const HEX: string[] = [];
@@ -30,6 +38,7 @@ export type IdFactory = {
   task: () => TaskId;
   session: () => SessionId;
   chatMessage: () => ChatMessageId;
+  mail: () => MailItemId;
   event: () => EventId;
 };
 
@@ -41,6 +50,7 @@ export const createIdFactory = (clock: Clock, random: Randomness): IdFactory => 
     task: () => TaskId.parse(next()),
     session: () => SessionId.parse(next()),
     chatMessage: () => ChatMessageId.parse(next()),
+    mail: () => MailItemId.parse(next()),
     event: () => EventId.parse(next()),
   };
 };
