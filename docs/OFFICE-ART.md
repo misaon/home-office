@@ -50,7 +50,7 @@ production geometry lives in code and every destination must be reachable.
 ## Sprite deliveries
 
 Generated images never land in `assets/src` by hand: `bun run assets:import <png> furniture/<key>/static`
-keys out the magenta background, scales the art to the footprint at `CELL_PX` and writes the contract file
+trims the transparent margins, scales the art to the footprint at `CELL_PX` and writes the contract file
 (`assets/README.md` has the full contract and the prompt rules). The renderer switches an object from stand-in to
 art the moment its key exists; `bun run assets:manifest` lists what is still missing with the size it needs.
 Object keys and footprints (width × height in cells; art may rise above the footprint, never sideways or below):

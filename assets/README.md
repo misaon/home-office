@@ -80,18 +80,21 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
 
 ## Generating with an image model
 
-Image models cannot emit exact small canvases with alpha, so they never write into `assets/src` directly. They
-deliver **large PNGs on a solid magenta background** and `bun run assets:import` turns them into contract files:
+Image models cannot emit exact small canvases, so they never write into `assets/src` directly. They deliver
+**large PNGs with a transparent background** and `bun run assets:import` turns them into contract files:
 
 ```
 bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--frames N] [--cells WxH] [--no-key]
 ```
 
-- Keys out magenta (`#FF00FF`, tolerance 40 per channel, only when all four corners are magenta), trims the art,
-  scales it with an area-averaging filter to the footprint width (furniture) or into the 2 × 2 canvas
-  (characters) or 1 × 1 (bubbles), anchors it bottom-left or bottom-centre, writes the frames and refreshes the
-  manifest. `--frames N` splits a horizontal strip of equal frames; `--cells WxH` overrides the size for objects
-  outside the plan; `--no-key` keeps the delivered alpha.
+- Uses the delivered alpha, trims the art, scales it with an area-averaging filter to the footprint width
+  (furniture) or into the 2 × 2 canvas (characters) or 1 × 1 (bubbles), anchors it bottom-left or bottom-centre,
+  writes the frames and refreshes the manifest. `--frames N` splits a horizontal strip of equal frames;
+  `--cells WxH` overrides the size for objects outside the plan.
+- A delivery without a single transparent pixel is refused: the background was baked in (a painted
+  checkerboard is the classic failure). Re-export with real alpha, or as a fallback on a flat `#FF00FF`
+  background — when all four corners are magenta the converter keys it out (tolerance 40 per channel;
+  `--no-key` disables that).
 - The report shows the resulting size, the scale factor and how far furniture rises above its footprint — check
   that number before accepting a batch.
 
@@ -99,8 +102,8 @@ Rules for the generation prompt (one object or one frame strip per image):
 
 1. Same projection as the reference: overhead cutaway, front faces visible, light from the top-left, the approved
    palette (warm orange floors, teal upholstery, wood, dark caps). Paste the reference next to the prompt.
-2. Solid `#FF00FF` background, **no floor, no drop shadow, no glow** outside the object (soft shadows survive the
-   key as a purple haze). The object fills the frame with a small margin.
+2. Transparent background (a real alpha channel, not a painted checkerboard), **no floor, no drop shadow, no
+   glow** outside the object. The object fills the frame with a small margin.
 3. Frame aspect ratio = footprint ratio plus the intended overhang (a 4 × 2 desk with a half-cell monitor →
    4 : 2.5). Detail only at the level a `CELL_PX` grid can hold; hairline textures turn to noise.
 4. Characters: square frames, feet on the bottom edge of every frame, the same scale in every frame of a set

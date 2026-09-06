@@ -3,10 +3,10 @@
 //   bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--frames N] [--cells WxH]
 //                         [--no-key] [--tolerance 40]
 //
-// The source is any PNG a generator produced (typically ~1024 px on a solid magenta background). The
-// converter keys the magenta out, trims, scales the art to the footprint of the plan object (furniture) or
-// to the character/bubble canvas, aligns it the way the renderer expects and writes the frame files, then
-// rewrites the manifest and lists what is still a stand-in.
+// The source is any PNG a generator produced (typically ~1024 px with a transparent background; a flat
+// #FF00FF background is keyed out as a fallback). The converter trims, scales the art to the footprint of the
+// plan object (furniture) or to the character/bubble canvas, aligns it the way the renderer expects and writes
+// the frame files, then rewrites the manifest and lists what is still a stand-in.
 import { CELL_PX, officePlan } from "@ho/sim";
 import { mkdir } from "node:fs/promises";
 import { parseArgs } from "node:util";
@@ -17,6 +17,7 @@ import {
   type Anchor,
   crop,
   hasKeyBackground,
+  hasTransparency,
   keyOut,
   opaqueBounds,
   place,
@@ -158,10 +159,15 @@ const keyed = values.key && hasKeyBackground(image, tolerance);
 if (keyed) {
   image = keyOut(image, tolerance);
 }
+if (!hasTransparency(image)) {
+  fail(
+    `${source} has no transparent pixel: the background is baked in (a painted checkerboard?). Re-export with a real alpha channel, or on a flat #FF00FF background.`,
+  );
+}
 const dir = `assets/src/${target.category}/${target.sprite}`;
 await mkdir(dir, { recursive: true });
 const report: string[] = [
-  `${source}: ${String(image.width)}×${String(image.height)}, ${keyed ? "magenta keyed out" : "alpha as delivered"}, ${String(frameCount)} frame(s)`,
+  `${source}: ${String(image.width)}×${String(image.height)}, ${keyed ? "flat #FF00FF background keyed out" : "transparent as delivered"}, ${String(frameCount)} frame(s)`,
 ];
 for (const [index, raw] of splitStrip(image, frameCount).entries()) {
   const bounds = opaqueBounds(raw);

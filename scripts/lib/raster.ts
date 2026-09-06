@@ -4,11 +4,11 @@ import { blank, type Rgba } from "./png.ts";
 
 const px = (img: Rgba, x: number, y: number): number => (y * img.width + x) * 4;
 
-/** Magenta (#FF00FF) within `tolerance` per channel: the key colour generators are asked to paint behind objects. */
+/** Magenta (#FF00FF) within `tolerance` per channel: the fallback key colour when a generator cannot export alpha. */
 const isKey = (r: number, g: number, b: number, tolerance: number): boolean =>
   r >= 255 - tolerance && g <= tolerance && b >= 255 - tolerance;
 
-/** True when the image was delivered on a magenta background (all four corners carry the key colour). */
+/** True when the image was delivered on a flat magenta background (all four corners carry the key colour). */
 export function hasKeyBackground(img: Rgba, tolerance = 40): boolean {
   const corners = [
     px(img, 0, 0),
@@ -30,6 +30,16 @@ export function keyOut(img: Rgba, tolerance = 40): Rgba {
     }
   }
   return out;
+}
+
+/** False when nothing in the image is transparent — the background was baked in (a painted checkerboard). */
+export function hasTransparency(img: Rgba): boolean {
+  for (let i = 3; i < img.data.length; i += 4) {
+    if ((img.data[i] ?? 255) < 255) {
+      return true;
+    }
+  }
+  return false;
 }
 
 type Box = { x: number; y: number; w: number; h: number };
