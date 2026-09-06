@@ -57,6 +57,7 @@ export function ChatPanel(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const projects = [...snapshot.projects.values()].filter((p) => p.repo.kind !== "none");
   const questions = openQuestions(snapshot);
+  const hasBoss = [...snapshot.agents.values()].some((a) => a.role === "boss");
 
   const send = (): void => {
     const client = getClient();
@@ -105,6 +106,15 @@ export function ChatPanel(): React.JSX.Element {
         </div>
       ) : null}
       <div className="border-t border-line p-2">
+        {hasBoss || chatProjectId !== null || answering !== null ? null : (
+          <p className="mb-2 rounded bg-amber-950/60 px-2 py-1 text-xs text-amber-200">
+            The office has no boss yet. Add an agent with the role <b>boss</b> in Settings so
+            messages can be triaged, or pick a project above to file the message as a task directly.
+          </p>
+        )}
+        {error === null ? null : (
+          <p className="mb-2 rounded bg-red-950/70 px-2 py-1 text-xs text-red-200">{error}</p>
+        )}
         <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
           <span>To</span>
           <select
@@ -123,7 +133,6 @@ export function ChatPanel(): React.JSX.Element {
             ))}
             {answering === null ? null : <option value="answer">Answer to question</option>}
           </select>
-          {error === null ? null : <span className="text-red-400">{error}</span>}
         </div>
         <textarea
           className="h-16 w-full resize-none rounded bg-panel p-2 outline-none"

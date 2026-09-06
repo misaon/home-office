@@ -81,8 +81,18 @@ export function fileReport(
       },
     });
   }
-  const to: TaskStatus = input.status === "done" || task.kind === "triage" ? "done" : "review";
-  events.push(statusChange(ctx, task, to, "reported"));
+  // Without a reviewer in the project the branch is the deliverable: the human reviews it on GitHub.
+  const to: TaskStatus = "done";
+  events.push(
+    statusChange(
+      ctx,
+      task,
+      to,
+      input.status === "review" && task.kind === "work"
+        ? "reported; no reviewer in this project"
+        : "reported",
+    ),
+  );
   return ok({ events, value: { ...next, status: to } });
 }
 
