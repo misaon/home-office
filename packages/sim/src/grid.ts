@@ -19,11 +19,12 @@ export class Grid {
   readonly width: number;
   readonly height: number;
   readonly #walkable: Uint8Array;
+  #clearance: Uint8Array | null = null;
 
   constructor(width: number, height: number, walkable?: Uint8Array) {
     this.width = width;
     this.height = height;
-    this.#walkable = walkable ?? new Uint8Array(width * height).fill(1);
+    this.#walkable = walkable?.slice() ?? new Uint8Array(width * height).fill(1);
   }
 
   inBounds(p: Point): boolean {
@@ -36,8 +37,49 @@ export class Grid {
 
   setWalkable(p: Point, walkable: boolean): void {
     if (this.inBounds(p)) {
-      this.#walkable[p.y * this.width + p.x] = walkable ? 1 : 0;
+      const index = p.y * this.width + p.x;
+      const value = walkable ? 1 : 0;
+      if (this.#walkable[index] !== value) {
+        this.#walkable[index] = value;
+        this.#clearance = null;
+      }
     }
+  }
+
+  /** Prefer space around walls/furniture without making narrow doors or edge targets unreachable. */
+  stepCost(p: Point): number {
+    this.#clearance ??= this.#buildClearance();
+    const distance = this.#clearance[p.y * this.width + p.x] ?? 0;
+    return distance <= 1 ? 4 : distance === 2 ? 1.5 : 1;
+  }
+
+  /** Two-pass Manhattan distance to static obstacles or the map edge, capped at three cells. */
+  #buildClearance(): Uint8Array {
+    const distances = new Uint8Array(this.width * this.height).fill(3);
+    for (let y = 0; y < this.height; y += 1) {
+      for (let x = 0; x < this.width; x += 1) {
+        const index = y * this.width + x;
+        distances[index] =
+          this.#walkable[index] === 0
+            ? 0
+            : Math.min(
+                3,
+                x === 0 ? 1 : (distances[index - 1] ?? 3) + 1,
+                y === 0 ? 1 : (distances[index - this.width] ?? 3) + 1,
+              );
+      }
+    }
+    for (let y = this.height - 1; y >= 0; y -= 1) {
+      for (let x = this.width - 1; x >= 0; x -= 1) {
+        const index = y * this.width + x;
+        distances[index] = Math.min(
+          distances[index] ?? 3,
+          x === this.width - 1 ? 1 : (distances[index + 1] ?? 3) + 1,
+          y === this.height - 1 ? 1 : (distances[index + this.width] ?? 3) + 1,
+        );
+      }
+    }
+    return distances;
   }
 
   fill(x: number, y: number, w: number, h: number, walkable: boolean): void {
@@ -56,7 +98,11 @@ const NEIGHBOURS: readonly Point[] = [
   { x: 0, y: -1 },
 ];
 
-/** A* on the 4-connected grid. Returns the path excluding `from`, including `to`; empty when unreachable or trivial. */
+// A turn costs six clear-floor steps: avoid staircases for small clearance gains.
+const TURN_COST = 6;
+type RouteNode = { p: Point; direction: number; id: number; g: number; f: number };
+
+/** Clearance/turn-weighted A*: excludes `from`, includes `to`; empty when unreachable or trivial. */
 export function findPath(
   grid: Grid,
   from: Point,
@@ -69,9 +115,17 @@ export function findPath(
   if (!grid.isWalkable(to) || blocked(to)) {
     return [];
   }
-  const open: { p: Point; f: number }[] = [{ p: from, f: manhattan(from, to) }];
-  const gScore = new Map<number, number>([[key(from), 0]]);
-  const cameFrom = new Map<number, Point>();
+  // Arrival direction is part of the state: it determines the cost of the next turn.
+  const start: RouteNode = {
+    p: from,
+    direction: -1,
+    id: key(from) * 5 + 4,
+    g: 0,
+    f: manhattan(from, to),
+  };
+  const open: RouteNode[] = [start];
+  const gScore = new Map<number, number>([[start.id, 0]]);
+  const cameFrom = new Map<number, RouteNode>();
   const closed = new Set<number>();
   while (open.length > 0) {
     let bestIndex = 0;
@@ -86,34 +140,31 @@ export function findPath(
     if (current === undefined) {
       break;
     }
+    if (closed.has(current.id) || current.g !== gScore.get(current.id)) {
+      continue;
+    }
     if (samePoint(current.p, to)) {
       const path: Point[] = [];
-      let cursor: Point | undefined = current.p;
-      while (cursor !== undefined && !samePoint(cursor, from)) {
-        path.push(cursor);
-        cursor = cameFrom.get(key(cursor));
+      let cursor: RouteNode | undefined = current;
+      while (cursor !== undefined && cursor.id !== start.id) {
+        path.push(cursor.p);
+        cursor = cameFrom.get(cursor.id);
       }
       return path.toReversed();
     }
-    closed.add(key(current.p));
-    const g = gScore.get(key(current.p)) ?? 0;
-    for (const d of NEIGHBOURS) {
+    closed.add(current.id);
+    for (const [direction, d] of NEIGHBOURS.entries()) {
       const next = { x: current.p.x + d.x, y: current.p.y + d.y };
-      const k = key(next);
-      if (closed.has(k) || !grid.isWalkable(next) || (blocked(next) && !samePoint(next, to))) {
+      const id = key(next) * 5 + direction;
+      if (closed.has(id) || !grid.isWalkable(next) || blocked(next)) {
         continue;
       }
-      const tentative = g + 1;
-      if (tentative < (gScore.get(k) ?? Number.POSITIVE_INFINITY)) {
-        gScore.set(k, tentative);
-        cameFrom.set(k, current.p);
-        const f = tentative + manhattan(next, to);
-        const existing = open.find((o) => key(o.p) === k);
-        if (existing === undefined) {
-          open.push({ p: next, f });
-        } else {
-          existing.f = f;
-        }
+      const turn = current.direction !== -1 && current.direction !== direction ? TURN_COST : 0;
+      const g = current.g + grid.stepCost(next) + turn;
+      if (g < (gScore.get(id) ?? Number.POSITIVE_INFINITY)) {
+        gScore.set(id, g);
+        cameFrom.set(id, current);
+        open.push({ p: next, direction, id, g, f: g + manhattan(next, to) });
       }
     }
   }
