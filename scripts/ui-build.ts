@@ -45,12 +45,14 @@ if (watch) {
       });
     }, 150);
   };
-  // Everything the bundle is built from: the UI, the simulation and the shared packages it imports.
+  // Everything the bundle is built from: the UI, the simulation and the shared packages it imports — plus the
+  // sprite manifest, so `bun run assets:import` / `assets:manifest` also reload the page.
   const watched = [
     "packages/ui/src",
     "packages/sim/src",
     "packages/core/src",
     "packages/protocol/src",
+    "assets/dist",
   ];
   for (const dir of watched) {
     fsWatch(resolve(root, dir), { recursive: true }, rebuild);

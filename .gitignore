@@ -14,3 +14,5 @@ out/
 .cottontail-tmp/
 hutch.lock
 *.bun-build
+# Raw generator deliveries (large PNGs on magenta); the converted sprites live in assets/src.
+assets/inbox/
