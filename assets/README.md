@@ -22,6 +22,17 @@ Examples: `characters/agent-a/walk_s_f0.png`, `furniture/desk-monitor/type_f1.pn
 - Tiles and small props: 16×16. Large furniture: multiples of 16 (e.g. 32×16 desk, 32×32 sofa).
 - Emotion bubbles: 16×16.
 
+## Delivery format from image generators (`@8x` strips)
+
+Image models cannot emit true 16×16 canvases, so generated art is delivered **8× scaled** on a pixel grid (every logical pixel is an 8×8 block) with a transparent background (fallback: solid `#FF00FF`, which the importer keys out):
+
+- single frame: `<animation>[_<dir>]_f0@8x.png` (a 32×32 character frame arrives as 256×256, a 16×16 tile as 128×128)
+- animation: one **horizontal strip** `<animation>[_<dir>]_strip<N>@8x.png`, N equal frames side by side, no gaps, no borders
+- wall autotile: `autotile3x3@8x.png` (48×48 logical: a 3×3 set of corners, edges and centre)
+- only directions `s`, `n`, `e` are drawn; `w` is the renderer flipping `e`
+
+Drop the files under `assets/inbox/<category>/<sprite>/`; `bun run assets:import` (Phase 4, P4.0) samples the centre of each 8×8 block, slices strips into `_f<n>.png` frames at native size and writes them to `assets/src/…`, so the manifest below never sees scaled art.
+
 ## Manifest
 
 `bun run assets:manifest` scans `assets/src` and writes `assets/dist/manifest.json` (git-ignored):
