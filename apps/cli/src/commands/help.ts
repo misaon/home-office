@@ -24,6 +24,7 @@ export const USAGE = `ho — Home Office command line
   ho session list | show <id> | watch [<session-id>|all]
   ho usage [--since 24h|7d]                   tokens per agent, project and day
   ho resources                                containers and volumes HO owns, with sizes
+  ho ui [--print]                             open the office UI in the browser (or print its URL)
   ho gc                                       remove stopped sandboxes, expired volumes, dangling images
   ho tail [--after <seq>]                     stored domain events (replay, then live)
 `;

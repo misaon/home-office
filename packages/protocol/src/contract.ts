@@ -220,6 +220,19 @@ export const contract = {
   events: {
     /** Replays stored events after `afterSeq`, then stays open for live events. */
     subscribe: base.input(EventsSubscribeInput).output(eventIterator(StoredEvent)),
+    /** Sequence number of the newest stored event (-1 when the log is empty). */
+    head: base.output(z.object({ seq: z.int().min(-1) })),
+  },
+  office: {
+    /**
+     * Long-lived stream an office UI keeps open while it is showing the simulation. While at least one
+     * viewer is present, handoffs wait for `handoffDelivered` (bounded by a timeout) before the
+     * recipient's session starts, so the walk and the handover are visible.
+     */
+    presence: base.output(eventIterator(z.object({ at: IsoDateTime }))),
+    handoffDelivered: base
+      .input(z.object({ taskId: TaskId }))
+      .output(z.object({ ok: z.literal(true) })),
   },
 };
 export type Contract = typeof contract;

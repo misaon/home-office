@@ -213,6 +213,9 @@ export const router = base.router({
     ),
   },
   events: {
+    head: base.events.head.handler(async ({ context }) => ({
+      seq: await context.office.store.lastSeq(),
+    })),
     subscribe: base.events.subscribe.handler(async function* ({ input, context, signal }) {
       // Subscribe before replaying so nothing appended in between is lost; dedupe on seq.
       const live = context.office.store.subscribe(undefined, signal);
@@ -227,6 +230,37 @@ export const router = base.router({
           last = event.seq;
         }
       }
+    }),
+  },
+  office: {
+    presence: base.office.presence.handler(async function* ({ context, signal }) {
+      const detach = context.gate.attach();
+      const beat = (): Promise<boolean> =>
+        new Promise((resolve) => {
+          if (signal?.aborted === true) {
+            resolve(false);
+            return;
+          }
+          const timer = setTimeout(() => {
+            resolve(true);
+          }, 15_000);
+          signal?.addEventListener("abort", () => {
+            clearTimeout(timer);
+            resolve(false);
+          });
+        });
+      try {
+        yield { at: context.office.clock.now().toISOString() };
+        while (await beat()) {
+          yield { at: context.office.clock.now().toISOString() };
+        }
+      } finally {
+        detach();
+      }
+    }),
+    handoffDelivered: base.office.handoffDelivered.handler(({ input, context }) => {
+      context.gate.delivered(input.taskId, context.office.clock.now().toISOString());
+      return { ok: true as const };
     }),
   },
 });

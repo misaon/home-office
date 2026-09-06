@@ -17,6 +17,9 @@
       "@orpc/contract": "1.15.0",
       "@orpc/server": "1.15.0",
       "@types/bun": "1.4.1",
+      "@types/react": "19.2.18",
+      "@types/react-dom": "19.2.7",
+      "bun-plugin-tailwind": "0.1.2",
       "drizzle-kit": "0.31.10",
       "drizzle-orm": "0.45.2",
       "knip": "6.34.0",
@@ -24,8 +27,13 @@
       "oxlint": "1.81.0",
       "oxlint-tsgolint": "7.0.2001",
       "pino": "10.3.1",
+      "pixi.js": "8.20.1",
+      "react": "19.2.8",
+      "react-dom": "19.2.8",
+      "tailwindcss": "4.3.3",
       "typescript": "7.0.2",
-      "zod": "4.5.4"
+      "zod": "4.5.4",
+      "zustand": "5.0.15"
     }
   },
   "type": "module",
@@ -39,14 +47,18 @@
     "setup": "git config core.hooksPath .githooks",
     "assets:manifest": "bun run scripts/assets-manifest.ts",
     "assets:import": "bun run scripts/assets-import.ts",
-    "assets:placeholders": "bun run scripts/assets-placeholders.ts"
+    "assets:placeholders": "bun run scripts/assets-placeholders.ts",
+    "ui:build": "bun run scripts/ui-build.ts",
+    "ui:watch": "bun run scripts/ui-build.ts --watch"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
+    "bun-plugin-tailwind": "catalog:",
     "knip": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:"
   },
   "engines": {

@@ -10,6 +10,7 @@ import { type DaemonConfig, loadConfig, resolveHome } from "./config.ts";
 import { agentImageSpec, bridgeImageSpec, ensureImages } from "./images.ts";
 import { startGc } from "./gc.ts";
 import { createLogger } from "./logger.ts";
+import { HandoffGate } from "./handoff-gate.ts";
 import { McpGateway } from "./mcp.ts";
 import { Office } from "./office.ts";
 import { RunnerGateway } from "./runner-gateway.ts";
@@ -78,6 +79,7 @@ export async function startDaemon(
   });
   const gateway = new RunnerGateway(clock, log);
   const mcp = new McpGateway(office, log);
+  const gate = new HandoffGate(log);
   await office.execute({ kind: "system" }, (m, ctx) => ensureOfficeProject(m, ctx));
 
   const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url");
@@ -127,6 +129,7 @@ export async function startDaemon(
     context: {
       office,
       sessions,
+      gate,
       provider,
       secrets,
       config,
@@ -140,7 +143,7 @@ export async function startDaemon(
   });
   gatewayUrl.value = `ws://${config.docker.gatewayHost}:${String(server.port)}`;
   mcpUrl.value = `http://${config.docker.gatewayHost}:${String(server.port)}${McpGateway.path}`;
-  const scheduler = startScheduler(office, sessions, config, log);
+  const scheduler = startScheduler(office, sessions, config, gate, log);
 
   const info: DaemonInfo = {
     host: config.host,

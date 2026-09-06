@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
+import { defaultUiDirs } from "./paths.ts";
 
 export const DaemonConfig = z.object({
   host: z.string().min(1).default("127.0.0.1"),
@@ -34,6 +35,14 @@ export const DaemonConfig = z.object({
       store: z.enum(["auto", "keychain", "file"]).default("auto"),
     })
     .prefault({}),
+  ui: z
+    .object({
+      /** Directory with the built office UI (index.html + chunks); null disables serving. */
+      dir: z.string().min(1).nullable().default(null),
+      /** Directory with sprite sources and the manifest (`assets/`); null disables serving. */
+      assetsDir: z.string().min(1).nullable().default(null),
+    })
+    .prefault({}),
   limits: z
     .object({
       memoryMb: z.int().positive().default(2048),
@@ -51,5 +60,13 @@ export const resolveHome = (env: Record<string, string | undefined> = Bun.env): 
 export async function loadConfig(home: string): Promise<DaemonConfig> {
   const file = Bun.file(join(home, "config.json"));
   const raw: unknown = (await file.exists()) ? await file.json() : {};
-  return DaemonConfig.parse(raw);
+  const config = DaemonConfig.parse(raw);
+  const fallback = defaultUiDirs();
+  return {
+    ...config,
+    ui: {
+      dir: config.ui.dir ?? fallback.dir,
+      assetsDir: config.ui.assetsDir ?? fallback.assetsDir,
+    },
+  };
 }

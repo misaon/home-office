@@ -13,6 +13,7 @@ import { tail } from "./tail.ts";
 import { resources } from "./resources.ts";
 import { task } from "./task.ts";
 import { usage } from "./usage.ts";
+import { ui } from "./ui.ts";
 import { USAGE } from "./help.ts";
 
 export async function run(argv: readonly string[]): Promise<void> {
@@ -70,6 +71,10 @@ export async function run(argv: readonly string[]): Promise<void> {
     }
     case "usage": {
       await usage(rest);
+      return;
+    }
+    case "ui": {
+      await ui(rest);
       return;
     }
     case "resources": {

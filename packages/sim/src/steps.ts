@@ -22,8 +22,18 @@ function advanceWalk(
   dtMs: number,
 ): void {
   const floor = world.floors.get(actor.floorId);
-  if (floor === undefined || step.floorId !== actor.floorId) {
+  if (floor === undefined || !world.floors.has(step.floorId)) {
     finishStep(actor);
+    return;
+  }
+  if (step.floorId !== actor.floorId) {
+    const lift = anchorOf(world, actor.floorId, "elevator");
+    const detour: Step[] = [{ kind: "elevator", toFloorId: step.floorId, until: null }];
+    if (lift !== undefined) {
+      detour.unshift({ kind: "walk", floorId: actor.floorId, to: lift.at, path: null });
+    }
+    actor.steps.unshift(...detour);
+    actor.animTime = 0;
     return;
   }
   if (step.path === null) {

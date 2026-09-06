@@ -4,6 +4,7 @@ import type { RpcContext } from "./rpc/context.ts";
 import { router } from "./rpc/router.ts";
 import { McpGateway } from "./mcp.ts";
 import { RunnerGateway, type RunnerSocketData } from "./runner-gateway.ts";
+import { serveStatic } from "./static.ts";
 
 export type ServerOptions = {
   host: string;
@@ -36,6 +37,21 @@ const presentedToken = (req: Request): { token: string; viaProtocol: boolean } |
     : { token: match.slice(PROTOCOL_PREFIX.length), viaProtocol: true };
 };
 
+const ASSETS_PREFIX = "/assets/";
+
+/** The office UI bundle at `/` and sprite files at `/assets/`; both are read-only and unauthenticated (no data). */
+function serveUi(options: ServerOptions, pathname: string): Promise<Response> | Response {
+  const { dir, assetsDir } = options.context.config.ui;
+  if (pathname.startsWith(ASSETS_PREFIX)) {
+    return assetsDir === null
+      ? new Response("not found", { status: 404 })
+      : serveStatic(assetsDir, pathname.slice(ASSETS_PREFIX.length - 1), null);
+  }
+  return dir === null
+    ? new Response("not found", { status: 404 })
+    : serveStatic(dir, pathname, "index.html");
+}
+
 export function startServer(options: ServerOptions): { port: number; stop: () => Promise<void> } {
   const handler = new RPCHandler(router);
   const server = Bun.serve<SocketData>({
@@ -60,7 +76,7 @@ export function startServer(options: ServerOptions): { port: number; stop: () =>
           : new Response("upgrade failed", { status: 500 });
       }
       if (url.pathname !== "/rpc") {
-        return new Response("not found", { status: 404 });
+        return serveUi(options, url.pathname);
       }
       const presented = presentedToken(req);
       if (presented === null || presented.token !== options.token) {

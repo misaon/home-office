@@ -1,5 +1,6 @@
 import { planSessionStarts } from "@ho/core";
 import type { DaemonConfig } from "./config.ts";
+import type { HandoffGate } from "./handoff-gate.ts";
 import type { Logger } from "./logger.ts";
 import type { Office } from "./office.ts";
 import type { SessionManager } from "./sessions.ts";
@@ -11,6 +12,7 @@ export function startScheduler(
   office: Office,
   sessions: SessionManager,
   config: DaemonConfig,
+  gate: HandoffGate,
   log: Logger,
 ): { stop: () => void } {
   const controller = new AbortController();
@@ -21,9 +23,15 @@ export function startScheduler(
     }
     ticking = true;
     try {
+      const now = office.clock.now().toISOString();
       for (const start of planSessionStarts(office.model, {
         maxConcurrentSessions: config.scheduler.maxConcurrentSessions,
       })) {
+        const task = office.model.tasks.get(start.taskId);
+        if (task !== undefined && gate.blocks(task, now)) {
+          log.debug({ taskId: start.taskId }, "waiting for the office to deliver the handoff");
+          continue;
+        }
         log.info({ taskId: start.taskId, agentId: start.agentId }, "scheduling session");
         await sessions.start(start.taskId, start.agentId, start.mode);
       }

@@ -1,0 +1,25 @@
+{
+  "name": "@ho/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.html"
+  },
+  "dependencies": {
+    "@ho/core": "workspace:*",
+    "@ho/protocol": "workspace:*",
+    "@ho/sim": "workspace:*",
+    "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
+    "pixi.js": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:",
+    "zustand": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:"
+  }
+}

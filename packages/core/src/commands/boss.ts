@@ -13,7 +13,7 @@ import type { ReadModel } from "../model/read-model.ts";
 import { err, ok } from "../result.ts";
 import { titleFromText } from "./chat.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
-import { bossAgent, findAgentByRef, findProjectByRef, officeProject } from "./shared.ts";
+import { bossAgent, findAgentByRef, findProjectByRef, note, officeProject } from "./shared.ts";
 
 /** The boss creates work for the team (source: delegation). Only the boss delegates. */
 export function delegateTask(
@@ -22,7 +22,8 @@ export function delegateTask(
   parentTaskId: TaskId | undefined,
   ctx: CommandContext,
 ): CommandResult<Task> {
-  if (ctx.actor.kind !== "agent" || model.agents.get(ctx.actor.agentId)?.role !== "boss") {
+  const boss = ctx.actor.kind === "agent" ? model.agents.get(ctx.actor.agentId) : undefined;
+  if (boss?.role !== "boss") {
     return err(conflict("only the boss delegates tasks"));
   }
   const project = findProjectByRef(model, input.project);
@@ -55,7 +56,7 @@ export function delegateTask(
     notes: [],
     source: {
       kind: "delegation",
-      byAgentId: ctx.actor.agentId,
+      byAgentId: boss.id,
       ...(parentTaskId === undefined ? {} : { parentTaskId }),
     },
     artifacts: {},
@@ -63,9 +64,30 @@ export function delegateTask(
     createdAt: ctx.now,
     updatedAt: ctx.now,
   };
+  const handoffNote =
+    assignee === undefined
+      ? null
+      : note(ctx, "handoff", `delegated by ${boss.name}: ${input.brief}`.slice(0, 8000));
+  const delegated: Task = handoffNote === null ? task : { ...task, notes: [handoffNote] };
   return ok({
-    events: [{ type: "task.created", actor: ctx.actor, payload: { task } }],
-    value: task,
+    events: [
+      { type: "task.created", actor: ctx.actor, payload: { task: delegated } },
+      ...(assignee === undefined || handoffNote === null
+        ? []
+        : [
+            {
+              type: "handoff.requested" as const,
+              actor: ctx.actor,
+              payload: {
+                taskId: task.id,
+                fromAgentId: boss.id,
+                toAgentId: assignee.id,
+                brief: handoffNote.text,
+              },
+            },
+          ]),
+    ],
+    value: delegated,
   });
 }
 

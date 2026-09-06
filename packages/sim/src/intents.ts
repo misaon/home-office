@@ -6,13 +6,21 @@ import {
   freeAnchors,
   release,
   reserve,
+  resumeSteps,
   setSteps,
+  type Step,
   walkSteps,
   type World,
 } from "./world.ts";
 
 const HANDOVER_MS = 1200;
 const CELEBRATE_MS = 1800;
+
+/** Steps of an in-progress handoff (up to and including its `emit`): a change of work never cancels a delivery. */
+const pendingHandoff = (actor: Actor): Step[] => {
+  const index = actor.steps.findIndex((s) => s.kind === "emit");
+  return index < 0 ? [] : actor.steps.slice(0, index + 1);
+};
 
 /** Send an agent to a free desk on a floor (the boss desk in the Lobby) and keep it typing there. */
 export function assignWork(
@@ -36,6 +44,7 @@ export function assignWork(
   }
   actor.work = { floorId, anchorId: anchor.id };
   setSteps(actor, [
+    ...pendingHandoff(actor),
     ...walkSteps(world, actor, floorId, anchor.at),
     { kind: "hold", activity: "type", facing: anchor.facing },
   ]);
@@ -50,12 +59,20 @@ export function releaseWork(world: World, agentId: AgentId, ok: boolean): void {
   }
   actor.work = null;
   release(world, actor);
-  setSteps(
-    actor,
-    ok
-      ? [{ kind: "dwell", activity: "celebrate", facing: "s", until: null, ms: CELEBRATE_MS }]
-      : [],
-  );
+  setSteps(actor, [
+    ...pendingHandoff(actor),
+    ...(ok
+      ? [
+          {
+            kind: "dwell",
+            activity: "celebrate",
+            facing: "s",
+            until: null,
+            ms: CELEBRATE_MS,
+          } as const,
+        ]
+      : []),
+  ]);
   actor.idleUntil = world.time + CELEBRATE_MS;
 }
 
@@ -82,12 +99,11 @@ export function handoff(world: World, from: AgentId, to: AgentId): boolean {
   }
   const meet = adjacentFree(world, source, target);
   const face = facingTowards(meet, target.tile);
-  source.work = null;
-  release(world, source);
   setSteps(source, [
     ...walkSteps(world, source, target.floorId, meet),
     { kind: "dwell", activity: "handover", facing: face, until: null, ms: HANDOVER_MS },
     { kind: "emit", event: { kind: "handoff_delivered", from, to } },
+    ...resumeSteps(world, source),
   ]);
   return true;
 }
@@ -96,7 +112,7 @@ export function handoff(world: World, from: AgentId, to: AgentId): boolean {
 export function receive(world: World, agentId: AgentId, from: AgentId): void {
   const actor = world.actors.get(agentId);
   const source = world.actors.get(from);
-  if (actor === undefined || source === undefined || actor.work !== null) {
+  if (actor === undefined || source === undefined || actor.hidden) {
     return;
   }
   setSteps(actor, [
@@ -107,6 +123,7 @@ export function receive(world: World, agentId: AgentId, from: AgentId): void {
       until: null,
       ms: HANDOVER_MS,
     },
+    ...resumeSteps(world, actor),
   ]);
 }
 
@@ -123,7 +140,7 @@ export function sleep(world: World, agentId: AgentId): void {
   actor.work = null;
   release(world, actor);
   if (spot === undefined) {
-    setSteps(actor, [{ kind: "hold", activity: "sleep", facing: "s" }]);
+    setSteps(actor, [...pendingHandoff(actor), { kind: "hold", activity: "sleep", facing: "s" }]);
     return;
   }
   reserve(
@@ -135,6 +152,7 @@ export function sleep(world: World, agentId: AgentId): void {
     spot.id,
   );
   setSteps(actor, [
+    ...pendingHandoff(actor),
     ...walkSteps(world, actor, actor.reservation?.floorId ?? actor.floorId, spot.at),
     { kind: "hold", activity: "sleep", facing: spot.facing },
   ]);

@@ -48,7 +48,10 @@ export function fileReport(
   }
   const reviewer = task.kind === "work" ? reviewerFor(model, task) : undefined;
   if (reviewer !== undefined) {
+    // The author carries the work to the reviewer: a handoff the office animates before the review starts.
+    const handoffNote = note(ctx, "handoff", `review requested from ${reviewer.name}`);
     events.push(
+      noteEvent(ctx, task, handoffNote),
       {
         type: "task.reviewer_assigned",
         actor: ctx.actor,
@@ -56,7 +59,27 @@ export function fileReport(
       },
       statusChange(ctx, task, "review", "awaiting review"),
     );
-    return ok({ events, value: { ...next, reviewerId: reviewer.id, status: "review" } });
+    if (task.assigneeId !== undefined && task.assigneeId !== reviewer.id) {
+      events.push({
+        type: "handoff.requested",
+        actor: ctx.actor,
+        payload: {
+          taskId: task.id,
+          fromAgentId: task.assigneeId,
+          toAgentId: reviewer.id,
+          brief: handoffNote.text,
+        },
+      });
+    }
+    return ok({
+      events,
+      value: {
+        ...next,
+        reviewerId: reviewer.id,
+        status: "review",
+        notes: [...next.notes, handoffNote],
+      },
+    });
   }
   const to: TaskStatus = input.status === "done" || task.kind === "triage" ? "done" : "review";
   events.push(statusChange(ctx, task, to, "reported"));
@@ -106,6 +129,28 @@ export function submitReview(
     );
     return ok({ events, value: { ...base, status: "blocked" } });
   }
-  events.push(statusChange(ctx, task, "assigned", "changes requested"));
-  return ok({ events, value: { ...base, status: "assigned" } });
+  // Changes requested: the reviewer walks the findings back to the author.
+  const back = note(
+    ctx,
+    "handoff",
+    `changes requested by ${
+      task.reviewerId === undefined
+        ? "the reviewer"
+        : (model.agents.get(task.reviewerId)?.name ?? "the reviewer")
+    }`,
+  );
+  events.push(noteEvent(ctx, task, back), statusChange(ctx, task, "assigned", "changes requested"));
+  if (task.reviewerId !== undefined && task.reviewerId !== worker.id) {
+    events.push({
+      type: "handoff.requested",
+      actor: ctx.actor,
+      payload: {
+        taskId: task.id,
+        fromAgentId: task.reviewerId,
+        toAgentId: worker.id,
+        brief: back.text,
+      },
+    });
+  }
+  return ok({ events, value: { ...base, status: "assigned", notes: [...base.notes, back] } });
 }

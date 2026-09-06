@@ -189,19 +189,23 @@ export function nearestWalkable(world: World, floorId: string, target: Point): P
   return target;
 }
 
-/** Plans movement to a point on any floor: via the elevator when the floor differs. */
-export function walkSteps(world: World, actor: Actor, floorId: string, to: Point): Step[] {
-  const steps: Step[] = [];
-  if (actor.floorId !== floorId) {
-    const here = world.floors.get(actor.floorId);
-    const lift = here === undefined ? undefined : anchorById(here, "elevator");
-    if (lift !== undefined) {
-      steps.push({ kind: "walk", floorId: actor.floorId, to: lift.at, path: null });
-    }
-    steps.push({ kind: "elevator", toFloorId: floorId, until: null });
+/** A walk to a point on any floor; the executor inserts the elevator ride when the floor differs. */
+export const walkSteps = (_world: World, _actor: Actor, floorId: string, to: Point): Step[] => [
+  { kind: "walk", floorId, to, path: null },
+];
+
+/** Steps that bring a working actor back to its desk and keep it typing. */
+export function resumeSteps(world: World, actor: Actor): Step[] {
+  if (actor.work === null) {
+    return [];
   }
-  steps.push({ kind: "walk", floorId, to, path: null });
-  return steps;
+  const anchor = anchorOf(world, actor.work.floorId, actor.work.anchorId);
+  return anchor === undefined
+    ? []
+    : [
+        { kind: "walk", floorId: actor.work.floorId, to: anchor.at, path: null },
+        { kind: "hold", activity: "type", facing: anchor.facing },
+      ];
 }
 
 export const setSteps = (actor: Actor, steps: Step[]): void => {
