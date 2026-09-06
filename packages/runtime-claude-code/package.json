@@ -1,0 +1,13 @@
+{
+  "name": "@ho/runtime-claude-code",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@ho/core": "workspace:*",
+    "zod": "catalog:"
+  }
+}

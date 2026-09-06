@@ -55,6 +55,29 @@
         "zod": "catalog:",
       },
     },
+    "packages/runner": {
+      "name": "@ho/runner",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ho/protocol": "workspace:*",
+      },
+    },
+    "packages/runtime-claude-code": {
+      "name": "@ho/runtime-claude-code",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ho/core": "workspace:*",
+        "zod": "catalog:",
+      },
+    },
+    "packages/sandbox-docker": {
+      "name": "@ho/sandbox-docker",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ho/core": "workspace:*",
+        "zod": "catalog:",
+      },
+    },
     "packages/secrets": {
       "name": "@ho/secrets",
       "version": "0.0.0",
@@ -191,6 +214,12 @@
     "@ho/daemon": ["@ho/daemon@workspace:packages/daemon"],
 
     "@ho/protocol": ["@ho/protocol@workspace:packages/protocol"],
+
+    "@ho/runner": ["@ho/runner@workspace:packages/runner"],
+
+    "@ho/runtime-claude-code": ["@ho/runtime-claude-code@workspace:packages/runtime-claude-code"],
+
+    "@ho/sandbox-docker": ["@ho/sandbox-docker@workspace:packages/sandbox-docker"],
 
     "@ho/secrets": ["@ho/secrets@workspace:packages/secrets"],
 

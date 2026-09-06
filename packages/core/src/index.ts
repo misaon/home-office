@@ -9,4 +9,6 @@ export * from "./model/read-model.ts";
 export * from "./model/reduce.ts";
 export * from "./ports.ts";
 export * from "./result.ts";
+export * from "./runtime.ts";
+export * from "./sandbox.ts";
 export * from "./tasks/transitions.ts";

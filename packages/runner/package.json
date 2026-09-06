@@ -1,0 +1,12 @@
+{
+  "name": "@ho/runner",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build --compile --minify --target=bun-linux-arm64-musl ./src/main.ts --outfile ./dist/ho-runner"
+  },
+  "dependencies": {
+    "@ho/protocol": "workspace:*"
+  }
+}
