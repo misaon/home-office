@@ -25,8 +25,8 @@ export class Workstation {
     }
     this.desk = new Sprite({
       texture: texture("desk"),
-      x: 29.5 * 16,
-      y: 6 * 16,
+      x: 28.5 * 16,
+      y: 66,
       zIndex: 9 * 16 - 1,
       eventMode: "none",
     });
@@ -37,6 +37,8 @@ export class Workstation {
       zIndex: 10 * 16 - 1,
       eventMode: "none",
     });
+    this.desk.scale.set(1.5);
+    this.chair.scale.set(1.5);
     this.chair.anchor.set(0.5, 1);
     const occupied = sprites.frames("furniture/sample-alex-typing-v1", "type_n");
     if (occupied === undefined || occupied.length === 0) {
@@ -49,6 +51,10 @@ export class Workstation {
     return this.#seated(actor)
       ? this.#occupied[Math.floor(actor.animTime / 180) % this.#occupied.length]
       : undefined;
+  }
+
+  actorScale(actor: Actor): number {
+    return this.#seated(actor) ? 1.5 : 2;
   }
 
   update(actor: Actor): void {

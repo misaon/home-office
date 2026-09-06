@@ -55,6 +55,7 @@ export class PlanView {
       root,
       objects,
       actorTexture: (actor) => this.#workstation.actorTexture(actor),
+      actorScale: (actor) => this.#workstation.actorScale(actor),
       width: plan.template.width * TILE,
       height: plan.template.height * TILE,
     };

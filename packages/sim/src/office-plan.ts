@@ -43,6 +43,12 @@ export function officePlan(): OfficePlan {
   }
   workplaces(plan);
   sharedSpaces(plan);
+  // The enlarged DEV 3 art extends one ground cell west; preserve its seat and room layout.
+  const sampleDesk = plan.objects.find((item) => item.id === "dev-3");
+  if (sampleDesk !== undefined) {
+    sampleDesk.at.x -= 1;
+    sampleDesk.w += 1;
+  }
   plan.template.furniture = plan.objects;
   return plan;
 }

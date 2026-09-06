@@ -17,6 +17,7 @@ export type FloorView = {
   width: number;
   height: number;
   actorTexture?: (actor: Actor) => Texture | undefined;
+  actorScale?: (actor: Actor) => number;
 };
 type SceneFrame = { x: number; y: number; width: number; height: number };
 type ActorView = {
@@ -191,17 +192,20 @@ export class OfficeScene {
     );
     view.root.zIndex = actor.pos.y * TILE + TILE;
     const presentation = this.#floors.get(actor.floorId)?.actorTexture?.(actor);
+    const scale = this.#floors.get(actor.floorId)?.actorScale?.(actor) ?? 1;
+    view.body.scale.set(scale);
+    view.bubble.y = -Math.max(34, view.body.texture.height * scale + 2);
     const clip = this.#sprites.clip(actor.sprite, actor.activity, actor.facing);
     if (presentation !== undefined) {
       view.body.texture = presentation;
-      view.body.scale.x = 1;
+      view.body.scale.x = scale;
     } else if (clip !== null) {
       const frame = Math.floor(actor.animTime / clip.frameMs) % clip.textures.length;
       const texture = clip.textures[frame];
       if (texture !== undefined && view.body.texture !== texture) {
         view.body.texture = texture;
       }
-      view.body.scale.x = clip.flip ? -1 : 1;
+      view.body.scale.x = clip.flip ? -scale : scale;
     }
     const emotion = actor.emotion?.kind ?? null;
     const bubbleTexture =
