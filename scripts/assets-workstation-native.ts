@@ -14,6 +14,35 @@ if (source.width !== source.height || !Number.isInteger(cell)) {
 const object = (x: number, y: number): Rgba => {
   const image = crop(source, x * cell, y * cell, cell, cell);
   removeChroma(image);
+  // The chair cell in the generated reference sheet touches the teal carpet
+  // from the neighboring panel. It is a full-width opaque band, so chroma
+  // removal cannot distinguish it from the chair itself.
+  if (x === 1 && y === 0) {
+    for (let row = image.height - 1; row >= 0; row -= 1) {
+      let opaque = 0;
+      let teal = 0;
+      for (let column = 0; column < image.width; column += 1) {
+        const offset = (row * image.width + column) * 4;
+        const alpha = image.data[offset + 3] ?? 0;
+        if (alpha === 0) {
+          continue;
+        }
+        opaque += 1;
+        const red = image.data[offset] ?? 0;
+        const green = image.data[offset + 1] ?? 0;
+        const blue = image.data[offset + 2] ?? 0;
+        if (green > red * 1.1 && blue > red * 1.1 && green > 50) {
+          teal += 1;
+        }
+      }
+      if (opaque === 0 || teal / opaque < 0.8) {
+        break;
+      }
+      for (let column = 0; column < image.width; column += 1) {
+        image.data[(row * image.width + column) * 4 + 3] = 0;
+      }
+    }
+  }
   return trimTransparent(image);
 };
 const frames = { desk: object(0, 0), chair: object(1, 0), seated: object(0, 1) };

@@ -48,7 +48,11 @@ export class Workstation {
       this.objects.addChild(desk, chair);
       this.#pairs.push({ desk, chair, id: item.id });
     }
-    const occupied = sprites.frames("furniture/sample-alex-typing-v1", "type_n");
+    // Use the native-resolution seated source so the chair and character share
+    // one authored baseline. The source currently contains one reviewed pose;
+    // keeping it static avoids mixing the old downsampled chair into the new
+    // workstation set.
+    const occupied = sprites.frames("furniture/sample-seated-v2", "static");
     if (occupied === undefined || occupied.length === 0) {
       throw new Error("Missing Alex typing animation");
     }
@@ -62,7 +66,7 @@ export class Workstation {
   }
 
   actorScale(actor: Actor): number {
-    return this.#seated(actor) ? 1.5 : 2;
+    return this.#seated(actor) ? 0.105 : 2;
   }
 
   update(actor: Actor): void {
