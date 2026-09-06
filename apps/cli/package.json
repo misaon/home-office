@@ -1,0 +1,19 @@
+{
+  "name": "@ho/cli",
+  "version": "0.0.0",
+  "private": true,
+  "bin": {
+    "ho": "./src/main.ts"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "bun build --compile --minify ./src/main.ts --outfile ./dist/ho"
+  },
+  "dependencies": {
+    "@ho/daemon": "workspace:*",
+    "@ho/protocol": "workspace:*",
+    "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
+    "zod": "catalog:"
+  }
+}

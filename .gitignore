@@ -13,3 +13,4 @@ out/
 .hutch/
 .cottontail-tmp/
 hutch.lock
+*.bun-build

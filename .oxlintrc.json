@@ -55,7 +55,9 @@
     ],
     "unicorn/no-useless-undefined": "off",
     "eslint/require-await": "off",
-    "typescript/require-await": "error"
+    "typescript/require-await": "error",
+    "eslint/no-await-in-loop": "off",
+    "typescript/ban-types": "off"
   },
   "ignorePatterns": [
     "**/node_modules/**",

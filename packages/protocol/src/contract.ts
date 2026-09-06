@@ -1,0 +1,154 @@
+import { eventIterator, oc } from "@orpc/contract";
+import { z } from "zod";
+import {
+  Agent,
+  Budgets,
+  ChatMessage,
+  IsoDateTime,
+  Project,
+  Task,
+  TaskArtifacts,
+  TaskPriority,
+  TaskStatus,
+} from "./domain.ts";
+import { StoredEvent } from "./events.ts";
+import { AgentId, ProjectId, TaskId } from "./ids.ts";
+
+// ---- shared errors ------------------------------------------------------------------------------
+
+const errors = {
+  NOT_FOUND: {
+    message: "Entity not found",
+    data: z.object({ entity: z.string(), id: z.string() }),
+  },
+  CONFLICT: {
+    message: "The request conflicts with the current state",
+    data: z.object({ reason: z.string() }),
+  },
+  INVALID_TRANSITION: {
+    message: "Task status transition is not allowed",
+    data: z.object({ from: TaskStatus, to: TaskStatus }),
+  },
+} as const;
+
+// ---- inputs -------------------------------------------------------------------------------------
+
+const ProjectFields = Project.pick({
+  name: true,
+  repo: true,
+  defaultBranch: true,
+  floorTemplateId: true,
+});
+export const ProjectCreateInput = ProjectFields;
+export type ProjectCreateInput = z.infer<typeof ProjectCreateInput>;
+export const ProjectUpdateInput = z.object({ id: ProjectId, patch: ProjectFields.partial() });
+export type ProjectUpdateInput = z.infer<typeof ProjectUpdateInput>;
+
+const AgentFields = Agent.pick({
+  name: true,
+  role: true,
+  appearance: true,
+  provider: true,
+  model: true,
+  effort: true,
+  basePrompt: true,
+  skillPack: true,
+  projectIds: true,
+}).extend({ budgets: Budgets.prefault({}) });
+export const AgentCreateInput = AgentFields;
+export type AgentCreateInput = z.infer<typeof AgentCreateInput>;
+export const AgentUpdateInput = z.object({ id: AgentId, patch: AgentFields.partial() });
+export type AgentUpdateInput = z.infer<typeof AgentUpdateInput>;
+
+export const TaskCreateInput = z.object({
+  projectId: ProjectId,
+  title: z.string().min(1).max(200),
+  brief: z.string().max(20000).default(""),
+  priority: TaskPriority.default("normal"),
+  parentId: TaskId.optional(),
+  assigneeId: AgentId.optional(),
+});
+export type TaskCreateInput = z.infer<typeof TaskCreateInput>;
+export const TaskListInput = z.object({
+  projectId: ProjectId.optional(),
+  status: z.array(TaskStatus).min(1).optional(),
+});
+export type TaskListInput = z.infer<typeof TaskListInput>;
+export const TaskEditInput = z.object({
+  id: TaskId,
+  title: z.string().min(1).max(200).optional(),
+  brief: z.string().max(20000).optional(),
+  priority: TaskPriority.optional(),
+});
+export type TaskEditInput = z.infer<typeof TaskEditInput>;
+export const TaskAssignInput = z.object({ id: TaskId, agentId: AgentId.nullable() });
+export type TaskAssignInput = z.infer<typeof TaskAssignInput>;
+export const TaskTransitionInput = z.object({
+  id: TaskId,
+  to: TaskStatus,
+  reason: z.string().max(2000).optional(),
+});
+export type TaskTransitionInput = z.infer<typeof TaskTransitionInput>;
+export const TaskArtifactsInput = z.object({ id: TaskId, artifacts: TaskArtifacts });
+export type TaskArtifactsInput = z.infer<typeof TaskArtifactsInput>;
+
+export const ChatSendInput = z.object({
+  text: z.string().min(1).max(20000),
+  /** When given, the message also opens an inbox task in that project (the boss takes over in Phase 3). */
+  projectId: ProjectId.optional(),
+});
+export type ChatSendInput = z.infer<typeof ChatSendInput>;
+export const ChatHistoryInput = z.object({ limit: z.int().positive().max(500).default(100) });
+
+export const EventsSubscribeInput = z.object({ afterSeq: z.int().nonnegative().optional() });
+export type EventsSubscribeInput = z.infer<typeof EventsSubscribeInput>;
+
+export const Health = z.object({
+  ok: z.literal(true),
+  version: z.string(),
+  startedAt: IsoDateTime,
+  uptimeMs: z.int().nonnegative(),
+});
+export type Health = z.infer<typeof Health>;
+
+// ---- contract -----------------------------------------------------------------------------------
+
+const base = oc.errors(errors);
+
+export const contract = {
+  system: {
+    health: base.output(Health),
+  },
+  projects: {
+    list: base.output(z.array(Project)),
+    create: base.input(ProjectCreateInput).output(Project),
+    update: base.input(ProjectUpdateInput).output(Project),
+    remove: base.input(z.object({ id: ProjectId })).output(z.object({ id: ProjectId })),
+  },
+  agents: {
+    list: base.output(z.array(Agent)),
+    create: base.input(AgentCreateInput).output(Agent),
+    update: base.input(AgentUpdateInput).output(Agent),
+    remove: base.input(z.object({ id: AgentId })).output(z.object({ id: AgentId })),
+  },
+  tasks: {
+    list: base.input(TaskListInput).output(z.array(Task)),
+    get: base.input(z.object({ id: TaskId })).output(Task),
+    create: base.input(TaskCreateInput).output(Task),
+    edit: base.input(TaskEditInput).output(Task),
+    assign: base.input(TaskAssignInput).output(Task),
+    transition: base.input(TaskTransitionInput).output(Task),
+    setArtifacts: base.input(TaskArtifactsInput).output(Task),
+  },
+  chat: {
+    history: base.input(ChatHistoryInput).output(z.array(ChatMessage)),
+    send: base
+      .input(ChatSendInput)
+      .output(z.object({ message: ChatMessage, task: Task.nullable() })),
+  },
+  events: {
+    /** Replays stored events after `afterSeq`, then stays open for live events. */
+    subscribe: base.input(EventsSubscribeInput).output(eventIterator(StoredEvent)),
+  },
+};
+export type Contract = typeof contract;

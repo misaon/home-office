@@ -1,0 +1,18 @@
+{
+  "name": "@ho/daemon",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@ho/core": "workspace:*",
+    "@ho/protocol": "workspace:*",
+    "@ho/secrets": "workspace:*",
+    "@ho/store": "workspace:*",
+    "@orpc/server": "catalog:",
+    "pino": "catalog:",
+    "zod": "catalog:"
+  }
+}

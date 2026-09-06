@@ -1,0 +1,28 @@
+import { Database } from "bun:sqlite";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { fileURLToPath } from "node:url";
+import * as schema from "./schema.ts";
+
+export type HoDatabase = ReturnType<typeof openDatabase>["db"];
+
+/** Opens (or creates) the SQLite file in WAL mode and applies pending migrations. */
+export function openDatabase(path: string): {
+  db: ReturnType<typeof drizzle<typeof schema>>;
+  close: () => void;
+} {
+  const client = new Database(path, { create: true, strict: true });
+  client.run("PRAGMA journal_mode = WAL");
+  client.run("PRAGMA synchronous = NORMAL");
+  client.run("PRAGMA foreign_keys = ON");
+  client.run("PRAGMA busy_timeout = 5000");
+  const db = drizzle({ client, schema });
+  migrate(db, { migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)) });
+  return {
+    db,
+    close: () => {
+      client.run("PRAGMA wal_checkpoint(TRUNCATE)");
+      client.close();
+    },
+  };
+}
