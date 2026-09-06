@@ -62,7 +62,6 @@
     "**/dist/**",
     "**/build/**",
     "**/artifacts/**",
-    "**/.hutch/**",
-    "**/.cottontail-tmp/**"
+    "spikes/s2-electrobun/**"
   ]
 }

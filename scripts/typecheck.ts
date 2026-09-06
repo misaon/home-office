@@ -1,7 +1,15 @@
 import { $, Glob } from "bun";
+import { existsSync } from "node:fs";
 
 // Runs `tsc -p` for every workspace tsconfig concurrently (TypeScript 7 native compiler).
-const configs = [...new Glob("{apps,packages,spikes}/*/tsconfig.json").scanSync(".")].toSorted();
+// Standalone Hutch projects (Electrobun) depend on a locally downloaded, git-ignored devkit; skip them until it exists.
+const hasDevkit = (config: string): boolean => {
+  const dir = config.slice(0, config.lastIndexOf("/"));
+  return !existsSync(`${dir}/hutch.config.ts`) || existsSync(`${dir}/.hutch/devkit`);
+};
+const configs = [...new Glob("{apps,packages,spikes}/*/tsconfig.json").scanSync(".")]
+  .filter((config) => hasDevkit(config))
+  .toSorted();
 const targets = ["tsconfig.json", ...configs];
 
 const results = await Promise.all(

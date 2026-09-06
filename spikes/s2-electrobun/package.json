@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "electrobun": "catalog:",
-    "pixi.js": "catalog:"
+    "electrobun": "2.0.1",
+    "pixi.js": "8.20.1"
   }
 }

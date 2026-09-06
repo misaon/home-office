@@ -13,5 +13,5 @@
       "project": ["src/**/*.{ts,tsx}"]
     }
   },
-  "ignore": ["**/.hutch/**", "**/.cottontail-tmp/**"]
+  "ignoreWorkspaces": ["spikes/s2-electrobun"]
 }
