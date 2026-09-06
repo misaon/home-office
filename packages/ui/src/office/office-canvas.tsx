@@ -19,9 +19,14 @@ export function OfficeCanvas(): React.JSX.Element {
     if (element === null) {
       return undefined;
     }
-    const state: { scene: OfficeScene | null; disposed: boolean } = {
+    const state: {
+      scene: OfficeScene | null;
+      disposed: boolean;
+      unsubscribe: (() => void) | null;
+    } = {
       scene: null,
       disposed: false,
+      unsubscribe: null,
     };
     const onVisibility = (): void => {
       if (state.scene === null) {
@@ -51,6 +56,13 @@ export function OfficeCanvas(): React.JSX.Element {
         useUi.getState().selectAgent(agentId);
       };
       Object.assign(window, { __ho: { bridge, sprites, scene: created } });
+      created.camera = useUi.getState().camera;
+      const unsubscribe = useUi.subscribe((ui, previous) => {
+        if (ui.camera !== previous.camera) {
+          created.camera = ui.camera;
+        }
+      });
+      state.unsubscribe = unsubscribe;
       created.app.ticker.add((ticker) => {
         try {
           bridge.tick(ticker.deltaMS);
@@ -69,6 +81,7 @@ export function OfficeCanvas(): React.JSX.Element {
     return () => {
       state.disposed = true;
       document.removeEventListener("visibilitychange", onVisibility);
+      state.unsubscribe?.();
       state.scene?.destroy();
     };
   }, []);

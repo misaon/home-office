@@ -37,6 +37,8 @@ export function App(): React.JSX.Element {
   const selectPanel = useUi((s) => s.selectPanel);
   const connection = useUi((s) => s.connection);
   const setSetupOpen = useUi((s) => s.setSetupOpen);
+  const camera = useUi((s) => s.camera);
+  const setCamera = useUi((s) => s.setCamera);
   useSetupAutoOpen();
   useDevReload();
   return (
@@ -52,6 +54,16 @@ export function App(): React.JSX.Element {
           <button
             type="button"
             className="ml-auto rounded bg-panel px-2 py-1 text-xs text-gray-300 hover:bg-line"
+            title={camera === "fit" ? "Fill the window and drag to pan" : "Show the whole office"}
+            onClick={() => {
+              setCamera(camera === "fit" ? "fill" : "fit");
+            }}
+          >
+            {camera === "fit" ? "Fill" : "Fit"}
+          </button>
+          <button
+            type="button"
+            className="rounded bg-panel px-2 py-1 text-xs text-gray-300 hover:bg-line"
             title="Docker, images, token, team, smoke test"
             onClick={() => {
               setSetupOpen(true);
