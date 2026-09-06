@@ -38,6 +38,9 @@ export function officePlan(): OfficePlan {
     glass: [],
   };
   structure(plan);
+  for (const region of plan.rooms) {
+    paintRoom(plan, region);
+  }
   workplaces(plan);
   sharedSpaces(plan);
   plan.template.furniture = plan.objects;
@@ -63,10 +66,18 @@ function room(
 ): void {
   plan.rooms.push({ id, label, ...rect, surface });
   wall(plan, rect.x, rect.y, rect.w, rect.h);
+}
+
+/** Surface bounds also define the lab's room fill, including open rooms without perimeter walls. */
+function paintRoom(plan: OfficePlan, rect: PlanRoom): void {
   for (let y = rect.y + 1; y < rect.y + rect.h - 1; y += 1) {
     for (let x = rect.x + 1; x < rect.x + rect.w - 1; x += 1) {
       plan.template.floor[y * plan.template.width + x] =
-        surface === "tile" ? "tiles/floor-kitchen" : "tiles/floor-carpet";
+        rect.surface === "tile"
+          ? "tiles/floor-kitchen"
+          : rect.surface === "wood"
+            ? "tiles/floor-lobby"
+            : "tiles/floor-carpet";
     }
   }
 }
@@ -119,13 +130,13 @@ function structure(p: OfficePlan): void {
   room(p, "qa", "QA · 2", { x: 55, y: 0, w: 13, h: 16 });
   room(p, "analyst", "ANALYTICI · 2", { x: 67, y: 0, w: 13, h: 16 });
   room(p, "meeting", "ZASEDAČKA", { x: 33, y: 20, w: 16, h: 14 });
-  room(p, "kitchen", "KUCHYŇ / JÍDELNA", { x: 54, y: 20, w: 16, h: 14 }, "tile");
+  room(p, "kitchen", "KUCHYŇ / JÍDELNA", { x: 48, y: 20, w: 22, h: 14 }, "tile");
   room(p, "toilets", "TOALETY", { x: 0, y: 33, w: 20, h: 13 }, "tile");
   room(p, "lounge", "RELAX", { x: 19, y: 33, w: 30, h: 13 });
   room(p, "call-1", "CALL 1", { x: 29, y: 20, w: 5, h: 7 });
   room(p, "call-2", "CALL 2", { x: 29, y: 26, w: 5, h: 8 });
   p.rooms.push(
-    { id: "reception", label: "RECEPCE", x: 1, y: 20, w: 27, h: 13, surface: "office" },
+    { id: "reception", label: "RECEPCE", x: 9, y: 21, w: 17, h: 12, surface: "office" },
     { id: "terrace", label: "TERASA", x: 49, y: 34, w: 30, h: 11, surface: "wood" },
     { id: "spa", label: "SPA", x: 70, y: 21, w: 9, h: 13, surface: "wood" },
   );
@@ -150,9 +161,9 @@ function structure(p: OfficePlan): void {
   door(p, "stall-1", { x: 2, y: 38, w: 2, h: 1 });
   door(p, "stall-2", { x: 6, y: 38, w: 2, h: 1 });
   door(p, "elevator", { x: 3, y: 29, w: 4, h: 1 }, "elevator");
-  // The kitchen opens into the corridor on its west side (owner's annotated plan).
-  for (let y = 21; y < 33; y += 1) {
-    p.template.walls[y * p.template.width + 54] = 0;
+  // The former corridor is part of the kitchen, with its existing north entrance left open.
+  for (let x = 49; x < 54; x += 1) {
+    p.template.walls[20 * p.template.width + x] = 0;
   }
   // Fixed glazing spans the corridor too, joining the meeting-room wall at x=48.
   p.glass.push({ x: 49, y: 33, w: 20, h: 1 });
