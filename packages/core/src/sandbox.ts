@@ -1,4 +1,4 @@
-import type { ProviderHealth, ResourceSnapshot } from "@ho/protocol";
+import type { ProviderHealth, ResourceInventory, ResourceSnapshot } from "@ho/protocol";
 
 /** Where agent sessions run. Docker locally today; a cloud provider tomorrow with the same shape. */
 
@@ -49,7 +49,7 @@ export type PruneScope = {
 };
 export type PruneReport = { containers: string[]; volumes: string[]; images: string[] };
 
-export type { ProviderHealth, ResourceSnapshot } from "@ho/protocol";
+export type { ProviderHealth, ResourceInventory, ResourceSnapshot } from "@ho/protocol";
 
 export type BuildProgress = { line: string };
 
@@ -69,4 +69,6 @@ export type SandboxProvider = {
   logs: (handle: SandboxHandle, tail?: number) => Promise<{ stdout: string; stderr: string }>;
   prune: (scope: PruneScope) => Promise<PruneReport>;
   snapshot: (labels: Readonly<Record<string, string>>) => Promise<ResourceSnapshot>;
+  /** Everything HO owns right now, for the Resources panel and `ho resources`. */
+  inventory: (labels: Readonly<Record<string, string>>) => Promise<ResourceInventory>;
 };

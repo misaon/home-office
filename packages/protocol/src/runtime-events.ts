@@ -69,6 +69,29 @@ export const ResourceSnapshot = z.object({
 });
 export type ResourceSnapshot = z.infer<typeof ResourceSnapshot>;
 
+export const ResourceInventory = z.object({
+  snapshot: ResourceSnapshot,
+  containers: z.array(
+    z.object({
+      name: z.string(),
+      state: z.string(),
+      kind: z.string(),
+      sessionId: z.string().nullable(),
+      createdAt: IsoDateTime,
+    }),
+  ),
+  volumes: z.array(
+    z.object({
+      name: z.string(),
+      kind: z.string(),
+      sessionId: z.string().nullable(),
+      createdAt: IsoDateTime.nullable(),
+      sizeBytes: z.int().nonnegative().nullable(),
+    }),
+  ),
+});
+export type ResourceInventory = z.infer<typeof ResourceInventory>;
+
 export const Doctor = z.object({
   provider: ProviderHealth,
   images: z.array(z.object({ ref: z.string(), present: z.boolean(), upToDate: z.boolean() })),

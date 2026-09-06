@@ -1,35 +1,36 @@
-export const USAGE = `ho — Home Office command line
+import type { Usage } from "@ho/protocol";
+import { parse, str } from "../args.ts";
+import { withClient } from "../client.ts";
+import { line } from "../output.ts";
 
-  ho daemon                                   run the daemon in the foreground
-  ho health
-  ho project list
-  ho project add <name> (--path <dir> | --url <git-url>) [--branch main]
-  ho project rm <project>
-  ho agent list
-  ho agent add <name> --role boss|worker|reviewer|clerk [--model sonnet] [--effort medium]
-               [--gender neutral] [--sprite agent-a] [--project <project>]... [--prompt <text>]
-  ho agent rm <agent>
-  ho task list [--project <project>] [--status a,b]
-  ho task create --project <project> --title <text> [--brief <text>] [--assignee <agent>] [--priority normal]
-  ho task show <task-id>
-  ho task assign <task-id> <agent|none>
-  ho task move <task-id> <status> [--reason <text>]
-  ho chat <text> [--project <project>]
-  ho tail [--after <seq>]
-  ho session list | show <id> | watch [<session-id>|all]
-  ho doctor                                   docker, images, secrets, sessions, disk
-  ho image build                              build the agent and git-bridge images
-  ho secret status | set <key> | rm <key>     keys: anthropic-oauth-token, anthropic-api-key (value via stdin or hidden prompt)
-  ho gc                                       remove stopped sandboxes, expired volumes, dangling images
-`;
+const fmt = (n: number): string => n.toLocaleString("en-US");
+const row = (label: string, u: Usage, sessions?: number): string =>
+  `${label.padEnd(24)} in=${fmt(u.inputTokens).padStart(10)} out=${fmt(u.outputTokens).padStart(9)} cache=${fmt(u.cacheReadTokens).padStart(10)} write=${fmt(u.cacheWriteTokens).padStart(9)} turns=${String(u.turns).padStart(5)}${sessions === undefined ? "" : ` sessions=${String(sessions)}`}`;
 
-export const subcommand = (
-  args: readonly string[],
-  group: string,
-): { sub: string; rest: string[] } => {
-  const [sub, ...rest] = args;
-  if (sub === undefined) {
-    throw new Error(`missing ${group} subcommand\n\n${USAGE}`);
-  }
-  return { sub, rest };
-};
+export async function usage(args: readonly string[]): Promise<void> {
+  const parsed = parse(args, ["since"]);
+  const since = str(parsed, "since");
+  const sinceHours =
+    since === undefined
+      ? undefined
+      : Number(since.endsWith("d") ? Number(since.slice(0, -1)) * 24 : since.replace(/h$/u, ""));
+  await withClient(async (client) => {
+    const summary = await client.usage.summary(sinceHours === undefined ? {} : { sinceHours });
+    line(
+      `window: ${summary.since ?? "all time"}  sessions: ${String(summary.sessions)}  rate-limit incidents: ${String(summary.rateLimitIncidents)}`,
+    );
+    line(row("TOTAL", summary.totals));
+    for (const [title, buckets] of [
+      ["by agent", summary.byAgent],
+      ["by project", summary.byProject],
+      ["by day", summary.byDay],
+    ] as const) {
+      if (buckets.length > 0) {
+        line(`-- ${title}`);
+        for (const b of buckets) {
+          line(row(b.label, b.usage, b.sessions));
+        }
+      }
+    }
+  });
+}

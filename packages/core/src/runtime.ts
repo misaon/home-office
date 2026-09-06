@@ -23,6 +23,8 @@ export type RuntimeSessionSpec = {
   cwd: string;
   /** Provider-specific session id to resume, when the runtime supports it. */
   resume: string | null;
+  /** Plugin directories inside the sandbox (role skill packs). */
+  pluginDirs: readonly string[];
 };
 
 export type RunnerLine =

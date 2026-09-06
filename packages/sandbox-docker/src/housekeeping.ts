@@ -1,4 +1,4 @@
-import type { PruneReport, PruneScope, ResourceSnapshot } from "@ho/core";
+import type { PruneReport, PruneScope, ResourceInventory, ResourceSnapshot } from "@ho/core";
 import {
   ContainerList,
   type DockerApi,
@@ -86,5 +86,46 @@ export async function snapshot(
     volumes: volumes.length,
     imagesBytes: (df.Images ?? []).filter((i) => has(i.Labels)).reduce((sum, i) => sum + i.Size, 0),
     volumesBytes: volumes.reduce((sum, v) => sum + (v.UsageData?.Size ?? 0), 0),
+  };
+}
+
+const iso = (seconds: number): string => new Date(seconds * 1000).toISOString();
+const isoOrNull = (value: string | undefined): string | null => {
+  if (value === undefined) {
+    return null;
+  }
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? null : new Date(time).toISOString();
+};
+
+export async function inventory(
+  api: DockerApi,
+  labels: Readonly<Record<string, string>>,
+): Promise<ResourceInventory> {
+  const [containers, volumes, df, snap] = await Promise.all([
+    api.json(ContainerList, "GET", `/containers/json?all=1&filters=${labelFilter(labels)}`),
+    api.json(VolumeList, "GET", `/volumes?filters=${labelFilter(labels)}`),
+    api.json(SystemDf, "GET", "/system/df"),
+    snapshot(api, labels),
+  ]);
+  const sizes = new Map(
+    (df.Volumes ?? []).map((v) => [v.Name, v.UsageData?.Size ?? null] as const),
+  );
+  return {
+    snapshot: snap,
+    containers: containers.map((c) => ({
+      name: (c.Names[0] ?? c.Id).replace(/^\//u, ""),
+      state: c.State,
+      kind: c.Labels?.["ho.kind"] ?? "unknown",
+      sessionId: c.Labels?.["ho.session"] ?? null,
+      createdAt: iso(c.Created),
+    })),
+    volumes: (volumes.Volumes ?? []).map((v) => ({
+      name: v.Name,
+      kind: v.Labels?.["ho.kind"] ?? "unknown",
+      sessionId: v.Labels?.["ho.session"] ?? null,
+      createdAt: isoOrNull(v.CreatedAt),
+      sizeBytes: sizes.get(v.Name) ?? null,
+    })),
   };
 }

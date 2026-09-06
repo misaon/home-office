@@ -4,6 +4,10 @@ import type { RuntimeSessionSpec } from "@ho/core";
 export const CLAUDE_SETTINGS = {
   includeCoAuthoredBy: false,
   autoUpdatesChannel: "stable",
+  // RTK rewrites Bash commands to compact equivalents before they run (60–90 % smaller tool output).
+  hooks: {
+    PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "rtk hook claude" }] }],
+  },
   env: {
     DISABLE_AUTOUPDATER: "1",
     DISABLE_TELEMETRY: "1",
@@ -64,7 +68,7 @@ export function claudeArgv(
   if (options.mcpServers !== undefined && Object.keys(options.mcpServers).length > 0) {
     argv.push("--mcp-config", JSON.stringify({ mcpServers: options.mcpServers }));
   }
-  for (const dir of options.pluginDirs ?? []) {
+  for (const dir of [...spec.pluginDirs, ...(options.pluginDirs ?? [])]) {
     argv.push("--plugin-dir", dir);
   }
   return argv;

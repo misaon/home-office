@@ -1,20 +1,18 @@
-import {
-  type RuntimeEvent,
-  type RuntimeSession,
-  type SandboxHandle,
-  type SandboxSpec,
-} from "@ho/core";
-import type { Agent, Project, Session, Task } from "@ho/protocol";
+import type { RuntimeEvent, RuntimeSession, SandboxHandle, SandboxSpec } from "@ho/core";
+import type { Agent, Project, Session, Task, TaskArtifacts } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
 import { branchFor, cloneIntoVolume, pushFromVolume, REPO_IN_VOLUME } from "./git-bridge.ts";
 import { LABELS } from "./images.ts";
+import { sourcePathFor } from "./mirrors.ts";
 import { rolePrompt, taskBrief } from "./prompts.ts";
+import { openPullRequest } from "./publish.ts";
 import type { RunnerConnection } from "./runner-gateway.ts";
 import type { SessionDeps } from "./sessions.ts";
 
 export const OAUTH_SECRET = "anthropic-oauth-token";
 const REPORT_MAX = 4000;
 const CONNECT_TIMEOUT_MS = 30_000;
+const PLUGINS_ROOT = "/opt/ho/plugins";
 
 export type SessionContext = {
   session: Session;
@@ -28,6 +26,7 @@ export type Provisioned = {
   connection: RunnerConnection;
   volume: string;
   branch: string;
+  sourcePath: string;
 };
 export type Outcome = { report: string; failure: string | null; runtimeSessionId: string | null };
 
@@ -67,24 +66,25 @@ const sandboxSpec = (
 
 /** Network, task volume with the cloned repo, sandbox with the runner, and the runner's connection. */
 export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {
-  const { provider, config, gateway } = deps;
+  const { provider, config, gateway, home } = deps;
   const volume = `ho-task-${ctx.task.id.slice(-12)}`;
   const branch = branchFor(ctx.task.title, ctx.task.id);
+  const sourcePath = await sourcePathFor(home, ctx.project);
   await provider.ensureNetwork(config.docker.network, {
     [LABELS.managed]: "true",
     [LABELS.kind]: "network",
   });
-  await provider.createVolume(volume, {
+  const volumeLabels = {
     [LABELS.managed]: "true",
-    [LABELS.kind]: "task-volume",
     [LABELS.session]: ctx.session.id,
-  });
+    [LABELS.project]: ctx.project.id,
+  };
+  await provider.createVolume(volume, { ...volumeLabels, [LABELS.kind]: "task-volume" });
   await provider.createVolume(`${volume}-claude`, {
-    [LABELS.managed]: "true",
+    ...volumeLabels,
     [LABELS.kind]: "claude-config",
-    [LABELS.session]: ctx.session.id,
   });
-  await cloneIntoVolume(provider, config, ctx.project, volume, branch);
+  await cloneIntoVolume(provider, config, sourcePath, ctx.project.defaultBranch, volume, branch);
   const issued = gateway.issue(ctx.session.id, ctx.signal);
   const sandbox = await provider.start(
     sandboxSpec(config, ctx, volume, deps.gatewayUrl, issued.token),
@@ -98,7 +98,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
         }, CONNECT_TIMEOUT_MS);
       }),
     ]);
-    return { sandbox, connection, volume, branch };
+    return { sandbox, connection, volume, branch, sourcePath };
   } catch (error) {
     await provider.stop(sandbox, 2).catch(() => null);
     await provider.remove(sandbox).catch(() => null);
@@ -123,6 +123,7 @@ export const openRuntime = (
       systemPromptAppendix: rolePrompt(ctx.agent, ctx.project, ctx.task, provisioned.branch),
       cwd: REPO_IN_VOLUME,
       resume: null,
+      pluginDirs: ctx.agent.skillPack === "none" ? [] : [`${PLUGINS_ROOT}/${ctx.agent.skillPack}`],
     },
     provisioned.connection.channel,
     { CLAUDE_CODE_OAUTH_TOKEN: token },
@@ -163,17 +164,19 @@ export async function consume(
   return outcome;
 }
 
-/** Pushes the branch back to the host repository when the agent succeeded. */
+/** Pushes the branch back to the source repository, then (per project policy) opens a pull request. */
 export async function publish(
   deps: SessionDeps,
   ctx: SessionContext,
   provisioned: Provisioned,
-): Promise<void> {
+  report: string,
+): Promise<TaskArtifacts> {
   await pushFromVolume(
     deps.provider,
     deps.config,
-    ctx.project,
+    provisioned.sourcePath,
     provisioned.volume,
     provisioned.branch,
   );
+  return openPullRequest(deps.home, ctx.project, ctx.task, provisioned.branch, report, deps.log);
 }

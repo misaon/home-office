@@ -1,0 +1,7 @@
+# RTK inside Home Office sandboxes. Raw output of failed commands is kept (tmpfs) so the agent can inspect it.
+[hooks]
+exclude_commands = ["curl", "claude"]
+
+[tee]
+enabled = true
+mode = "failures"

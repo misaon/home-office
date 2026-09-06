@@ -1,6 +1,13 @@
 # syntax=docker/dockerfile:1
-# Home Office agent image: Alpine + Claude Code (official apk repo) + git + ho-runner, non-root user.
-# The build context must contain bin/ho-runner (compiled by the daemon / `ho image build`).
+# Home Office agent image: Alpine + Claude Code (official apk repo, latest channel) + git + RTK + ho-runner + role skill packs.
+# The build context must contain bin/ho-runner and plugins/ (synced by the daemon / `ho image build`).
+
+# --- RTK (Rust Token Killer) compiled for aarch64-musl; upstream ships no musl arm64 binary. ---
+FROM rust:1-alpine AS rtk
+RUN apk add --no-cache musl-dev git \
+ && cargo install --git https://github.com/rtk-ai/rtk --tag v0.48.0 --locked --root /out rtk
+
+# --- runtime ---
 FROM alpine:3.22
 
 RUN apk add --no-cache bash curl ca-certificates libgcc libstdc++ ripgrep git openssh-client \
@@ -9,10 +16,13 @@ RUN apk add --no-cache bash curl ca-certificates libgcc libstdc++ ripgrep git op
  && echo "https://downloads.claude.ai/claude-code/apk/latest" >> /etc/apk/repositories \
  && apk add --no-cache claude-code \
  && adduser -D -u 1000 agent \
- && mkdir -p /work /home/agent/.claude \
+ && mkdir -p /work /home/agent/.claude /home/agent/.config/rtk /opt/ho/plugins \
  && chown -R agent:agent /work /home/agent
 
+COPY --from=rtk /out/bin/rtk /usr/local/bin/rtk
 COPY --chmod=0755 bin/ho-runner /usr/local/bin/ho-runner
+COPY plugins/ /opt/ho/plugins/
+COPY --chown=agent:agent rtk-config.toml /home/agent/.config/rtk/config.toml
 
 USER agent
 WORKDIR /work

@@ -109,6 +109,14 @@ export const router = base.router({
     ),
     gc: base.system.gc.handler(({ context }) => context.gc()),
   },
+  usage: {
+    summary: base.usage.summary.handler(({ input, context }) => context.usage(input.sinceHours)),
+  },
+  resources: {
+    inventory: base.resources.inventory.handler(({ context }) =>
+      context.provider.inventory(MANAGED),
+    ),
+  },
   secrets: {
     status: base.secrets.status.handler(async ({ context }) => {
       const present = await Promise.all(

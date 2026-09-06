@@ -4,7 +4,7 @@ import { parse, required, str } from "../args.ts";
 import { withClient } from "../client.ts";
 import { line, print } from "../output.ts";
 import { findAgent, findProject } from "./lookup.ts";
-import { subcommand } from "./usage.ts";
+import { subcommand } from "./help.ts";
 
 const taskId = (ref: string | undefined): TaskId => {
   if (ref === undefined) {

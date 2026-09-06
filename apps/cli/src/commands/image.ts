@@ -1,6 +1,6 @@
 import { withClient } from "../client.ts";
 import { line } from "../output.ts";
-import { subcommand } from "./usage.ts";
+import { subcommand } from "./help.ts";
 
 export async function image(args: readonly string[]): Promise<void> {
   const { sub } = subcommand(args, "image");

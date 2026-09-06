@@ -11,10 +11,11 @@ import {
   TaskArtifacts,
   TaskPriority,
   TaskStatus,
+  Usage,
 } from "./domain.ts";
 import { StoredEvent } from "./events.ts";
 import { AgentId, ProjectId, SessionId, TaskId } from "./ids.ts";
-import { Doctor, LiveEvent } from "./runtime-events.ts";
+import { Doctor, LiveEvent, ResourceInventory } from "./runtime-events.ts";
 
 // ---- shared errors ------------------------------------------------------------------------------
 
@@ -40,6 +41,7 @@ const ProjectFields = Project.pick({
   repo: true,
   defaultBranch: true,
   floorTemplateId: true,
+  publish: true,
 });
 export const ProjectCreateInput = ProjectFields;
 export type ProjectCreateInput = z.infer<typeof ProjectCreateInput>;
@@ -110,8 +112,33 @@ export type SessionListInput = z.infer<typeof SessionListInput>;
 export const SessionStreamInput = z.object({ sessionId: SessionId.optional() });
 export type SessionStreamInput = z.infer<typeof SessionStreamInput>;
 
-export const SecretKeyName = z.enum(["anthropic-oauth-token", "anthropic-api-key"]);
+export const SecretKeyName = z.enum(["anthropic-oauth-token", "anthropic-api-key", "github-token"]);
 export type SecretKeyName = z.infer<typeof SecretKeyName>;
+
+export const UsageSummaryInput = z.object({
+  sinceHours: z
+    .number()
+    .positive()
+    .max(24 * 365)
+    .optional(),
+});
+export type UsageSummaryInput = z.infer<typeof UsageSummaryInput>;
+export const UsageBucket = z.object({
+  key: z.string(),
+  label: z.string(),
+  usage: Usage,
+  sessions: z.int().nonnegative(),
+});
+export const UsageSummary = z.object({
+  since: IsoDateTime.nullable(),
+  totals: Usage,
+  sessions: z.int().nonnegative(),
+  rateLimitIncidents: z.int().nonnegative(),
+  byAgent: z.array(UsageBucket),
+  byProject: z.array(UsageBucket),
+  byDay: z.array(UsageBucket),
+});
+export type UsageSummary = z.infer<typeof UsageSummary>;
 
 export const EventsSubscribeInput = z.object({ afterSeq: z.int().nonnegative().optional() });
 export type EventsSubscribeInput = z.infer<typeof EventsSubscribeInput>;
@@ -174,6 +201,12 @@ export const contract = {
     list: base.input(SessionListInput).output(z.array(Session)),
     /** Live, provider-agnostic runtime events of one or all sessions (not persisted). */
     stream: base.input(SessionStreamInput).output(eventIterator(LiveEvent)),
+  },
+  usage: {
+    summary: base.input(UsageSummaryInput).output(UsageSummary),
+  },
+  resources: {
+    inventory: base.output(ResourceInventory),
   },
   secrets: {
     status: base.output(z.object({ present: z.array(SecretKeyName) })),

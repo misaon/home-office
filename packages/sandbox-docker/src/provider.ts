@@ -15,7 +15,7 @@ import {
   createDockerApi,
   demux,
 } from "./api.ts";
-import { prune, removeContainer, snapshot } from "./housekeeping.ts";
+import { inventory, prune, removeContainer, snapshot } from "./housekeeping.ts";
 import { buildImage, imageHash } from "./image.ts";
 
 const CPU_NANOS = 1_000_000_000;
@@ -157,5 +157,6 @@ export function createDockerProvider(options: DockerProviderOptions = {}): Sandb
     },
     prune: (scope) => prune(api, scope),
     snapshot: (labels) => snapshot(api, labels),
+    inventory: (labels) => inventory(api, labels),
   };
 }

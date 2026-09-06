@@ -1,5 +1,5 @@
 import type { SandboxProvider, SandboxSpec } from "@ho/core";
-import type { Project, TaskId } from "@ho/protocol";
+import type { TaskId } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
 import { LABELS } from "./images.ts";
 
@@ -20,7 +20,7 @@ const bridgeSpec = (
   name: string,
   cmd: readonly string[],
   volume: string,
-  hostRepo: { path: string; readonly: boolean } | null,
+  source: { path: string; readonly: boolean } | null,
 ): SandboxSpec => ({
   name,
   image: config.docker.bridgeImage,
@@ -32,9 +32,7 @@ const bridgeSpec = (
   network: "none",
   volumes: [{ name: volume, target: "/work" }],
   binds:
-    hostRepo === null
-      ? []
-      : [{ source: hostRepo.path, target: "/src", readonly: hostRepo.readonly }],
+    source === null ? [] : [{ source: source.path, target: "/src", readonly: source.readonly }],
   tmpfs: { "/tmp": "rw,nosuid,size=64m" },
   limits: { memoryBytes: 512 * 1024 * 1024, cpus: 1, pids: 128 },
   readonlyRootfs: true,
@@ -53,26 +51,24 @@ const runOrThrow = async (
   }
 };
 
-/** Clones the project's host repository (read-only mount) into the task volume and creates the task branch. */
+/** Clones the source repository (host checkout or host mirror, mounted read-only) into the task volume on a new branch. */
 export async function cloneIntoVolume(
   provider: SandboxProvider,
   config: DaemonConfig,
-  project: Project,
+  sourcePath: string,
+  defaultBranch: string,
   volume: string,
   branch: string,
 ): Promise<void> {
-  if (project.repo.kind !== "local") {
-    throw new Error("git URL projects are not supported yet (Phase 2 covers local repositories)");
-  }
-  const host = { path: project.repo.path, readonly: true };
+  const source = { path: sourcePath, readonly: true };
   await runOrThrow(
     provider,
     bridgeSpec(
       config,
       `${volume}-clone`,
-      ["clone", "-q", "--branch", project.defaultBranch, "--single-branch", "/src", REPO_IN_VOLUME],
+      ["clone", "-q", "--branch", defaultBranch, "--single-branch", "/src", REPO_IN_VOLUME],
       volume,
-      host,
+      source,
     ),
     "clone",
   );
@@ -89,17 +85,14 @@ export async function cloneIntoVolume(
   );
 }
 
-/** Pushes the task branch back into the host repository. The agent never had this read-write mount. */
+/** Pushes the task branch back into the source repository. The agent never had this read-write mount. */
 export async function pushFromVolume(
   provider: SandboxProvider,
   config: DaemonConfig,
-  project: Project,
+  sourcePath: string,
   volume: string,
   branch: string,
 ): Promise<void> {
-  if (project.repo.kind !== "local") {
-    throw new Error("git URL projects are not supported yet");
-  }
   await runOrThrow(
     provider,
     bridgeSpec(
@@ -107,7 +100,7 @@ export async function pushFromVolume(
       `${volume}-push`,
       ["-C", REPO_IN_VOLUME, "push", "-q", "-f", "/src", `HEAD:refs/heads/${branch}`],
       volume,
-      { path: project.repo.path, readonly: false },
+      { path: sourcePath, readonly: false },
     ),
     "push",
   );

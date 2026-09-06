@@ -10,8 +10,10 @@ import { session } from "./session.ts";
 import { project } from "./project.ts";
 import { secret } from "./secret.ts";
 import { tail } from "./tail.ts";
+import { resources } from "./resources.ts";
 import { task } from "./task.ts";
-import { USAGE } from "./usage.ts";
+import { usage } from "./usage.ts";
+import { USAGE } from "./help.ts";
 
 export async function run(argv: readonly string[]): Promise<void> {
   const [command, ...rest] = argv;
@@ -64,6 +66,14 @@ export async function run(argv: readonly string[]): Promise<void> {
     }
     case "gc": {
       await gc();
+      return;
+    }
+    case "usage": {
+      await usage(rest);
+      return;
+    }
+    case "resources": {
+      await resources();
       return;
     }
     case undefined:

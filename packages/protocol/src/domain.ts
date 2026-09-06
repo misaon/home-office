@@ -103,12 +103,20 @@ export type Author = z.infer<typeof Author>;
 
 // ---- entities -----------------------------------------------------------------------------------
 
+/** How finished work leaves the sandbox: a branch in the repository, or additionally a GitHub pull request via `gh`. */
+export const PublishPolicy = z.object({
+  mode: z.enum(["branch", "pull-request"]).default("branch"),
+  draft: z.boolean().default(true),
+});
+export type PublishPolicy = z.infer<typeof PublishPolicy>;
+
 export const Project = z.object({
   id: ProjectId,
   name: z.string().min(1).max(80),
   repo: RepoSource,
   defaultBranch: z.string().min(1).default("main"),
   floorTemplateId: z.string().min(1).default("project-default"),
+  publish: PublishPolicy.prefault({}),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });

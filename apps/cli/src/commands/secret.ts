@@ -2,7 +2,7 @@ import { SecretKeyName } from "@ho/protocol";
 import { $ } from "bun";
 import { withClient } from "../client.ts";
 import { line } from "../output.ts";
-import { subcommand } from "./usage.ts";
+import { subcommand } from "./help.ts";
 
 /** Reads the secret from a pipe, or from the terminal with echo disabled. Never from argv. */
 async function readSecret(): Promise<string> {

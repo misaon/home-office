@@ -1,0 +1,80 @@
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import type { Project } from "@ho/protocol";
+
+/**
+ * Projects defined by a git URL are mirrored on the host with the owner's own git credentials.
+ * Sandboxes and bridges only ever see the mirror, so no remote credential enters a container.
+ */
+const mirrorPath = (home: string, project: Project): string =>
+  join(home, "mirrors", `${project.id}.git`);
+
+const git = async (args: readonly string[], cwd?: string): Promise<string> => {
+  const proc = Bun.spawn(["git", ...args], {
+    stdout: "pipe",
+    stderr: "pipe",
+    ...(cwd === undefined ? {} : { cwd }),
+  });
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+  if (code !== 0) {
+    throw new Error(
+      `git ${args[0] ?? ""} failed (${String(code)}): ${stderr.trim() || stdout.trim()}`,
+    );
+  }
+  return stdout;
+};
+
+/** Returns the host path the git-bridge should mount as `/src`, refreshing URL mirrors first. */
+export async function sourcePathFor(home: string, project: Project): Promise<string> {
+  if (project.repo.kind === "local") {
+    return project.repo.path;
+  }
+  const path = mirrorPath(home, project);
+  if (await Bun.file(join(path, "HEAD")).exists()) {
+    await git(["-C", path, "fetch", "--prune", "--quiet", "origin"]);
+  } else {
+    await mkdir(join(home, "mirrors"), { recursive: true, mode: 0o700 });
+    await git(["clone", "--mirror", "--quiet", project.repo.url, path]);
+  }
+  return path;
+}
+
+/** After the bridge pushed a branch into the mirror, forward it to the real remote with host credentials. */
+export async function pushMirrorBranch(
+  home: string,
+  project: Project,
+  branch: string,
+): Promise<void> {
+  if (project.repo.kind !== "git") {
+    return;
+  }
+  await git([
+    "-C",
+    mirrorPath(home, project),
+    "push",
+    "--quiet",
+    "--force",
+    "origin",
+    `refs/heads/${branch}:refs/heads/${branch}`,
+  ]);
+}
+
+/** Pushes a branch of a local project to its `origin` so a pull request can reference it. */
+export async function pushLocalBranch(project: Project, branch: string): Promise<void> {
+  if (project.repo.kind !== "local") {
+    return;
+  }
+  await git([
+    "-C",
+    project.repo.path,
+    "push",
+    "--quiet",
+    "--force",
+    "origin",
+    `refs/heads/${branch}:refs/heads/${branch}`,
+  ]);
+}

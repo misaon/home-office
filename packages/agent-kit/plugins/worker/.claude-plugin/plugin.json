@@ -1,0 +1,6 @@
+{
+  "name": "ho-worker",
+  "description": "Home Office worker pack: coding standards, verification loop, git workflow, error handling, Bun runtime",
+  "version": "0.1.0",
+  "author": { "name": "Home Office" }
+}

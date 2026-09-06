@@ -15,6 +15,7 @@ import { RunnerGateway } from "./runner-gateway.ts";
 import { startScheduler } from "./scheduler.ts";
 import { startServer } from "./server.ts";
 import { SessionManager } from "./sessions.ts";
+import { usageSummary } from "./usage.ts";
 
 export { DaemonConfig, loadConfig, resolveHome } from "./config.ts";
 export { Office } from "./office.ts";
@@ -87,6 +88,7 @@ export async function startDaemon(
     gateway,
     secrets,
     config,
+    home,
     log,
     get gatewayUrl() {
       return gatewayUrl.value;
@@ -124,6 +126,7 @@ export async function startDaemon(
       buildImages: (onLine) => ensureImages(provider, config, onLine),
       imageStatus,
       gc: () => gc.runOnce(),
+      usage: (sinceHours) => usageSummary(office, store, sinceHours),
     },
   });
   gatewayUrl.value = `ws://${config.docker.gatewayHost}:${String(server.port)}`;

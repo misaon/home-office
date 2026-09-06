@@ -1,7 +1,7 @@
 import { SessionId } from "@ho/protocol";
 import { withClient } from "../client.ts";
 import { line, print } from "../output.ts";
-import { subcommand } from "./usage.ts";
+import { subcommand } from "./help.ts";
 
 export async function session(args: readonly string[]): Promise<void> {
   const { sub, rest } = subcommand(args, "session");

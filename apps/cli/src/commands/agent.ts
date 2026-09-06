@@ -1,9 +1,9 @@
 import { AgentRole, EffortLevel, Gender } from "@ho/protocol";
 import { parse, required, str } from "../args.ts";
 import { withClient } from "../client.ts";
-import { line, print } from "../output.ts";
+import { subcommand } from "./help.ts";
 import { findAgent, findProject } from "./lookup.ts";
-import { subcommand } from "./usage.ts";
+import { line, print } from "../output.ts";
 
 /** `--project` may repeat; parseArgs keeps only the last value, so repeats are collected by hand. */
 const splitProjects = (argv: readonly string[]): { projects: string[]; remaining: string[] } => {
@@ -29,18 +29,29 @@ export async function agent(args: readonly string[]): Promise<void> {
       case "list": {
         for (const a of await client.agents.list()) {
           line(
-            `${a.id}  ${a.name}  ${a.role}  ${a.provider}/${a.model}@${a.effort}  projects=${String(a.projectIds.length)}`,
+            `${a.id}  ${a.name}  ${a.role}  ${a.provider}/${a.model}@${a.effort}  skills=${a.skillPack}  projects=${String(a.projectIds.length)}`,
           );
         }
         return;
       }
       case "add": {
         const { projects, remaining } = splitProjects(rest);
-        const parsed = parse(remaining, ["role", "model", "effort", "gender", "sprite", "prompt"]);
+        const parsed = parse(remaining, [
+          "role",
+          "model",
+          "effort",
+          "gender",
+          "sprite",
+          "prompt",
+          "skills",
+        ]);
         const name = parsed.positionals[0];
         if (name === undefined) {
           throw new Error("agent name is required");
         }
+        const role = AgentRole.parse(required(parsed, "role"));
+        // Skill packs ship in the agent image per role; `--skills none` opts out.
+        const skillPack = str(parsed, "skills") ?? (role === "clerk" ? "none" : role);
         const projectIds = await Promise.all(
           projects.map(async (ref) => (await findProject(client, ref)).id),
         );
@@ -48,7 +59,7 @@ export async function agent(args: readonly string[]): Promise<void> {
         print(
           await client.agents.create({
             name,
-            role: AgentRole.parse(required(parsed, "role")),
+            role,
             appearance: {
               spriteSet: str(parsed, "sprite") ?? "agent-a",
               gender: Gender.parse(str(parsed, "gender") ?? "neutral"),
@@ -57,6 +68,7 @@ export async function agent(args: readonly string[]): Promise<void> {
             model: str(parsed, "model") ?? "sonnet",
             effort: EffortLevel.parse(str(parsed, "effort") ?? "medium"),
             ...(prompt === undefined ? {} : { basePrompt: prompt }),
+            skillPack,
             projectIds,
           }),
         );

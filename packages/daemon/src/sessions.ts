@@ -12,7 +12,14 @@ import {
   startSession,
   transitionTask,
 } from "@ho/core";
-import type { LiveEvent, Session, SessionId, SessionState, TaskId } from "@ho/protocol";
+import type {
+  LiveEvent,
+  Session,
+  SessionId,
+  SessionState,
+  TaskArtifacts,
+  TaskId,
+} from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
 import type { Logger } from "./logger.ts";
 import type { Office } from "./office.ts";
@@ -21,7 +28,9 @@ import {
   consume,
   OAUTH_SECRET,
   openRuntime,
+  type Outcome,
   provision,
+  type Provisioned,
   publish,
   type SessionContext,
 } from "./session-run.ts";
@@ -35,6 +44,7 @@ export type SessionDeps = {
   gateway: RunnerGateway;
   secrets: SecretStore;
   config: DaemonConfig;
+  home: string;
   readonly gatewayUrl: string;
   log: Logger;
 };
@@ -139,10 +149,32 @@ export class SessionManager {
     }
   }
 
+  /** Records artifacts and moves the task on: `review` after success, `blocked` with the reason otherwise. */
+  async #settle(ctx: SessionContext, provisioned: Provisioned, outcome: Outcome): Promise<void> {
+    const { office } = this.#deps;
+    const taskId = ctx.task.id;
+    const artifacts: TaskArtifacts =
+      outcome.failure === null
+        ? await publish(this.#deps, ctx, provisioned, outcome.report)
+        : { branch: provisioned.branch, report: outcome.report };
+    await office.execute(SYSTEM, (m, c) => setTaskArtifacts(m, { id: taskId, artifacts }, c));
+    if (outcome.failure === null) {
+      await office.execute(SYSTEM, (m, c) =>
+        transitionTask(m, { id: taskId, to: "review", reason: "session finished" }, c),
+      );
+      await this.#end(ctx.session.id, "stopped");
+    } else {
+      await office.execute(SYSTEM, (m, c) =>
+        transitionTask(m, { id: taskId, to: "blocked", reason: outcome.failure ?? undefined }, c),
+      );
+      await this.#end(ctx.session.id, "failed", outcome.failure);
+    }
+  }
+
   async #run(ctx: SessionContext): Promise<void> {
     const { office, provider, secrets, log } = this.#deps;
     const sessionId = ctx.session.id;
-    let provisioned: Awaited<ReturnType<typeof provision>> | null = null;
+    let provisioned: Provisioned | null = null;
     try {
       const token = await secrets.get(OAUTH_SECRET);
       if (token === null) {
@@ -166,27 +198,7 @@ export class SessionManager {
       await this.#state(sessionId, "stopping");
       await runtimeSession.close();
       provisioned.connection.close();
-
-      const artifacts = { branch: provisioned.branch, report: outcome.report };
-      await office.execute(SYSTEM, (m, c) =>
-        setTaskArtifacts(m, { id: ctx.task.id, artifacts }, c),
-      );
-      if (outcome.failure === null) {
-        await publish(this.#deps, ctx, provisioned);
-        await office.execute(SYSTEM, (m, c) =>
-          transitionTask(m, { id: ctx.task.id, to: "review", reason: "session finished" }, c),
-        );
-        await this.#end(sessionId, "stopped");
-      } else {
-        await office.execute(SYSTEM, (m, c) =>
-          transitionTask(
-            m,
-            { id: ctx.task.id, to: "blocked", reason: outcome.failure ?? undefined },
-            c,
-          ),
-        );
-        await this.#end(sessionId, "failed", outcome.failure);
-      }
+      await this.#settle(ctx, provisioned, outcome);
     } catch (error) {
       const message = (error instanceof Error ? error.message : String(error)).slice(0, 2000);
       log.error({ sessionId, err: message }, "session failed");
