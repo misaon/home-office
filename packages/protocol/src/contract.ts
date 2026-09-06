@@ -6,6 +6,7 @@ import {
   ChatMessage,
   IsoDateTime,
   Project,
+  PublishPolicy,
   Session,
   Task,
   TaskArtifacts,
@@ -45,7 +46,20 @@ const ProjectFields = Project.pick({
 });
 export const ProjectCreateInput = ProjectFields;
 export type ProjectCreateInput = z.infer<typeof ProjectCreateInput>;
-export const ProjectUpdateInput = z.object({ id: ProjectId, patch: ProjectFields.partial() });
+/**
+ * Patches carry only the keys a client sent. `.partial()` alone would re-apply field defaults to absent
+ * keys, so defaulted fields are unwrapped here (a patch of `{ name }` must not reset the branch or policy).
+ */
+const ProjectPatch = z
+  .object({
+    name: Project.shape.name,
+    repo: Project.shape.repo,
+    defaultBranch: Project.shape.defaultBranch.unwrap(),
+    floorTemplateId: Project.shape.floorTemplateId.unwrap(),
+    publish: PublishPolicy,
+  })
+  .partial();
+export const ProjectUpdateInput = z.object({ id: ProjectId, patch: ProjectPatch });
 export type ProjectUpdateInput = z.infer<typeof ProjectUpdateInput>;
 
 const AgentFields = Agent.pick({
@@ -61,7 +75,22 @@ const AgentFields = Agent.pick({
 }).extend({ budgets: Budgets.prefault({}) });
 export const AgentCreateInput = AgentFields;
 export type AgentCreateInput = z.infer<typeof AgentCreateInput>;
-export const AgentUpdateInput = z.object({ id: AgentId, patch: AgentFields.partial() });
+/** See ProjectPatch: a model change must keep the persona, skill pack, projects and budgets. */
+const AgentPatch = z
+  .object({
+    name: Agent.shape.name,
+    role: Agent.shape.role,
+    appearance: Agent.shape.appearance,
+    provider: Agent.shape.provider,
+    model: Agent.shape.model,
+    effort: Agent.shape.effort,
+    basePrompt: Agent.shape.basePrompt.unwrap(),
+    skillPack: Agent.shape.skillPack.unwrap(),
+    projectIds: Agent.shape.projectIds.unwrap(),
+    budgets: Budgets,
+  })
+  .partial();
+export const AgentUpdateInput = z.object({ id: AgentId, patch: AgentPatch });
 export type AgentUpdateInput = z.infer<typeof AgentUpdateInput>;
 
 export const TaskCreateInput = z.object({
