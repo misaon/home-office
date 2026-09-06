@@ -26,10 +26,11 @@ const run = async (argv: readonly string[], cwd?: string): Promise<string> => {
 };
 
 /**
- * Opens a pull request with the host's `gh` after the branch reached the remote. Never fails the task:
- * the branch is the deliverable, the PR is a convenience.
+ * Delivers a finished branch: git-URL projects always get the branch on their remote (through the host
+ * mirror, with the owner's credentials); `pull-request` projects additionally get a PR via the host's `gh`.
+ * Never fails the task: the branch in the source repository is the deliverable, the rest is convenience.
  */
-export async function openPullRequest(
+export async function deliver(
   home: string,
   project: Project,
   task: Task,
@@ -38,14 +39,15 @@ export async function openPullRequest(
   log: Logger,
 ): Promise<TaskArtifacts> {
   const artifacts: TaskArtifacts = { branch, report };
-  if (project.publish.mode !== "pull-request") {
-    return artifacts;
-  }
   try {
+    if (project.repo.kind === "git") {
+      await pushMirrorBranch(home, project, branch);
+    }
+    if (project.publish.mode !== "pull-request") {
+      return artifacts;
+    }
     if (project.repo.kind === "local") {
       await pushLocalBranch(project, branch);
-    } else {
-      await pushMirrorBranch(home, project, branch);
     }
     const args = [
       "gh",
@@ -79,7 +81,7 @@ export async function openPullRequest(
   } catch (error) {
     log.warn(
       { taskId: task.id, err: error instanceof Error ? error.message : String(error) },
-      "pull request not created",
+      "delivery step failed; branch is still in the source repository",
     );
     return artifacts;
   }

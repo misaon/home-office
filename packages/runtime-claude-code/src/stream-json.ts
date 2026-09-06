@@ -27,6 +27,10 @@ export const StreamLine = z.discriminatedUnion("type", [
     subtype: z.string(),
     session_id: z.string().optional(),
     model: z.string().optional(),
+    tools: z.array(z.string()).optional(),
+    plugins: z.array(z.object({ name: z.string() })).optional(),
+    plugin_errors: z.array(z.object({ plugin: z.string(), message: z.string() })).optional(),
+    mcp_servers: z.array(z.object({ name: z.string(), status: z.string().optional() })).optional(),
     error: z.string().optional(),
     retry_delay_ms: z.int().optional(),
     attempt: z.int().optional(),
@@ -102,6 +106,19 @@ export function normalizeLine(raw: string, now: () => Date): RuntimeEvent[] {
   const line = parsed.data;
   switch (line.type) {
     case "system": {
+      if (line.subtype === "init" && line.session_id !== undefined) {
+        return [
+          {
+            kind: "init",
+            runtimeSessionId: line.session_id,
+            model: line.model ?? "unknown",
+            plugins: (line.plugins ?? []).map((p) => p.name),
+            pluginErrors: (line.plugin_errors ?? []).map((p) => `${p.plugin}: ${p.message}`),
+            tools: line.tools?.length ?? 0,
+            mcpServers: (line.mcp_servers ?? []).map((s) => s.name),
+          },
+        ];
+      }
       if (line.subtype === "api_retry" && line.error === "rate_limit") {
         const retryAt =
           line.retry_delay_ms === undefined

@@ -26,6 +26,8 @@ COPY --chown=agent:agent rtk-config.toml /home/agent/.config/rtk/config.toml
 
 USER agent
 WORKDIR /work
+# RTK rewrites Bash tool calls to compact equivalents; its hook lives in the user settings that Claude Code reads.
+RUN rtk init -g --hook-only --auto-patch >/dev/null && test -s /home/agent/.claude/settings.json
 ENV HOME=/home/agent \
     CLAUDE_CONFIG_DIR=/home/agent/.claude \
     USE_BUILTIN_RIPGREP=0 \

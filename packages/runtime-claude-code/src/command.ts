@@ -1,13 +1,13 @@
 import type { RuntimeSessionSpec } from "@ho/core";
 
-/** Static, token-lean Claude Code settings applied inside every sandbox (inline JSON, no files). */
+/**
+ * Static, token-lean Claude Code settings applied inside every sandbox (inline JSON, no files).
+ * The RTK PreToolUse hook is not here: `rtk init --hook-only` writes it into the image's user settings,
+ * which Claude Code reads through `--setting-sources user` and RTK checks before rewriting.
+ */
 export const CLAUDE_SETTINGS = {
   includeCoAuthoredBy: false,
   autoUpdatesChannel: "stable",
-  // RTK rewrites Bash commands to compact equivalents before they run (60–90 % smaller tool output).
-  hooks: {
-    PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "rtk hook claude" }] }],
-  },
   env: {
     DISABLE_AUTOUPDATER: "1",
     DISABLE_TELEMETRY: "1",

@@ -59,6 +59,12 @@ export async function session(args: readonly string[]): Promise<void> {
               line(`[${live.sessionId.slice(-8)}] permission requested for ${e.tool}`);
               break;
             }
+            case "init": {
+              line(
+                `[${live.sessionId.slice(-8)}] init model=${e.model} tools=${String(e.tools)} plugins=[${e.plugins.join(", ")}] mcp=[${e.mcpServers.join(", ")}]${e.pluginErrors.length > 0 ? ` plugin-errors=${e.pluginErrors.join("; ")}` : ""}`,
+              );
+              break;
+            }
           }
         }
         return;

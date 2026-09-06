@@ -5,7 +5,7 @@ import { branchFor, cloneIntoVolume, pushFromVolume, REPO_IN_VOLUME } from "./gi
 import { LABELS } from "./images.ts";
 import { sourcePathFor } from "./mirrors.ts";
 import { rolePrompt, taskBrief } from "./prompts.ts";
-import { openPullRequest } from "./publish.ts";
+import { deliver } from "./publish.ts";
 import type { RunnerConnection } from "./runner-gateway.ts";
 import type { SessionDeps } from "./sessions.ts";
 
@@ -151,6 +151,7 @@ export async function consume(
         outcome.failure = `${event.code}: ${event.message}`;
         break;
       }
+      case "init":
       case "usage":
       case "rate_limited":
       case "text_delta":
@@ -178,5 +179,5 @@ export async function publish(
     provisioned.volume,
     provisioned.branch,
   );
-  return openPullRequest(deps.home, ctx.project, ctx.task, provisioned.branch, report, deps.log);
+  return deliver(deps.home, ctx.project, ctx.task, provisioned.branch, report, deps.log);
 }

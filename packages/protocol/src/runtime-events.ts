@@ -18,6 +18,15 @@ export type RuntimeErrorCode = z.infer<typeof RuntimeErrorCode>;
 
 /** Provider-agnostic view of what an agent is doing right now. Streamed live, never persisted verbatim. */
 export const RuntimeEvent = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("init"),
+    runtimeSessionId: z.string(),
+    model: z.string(),
+    plugins: z.array(z.string()),
+    pluginErrors: z.array(z.string()),
+    tools: z.int().nonnegative(),
+    mcpServers: z.array(z.string()),
+  }),
   z.object({ kind: z.literal("text_delta"), text: z.string() }),
   z.object({ kind: z.literal("tool_call"), id: z.string(), name: z.string(), input: z.unknown() }),
   z.object({

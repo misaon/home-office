@@ -187,6 +187,8 @@ stdin messages: `{"type":"user","message":{"role":"user","content":"…"},"paren
 
 Session strategy: one Claude session per (agent, task). Follow-ups (`review feedback`, `boss question`) resume the same session while the container is alive; if the container was reclaimed, a new container resumes by `--resume` only if the Claude config volume was kept (configurable `sessionRetention`), otherwise the task brief carries a compact summary.
 
+Sandbox extras: Claude settings travel inline (`--settings '<json>'`) and include the **RTK** `PreToolUse` hook (`rtk hook claude`) that rewrites Bash commands to compact equivalents; role skill packs from `@ho/agent-kit` are baked into `/opt/ho/plugins/<pack>` and loaded with `--plugin-dir` according to `agent.skillPack` (`worker`, `reviewer`, `boss`, or `none`). The `system/init` line becomes an `init` runtime event (model, tools, plugins, MCP servers) so the UI and `ho session watch` can show what a session loaded.
+
 ## 7. Orchestration and the handoff protocol
 
 - **Boss loop.** Human text or a mail item → `task.created(inbox)` → boss session on the Lobby floor receives the brief plus the roster (agents, skills, current load, project list) and must call MCP tools rather than free text: `ho_delegate({ projectId, title, brief, assigneeId?, acceptance })`, `ho_ask_human({ question })`, `ho_report({ taskId, status, summary })`.
@@ -196,14 +198,14 @@ Session strategy: one Claude session per (agent, task). Follow-ups (`review feed
 - **Budgets.** Per task: max turns, max wall time, max review rounds. Per agent: max concurrent sessions (default 1). Global: max concurrent sessions (default 2) to protect the subscription's rolling 5-hour window; `rate_limited` pauses the scheduler until `retryAt` and puts agents to **sleep** in the office.
 - **HO MCP server** (`@modelcontextprotocol/sdk`, streamable HTTP on the daemon, reachable from containers via `host.docker.internal`): tools are scoped by the bearer token to the calling session's task/project; inputs validated with Zod; every call is an event.
 
-## 8. Repository flow (git-bridge)
+## 8. Repository flow (git-bridge, mirrors, delivery)
 
-1. `session.starting` → create task volume `ho-task-<id>` → run `git-bridge` with the host repo bind-mounted **read-only** at `/src` and the volume at `/work`: `git clone --branch <default> --single-branch /src /work && git checkout -b ho/<task-slug>-<shortid>`.
-2. Agent works in `/work` only. Caches (`~/.bun/install/cache`, `~/.npm`) mount from a per-project cache volume.
-3. On `ho_report(review|done)`: run `git-bridge` with the host repo mounted **read-write** at `/src` executing exactly `git -C /work push /src HEAD:refs/heads/ho/<branch>` (pushing to a non-checked-out branch of a non-bare repo is allowed by git; the agent container never has the RW mount). Optional: `gh pr create` on the host.
-4. GC removes the container immediately and the task volume after `taskVolumeRetention` (default 24 h) or when the task is `done`.
-
-For `repo.kind = "git"` projects the bridge clones from/pushes to the remote URL using a host-side token from `SecretStore`.
+1. **Source path.** A `local` project is its host checkout. A `git` project is mirrored on the host at `$HO_HOME/mirrors/<projectId>.git` with the owner's own git credentials (`git clone --mirror`, refreshed with `git fetch --prune` before every session). Sandboxes and bridges only ever see host paths; no remote credential enters a container.
+2. **Clone.** `session.starting` → create the labelled task volume (`ho.kind=task-volume`) and Claude config volume (`ho.kind=claude-config`) → run `git-bridge` with the source mounted **read-only** at `/src`: `git clone --branch <default> --single-branch /src /work/repo && git checkout -b ho/<task-slug>-<shortid>`.
+3. **Work.** The agent works in `/work/repo` only. Caches mount from per-project cache volumes (Phase 8).
+4. **Push.** On success the bridge runs exactly `git -C /work/repo push -f /src HEAD:refs/heads/ho/<branch>` with the source mounted **read-write**; the agent container never has that mount. For `git` projects the daemon then pushes the branch from the mirror to the real remote (`git push origin`) with host credentials.
+5. **Deliver.** Per project `publish` policy: `branch` (default) stops here; `pull-request` also runs the host's `gh pr create --head <branch> --base <default> [--draft]` (local projects push the branch to their `origin` first; git projects need a GitHub URL). Delivery never fails the task; the branch is the deliverable and the PR URL lands in `task.artifacts.prUrl`.
+6. **Cleanup.** The sandbox is removed immediately; task and config volumes live `retention.taskVolumeHours` (24 h) and are swept by the GC job (`ho gc`).
 
 ## 9. Office simulation (`@ho/sim`, pure)
 

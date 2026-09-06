@@ -144,7 +144,7 @@ export class SessionManager {
       await this.#state(ctx.session.id, "idle", {
         reason: `rate limited until ${event.retryAt ?? "unknown"}`,
       });
-    } else if (event.kind === "result" && event.runtimeSessionId !== null) {
+    } else if (event.kind === "init") {
       await this.#state(ctx.session.id, "running", { runtimeSessionId: event.runtimeSessionId });
     }
   }
