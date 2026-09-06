@@ -14,16 +14,6 @@ import type {
   TaskId,
 } from "@ho/protocol";
 import { create } from "zustand";
-import type { CameraMode } from "./office/scene.ts";
-
-const CAMERA_KEY = "ho.camera";
-const readCamera = (): CameraMode => {
-  try {
-    return window.localStorage.getItem(CAMERA_KEY) === "fill" ? "fill" : "fit";
-  } catch {
-    return "fit";
-  }
-};
 
 export type Panel = "chat" | "board" | "inspector" | "usage" | "resources" | "settings";
 type Connection = "connecting" | "online" | "offline" | "unauthorized";
@@ -76,8 +66,6 @@ type UiState = {
   spriteSets: string[];
   /** The first-run checklist (Docker, images, token, team, smoke test). */
   setupOpen: boolean;
-  /** Fit the whole floor with margins, or fill the canvas and drag. Remembered per browser. */
-  camera: CameraMode;
   setConnection: (connection: Connection) => void;
   setError: (message: string | null) => void;
   selectPanel: (panel: Panel) => void;
@@ -85,7 +73,6 @@ type UiState = {
   setChatProject: (projectId: ProjectId | null) => void;
   setSpriteSets: (sets: string[]) => void;
   setSetupOpen: (open: boolean) => void;
-  setCamera: (camera: CameraMode) => void;
 };
 
 export const useUi = create<UiState>()((set) => ({
@@ -98,7 +85,6 @@ export const useUi = create<UiState>()((set) => ({
   chatProjectId: null,
   spriteSets: [],
   setupOpen: false,
-  camera: readCamera(),
   setConnection: (connection) => {
     set({ connection });
   },
@@ -119,14 +105,6 @@ export const useUi = create<UiState>()((set) => ({
   },
   setSetupOpen: (setupOpen) => {
     set({ setupOpen });
-  },
-  setCamera: (camera) => {
-    try {
-      window.localStorage.setItem(CAMERA_KEY, camera);
-    } catch {
-      // Storage may be unavailable; the choice then lasts for this page only.
-    }
-    set({ camera });
   },
 }));
 

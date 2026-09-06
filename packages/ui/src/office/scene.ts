@@ -22,8 +22,6 @@ export type FloorView = {
   update?: (world: World, dtMs: number) => void;
 };
 export type FloorRenderer = (floor: Floor) => FloorView;
-/** `fit` shows the whole floor with margins; `fill` covers the canvas and lets the viewer drag the map. */
-export type CameraMode = "fit" | "fill";
 
 type ActorView = { root: Container; body: Sprite; bubble: Sprite; label: Text; floorId: string };
 
@@ -36,10 +34,8 @@ export class OfficeScene {
   readonly #floors = new Map<string, FloorView>();
   readonly #actors = new Map<AgentId, ActorView>();
   #current: string | null = null;
-  #camera: CameraMode = "fit";
-  /** Drag offset in screen pixels while in `fill` mode; clamped so the floor keeps covering the canvas. */
-  readonly #pan = { x: 0, y: 0 };
-  #drag: { x: number; y: number; moved: boolean } | null = null;
+  #host: HTMLElement | null = null;
+  #observer: ResizeObserver | null = null;
   onSelect: (agentId: AgentId | null) => void = () => undefined;
 
   constructor(sprites: SpriteLibrary, render: FloorRenderer) {
@@ -48,9 +44,11 @@ export class OfficeScene {
   }
 
   async init(host: HTMLElement): Promise<void> {
+    this.#host = host;
     await this.app.init({
       background: "#0f1115",
-      resizeTo: host,
+      width: Math.max(1, host.clientWidth),
+      height: Math.max(1, host.clientHeight),
       antialias: false,
       roundPixels: true,
       preference: "webgl",
@@ -59,46 +57,21 @@ export class OfficeScene {
     host.append(this.app.canvas);
     this.app.stage.addChild(this.#stage);
     this.app.stage.eventMode = "static";
-    this.app.stage.hitArea = this.app.screen;
     this.app.stage.on("pointertap", () => {
-      if (this.#drag?.moved !== true) {
-        this.onSelect(null);
+      this.onSelect(null);
+    });
+    // The canvas follows the pane's width; its height is decided per frame by the floor (see #fit).
+    this.#observer = new ResizeObserver(() => {
+      const current = this.#current === null ? undefined : this.#floors.get(this.#current);
+      if (current !== undefined) {
+        this.#fit(current);
       }
     });
-    // Dragging pans the map in fill mode; a plain click still selects.
-    this.app.stage.on("pointerdown", (e) => {
-      this.#drag = { x: e.global.x - this.#pan.x, y: e.global.y - this.#pan.y, moved: false };
-    });
-    this.app.stage.on("globalpointermove", (e) => {
-      if (this.#drag !== null && this.#camera === "fill") {
-        const x = e.global.x - this.#drag.x;
-        const y = e.global.y - this.#drag.y;
-        if (Math.abs(x - this.#pan.x) + Math.abs(y - this.#pan.y) > 2) {
-          this.#drag.moved = true;
-        }
-        this.#pan.x = x;
-        this.#pan.y = y;
-      }
-    });
-    const release = (): void => {
-      this.#drag = null;
-    };
-    this.app.stage.on("pointerup", release);
-    this.app.stage.on("pointerupoutside", release);
-  }
-
-  set camera(mode: CameraMode) {
-    this.#camera = mode;
-    this.#pan.x = 0;
-    this.#pan.y = 0;
-    this.app.canvas.style.cursor = mode === "fill" ? "grab" : "default";
-  }
-
-  get camera(): CameraMode {
-    return this.#camera;
+    this.#observer.observe(host);
   }
 
   destroy(): void {
+    this.#observer?.disconnect();
     this.app.destroy(true, { children: true });
   }
 
@@ -126,37 +99,24 @@ export class OfficeScene {
   }
 
   /**
-   * Camera. `fit`: integer zoom when the whole floor fits (crisp pixels), otherwise scaled down to fit with
-   * margins. `fill`: the floor covers the whole canvas (largest of the two ratios, integer when possible) and
-   * the viewer drags to see the rest; the pan is clamped so no background shows.
+   * Camera: the floor always spans the pane's full width, uniformly scaled and never cropped. When the scaled
+   * floor is taller than the pane the canvas grows and the pane scrolls; when it is shorter it sits centred.
    */
   #fit(view: FloorView): void {
-    const { width, height } = this.app.screen;
-    const ratioX = width / view.width;
-    const ratioY = height / view.height;
-    const cover = Math.max(ratioX, ratioY);
-    const contain = Math.min(ratioX, ratioY);
-    const scale =
-      this.#camera === "fill"
-        ? cover >= 1
-          ? Math.ceil(cover)
-          : cover
-        : contain >= 1
-          ? Math.floor(contain)
-          : contain;
-    const scaledW = view.width * scale;
-    const scaledH = view.height * scale;
-    const centerX = (width - scaledW) / 2;
-    const centerY = (height - scaledH) / 2;
-    if (this.#camera === "fill") {
-      // Only the overflowing axis pans; the offset never reveals the canvas background.
-      const slackX = Math.max(0, (scaledW - width) / 2);
-      const slackY = Math.max(0, (scaledH - height) / 2);
-      this.#pan.x = Math.max(-slackX, Math.min(slackX, this.#pan.x));
-      this.#pan.y = Math.max(-slackY, Math.min(slackY, this.#pan.y));
+    const host = this.#host;
+    if (host === null || host.clientWidth === 0) {
+      return;
+    }
+    const width = host.clientWidth;
+    const scale = width / view.width;
+    const floorHeight = Math.ceil(view.height * scale);
+    const height = Math.max(host.clientHeight, floorHeight);
+    if (this.app.renderer.width !== width || this.app.renderer.height !== height) {
+      this.app.renderer.resize(width, height);
+      this.app.stage.hitArea = this.app.screen;
     }
     this.#stage.scale.set(scale);
-    this.#stage.position.set(Math.floor(centerX + this.#pan.x), Math.floor(centerY + this.#pan.y));
+    this.#stage.position.set(0, Math.floor((height - floorHeight) / 2));
   }
 
   #ensureActor(actor: Actor, name: string): ActorView {
