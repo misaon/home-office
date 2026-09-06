@@ -43,11 +43,18 @@ export const DaemonConfig = z.object({
       assetsDir: z.string().min(1).nullable().default(null),
     })
     .prefault({}),
+  /** Headless Chromium + Playwright/Chrome DevTools MCP inside work and review sessions (D15). */
+  browser: z
+    .object({
+      enabled: z.boolean().default(true),
+    })
+    .prefault({}),
+  /** Chromium needs headroom: several processes and hundreds of threads count against the pids limit. */
   limits: z
     .object({
-      memoryMb: z.int().positive().default(2048),
+      memoryMb: z.int().positive().default(3072),
       cpus: z.number().positive().default(2),
-      pids: z.int().positive().default(512),
+      pids: z.int().positive().default(2048),
     })
     .prefault({}),
 });

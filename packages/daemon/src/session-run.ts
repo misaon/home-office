@@ -1,6 +1,7 @@
 import type { RuntimeEvent, RuntimeSession, SandboxHandle, SandboxSpec } from "@ho/core";
 import type { Agent, Project, Session, Task, TaskArtifacts } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
+import { browserMcpServers } from "./browser.ts";
 import { branchFor, prepareRepo, pushFromVolume, REPO_IN_VOLUME } from "./git-bridge.ts";
 import { LABELS } from "./images.ts";
 import { sourcePathFor } from "./mirrors.ts";
@@ -127,12 +128,12 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
 
 const promptFor = (deps: SessionDeps, ctx: SessionContext, branch: string): string => {
   if (ctx.session.mode === "review") {
-    return reviewPrompt(ctx.agent, ctx.project, ctx.task, branch);
+    return reviewPrompt(ctx.agent, ctx.project, ctx.task, branch, deps.config.browser.enabled);
   }
   if (ctx.session.mode === "triage") {
     return triagePrompt(ctx.agent, ctx.project, deps.office.model);
   }
-  return workPrompt(ctx.agent, ctx.project, ctx.task, branch);
+  return workPrompt(ctx.agent, ctx.project, ctx.task, branch, deps.config.browser.enabled);
 };
 
 const openRuntime = (
@@ -155,7 +156,14 @@ const openRuntime = (
       resume,
       pluginDirs: ctx.agent.skillPack === "none" ? [] : [`${PLUGINS_ROOT}/${ctx.agent.skillPack}`],
       mcpServers: {
-        ho: { url: deps.mcpUrl, headers: { Authorization: `Bearer ${provisioned.mcpToken}` } },
+        ho: {
+          kind: "http",
+          url: deps.mcpUrl,
+          headers: { Authorization: `Bearer ${provisioned.mcpToken}` },
+        },
+        ...(deps.config.browser.enabled && ctx.session.mode !== "triage"
+          ? browserMcpServers()
+          : {}),
       },
     },
     provisioned.connection.channel,

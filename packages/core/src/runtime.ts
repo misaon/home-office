@@ -12,6 +12,15 @@ export type RuntimeCapabilities = {
 
 export type PromptInput = { text: string };
 
+export type McpServerSpec =
+  | { kind: "http"; url: string; headers: Readonly<Record<string, string>> }
+  | {
+      kind: "stdio";
+      command: string;
+      args: readonly string[];
+      env: Readonly<Record<string, string>>;
+    };
+
 export type RuntimeSessionSpec = {
   sessionId: SessionId;
   taskId: TaskId;
@@ -25,8 +34,8 @@ export type RuntimeSessionSpec = {
   resume: string | null;
   /** Plugin directories inside the sandbox (role skill packs). */
   pluginDirs: readonly string[];
-  /** Streamable HTTP MCP servers this session may call (the HO tool server, scoped by a per-session token). */
-  mcpServers: Readonly<Record<string, { url: string; headers: Readonly<Record<string, string>> }>>;
+  /** MCP servers this session may call: the HO tool server (HTTP, per-session token) and sandbox-local stdio servers. */
+  mcpServers: Readonly<Record<string, McpServerSpec>>;
 };
 
 export type RunnerLine =

@@ -189,6 +189,8 @@ Session strategy: one Claude session per (agent, task). Follow-ups (`review feed
 
 Sandbox extras: Claude settings travel inline (`--settings '<json>'`) and include the **RTK** `PreToolUse` hook (`rtk hook claude`) that rewrites Bash commands to compact equivalents; role skill packs from `@ho/agent-kit` are baked into `/opt/ho/plugins/<pack>` and loaded with `--plugin-dir` according to `agent.skillPack` (`worker`, `reviewer`, `boss`, or `none`). The `system/init` line becomes an `init` runtime event (model, tools, plugins, MCP servers) so the UI and `ho session watch` can show what a session loaded.
 
+**Browser tooling (D15).** Work and review sessions also get two stdio MCP servers that live in the image (`/opt/ho/mcp`): Playwright MCP and Chrome DevTools MCP, both pointed at the distribution's headless Chromium with an isolated profile and `--no-sandbox` (Chromium's own sandbox needs user namespaces the hardened container does not grant; the container remains the boundary). Dev servers the agent starts bind to 127.0.0.1 inside the same container, so the browser reaches them without any host access. Screenshots and traces go to the `/tmp/browser` tmpfs; the prompt tells agents to copy what belongs in the repository. Triage sessions get no browser. Bun, Node and npm are available for the agents' projects.
+
 ## 7. Orchestration and the collaboration protocol
 
 - **The office project.** The daemon creates one project with `repo.kind = "none"` (name "Office", floor template `lobby`). It is the Lobby: triage tasks live there and its sessions have no repository.

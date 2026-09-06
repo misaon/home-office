@@ -1,0 +1,9 @@
+{
+  "name": "ho-sandbox-mcp",
+  "private": true,
+  "description": "Browser MCP servers preinstalled in the Home Office agent image; versions pinned, see docs/STACK.md.",
+  "dependencies": {
+    "@playwright/mcp": "0.0.80",
+    "chrome-devtools-mcp": "1.8.0"
+  }
+}

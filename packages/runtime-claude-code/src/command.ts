@@ -18,13 +18,20 @@ export const CLAUDE_SETTINGS = {
   },
 } as const;
 
+type McpConfigEntry =
+  | { type: "http"; url: string; headers: Record<string, string> }
+  | { type: "stdio"; command: string; args: string[]; env: Record<string, string> };
+
 export type ClaudeCommandOptions = {
-  /** Streamable HTTP MCP servers to expose (the HO server arrives in Phase 3). */
-  mcpServers?: Readonly<
-    Record<string, { type: "http"; url: string; headers?: Readonly<Record<string, string>> }>
-  >;
+  /** Extra MCP servers to expose besides the session's own. */
+  mcpServers?: Readonly<Record<string, McpConfigEntry>>;
   pluginDirs?: readonly string[];
 };
+
+const mcpEntry = (spec: RuntimeSessionSpec["mcpServers"][string]): McpConfigEntry =>
+  spec.kind === "http"
+    ? { type: "http", url: spec.url, headers: { ...spec.headers } }
+    : { type: "stdio", command: spec.command, args: [...spec.args], env: { ...spec.env } };
 
 /** Builds the `claude` argv for a session. Prompts travel over stdin as stream-json user messages. */
 export function claudeArgv(
@@ -65,13 +72,8 @@ export function claudeArgv(
   if (spec.systemPromptAppendix.trim() !== "") {
     argv.push("--append-system-prompt", spec.systemPromptAppendix);
   }
-  const mcpServers = {
-    ...Object.fromEntries(
-      Object.entries(spec.mcpServers).map(([name, s]) => [
-        name,
-        { type: "http", url: s.url, headers: { ...s.headers } },
-      ]),
-    ),
+  const mcpServers: Record<string, McpConfigEntry> = {
+    ...Object.fromEntries(Object.entries(spec.mcpServers).map(([name, s]) => [name, mcpEntry(s)])),
     ...options.mcpServers,
   };
   if (Object.keys(mcpServers).length > 0) {
