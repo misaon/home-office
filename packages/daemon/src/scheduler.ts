@@ -25,7 +25,7 @@ export function startScheduler(
         maxConcurrentSessions: config.scheduler.maxConcurrentSessions,
       })) {
         log.info({ taskId: start.taskId, agentId: start.agentId }, "scheduling session");
-        await sessions.start(start.taskId);
+        await sessions.start(start.taskId, start.agentId, start.mode);
       }
     } catch (error) {
       log.error(
@@ -41,7 +41,16 @@ export function startScheduler(
   }, TICK_MS);
   void (async () => {
     for await (const event of office.store.subscribe(
-      { types: ["task.assigned", "task.status_changed", "session.ended", "agent.updated"] },
+      {
+        types: [
+          "task.created",
+          "task.assigned",
+          "task.reviewer_assigned",
+          "task.status_changed",
+          "session.ended",
+          "agent.updated",
+        ],
+      },
       controller.signal,
     )) {
       void event;

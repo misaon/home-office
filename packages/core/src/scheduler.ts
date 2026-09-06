@@ -1,15 +1,29 @@
-import type { AgentId, TaskId } from "@ho/protocol";
+import type { AgentId, SessionMode, Task, TaskId } from "@ho/protocol";
 import { isSessionActive } from "./commands/sessions.ts";
 import type { ReadModel } from "./model/read-model.ts";
 
 export type SchedulerLimits = { maxConcurrentSessions: number };
-export type SessionStart = { taskId: TaskId; agentId: AgentId };
+export type SessionStart = { taskId: TaskId; agentId: AgentId; mode: SessionMode };
 
 const PRIORITY_RANK = { high: 0, normal: 1, low: 2 } as const;
 
+const candidateOf = (task: Task): SessionStart | null => {
+  if (task.status === "assigned" && task.assigneeId !== undefined) {
+    return {
+      taskId: task.id,
+      agentId: task.assigneeId,
+      mode: task.kind === "triage" ? "triage" : "work",
+    };
+  }
+  if (task.status === "review" && task.reviewerId !== undefined) {
+    return { taskId: task.id, agentId: task.reviewerId, mode: "review" };
+  }
+  return null;
+};
+
 /**
- * Decides which assigned tasks get a session now. Pure: the daemon applies the decisions.
- * Order: priority, then age. Respects the global cap and each agent's own concurrency budget.
+ * Decides which tasks get a session now: assigned tasks (work or triage) and tasks awaiting their reviewer.
+ * Pure: the daemon applies the decisions. Order: priority, then age. Respects the global cap and each agent's budget.
  */
 export function planSessionStarts(model: ReadModel, limits: SchedulerLimits): SessionStart[] {
   const active = [...model.sessions.values()].filter((s) => isSessionActive(s.state));
@@ -20,7 +34,7 @@ export function planSessionStarts(model: ReadModel, limits: SchedulerLimits): Se
   }
   let capacity = limits.maxConcurrentSessions - active.length;
   const candidates = [...model.tasks.values()]
-    .filter((t) => t.status === "assigned" && t.assigneeId !== undefined && !busyTasks.has(t.id))
+    .filter((t) => !busyTasks.has(t.id))
     .toSorted(
       (a, b) =>
         PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] ||
@@ -31,19 +45,19 @@ export function planSessionStarts(model: ReadModel, limits: SchedulerLimits): Se
     if (capacity <= 0) {
       break;
     }
-    const agentId = task.assigneeId;
-    if (agentId === undefined) {
+    const start = candidateOf(task);
+    if (start === null) {
       continue;
     }
-    const agent = model.agents.get(agentId);
+    const agent = model.agents.get(start.agentId);
     if (
       agent === undefined ||
-      (perAgent.get(agentId) ?? 0) >= agent.budgets.maxConcurrentSessions
+      (perAgent.get(start.agentId) ?? 0) >= agent.budgets.maxConcurrentSessions
     ) {
       continue;
     }
-    starts.push({ taskId: task.id, agentId });
-    perAgent.set(agentId, (perAgent.get(agentId) ?? 0) + 1);
+    starts.push(start);
+    perAgent.set(start.agentId, (perAgent.get(start.agentId) ?? 0) + 1);
     capacity -= 1;
   }
   return starts;

@@ -63,7 +63,10 @@ export function createTask(
     ...(input.parentId === undefined ? {} : { parentId: input.parentId }),
     title: input.title,
     brief: input.brief,
+    kind: "work",
     status: input.assigneeId === undefined ? "inbox" : "assigned",
+    reviewRounds: 0,
+    notes: [],
     ...(input.assigneeId === undefined ? {} : { assigneeId: input.assigneeId }),
     source:
       ctx.actor.kind === "agent"

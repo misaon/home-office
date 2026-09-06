@@ -22,6 +22,10 @@ export type TaskStatus = z.infer<typeof TaskStatus>;
 export const TaskPriority = z.enum(["low", "normal", "high"]);
 export type TaskPriority = z.infer<typeof TaskPriority>;
 
+/** `work` changes a repository; `triage` is the boss processing a chat message in the Lobby. */
+export const TaskKind = z.enum(["work", "triage"]);
+export type TaskKind = z.infer<typeof TaskKind>;
+
 export const AgentRole = z.enum(["boss", "worker", "reviewer", "clerk"]);
 export type AgentRole = z.infer<typeof AgentRole>;
 
@@ -45,13 +49,34 @@ export const SessionState = z.enum([
 ]);
 export type SessionState = z.infer<typeof SessionState>;
 
+/** What a session is for: doing the task, reviewing its branch, or triaging a chat message (boss). */
+export const SessionMode = z.enum(["work", "review", "triage"]);
+export type SessionMode = z.infer<typeof SessionMode>;
+
+/** Who caused something. Agents act through the daemon; the daemon itself is `system`. */
+export const Actor = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("human") }),
+  z.object({ kind: z.literal("agent"), agentId: AgentId }),
+  z.object({ kind: z.literal("system") }),
+]);
+export type Actor = z.infer<typeof Actor>;
+
 // ---- value objects ------------------------------------------------------------------------------
 
+/** `none` is the office itself (the Lobby floor): no repository, home of triage tasks. */
 export const RepoSource = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("local"), path: z.string().min(1) }),
   z.object({ kind: z.literal("git"), url: z.url() }),
+  z.object({ kind: z.literal("none") }),
 ]);
 export type RepoSource = z.infer<typeof RepoSource>;
+
+/** How finished work leaves the sandbox: a branch in the repository, or additionally a GitHub pull request via `gh`. */
+export const PublishPolicy = z.object({
+  mode: z.enum(["branch", "pull-request"]).default("branch"),
+  draft: z.boolean().default(true),
+});
+export type PublishPolicy = z.infer<typeof PublishPolicy>;
 
 export const Budgets = z.object({
   maxTurnsPerTask: z.int().positive().default(60),
@@ -95,6 +120,18 @@ export const TaskArtifacts = z.object({
 });
 export type TaskArtifacts = z.infer<typeof TaskArtifacts>;
 
+/** Appended context a resumed session must see: handoffs, review findings, questions and answers, reports. */
+export const TaskNoteKind = z.enum(["handoff", "review", "question", "answer", "report", "info"]);
+export type TaskNoteKind = z.infer<typeof TaskNoteKind>;
+
+export const TaskNote = z.object({
+  at: IsoDateTime,
+  author: Actor,
+  kind: TaskNoteKind,
+  text: z.string().min(1).max(8000),
+});
+export type TaskNote = z.infer<typeof TaskNote>;
+
 export const Author = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("human") }),
   z.object({ kind: z.literal("agent"), agentId: AgentId }),
@@ -102,13 +139,6 @@ export const Author = z.discriminatedUnion("kind", [
 export type Author = z.infer<typeof Author>;
 
 // ---- entities -----------------------------------------------------------------------------------
-
-/** How finished work leaves the sandbox: a branch in the repository, or additionally a GitHub pull request via `gh`. */
-export const PublishPolicy = z.object({
-  mode: z.enum(["branch", "pull-request"]).default("branch"),
-  draft: z.boolean().default(true),
-});
-export type PublishPolicy = z.infer<typeof PublishPolicy>;
 
 export const Project = z.object({
   id: ProjectId,
@@ -143,10 +173,14 @@ export const Task = z.object({
   id: TaskId,
   projectId: ProjectId,
   parentId: TaskId.optional(),
+  kind: TaskKind.default("work"),
   title: z.string().min(1).max(200),
   brief: z.string().max(20000),
   status: TaskStatus,
   assigneeId: AgentId.optional(),
+  reviewerId: AgentId.optional(),
+  reviewRounds: z.int().nonnegative().default(0),
+  notes: z.array(TaskNote).default([]),
   source: TaskSource,
   artifacts: TaskArtifacts,
   priority: TaskPriority,
@@ -168,9 +202,12 @@ export const Session = z.object({
   id: SessionId,
   taskId: TaskId,
   agentId: AgentId,
+  mode: SessionMode.default("work"),
   state: SessionState,
   runtimeSessionId: z.string().optional(),
   sandboxId: z.string().optional(),
+  /** Earlier session of the same task and agent whose conversation this one resumed. */
+  resumedFrom: SessionId.optional(),
   usage: Usage,
   startedAt: IsoDateTime,
   endedAt: IsoDateTime.optional(),

@@ -68,12 +68,14 @@ export async function deliver(
     let cwd: string | undefined;
     if (project.repo.kind === "local") {
       cwd = project.repo.path;
-    } else {
+    } else if (project.repo.kind === "git") {
       const repo = githubRepoFromUrl(project.repo.url);
       if (repo === null) {
         throw new Error("pull requests need a GitHub URL");
       }
       args.push("--repo", repo);
+    } else {
+      throw new Error("the office project has no repository");
     }
     const url =
       (await run(args, cwd)).split("\n").findLast((line) => line.startsWith("https://")) ?? "";

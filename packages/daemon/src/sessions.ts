@@ -5,10 +5,10 @@ import {
   endSession,
   isSessionActive,
   recordSessionUsage,
+  resumableSession,
   type RuntimeEvent,
   type SandboxProvider,
   type SecretStore,
-  setTaskArtifacts,
   startSession,
   transitionTask,
 } from "@ho/core";
@@ -16,24 +16,23 @@ import type {
   LiveEvent,
   Session,
   SessionId,
+  SessionMode,
   SessionState,
-  TaskArtifacts,
   TaskId,
 } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
 import type { Logger } from "./logger.ts";
+import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
 import type { RunnerGateway } from "./runner-gateway.ts";
 import {
-  consume,
   OAUTH_SECRET,
-  openRuntime,
-  type Outcome,
   provision,
   type Provisioned,
-  publish,
+  runPrompt,
   type SessionContext,
 } from "./session-run.ts";
+import { settle } from "./settle.ts";
 
 const SYSTEM = { kind: "system" } as const;
 
@@ -42,16 +41,18 @@ export type SessionDeps = {
   provider: SandboxProvider;
   runtime: AgentRuntime;
   gateway: RunnerGateway;
+  mcp: McpGateway;
   secrets: SecretStore;
   config: DaemonConfig;
   home: string;
   readonly gatewayUrl: string;
+  readonly mcpUrl: string;
   log: Logger;
 };
 
 type Subscriber = { sessionId: SessionId | null; push: (event: LiveEvent) => void };
 
-/** Runs sessions end to end: sandbox, git-bridge, runtime, live fan-out, persisted outcomes. */
+/** Runs sessions end to end: sandbox, git-bridge, runtime, MCP tools, live fan-out, persisted outcomes. */
 export class SessionManager {
   readonly #deps: SessionDeps;
   readonly #subscribers = new Set<Subscriber>();
@@ -77,25 +78,30 @@ export class SessionManager {
     return channel.iterate();
   }
 
-  async start(taskId: TaskId): Promise<Session> {
+  async start(taskId: TaskId, agentId: Session["agentId"], mode: SessionMode): Promise<Session> {
     const { office } = this.#deps;
     const task = office.model.tasks.get(taskId);
-    const agent =
-      task?.assigneeId === undefined ? undefined : office.model.agents.get(task.assigneeId);
+    const agent = office.model.agents.get(agentId);
     const project = task === undefined ? undefined : office.model.projects.get(task.projectId);
     if (task === undefined || agent === undefined || project === undefined) {
-      throw new Error(
-        `cannot start a session for task ${taskId}: task, assignee or project missing`,
-      );
+      throw new Error(`cannot start a session for task ${taskId}: task, agent or project missing`);
     }
+    const previous = resumableSession(office.model, taskId, agentId);
     const session = await office.execute(SYSTEM, (m, ctx) =>
-      startSession(m, { taskId, agentId: agent.id }, ctx),
+      startSession(m, { taskId, agentId, mode }, ctx),
     );
     const controller = new AbortController();
     this.#running.set(session.id, controller);
-    void this.#run({ session, task, agent, project, signal: controller.signal }).finally(() => {
-      this.#running.delete(session.id);
-    });
+    const budget = setTimeout(() => {
+      this.#deps.log.warn({ sessionId: session.id }, "wall-time budget exhausted");
+      controller.abort();
+    }, agent.budgets.maxWallMinutes * 60_000);
+    void this.#run({ session, task, agent, project, previous, signal: controller.signal }).finally(
+      () => {
+        clearTimeout(budget);
+        this.#running.delete(session.id);
+      },
+    );
     return session;
   }
 
@@ -149,30 +155,8 @@ export class SessionManager {
     }
   }
 
-  /** Records artifacts and moves the task on: `review` after success, `blocked` with the reason otherwise. */
-  async #settle(ctx: SessionContext, provisioned: Provisioned, outcome: Outcome): Promise<void> {
-    const { office } = this.#deps;
-    const taskId = ctx.task.id;
-    const artifacts: TaskArtifacts =
-      outcome.failure === null
-        ? await publish(this.#deps, ctx, provisioned, outcome.report)
-        : { branch: provisioned.branch, report: outcome.report };
-    await office.execute(SYSTEM, (m, c) => setTaskArtifacts(m, { id: taskId, artifacts }, c));
-    if (outcome.failure === null) {
-      await office.execute(SYSTEM, (m, c) =>
-        transitionTask(m, { id: taskId, to: "review", reason: "session finished" }, c),
-      );
-      await this.#end(ctx.session.id, "stopped");
-    } else {
-      await office.execute(SYSTEM, (m, c) =>
-        transitionTask(m, { id: taskId, to: "blocked", reason: outcome.failure ?? undefined }, c),
-      );
-      await this.#end(ctx.session.id, "failed", outcome.failure);
-    }
-  }
-
   async #run(ctx: SessionContext): Promise<void> {
-    const { office, provider, secrets, log } = this.#deps;
+    const { office, provider, secrets, mcp, log } = this.#deps;
     const sessionId = ctx.session.id;
     let provisioned: Provisioned | null = null;
     try {
@@ -187,18 +171,24 @@ export class SessionManager {
       log.info(
         {
           sessionId,
+          mode: ctx.session.mode,
+          resume: ctx.previous?.runtimeSessionId ?? null,
           uid: provisioned.connection.hello.uid,
-          bun: provisioned.connection.hello.bunVersion,
         },
         "runner connected",
       );
-      const runtimeSession = await openRuntime(this.#deps, ctx, provisioned, token);
       await this.#state(sessionId, "running");
-      const outcome = await consume(runtimeSession, ctx, (event) => this.#onEvent(ctx, event));
+      const outcome = await runPrompt(this.#deps, ctx, provisioned, token, (event) =>
+        this.#onEvent(ctx, event),
+      );
       await this.#state(sessionId, "stopping");
-      await runtimeSession.close();
       provisioned.connection.close();
-      await this.#settle(ctx, provisioned, outcome);
+      await settle(this.#deps, ctx, provisioned, outcome);
+      await this.#end(
+        sessionId,
+        outcome.failure === null ? "stopped" : "failed",
+        outcome.failure ?? undefined,
+      );
     } catch (error) {
       const message = (error instanceof Error ? error.message : String(error)).slice(0, 2000);
       log.error({ sessionId, err: message }, "session failed");
@@ -213,6 +203,7 @@ export class SessionManager {
       await this.#end(sessionId, "failed", message).catch(() => null);
     } finally {
       if (provisioned !== null) {
+        mcp.unregister(provisioned.mcpToken);
         await provider.stop(provisioned.sandbox, 5).catch(() => null);
         await provider.remove(provisioned.sandbox).catch(() => null);
       }

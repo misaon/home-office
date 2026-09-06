@@ -65,8 +65,17 @@ export function claudeArgv(
   if (spec.systemPromptAppendix.trim() !== "") {
     argv.push("--append-system-prompt", spec.systemPromptAppendix);
   }
-  if (options.mcpServers !== undefined && Object.keys(options.mcpServers).length > 0) {
-    argv.push("--mcp-config", JSON.stringify({ mcpServers: options.mcpServers }));
+  const mcpServers = {
+    ...Object.fromEntries(
+      Object.entries(spec.mcpServers).map(([name, s]) => [
+        name,
+        { type: "http", url: s.url, headers: { ...s.headers } },
+      ]),
+    ),
+    ...options.mcpServers,
+  };
+  if (Object.keys(mcpServers).length > 0) {
+    argv.push("--mcp-config", JSON.stringify({ mcpServers }));
   }
   for (const dir of [...spec.pluginDirs, ...(options.pluginDirs ?? [])]) {
     argv.push("--plugin-dir", dir);

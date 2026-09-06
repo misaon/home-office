@@ -2,6 +2,7 @@ import { RPCHandler } from "@orpc/server/bun-ws";
 import type { Logger } from "./logger.ts";
 import type { RpcContext } from "./rpc/context.ts";
 import { router } from "./rpc/router.ts";
+import { McpGateway } from "./mcp.ts";
 import { RunnerGateway, type RunnerSocketData } from "./runner-gateway.ts";
 
 export type ServerOptions = {
@@ -10,6 +11,7 @@ export type ServerOptions = {
   token: string;
   context: RpcContext;
   gateway: RunnerGateway;
+  mcp: McpGateway;
   log: Logger;
 };
 
@@ -43,6 +45,9 @@ export function startServer(options: ServerOptions): { port: number; stop: () =>
       const url = new URL(req.url);
       if (url.pathname === "/health") {
         return Response.json({ ok: true });
+      }
+      if (url.pathname === McpGateway.path) {
+        return options.mcp.handle(req);
       }
       if (url.pathname === RunnerGateway.path) {
         const token = options.gateway.authorize(req);

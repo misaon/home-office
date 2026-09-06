@@ -19,7 +19,8 @@ export const USAGE = `ho — Home Office command line
   ho task show <task-id>
   ho task assign <task-id> <agent|none>
   ho task move <task-id> <status> [--reason <text>]
-  ho chat <text> [--project <project>]
+  ho chat <text> [--project <project>] [--task <task-id>]
+                                              no flags: the boss triages it; --project: inbox task; --task: answer an agent's question
   ho session list | show <id> | watch [<session-id>|all]
   ho usage [--since 24h|7d]                   tokens per agent, project and day
   ho resources                                containers and volumes HO owns, with sizes

@@ -58,6 +58,9 @@ export function removeProject(
   if (current === undefined) {
     return err(notFound("project", id));
   }
+  if (current.repo.kind === "none") {
+    return err(conflict("the office itself cannot be removed"));
+  }
   const open = [...model.tasks.values()].filter(
     (t) => t.projectId === id && !isTerminal(t.status),
   ).length;

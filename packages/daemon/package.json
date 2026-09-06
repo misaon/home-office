@@ -13,6 +13,7 @@
     "@ho/sandbox-docker": "workspace:*",
     "@ho/secrets": "workspace:*",
     "@ho/store": "workspace:*",
+    "@modelcontextprotocol/sdk": "catalog:",
     "@orpc/server": "catalog:",
     "pino": "catalog:",
     "zod": "catalog:"

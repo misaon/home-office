@@ -1,10 +1,10 @@
 import type { RuntimeEvent, RuntimeSession, SandboxHandle, SandboxSpec } from "@ho/core";
 import type { Agent, Project, Session, Task, TaskArtifacts } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
-import { branchFor, cloneIntoVolume, pushFromVolume, REPO_IN_VOLUME } from "./git-bridge.ts";
+import { branchFor, prepareRepo, pushFromVolume, REPO_IN_VOLUME } from "./git-bridge.ts";
 import { LABELS } from "./images.ts";
 import { sourcePathFor } from "./mirrors.ts";
-import { rolePrompt, taskBrief } from "./prompts.ts";
+import { openingMessage, reviewPrompt, triagePrompt, workPrompt } from "./prompts.ts";
 import { deliver } from "./publish.ts";
 import type { RunnerConnection } from "./runner-gateway.ts";
 import type { SessionDeps } from "./sessions.ts";
@@ -19,6 +19,7 @@ export type SessionContext = {
   task: Task;
   agent: Agent;
   project: Project;
+  previous: Session | undefined;
   signal: AbortSignal;
 };
 export type Provisioned = {
@@ -26,14 +27,23 @@ export type Provisioned = {
   connection: RunnerConnection;
   volume: string;
   branch: string;
-  sourcePath: string;
+  sourcePath: string | null;
+  mcpToken: string;
 };
-export type Outcome = { report: string; failure: string | null; runtimeSessionId: string | null };
+export type Outcome = {
+  report: string;
+  failure: string | null;
+  runtimeSessionId: string | null;
+  sawInit: boolean;
+};
+
+const hasRepository = (project: Project): boolean => project.repo.kind !== "none";
 
 const sandboxSpec = (
   config: DaemonConfig,
   ctx: SessionContext,
   volume: string,
+  configVolume: string,
   gatewayUrl: string,
   token: string,
 ): SandboxSpec => ({
@@ -42,7 +52,7 @@ const sandboxSpec = (
   cmd: ["/usr/local/bin/ho-runner"],
   env: { HO_GATEWAY: gatewayUrl, HO_SESSION_TOKEN: token, HOME: "/home/agent", TERM: "dumb" },
   user: "1000:1000",
-  workdir: REPO_IN_VOLUME,
+  workdir: hasRepository(ctx.project) ? REPO_IN_VOLUME : "/work",
   labels: {
     [LABELS.managed]: "true",
     [LABELS.kind]: "session",
@@ -52,7 +62,7 @@ const sandboxSpec = (
   network: config.docker.network,
   volumes: [
     { name: volume, target: "/work" },
-    { name: `${volume}-claude`, target: "/home/agent/.claude" },
+    { name: configVolume, target: "/home/agent/.claude" },
   ],
   binds: [],
   tmpfs: { "/tmp": "rw,nosuid,size=256m" },
@@ -64,30 +74,38 @@ const sandboxSpec = (
   readonlyRootfs: true,
 });
 
-/** Network, task volume with the cloned repo, sandbox with the runner, and the runner's connection. */
+/** Network, task volume (with the repository when the project has one), sandbox with the runner, runner connection. */
 export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {
-  const { provider, config, gateway, home } = deps;
+  const { provider, config, gateway, mcp, home } = deps;
   const volume = `ho-task-${ctx.task.id.slice(-12)}`;
+  const configVolume = `${volume}-claude-${ctx.agent.id.slice(-8)}`;
   const branch = branchFor(ctx.task.title, ctx.task.id);
-  const sourcePath = await sourcePathFor(home, ctx.project);
-  await provider.ensureNetwork(config.docker.network, {
-    [LABELS.managed]: "true",
-    [LABELS.kind]: "network",
-  });
-  const volumeLabels = {
+  const labels = {
     [LABELS.managed]: "true",
     [LABELS.session]: ctx.session.id,
     [LABELS.project]: ctx.project.id,
   };
-  await provider.createVolume(volume, { ...volumeLabels, [LABELS.kind]: "task-volume" });
-  await provider.createVolume(`${volume}-claude`, {
-    ...volumeLabels,
-    [LABELS.kind]: "claude-config",
+  await provider.ensureNetwork(config.docker.network, {
+    [LABELS.managed]: "true",
+    [LABELS.kind]: "network",
   });
-  await cloneIntoVolume(provider, config, sourcePath, ctx.project.defaultBranch, volume, branch);
+  await provider.createVolume(volume, { ...labels, [LABELS.kind]: "task-volume" });
+  await provider.createVolume(configVolume, { ...labels, [LABELS.kind]: "claude-config" });
+  let sourcePath: string | null = null;
+  if (hasRepository(ctx.project)) {
+    sourcePath = await sourcePathFor(home, ctx.project);
+    await prepareRepo(provider, config, sourcePath, ctx.project.defaultBranch, volume, branch);
+  }
   const issued = gateway.issue(ctx.session.id, ctx.signal);
+  const mcpToken = mcp.register({
+    sessionId: ctx.session.id,
+    taskId: ctx.task.id,
+    agentId: ctx.agent.id,
+    projectId: ctx.project.id,
+    mode: ctx.session.mode,
+  });
   const sandbox = await provider.start(
-    sandboxSpec(config, ctx, volume, deps.gatewayUrl, issued.token),
+    sandboxSpec(config, ctx, volume, configVolume, deps.gatewayUrl, issued.token),
   );
   try {
     const connection = await Promise.race([
@@ -98,19 +116,31 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
         }, CONNECT_TIMEOUT_MS);
       }),
     ]);
-    return { sandbox, connection, volume, branch, sourcePath };
+    return { sandbox, connection, volume, branch, sourcePath, mcpToken };
   } catch (error) {
+    mcp.unregister(mcpToken);
     await provider.stop(sandbox, 2).catch(() => null);
     await provider.remove(sandbox).catch(() => null);
     throw error;
   }
 }
 
-export const openRuntime = (
+const promptFor = (deps: SessionDeps, ctx: SessionContext, branch: string): string => {
+  if (ctx.session.mode === "review") {
+    return reviewPrompt(ctx.agent, ctx.project, ctx.task, branch);
+  }
+  if (ctx.session.mode === "triage") {
+    return triagePrompt(ctx.agent, ctx.project, deps.office.model);
+  }
+  return workPrompt(ctx.agent, ctx.project, ctx.task, branch);
+};
+
+const openRuntime = (
   deps: SessionDeps,
   ctx: SessionContext,
   provisioned: Provisioned,
   token: string,
+  resume: string | null,
 ): Promise<RuntimeSession> =>
   deps.runtime.open(
     {
@@ -120,28 +150,37 @@ export const openRuntime = (
       model: ctx.agent.model,
       effort: ctx.agent.effort,
       maxTurns: ctx.agent.budgets.maxTurnsPerTask,
-      systemPromptAppendix: rolePrompt(ctx.agent, ctx.project, ctx.task, provisioned.branch),
-      cwd: REPO_IN_VOLUME,
-      resume: null,
+      systemPromptAppendix: promptFor(deps, ctx, provisioned.branch),
+      cwd: hasRepository(ctx.project) ? REPO_IN_VOLUME : "/work",
+      resume,
       pluginDirs: ctx.agent.skillPack === "none" ? [] : [`${PLUGINS_ROOT}/${ctx.agent.skillPack}`],
+      mcpServers: {
+        ho: { url: deps.mcpUrl, headers: { Authorization: `Bearer ${provisioned.mcpToken}` } },
+      },
     },
     provisioned.connection.channel,
     { CLAUDE_CODE_OAUTH_TOKEN: token },
   );
 
 /** Drives one prompt to its result, forwarding every event to `onEvent` (live fan-out + persistence). */
-export async function consume(
+async function consume(
   runtimeSession: RuntimeSession,
   ctx: SessionContext,
+  message: string,
   onEvent: (event: RuntimeEvent) => Promise<void>,
 ): Promise<Outcome> {
-  const outcome: Outcome = { report: "", failure: null, runtimeSessionId: null };
-  for await (const event of runtimeSession.prompt({ text: taskBrief(ctx.task) }, ctx.signal)) {
+  const outcome: Outcome = { report: "", failure: null, runtimeSessionId: null, sawInit: false };
+  for await (const event of runtimeSession.prompt({ text: message }, ctx.signal)) {
     await onEvent(event);
     switch (event.kind) {
+      case "init": {
+        outcome.sawInit = true;
+        outcome.runtimeSessionId = event.runtimeSessionId;
+        break;
+      }
       case "result": {
         outcome.report = event.text.slice(0, REPORT_MAX);
-        outcome.runtimeSessionId = event.runtimeSessionId;
+        outcome.runtimeSessionId = event.runtimeSessionId ?? outcome.runtimeSessionId;
         if (!event.ok && outcome.failure === null) {
           outcome.failure = "the agent reported an error";
         }
@@ -151,7 +190,6 @@ export async function consume(
         outcome.failure = `${event.code}: ${event.message}`;
         break;
       }
-      case "init":
       case "usage":
       case "rate_limited":
       case "text_delta":
@@ -162,6 +200,47 @@ export async function consume(
       }
     }
   }
+  if (ctx.signal.aborted && outcome.failure === null) {
+    outcome.failure = "session aborted (time budget or shutdown)";
+  }
+  return outcome;
+}
+
+/**
+ * Runs the session's single prompt, resuming the agent's earlier conversation when one exists. A resume that
+ * dies before `init` (the conversation is gone) is retried once as a fresh conversation.
+ */
+export async function runPrompt(
+  deps: SessionDeps,
+  ctx: SessionContext,
+  provisioned: Provisioned,
+  token: string,
+  onEvent: (event: RuntimeEvent) => Promise<void>,
+): Promise<Outcome> {
+  const message = openingMessage(ctx.task, ctx.session.mode, ctx.previous);
+  const resume = ctx.previous?.runtimeSessionId ?? null;
+  let runtimeSession = await openRuntime(deps, ctx, provisioned, token, resume);
+  let outcome = await consume(runtimeSession, ctx, message, onEvent);
+  if (
+    resume !== null &&
+    !outcome.sawInit &&
+    outcome.failure?.startsWith("process_exit") === true &&
+    !ctx.signal.aborted
+  ) {
+    deps.log.warn(
+      { sessionId: ctx.session.id, resume },
+      "resume failed; starting a fresh conversation",
+    );
+    await runtimeSession.close().catch(() => null);
+    runtimeSession = await openRuntime(deps, ctx, provisioned, token, null);
+    outcome = await consume(
+      runtimeSession,
+      ctx,
+      `${message}\n\n(Your earlier conversation could not be restored; the notes above are the full context.)`,
+      onEvent,
+    );
+  }
+  await runtimeSession.close().catch(() => null);
   return outcome;
 }
 
@@ -172,6 +251,9 @@ export async function publish(
   provisioned: Provisioned,
   report: string,
 ): Promise<TaskArtifacts> {
+  if (provisioned.sourcePath === null) {
+    return { report };
+  }
   await pushFromVolume(
     deps.provider,
     deps.config,

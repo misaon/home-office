@@ -47,7 +47,8 @@ export async function project(args: readonly string[]): Promise<void> {
     switch (sub) {
       case "list": {
         for (const p of await client.projects.list()) {
-          const source = p.repo.kind === "local" ? p.repo.path : p.repo.url;
+          const source =
+            p.repo.kind === "local" ? p.repo.path : p.repo.kind === "git" ? p.repo.url : "(office)";
           line(
             `${p.id}  ${p.name}  ${source}  [${p.defaultBranch}]  publish=${p.publish.mode}${p.publish.mode === "pull-request" && p.publish.draft ? " (draft)" : ""}`,
           );

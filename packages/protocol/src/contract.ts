@@ -98,8 +98,10 @@ export type TaskArtifactsInput = z.infer<typeof TaskArtifactsInput>;
 
 export const ChatSendInput = z.object({
   text: z.string().min(1).max(20000),
-  /** When given, the message also opens an inbox task in that project (the boss takes over in Phase 3). */
+  /** When given, the message also opens an inbox task in that project. Without it the boss triages the message. */
   projectId: ProjectId.optional(),
+  /** Answers a question an agent asked about this task; the task resumes. */
+  taskId: TaskId.optional(),
 });
 export type ChatSendInput = z.infer<typeof ChatSendInput>;
 export const ChatHistoryInput = z.object({ limit: z.int().positive().max(500).default(100) });

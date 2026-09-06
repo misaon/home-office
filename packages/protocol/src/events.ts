@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  Actor,
   Agent,
   Author,
   ChatMessage,
@@ -9,19 +10,12 @@ import {
   SessionState,
   Task,
   TaskArtifacts,
+  TaskNote,
   TaskPriority,
   TaskStatus,
   Usage,
 } from "./domain.ts";
 import { AgentId, EventId, ProjectId, SessionId, TaskId } from "./ids.ts";
-
-/** Who caused an event. Agents act through the daemon; the daemon itself is `system`. */
-export const Actor = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("human") }),
-  z.object({ kind: z.literal("agent"), agentId: AgentId }),
-  z.object({ kind: z.literal("system") }),
-]);
-export type Actor = z.infer<typeof Actor>;
 
 const Envelope = z.object({
   id: EventId,
@@ -56,6 +50,7 @@ export const DomainEvent = z.discriminatedUnion("type", [
     priority: TaskPriority.optional(),
   }),
   event("task.assigned", { taskId: TaskId, agentId: AgentId.nullable() }),
+  event("task.reviewer_assigned", { taskId: TaskId, reviewerId: AgentId.nullable() }),
   event("task.status_changed", {
     taskId: TaskId,
     from: TaskStatus,
@@ -63,6 +58,20 @@ export const DomainEvent = z.discriminatedUnion("type", [
     reason: z.string().max(2000).optional(),
   }),
   event("task.artifacts_changed", { taskId: TaskId, artifacts: TaskArtifacts }),
+  event("task.note_added", { taskId: TaskId, note: TaskNote }),
+  event("task.review_recorded", {
+    taskId: TaskId,
+    verdict: z.enum(["approve", "request_changes"]),
+    rounds: z.int().nonnegative(),
+  }),
+
+  /** Drives the office animation: the source agent walks over and hands the folder to the target. */
+  event("handoff.requested", {
+    taskId: TaskId,
+    fromAgentId: AgentId,
+    toAgentId: AgentId,
+    brief: z.string().max(8000),
+  }),
 
   event("chat.message_posted", { message: ChatMessage, author: Author }),
 

@@ -25,6 +25,8 @@ export type RuntimeSessionSpec = {
   resume: string | null;
   /** Plugin directories inside the sandbox (role skill packs). */
   pluginDirs: readonly string[];
+  /** Streamable HTTP MCP servers this session may call (the HO tool server, scoped by a per-session token). */
+  mcpServers: Readonly<Record<string, { url: string; headers: Readonly<Record<string, string>> }>>;
 };
 
 export type RunnerLine =

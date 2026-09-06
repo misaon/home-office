@@ -1,4 +1,4 @@
-import { createIdFactory } from "@ho/core";
+import { createIdFactory, ensureOfficeProject } from "@ho/core";
 import { createClaudeCodeRuntime } from "@ho/runtime-claude-code";
 import { createDockerProvider } from "@ho/sandbox-docker";
 import { createSecretStore } from "@ho/secrets";
@@ -10,6 +10,7 @@ import { type DaemonConfig, loadConfig, resolveHome } from "./config.ts";
 import { agentImageSpec, bridgeImageSpec, ensureImages } from "./images.ts";
 import { startGc } from "./gc.ts";
 import { createLogger } from "./logger.ts";
+import { McpGateway } from "./mcp.ts";
 import { Office } from "./office.ts";
 import { RunnerGateway } from "./runner-gateway.ts";
 import { startScheduler } from "./scheduler.ts";
@@ -76,22 +77,29 @@ export async function startDaemon(
     },
   });
   const gateway = new RunnerGateway(clock, log);
+  const mcp = new McpGateway(office, log);
+  await office.execute({ kind: "system" }, (m, ctx) => ensureOfficeProject(m, ctx));
 
   const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url");
   const startedAt = clock.now().toISOString();
   // The port is known only after listening; sessions read the URL lazily through this holder.
   const gatewayUrl = { value: "" };
+  const mcpUrl = { value: "" };
   const sessions = new SessionManager({
     office,
     provider,
     runtime,
     gateway,
+    mcp,
     secrets,
     config,
     home,
     log,
     get gatewayUrl() {
       return gatewayUrl.value;
+    },
+    get mcpUrl() {
+      return mcpUrl.value;
     },
   });
 
@@ -114,6 +122,7 @@ export async function startDaemon(
     port: config.port,
     token,
     gateway,
+    mcp,
     log,
     context: {
       office,
@@ -130,6 +139,7 @@ export async function startDaemon(
     },
   });
   gatewayUrl.value = `ws://${config.docker.gatewayHost}:${String(server.port)}`;
+  mcpUrl.value = `http://${config.docker.gatewayHost}:${String(server.port)}${McpGateway.path}`;
   const scheduler = startScheduler(office, sessions, config, log);
 
   const info: DaemonInfo = {

@@ -38,21 +38,50 @@ const bridgeSpec = (
   readonlyRootfs: true,
 });
 
+const run = async (
+  provider: SandboxProvider,
+  spec: SandboxSpec,
+): Promise<{ ok: boolean; message: string }> => {
+  const result = await provider.run(spec);
+  return { ok: result.exitCode === 0, message: result.stderr.trim() || result.stdout.trim() };
+};
+
 const runOrThrow = async (
   provider: SandboxProvider,
   spec: SandboxSpec,
   what: string,
 ): Promise<void> => {
-  const result = await provider.run(spec);
-  if (result.exitCode !== 0) {
-    throw new Error(
-      `git-bridge ${what} failed (${String(result.exitCode)}): ${result.stderr.trim() || result.stdout.trim()}`,
-    );
+  const result = await run(provider, spec);
+  if (!result.ok) {
+    throw new Error(`git-bridge ${what} failed: ${result.message}`);
   }
 };
 
-/** Clones the source repository (host checkout or host mirror, mounted read-only) into the task volume on a new branch. */
-export async function cloneIntoVolume(
+/** True when the task volume already holds a checkout (a resumed or reviewed task). */
+const hasRepo = async (
+  provider: SandboxProvider,
+  config: DaemonConfig,
+  volume: string,
+): Promise<boolean> =>
+  (
+    await run(
+      provider,
+      bridgeSpec(
+        config,
+        `${volume}-probe`,
+        ["-C", REPO_IN_VOLUME, "rev-parse", "--git-dir"],
+        volume,
+        null,
+      ),
+    )
+  ).ok;
+
+/**
+ * Makes sure the task volume holds the repository on the task branch. A fresh task clones the default branch
+ * and creates the branch; a task whose branch already exists in the source (resumed after GC, or under review)
+ * clones that branch directly.
+ */
+export async function prepareRepo(
   provider: SandboxProvider,
   config: DaemonConfig,
   sourcePath: string,
@@ -60,7 +89,23 @@ export async function cloneIntoVolume(
   volume: string,
   branch: string,
 ): Promise<void> {
+  if (await hasRepo(provider, config, volume)) {
+    return;
+  }
   const source = { path: sourcePath, readonly: true };
+  const existing = await run(
+    provider,
+    bridgeSpec(
+      config,
+      `${volume}-clone`,
+      ["clone", "-q", "--branch", branch, "--single-branch", "/src", REPO_IN_VOLUME],
+      volume,
+      source,
+    ),
+  );
+  if (existing.ok) {
+    return;
+  }
   await runOrThrow(
     provider,
     bridgeSpec(
