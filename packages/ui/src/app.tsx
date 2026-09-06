@@ -49,6 +49,9 @@ export function App(): React.JSX.Element {
             title={connection}
           />
           <FloorTabs />
+          <a href="/office-lab" className="text-xs text-gray-300 hover:text-white">
+            Office Lab
+          </a>
           <button
             type="button"
             className="ml-auto rounded bg-panel px-2 py-1 text-xs text-gray-300 hover:bg-line"

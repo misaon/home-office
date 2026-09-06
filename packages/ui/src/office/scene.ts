@@ -11,7 +11,8 @@ const LABEL_STYLE = {
   stroke: { color: "#000000", width: 2 },
 };
 
-type FloorView = { root: Container; objects: Container; width: number; height: number };
+export type FloorView = { root: Container; objects: Container; width: number; height: number };
+type SceneFrame = { x: number; y: number; width: number; height: number };
 type ActorView = {
   root: Container;
   body: Sprite;
@@ -38,10 +39,14 @@ export class OfficeScene {
   readonly #floors = new Map<string, FloorView>();
   readonly #actors = new Map<AgentId, ActorView>();
   #current: string | null = null;
+  readonly #floorRenderer: ((floor: Floor) => FloorView) | undefined;
+  frame: SceneFrame | null = null;
+  fitMode: "pixels" | "contain" = "pixels";
   onSelect: (agentId: AgentId | null) => void = () => undefined;
 
-  constructor(sprites: SpriteLibrary) {
+  constructor(sprites: SpriteLibrary, floorRenderer?: (floor: Floor) => FloorView) {
     this.#sprites = sprites;
+    this.#floorRenderer = floorRenderer;
   }
 
   async init(host: HTMLElement): Promise<void> {
@@ -101,14 +106,15 @@ export class OfficeScene {
       }
     }
     root.addChild(tiles, objects);
-    this.#stage.addChild(root);
     return { root, objects, width: t.width * TILE, height: t.height * TILE };
   }
 
   syncFloors(world: World): void {
     for (const [id, floor] of world.floors) {
       if (!this.#floors.has(id)) {
-        this.#floors.set(id, this.#buildFloor(floor));
+        const view = this.#floorRenderer?.(floor) ?? this.#buildFloor(floor);
+        this.#floors.set(id, view);
+        this.#stage.addChild(view.root);
       }
     }
     for (const [id, view] of this.#floors) {
@@ -128,11 +134,18 @@ export class OfficeScene {
 
   #fit(view: FloorView): void {
     const { width, height } = this.app.screen;
-    const scale = Math.max(1, Math.floor(Math.min(width / view.width, height / view.height)));
+    const frame = this.frame ?? { x: 0, y: 0, width: view.width, height: view.height };
+    const fit = Math.min(width / frame.width, height / frame.height);
+    const scale =
+      this.fitMode === "contain"
+        ? fit
+        : fit >= 1
+          ? Math.floor(fit)
+          : 1 / Math.ceil(1 / Math.max(fit, 0.001));
     this.#stage.scale.set(scale);
     this.#stage.position.set(
-      Math.floor((width - view.width * scale) / 2),
-      Math.floor((height - view.height * scale) / 2),
+      Math.floor((width - frame.width * scale) / 2 - frame.x * scale),
+      Math.floor((height - frame.height * scale) / 2 - frame.y * scale),
     );
   }
 
