@@ -103,6 +103,11 @@ bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--fr
 - The report shows the resulting size, the scale factor and how far furniture rises above its footprint — check
   that number before accepting a batch.
 
+`assets/reference/crops/` holds 4× enlarged cut-outs of single objects from the approved reference (a developer
+desk, the boss desk, chairs, the shared QA desk, a standing and a seated figure). Attach the cut-out of the object
+you are generating, not the whole office: the model then keeps its proportions and projection — upright monitors
+about 1.5 cells tall, chair backs 2.4 cells, people ≈5 cells tall standing — instead of flattening the object.
+
 Rules for the generation prompt (one object or one frame strip per image):
 
 1. Same projection as the reference: overhead cutaway, front faces visible, light from the top-left, the approved
