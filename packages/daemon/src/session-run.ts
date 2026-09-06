@@ -1,5 +1,13 @@
 import type { RuntimeEvent, RuntimeSession, SandboxHandle, SandboxSpec } from "@ho/core";
-import type { Agent, Project, Session, Task, TaskArtifacts } from "@ho/protocol";
+import {
+  type Agent,
+  imageRefFor,
+  type Project,
+  PROVIDERS,
+  type Session,
+  type Task,
+  type TaskArtifacts,
+} from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
 import { browserMcpServers } from "./browser.ts";
 import { branchFor, prepareRepo, pushFromVolume, REPO_IN_VOLUME } from "./git-bridge.ts";
@@ -10,7 +18,6 @@ import { deliver } from "./publish.ts";
 import type { RunnerConnection } from "./runner-gateway.ts";
 import type { SessionDeps } from "./sessions.ts";
 
-export const OAUTH_SECRET = "anthropic-oauth-token";
 const REPORT_MAX = 4000;
 const CONNECT_TIMEOUT_MS = 30_000;
 const PLUGINS_ROOT = "/opt/ho/plugins";
@@ -49,7 +56,7 @@ const sandboxSpec = (
   token: string,
 ): SandboxSpec => ({
   name: `ho-session-${ctx.session.id.slice(-12)}`,
-  image: config.docker.agentImage,
+  image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
   cmd: ["/usr/local/bin/ho-runner"],
   env: { HO_GATEWAY: gatewayUrl, HO_SESSION_TOKEN: token, HOME: "/home/agent", TERM: "dumb" },
   user: "1000:1000",
@@ -63,10 +70,20 @@ const sandboxSpec = (
   network: config.docker.network,
   volumes: [
     { name: volume, target: "/work" },
-    { name: configVolume, target: "/home/agent/.claude" },
+    // The CLI's conversation state; survives between sessions of the same task and agent (resume).
+    { name: configVolume, target: PROVIDERS[ctx.agent.provider].stateDir },
   ],
   binds: [],
-  tmpfs: { "/tmp": "rw,nosuid,size=256m" },
+  tmpfs: {
+    "/tmp": "rw,nosuid,size=256m",
+    // Docker mounts tmpfs as root 0755; the sandbox user must own its scratch directories.
+    ...Object.fromEntries(
+      PROVIDERS[ctx.agent.provider].scratchDirs.map((dir) => [
+        dir,
+        "rw,nosuid,size=128m,uid=1000,gid=1000,mode=0755",
+      ]),
+    ),
+  },
   limits: {
     memoryBytes: config.limits.memoryMb * 1024 * 1024,
     cpus: config.limits.cpus,
@@ -140,17 +157,20 @@ const openRuntime = (
   deps: SessionDeps,
   ctx: SessionContext,
   provisioned: Provisioned,
-  token: string,
+  secrets: Readonly<Record<string, string>>,
   resume: string | null,
 ): Promise<RuntimeSession> =>
-  deps.runtime.open(
+  deps.runtimes[ctx.agent.provider].open(
     {
       sessionId: ctx.session.id,
       taskId: ctx.task.id,
       agentId: ctx.agent.id,
+      provider: ctx.agent.provider,
+      auth: ctx.agent.auth,
       model: ctx.agent.model,
       effort: ctx.agent.effort,
       maxTurns: ctx.agent.budgets.maxTurnsPerTask,
+      maxUsd: ctx.agent.budgets.maxUsdPerTask ?? null,
       systemPromptAppendix: promptFor(deps, ctx, provisioned.branch),
       cwd: hasRepository(ctx.project) ? REPO_IN_VOLUME : "/work",
       resume,
@@ -167,7 +187,7 @@ const openRuntime = (
       },
     },
     provisioned.connection.channel,
-    { CLAUDE_CODE_OAUTH_TOKEN: token },
+    secrets,
   );
 
 /** Drives one prompt to its result, forwarding every event to `onEvent` (live fan-out + persistence). */
@@ -222,12 +242,12 @@ export async function runPrompt(
   deps: SessionDeps,
   ctx: SessionContext,
   provisioned: Provisioned,
-  token: string,
+  secrets: Readonly<Record<string, string>>,
   onEvent: (event: RuntimeEvent) => Promise<void>,
 ): Promise<Outcome> {
   const message = openingMessage(ctx.task, ctx.session.mode, ctx.previous);
   const resume = ctx.previous?.runtimeSessionId ?? null;
-  let runtimeSession = await openRuntime(deps, ctx, provisioned, token, resume);
+  let runtimeSession = await openRuntime(deps, ctx, provisioned, secrets, resume);
   let outcome = await consume(runtimeSession, ctx, message, onEvent);
   if (
     resume !== null &&
@@ -240,7 +260,7 @@ export async function runPrompt(
       "resume failed; starting a fresh conversation",
     );
     await runtimeSession.close().catch(() => null);
-    runtimeSession = await openRuntime(deps, ctx, provisioned, token, null);
+    runtimeSession = await openRuntime(deps, ctx, provisioned, secrets, null);
     outcome = await consume(
       runtimeSession,
       ctx,

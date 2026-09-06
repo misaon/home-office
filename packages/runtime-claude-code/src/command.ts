@@ -69,6 +69,9 @@ export function claudeArgv(
   } else {
     argv.push("--resume", spec.resume);
   }
+  if (spec.auth === "api-key" && spec.maxUsd !== null) {
+    argv.push("--max-budget-usd", String(spec.maxUsd));
+  }
   if (spec.systemPromptAppendix.trim() !== "") {
     argv.push("--append-system-prompt", spec.systemPromptAppendix);
   }

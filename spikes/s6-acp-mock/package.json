@@ -1,0 +1,12 @@
+{
+  "name": "@ho/spike-s6-acp-mock",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@agentclientprotocol/sdk": "catalog:",
+    "@ho/core": "workspace:*",
+    "@ho/protocol": "workspace:*",
+    "@ho/runtime-acp": "workspace:*"
+  }
+}

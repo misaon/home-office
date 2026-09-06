@@ -35,9 +35,13 @@ export type EffortLevel = z.infer<typeof EffortLevel>;
 export const Gender = z.enum(["female", "male", "neutral"]);
 export type Gender = z.infer<typeof Gender>;
 
-/** Which agent runtime drives the persona. More providers arrive with @ho/runtime-acp. */
-export const ProviderId = z.enum(["claude-code"]);
+/** Which agent runtime drives a persona. Claude Code speaks stream-json; the others speak ACP (see providers.ts). */
+export const ProviderId = z.enum(["claude-code", "opencode", "gemini-cli", "codex"]);
 export type ProviderId = z.infer<typeof ProviderId>;
+
+/** How a session signs in: the owner's subscription token, an API key from the secret store, or nothing (local models). */
+export const AuthKind = z.enum(["subscription", "api-key", "none"]);
+export type AuthKind = z.infer<typeof AuthKind>;
 
 export const SessionState = z.enum([
   "starting",
@@ -103,6 +107,8 @@ export const Budgets = z.object({
   maxConcurrentSessions: z.int().positive().default(1),
   maxWallMinutes: z.int().positive().default(60),
   maxReviewRounds: z.int().nonnegative().default(2),
+  /** API-key sessions only (Claude Code `--max-budget-usd`); subscriptions have no per-task price. */
+  maxUsdPerTask: z.number().positive().optional(),
 });
 export type Budgets = z.infer<typeof Budgets>;
 
@@ -179,6 +185,8 @@ export const Agent = z.object({
   role: AgentRole,
   appearance: Appearance,
   provider: ProviderId,
+  /** Existing agents predate this field and were all Claude Code on the subscription. */
+  auth: AuthKind.default("subscription"),
   model: z.string().min(1),
   effort: EffortLevel,
   basePrompt: z.string().max(4000).default(""),

@@ -66,7 +66,7 @@ home-office/
 │  ├─ daemon/                # composition root: oRPC WS server, static UI serving, runner gateway, HO MCP server, GC jobs, config
 │  ├─ sandbox-docker/        # SandboxProvider for Docker Engine API (containers, volumes, networks, exec, stats, prune)
 │  ├─ runtime-claude-code/   # AgentRuntime for Claude Code headless (stream-json codec, session resume, usage, errors)
-│  ├─ runtime-acp/           # (Phase 7) generic ACP client runtime: Gemini CLI, OpenCode, Codex
+│  ├─ runtime-acp/           # generic ACP client runtime over the runner relay: OpenCode, Gemini CLI, Codex presets
 │  ├─ intake-github/         # IntakeConnector polling GitHub Issues through the host's `gh` (comments/labels back)
 │  ├─ secrets/               # SecretStore: macOS Keychain (`security`), 0600 file fallback
 │  ├─ sim/                   # pure office simulation: floors, grid, A*, elevator, behaviours, emotions, event→intent
@@ -117,9 +117,9 @@ interface SandboxProvider {
   health(): Promise<ProviderHealth>; // API version, disk usage, reachable
 }
 
-// Which brain
+// Which brain (one runtime per provider in the catalog; see § 6a)
 interface AgentRuntime {
-  readonly id: "claude-code" | "acp" | (string & {});
+  readonly id: ProviderId; // "claude-code" | "opencode" | "gemini-cli" | "codex"
   capabilities(): RuntimeCapabilities; // resume, images, structuredOutput, effortLevels, models
   open(spec: RuntimeSessionSpec, channel: RunnerChannel): Promise<RuntimeSession>;
 }
@@ -190,6 +190,13 @@ Session strategy: one Claude session per (agent, task). Follow-ups (`review feed
 Sandbox extras: Claude settings travel inline (`--settings '<json>'`) and include the **RTK** `PreToolUse` hook (`rtk hook claude`) that rewrites Bash commands to compact equivalents; role skill packs from `@ho/agent-kit` are baked into `/opt/ho/plugins/<pack>` and loaded with `--plugin-dir` according to `agent.skillPack` (`worker`, `reviewer`, `boss`, or `none`). The `system/init` line becomes an `init` runtime event (model, tools, plugins, MCP servers) so the UI and `ho session watch` can show what a session loaded.
 
 **Browser tooling (D15).** Work and review sessions also get two stdio MCP servers that live in the image (`/opt/ho/mcp`): Playwright MCP and Chrome DevTools MCP, both pointed at the distribution's headless Chromium with an isolated profile and `--no-sandbox` (Chromium's own sandbox needs user namespaces the hardened container does not grant; the container remains the boundary). Dev servers the agent starts bind to 127.0.0.1 inside the same container, so the browser reaches them without any host access. Screenshots and traces go to the `/tmp/browser` tmpfs; the prompt tells agents to copy what belongs in the repository. Triage sessions get no browser. Bun, Node and npm are available for the agents' projects.
+
+## 6a. Providers, the ACP runtime and image variants (D18)
+
+- **Catalog.** `PROVIDERS` in `@ho/protocol` describes each provider: protocol (`stream-json` for Claude Code, `acp` otherwise), auth kinds (`subscription` | `api-key` | `none`), suggested models (`freeFormModels` lets a CLI accept any id), effort support, the CLI's state directory (mounted from the per-task config volume so conversations resume) and scratch directories (tmpfs on the read-only rootfs). Agents carry `auth`; `createAgent`/`updateAgent` validate provider/auth/model/effort against the catalog and a provider switch falls back to that provider's defaults. The secret an agent needs follows its provider (`secretKeysFor`); for OpenCode it follows the model's `provider/` prefix (`anthropic/…` → `anthropic-api-key`, `ollama/…` → none). Secrets travel as environment only (`SECRET_ENV`).
+- **ACP runtime.** `@ho/runtime-acp` speaks the Agent Client Protocol (JSON-RPC over the agent's stdio, relayed by `ho-runner`) with the official SDK: `initialize` (protocol 1, no fs/terminal capabilities: the agent's own tools act inside the sandbox) → on `auth_required`, `authenticate` with the preset's preferred method → `session/new` with the office MCP server (http) and the browser servers (stdio), or `session/load` when the agent advertises it and the task has a resume id → one `session/prompt` per office session. `agent_message_chunk` → `text_delta`, `tool_call`/`tool_call_update` → `tool_call`/`tool_result`, permission requests are answered with the most permissive option and surfaced as `permission_request`, the stop reason becomes `result` (or `max_turns`). The system prompt appendix is prepended to the first prompt of a new conversation. Presets: `opencode acp --cwd` with `OPENCODE_CONFIG_CONTENT` (model, open permissions, no autoupdate/share), `gemini --acp --model … --approval-mode yolo`, `codex-acp` (Codex's default model).
+- **Images.** One Dockerfile, one target per provider (`base` → `claude-code` | `opencode` | `gemini-cli` | `codex`); refs `ho/agent:dev` (Claude Code) and `ho/agent-<provider>:dev`. `ensureImages`/`imageStatus` cover Claude Code plus every provider the roster uses; the session's sandbox uses its provider's image, state dir and scratch tmpfs.
+- **API-key mode.** A Claude Code agent with `auth: "api-key"` receives `ANTHROPIC_API_KEY` instead of the OAuth token and, when `budgets.maxUsdPerTask` is set, `--max-budget-usd`.
 
 ## 7. Orchestration and the collaboration protocol
 
@@ -271,6 +278,6 @@ Left: office canvas (current floor) with floor tabs and building strip. Right: c
 ## 15. Extensibility roadmap
 
 - **GCP `SandboxProvider`** (Cloud Run Jobs or GKE Autopilot): same `SandboxSpec`; runner dials back over a tunnel/HTTPS; git-bridge pushes to the remote instead of a host path.
-- **Runtimes**: `runtime-acp` covers Gemini CLI (`gemini --acp`), OpenCode (`opencode acp`, local models), Codex (`codex-acp`). Anthropic API-key mode is a `SecretStore` entry plus `ANTHROPIC_API_KEY` for `claude`.
+- **Runtimes**: done in Phase 7 (§ 6a). Next candidates: Codex model/effort through `session/set_config_option`, per-provider usage accounting (ACP's `usage_update` reports context fill, not tokens), Gemini/Codex effort knobs.
 - **Connectors**: Jira, GitLab issues, Linear via the same `IntakeConnector`.
 - **Multi-floor variants**: floors per team instead of per project are a template change only.

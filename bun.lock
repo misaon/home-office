@@ -55,6 +55,7 @@
         "@ho/core": "workspace:*",
         "@ho/intake-github": "workspace:*",
         "@ho/protocol": "workspace:*",
+        "@ho/runtime-acp": "workspace:*",
         "@ho/runtime-claude-code": "workspace:*",
         "@ho/sandbox-docker": "workspace:*",
         "@ho/secrets": "workspace:*",
@@ -86,6 +87,15 @@
       "name": "@ho/runner",
       "version": "0.0.0",
       "dependencies": {
+        "@ho/protocol": "workspace:*",
+      },
+    },
+    "packages/runtime-acp": {
+      "name": "@ho/runtime-acp",
+      "version": "0.0.0",
+      "dependencies": {
+        "@agentclientprotocol/sdk": "catalog:",
+        "@ho/core": "workspace:*",
         "@ho/protocol": "workspace:*",
       },
     },
@@ -180,8 +190,19 @@
       "name": "@ho/spike-s5-git-bridge",
       "version": "0.0.0",
     },
+    "spikes/s6-acp-mock": {
+      "name": "@ho/spike-s6-acp-mock",
+      "version": "0.0.0",
+      "dependencies": {
+        "@agentclientprotocol/sdk": "catalog:",
+        "@ho/core": "workspace:*",
+        "@ho/protocol": "workspace:*",
+        "@ho/runtime-acp": "workspace:*",
+      },
+    },
   },
   "catalog": {
+    "@agentclientprotocol/sdk": "1.4.0",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@orpc/client": "1.15.0",
     "@orpc/contract": "1.15.0",
@@ -207,6 +228,8 @@
     "zustand": "5.0.15",
   },
   "packages": {
+    "@agentclientprotocol/sdk": ["@agentclientprotocol/sdk@1.4.0", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-/eufudw+aFY1LKLolT6yFE6UMmYRl7fMJ/DEONSIyR6wI3slHWITBsANRGqXEY8FRzqUxwh7QEaGiZHcJPVThg=="],
+
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.10.2", "", {}, "sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w=="],
 
     "@emnapi/core": ["@emnapi/core@1.11.2", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.2", "tslib": "^2.4.0" } }, "sha512-TC8MkTuZUtcTSiFeuC0ksCh9QIJ5+F21MvZ4Wn4ORfYaFJ/0dsiudv5tVkejgwZlwQ39jL9WWDe2lz8x0WglOA=="],
@@ -287,6 +310,8 @@
 
     "@ho/runner": ["@ho/runner@workspace:packages/runner"],
 
+    "@ho/runtime-acp": ["@ho/runtime-acp@workspace:packages/runtime-acp"],
+
     "@ho/runtime-claude-code": ["@ho/runtime-claude-code@workspace:packages/runtime-claude-code"],
 
     "@ho/sandbox-docker": ["@ho/sandbox-docker@workspace:packages/sandbox-docker"],
@@ -302,6 +327,8 @@
     "@ho/spike-s4-orpc-ws": ["@ho/spike-s4-orpc-ws@workspace:spikes/s4-orpc-ws"],
 
     "@ho/spike-s5-git-bridge": ["@ho/spike-s5-git-bridge@workspace:spikes/s5-git-bridge"],
+
+    "@ho/spike-s6-acp-mock": ["@ho/spike-s6-acp-mock@workspace:spikes/s6-acp-mock"],
 
     "@ho/store": ["@ho/store@workspace:packages/store"],
 

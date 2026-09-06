@@ -2,6 +2,7 @@ import { eventIterator, oc } from "@orpc/contract";
 import { z } from "zod";
 import {
   Agent,
+  AuthKind,
   Budgets,
   ChatMessage,
   IntakePolicy,
@@ -18,6 +19,7 @@ import {
 } from "./domain.ts";
 import { StoredEvent } from "./events.ts";
 import { IntakePollResult, IntakeStatus } from "./intake.ts";
+import { SecretKeyName } from "./providers.ts";
 import { AgentId, ProjectId, SessionId, TaskId } from "./ids.ts";
 import { Doctor, LiveEvent, ResourceInventory } from "./runtime-events.ts";
 
@@ -77,7 +79,11 @@ const AgentFields = Agent.pick({
   basePrompt: true,
   skillPack: true,
   projectIds: true,
-}).extend({ budgets: Budgets.prefault({}) });
+}).extend({
+  /** Omitted: the provider's default (subscription for Claude Code, API key elsewhere). */
+  auth: AuthKind.optional(),
+  budgets: Budgets.prefault({}),
+});
 export const AgentCreateInput = AgentFields;
 export type AgentCreateInput = z.infer<typeof AgentCreateInput>;
 /** See ProjectPatch: a model change must keep the persona, skill pack, projects and budgets. */
@@ -87,6 +93,7 @@ const AgentPatch = z
     role: Agent.shape.role,
     appearance: Agent.shape.appearance,
     provider: Agent.shape.provider,
+    auth: AuthKind,
     model: Agent.shape.model,
     effort: Agent.shape.effort,
     basePrompt: Agent.shape.basePrompt.unwrap(),
@@ -147,9 +154,6 @@ export const SessionListInput = z.object({
 export type SessionListInput = z.infer<typeof SessionListInput>;
 export const SessionStreamInput = z.object({ sessionId: SessionId.optional() });
 export type SessionStreamInput = z.infer<typeof SessionStreamInput>;
-
-export const SecretKeyName = z.enum(["anthropic-oauth-token", "anthropic-api-key", "github-token"]);
-export type SecretKeyName = z.infer<typeof SecretKeyName>;
 
 export const UsageSummaryInput = z.object({
   sinceHours: z

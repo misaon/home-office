@@ -4,5 +4,6 @@ export * from "./events.ts";
 export * from "./ids.ts";
 export * from "./intake.ts";
 export * from "./mcp.ts";
+export * from "./providers.ts";
 export * from "./runner.ts";
 export * from "./runtime-events.ts";

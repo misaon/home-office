@@ -14,24 +14,20 @@ import {
 } from "@ho/core";
 import type {
   LiveEvent,
+  ProviderId,
   Session,
   SessionId,
   SessionMode,
   SessionState,
   TaskId,
 } from "@ho/protocol";
+import { secretEnvFor } from "./auth.ts";
 import type { DaemonConfig } from "./config.ts";
 import type { Logger } from "./logger.ts";
 import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
 import type { RunnerGateway } from "./runner-gateway.ts";
-import {
-  OAUTH_SECRET,
-  provision,
-  type Provisioned,
-  runPrompt,
-  type SessionContext,
-} from "./session-run.ts";
+import { provision, type Provisioned, runPrompt, type SessionContext } from "./session-run.ts";
 import { settle } from "./settle.ts";
 
 const SYSTEM = { kind: "system" } as const;
@@ -39,7 +35,7 @@ const SYSTEM = { kind: "system" } as const;
 export type SessionDeps = {
   office: Office;
   provider: SandboxProvider;
-  runtime: AgentRuntime;
+  runtimes: Readonly<Record<ProviderId, AgentRuntime>>;
   gateway: RunnerGateway;
   mcp: McpGateway;
   secrets: SecretStore;
@@ -160,12 +156,7 @@ export class SessionManager {
     const sessionId = ctx.session.id;
     let provisioned: Provisioned | null = null;
     try {
-      const token = await secrets.get(OAUTH_SECRET);
-      if (token === null) {
-        throw new Error(
-          `secret "${OAUTH_SECRET}" is missing; store the output of \`claude setup-token\` first`,
-        );
-      }
+      const secretEnv = await secretEnvFor(secrets, ctx.agent);
       provisioned = await provision(this.#deps, ctx);
       await this.#state(sessionId, "starting", { sandboxId: provisioned.sandbox.id });
       log.info(
@@ -178,7 +169,7 @@ export class SessionManager {
         "runner connected",
       );
       await this.#state(sessionId, "running");
-      const outcome = await runPrompt(this.#deps, ctx, provisioned, token, (event) =>
+      const outcome = await runPrompt(this.#deps, ctx, provisioned, secretEnv, (event) =>
         this.#onEvent(ctx, event),
       );
       await this.#state(sessionId, "stopping");

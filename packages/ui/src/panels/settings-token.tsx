@@ -10,6 +10,21 @@ const KEYS: { key: SecretKeyName; label: string; hint: string }[] = [
     hint: "Run `claude setup-token` in a terminal and paste the result. Stored in the Keychain, never in the log.",
   },
   {
+    key: "anthropic-api-key",
+    label: "Anthropic API key",
+    hint: "For Claude Code agents set to api-key auth (pay per use, optional USD budget per task) and for OpenCode with anthropic/… models.",
+  },
+  {
+    key: "openai-api-key",
+    label: "OpenAI API key",
+    hint: "Codex agents and OpenCode with openai/… models.",
+  },
+  {
+    key: "gemini-api-key",
+    label: "Gemini API key",
+    hint: "Gemini CLI agents and OpenCode with google/… models (Google AI Studio key).",
+  },
+  {
     key: "github-token",
     label: "GitHub token",
     hint: "Optional; used by `gh pr create` for pull requests.",

@@ -1,5 +1,4 @@
 import { createIdFactory, ensureOfficeProject } from "@ho/core";
-import { createClaudeCodeRuntime } from "@ho/runtime-claude-code";
 import { createDockerProvider } from "@ho/sandbox-docker";
 import { createSecretStore } from "@ho/secrets";
 import { createSqliteEventStore, openDatabase } from "@ho/store";
@@ -15,6 +14,7 @@ import { McpGateway } from "./mcp.ts";
 import { Office } from "./office.ts";
 import { RunnerGateway } from "./runner-gateway.ts";
 import { createRpcContext } from "./rpc/context.ts";
+import { createRuntimes } from "./runtimes.ts";
 import { startServer } from "./server.ts";
 import { SessionManager } from "./sessions.ts";
 
@@ -63,12 +63,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     socket: config.docker.socket,
     platform: config.docker.platform,
   });
-  const runtime = createClaudeCodeRuntime({
-    clock,
-    onStderr: (text) => {
-      log.debug({ stderr: text.slice(0, 500) }, "claude stderr");
-    },
-  });
+  const runtimes = createRuntimes(log, clock);
   const gateway = new RunnerGateway(clock, log);
   const mcp = new McpGateway(office, log);
   const gate = new HandoffGate(log);
@@ -82,7 +77,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   const sessions = new SessionManager({
     office,
     provider,
-    runtime,
+    runtimes,
     gateway,
     mcp,
     secrets,

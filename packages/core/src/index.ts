@@ -15,6 +15,7 @@ export * from "./ids.ts";
 export * from "./model/read-model.ts";
 export * from "./model/reduce.ts";
 export * from "./ports.ts";
+export * from "./providers.ts";
 export * from "./repos.ts";
 export * from "./result.ts";
 export * from "./runtime.ts";

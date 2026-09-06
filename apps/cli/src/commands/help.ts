@@ -3,7 +3,8 @@ export const USAGE = `ho — Home Office command line
   ho daemon [--ui]                            run the daemon in the foreground (--ui: print the office URL)
   ho health | doctor                          doctor: docker, images, secrets, sessions, disk
   ho image build                              build the agent and git-bridge images
-  ho secret status | set <key> | rm <key>     keys: anthropic-oauth-token, anthropic-api-key, github-token
+  ho secret status | set <key> | rm <key>     keys: anthropic-oauth-token, anthropic-api-key, openai-api-key,
+                                              gemini-api-key, github-token
                                               (value via stdin or hidden prompt, never argv)
   ho project list
   ho project add <name> (--path <dir> | --url <git-url>) [--branch main] [--pr on] [--draft off]
@@ -12,10 +13,11 @@ export const USAGE = `ho — Home Office command line
                                               intake: GitHub issues of the project become mail for the boss
   ho project rm <project>
   ho agent list
-  ho agent add <name> --role boss|worker|reviewer|clerk [--model sonnet] [--effort medium]
+  ho agent add <name> --role boss|worker|reviewer|clerk [--provider claude-code|opencode|gemini-cli|codex]
+               [--auth subscription|api-key|none] [--model <id>] [--effort medium]
                [--gender neutral] [--sprite agent-a] [--project <project>]... [--prompt <text>]
-               [--skills worker|reviewer|boss|none]   (default: the role's pack)
-  ho agent set <agent> [--model m] [--effort e] [--sprite s] [--prompt t] [--skills p]
+               [--skills worker|reviewer|boss|none]   (defaults: the provider's model/auth, the role's pack)
+  ho agent set <agent> [--provider p] [--auth a] [--model m] [--effort e] [--sprite s] [--prompt t] [--skills p]
                [--project <project>]...      (--project replaces the whole membership list)
   ho agent rm <agent>
   ho task list [--project <project>] [--status a,b]

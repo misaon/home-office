@@ -2,6 +2,7 @@ import type { Agent, AgentCreateInput, AgentId, AgentUpdateInput, ProjectId } fr
 import { conflict, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { err, ok } from "../result.ts";
+import { defaultChoice, validateChoice } from "../providers.ts";
 import { isActive } from "../tasks/transitions.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
 import { definedOnly } from "./projects.ts";
@@ -34,7 +35,23 @@ export function createAgent(
   if (missing !== undefined) {
     return err(notFound("project", missing));
   }
-  const agent: Agent = { id: ctx.ids.agent(), ...input, createdAt: ctx.now, updatedAt: ctx.now };
+  const auth = input.auth ?? defaultChoice(input.provider).auth;
+  const choice = validateChoice({
+    provider: input.provider,
+    auth,
+    model: input.model,
+    effort: input.effort,
+  });
+  if (!choice.ok) {
+    return choice;
+  }
+  const agent: Agent = {
+    id: ctx.ids.agent(),
+    ...input,
+    auth,
+    createdAt: ctx.now,
+    updatedAt: ctx.now,
+  };
   return ok({
     events: [{ type: "agent.created", actor: ctx.actor, payload: { agent } }],
     value: agent,
@@ -60,7 +77,16 @@ export function updateAgent(
   if (missing !== undefined) {
     return err(notFound("project", missing));
   }
-  const agent: Agent = { ...current, ...definedOnly(input.patch), updatedAt: ctx.now };
+  const merged: Agent = { ...current, ...definedOnly(input.patch), updatedAt: ctx.now };
+  // A provider switch keeps whatever still fits and takes the new provider's defaults for the rest.
+  const agent: Agent =
+    input.patch.provider !== undefined && input.patch.provider !== current.provider
+      ? { ...merged, ...defaultChoice(merged.provider), ...definedOnly(input.patch) }
+      : merged;
+  const choice = validateChoice(agent);
+  if (!choice.ok) {
+    return choice;
+  }
   return ok({
     events: [{ type: "agent.updated", actor: ctx.actor, payload: { agent } }],
     value: agent,

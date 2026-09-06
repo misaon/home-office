@@ -1,0 +1,14 @@
+{
+  "name": "@ho/runtime-acp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "catalog:",
+    "@ho/core": "workspace:*",
+    "@ho/protocol": "workspace:*"
+  }
+}

@@ -1,4 +1,5 @@
-import type { ImageSpec, SandboxProvider } from "@ho/core";
+import type { ImageSpec, ReadModel, SandboxProvider } from "@ho/core";
+import { imageRefFor, type ProviderId } from "@ho/protocol";
 import { createDockerApi } from "@ho/sandbox-docker";
 import { $, CryptoHasher, Glob } from "bun";
 import { existsSync } from "node:fs";
@@ -63,15 +64,30 @@ async function syncPlugins(resources: Resources): Promise<void> {
   await cp(resources.pluginsSource, target, { recursive: true });
 }
 
-async function agentImageSpec(config: DaemonConfig, resources: Resources): Promise<ImageSpec> {
+/** Provider variants the roster needs: Claude Code always, plus every provider some agent uses. */
+export const neededVariants = (model: Pick<ReadModel, "agents">): ProviderId[] => [
+  "claude-code",
+  ...[...new Set([...model.agents.values()].map((a) => a.provider))].filter(
+    (p): p is Exclude<ProviderId, "claude-code"> => p !== "claude-code",
+  ),
+];
+
+/** One spec per variant; they share the context (and its hash) and differ in build target and ref. */
+async function agentImageSpecs(
+  config: DaemonConfig,
+  resources: Resources,
+  variants: readonly ProviderId[],
+): Promise<ImageSpec[]> {
   const context = resources.imageContext("agent");
-  return {
-    ref: config.docker.agentImage,
+  const contentHash = await hashTree(context);
+  return variants.map((variant) => ({
+    ref: imageRefFor(config.docker.agentImage, variant),
     contextDir: context,
+    target: variant,
     platform: config.docker.platform,
     labels: IMAGE_LABELS,
-    contentHash: await hashTree(context),
-  };
+    contentHash,
+  }));
 }
 
 async function bridgeImageSpec(config: DaemonConfig, resources: Resources): Promise<ImageSpec> {
@@ -89,12 +105,13 @@ export async function ensureImages(
   provider: SandboxProvider,
   config: DaemonConfig,
   resources: Resources,
+  variants: readonly ProviderId[],
   onLine?: (line: string) => void,
 ): Promise<void> {
   await ensureRunner(resources, onLine);
   await syncPlugins(resources);
   for (const spec of [
-    await agentImageSpec(config, resources),
+    ...(await agentImageSpecs(config, resources, variants)),
     await bridgeImageSpec(config, resources),
   ]) {
     onLine?.(`ensuring ${spec.ref} (${spec.contentHash})`);
@@ -108,9 +125,13 @@ export type ImageStatus = { ref: string; present: boolean; upToDate: boolean };
 export async function imageStatus(
   config: DaemonConfig,
   resources: Resources,
+  variants: readonly ProviderId[],
 ): Promise<ImageStatus[]> {
   const api = createDockerApi(config.docker.socket);
-  const specs = [await agentImageSpec(config, resources), await bridgeImageSpec(config, resources)];
+  const specs = [
+    ...(await agentImageSpecs(config, resources, variants)),
+    await bridgeImageSpec(config, resources),
+  ];
   return Promise.all(
     specs.map(async (spec) => {
       const hash = await imageHash(api, spec.ref);

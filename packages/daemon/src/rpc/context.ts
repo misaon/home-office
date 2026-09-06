@@ -1,7 +1,7 @@
 import type { EventStore, SandboxProvider, SecretStore } from "@ho/core";
 import type { UsageSummary } from "@ho/protocol";
 import type { DaemonConfig } from "../config.ts";
-import { ensureImages, type ImageStatus, imageStatus } from "../images.ts";
+import { ensureImages, type ImageStatus, imageStatus, neededVariants } from "../images.ts";
 import type { Resources } from "../paths.ts";
 import { usageSummary } from "../usage.ts";
 import type { HandoffGate } from "../handoff-gate.ts";
@@ -42,7 +42,8 @@ export type RpcContextDeps = Pick<
 /** Binds the image, GC and usage operations the RPC handlers expose to the daemon's own services. */
 export const createRpcContext = ({ resources, store, ...deps }: RpcContextDeps): RpcContext => ({
   ...deps,
-  buildImages: (onLine) => ensureImages(deps.provider, deps.config, resources, onLine),
-  imageStatus: () => imageStatus(deps.config, resources),
+  buildImages: (onLine) =>
+    ensureImages(deps.provider, deps.config, resources, neededVariants(deps.office.model), onLine),
+  imageStatus: () => imageStatus(deps.config, resources, neededVariants(deps.office.model)),
   usage: (sinceHours) => usageSummary(deps.office, store, sinceHours),
 });

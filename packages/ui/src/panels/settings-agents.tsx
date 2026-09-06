@@ -1,11 +1,20 @@
-import { type Agent, type AgentUpdateInput, AgentRole, EffortLevel, Gender } from "@ho/protocol";
+import {
+  type Agent,
+  type AgentUpdateInput,
+  AgentRole,
+  type EffortLevel,
+  Gender,
+  PROVIDERS,
+  type ProviderId,
+} from "@ho/protocol";
 import { useState } from "react";
 import { getClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
+import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
 
 const ROLES = AgentRole.options;
-const EFFORTS = EffortLevel.options;
 const GENDERS = Gender.options;
+/** Claude Code aliases per role (D12); other providers start from their catalog default. */
 const DEFAULT_MODEL: Record<AgentRole, string> = {
   boss: "opus",
   worker: "sonnet",
@@ -13,11 +22,9 @@ const DEFAULT_MODEL: Record<AgentRole, string> = {
   clerk: "haiku",
 };
 
-type Draft = {
+type Draft = Choice & {
   name: string;
   role: AgentRole;
-  model: string;
-  effort: EffortLevel;
   spriteSet: string;
   gender: Gender;
   basePrompt: string;
@@ -26,12 +33,26 @@ type Draft = {
 const emptyDraft = (spriteSet: string): Draft => ({
   name: "",
   role: "worker",
+  provider: "claude-code",
+  auth: "subscription",
   model: "sonnet",
   effort: "medium",
   spriteSet,
   gender: "neutral",
   basePrompt: "",
 });
+
+const choiceOf = (agent: Agent): Choice => ({
+  provider: agent.provider,
+  auth: agent.auth,
+  model: agent.model,
+  effort: agent.effort,
+});
+
+const effortFor = (provider: ProviderId, current: EffortLevel): EffortLevel => {
+  const levels = PROVIDERS[provider].effortLevels;
+  return levels.length === 0 || levels.includes(current) ? current : (levels[0] ?? current);
+};
 
 type RowProps = { agent: Agent; snapshot: Snapshot; onError: (e: unknown) => void };
 
@@ -64,33 +85,13 @@ function AgentRow({ agent, snapshot, onError }: RowProps): React.JSX.Element {
         </button>
       </div>
       <div className="mt-1 grid grid-cols-2 gap-1 text-[11px]">
-        <label className="flex items-center gap-1">
-          model
-          <input
-            className="w-full rounded bg-ink px-1"
-            defaultValue={agent.model}
-            onBlur={(e) => {
-              const value = e.target.value.trim();
-              if (value !== "" && value !== agent.model) {
-                update({ model: value });
-              }
-            }}
-          />
-        </label>
-        <label className="flex items-center gap-1">
-          effort
-          <select
-            className="rounded bg-ink px-1"
-            value={agent.effort}
-            onChange={(e) => {
-              update({ effort: EffortLevel.parse(e.target.value) });
-            }}
-          >
-            {EFFORTS.map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </select>
-        </label>
+        <ProviderModelFields
+          dense
+          value={choiceOf(agent)}
+          onChange={(next) => {
+            update(next);
+          }}
+        />
         <label className="flex items-center gap-1">
           sprite
           <select
@@ -157,7 +158,8 @@ function NewAgent({ onError }: { onError: (e: unknown) => void }): React.JSX.Ele
       .create({
         name: draft.name.trim(),
         role: draft.role,
-        provider: "claude-code",
+        provider: draft.provider,
+        auth: draft.auth,
         model: draft.model.trim(),
         effort: draft.effort,
         appearance: { spriteSet: draft.spriteSet, gender: draft.gender },
@@ -183,31 +185,23 @@ function NewAgent({ onError }: { onError: (e: unknown) => void }): React.JSX.Ele
         value={draft.role}
         onChange={(e) => {
           const role = AgentRole.parse(e.target.value);
-          setDraft({ ...draft, role, model: DEFAULT_MODEL[role] });
+          setDraft({
+            ...draft,
+            role,
+            ...(draft.provider === "claude-code" ? { model: DEFAULT_MODEL[role] } : {}),
+          });
         }}
       >
         {ROLES.map((x) => (
           <option key={x}>{x}</option>
         ))}
       </select>
-      <input
-        className="rounded bg-panel px-2 py-1"
-        value={draft.model}
-        onChange={(e) => {
-          setDraft({ ...draft, model: e.target.value });
+      <ProviderModelFields
+        value={draft}
+        onChange={(next) => {
+          setDraft({ ...draft, ...next, effort: effortFor(next.provider, next.effort) });
         }}
       />
-      <select
-        className="rounded bg-panel px-1 py-1"
-        value={draft.effort}
-        onChange={(e) => {
-          setDraft({ ...draft, effort: EffortLevel.parse(e.target.value) });
-        }}
-      >
-        {EFFORTS.map((x) => (
-          <option key={x}>{x}</option>
-        ))}
-      </select>
       <select
         className="rounded bg-panel px-1 py-1"
         value={draft.spriteSet}

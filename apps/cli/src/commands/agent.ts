@@ -1,4 +1,4 @@
-import { AgentRole, EffortLevel, Gender } from "@ho/protocol";
+import { AgentRole, AuthKind, EffortLevel, Gender, PROVIDERS, ProviderId } from "@ho/protocol";
 import { parse, required, str } from "../args.ts";
 import { withClient } from "../client.ts";
 import { subcommand } from "./help.ts";
@@ -29,7 +29,7 @@ export async function agent(args: readonly string[]): Promise<void> {
       case "list": {
         for (const a of await client.agents.list()) {
           line(
-            `${a.id}  ${a.name}  ${a.role}  ${a.provider}/${a.model}@${a.effort}  skills=${a.skillPack}  projects=${String(a.projectIds.length)}`,
+            `${a.id}  ${a.name}  ${a.role}  ${a.provider}/${a.model}@${a.effort} (${a.auth})  skills=${a.skillPack}  projects=${String(a.projectIds.length)}`,
           );
         }
         return;
@@ -38,6 +38,8 @@ export async function agent(args: readonly string[]): Promise<void> {
         const { projects, remaining } = splitProjects(rest);
         const parsed = parse(remaining, [
           "role",
+          "provider",
+          "auth",
           "model",
           "effort",
           "gender",
@@ -56,6 +58,9 @@ export async function agent(args: readonly string[]): Promise<void> {
           projects.map(async (ref) => (await findProject(client, ref)).id),
         );
         const prompt = str(parsed, "prompt");
+        const provider = ProviderId.parse(str(parsed, "provider") ?? "claude-code");
+        const catalog = PROVIDERS[provider];
+        const auth = str(parsed, "auth");
         print(
           await client.agents.create({
             name,
@@ -64,9 +69,12 @@ export async function agent(args: readonly string[]): Promise<void> {
               spriteSet: str(parsed, "sprite") ?? "agent-a",
               gender: Gender.parse(str(parsed, "gender") ?? "neutral"),
             },
-            provider: "claude-code",
-            model: str(parsed, "model") ?? "sonnet",
-            effort: EffortLevel.parse(str(parsed, "effort") ?? "medium"),
+            provider,
+            ...(auth === undefined ? {} : { auth: AuthKind.parse(auth) }),
+            model: str(parsed, "model") ?? catalog.defaultModel,
+            effort: EffortLevel.parse(
+              str(parsed, "effort") ?? (catalog.effortLevels.includes("medium") ? "medium" : "low"),
+            ),
             ...(prompt === undefined ? {} : { basePrompt: prompt }),
             skillPack,
             projectIds,
@@ -76,7 +84,15 @@ export async function agent(args: readonly string[]): Promise<void> {
       }
       case "set": {
         const { projects, remaining } = splitProjects(rest);
-        const parsed = parse(remaining, ["model", "effort", "sprite", "prompt", "skills"]);
+        const parsed = parse(remaining, [
+          "provider",
+          "auth",
+          "model",
+          "effort",
+          "sprite",
+          "prompt",
+          "skills",
+        ]);
         const ref = parsed.positionals[0];
         if (ref === undefined) {
           throw new Error("agent reference is required");
@@ -90,10 +106,14 @@ export async function agent(args: readonly string[]): Promise<void> {
         const sprite = str(parsed, "sprite");
         const prompt = str(parsed, "prompt");
         const skills = str(parsed, "skills");
+        const provider = str(parsed, "provider");
+        const auth = str(parsed, "auth");
         print(
           await client.agents.update({
             id: current.id,
             patch: {
+              ...(provider === undefined ? {} : { provider: ProviderId.parse(provider) }),
+              ...(auth === undefined ? {} : { auth: AuthKind.parse(auth) }),
               ...(model === undefined ? {} : { model }),
               ...(effort === undefined ? {} : { effort: EffortLevel.parse(effort) }),
               ...(sprite === undefined

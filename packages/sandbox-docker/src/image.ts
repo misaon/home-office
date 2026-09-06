@@ -60,6 +60,9 @@ export async function buildImage(
   if (spec.dockerfile !== undefined) {
     args.push("-f", spec.dockerfile);
   }
+  if (spec.target !== undefined) {
+    args.push("--target", spec.target);
+  }
   args.push(spec.contextDir);
   const proc = Bun.spawn(args, { stdout: "pipe", stderr: "pipe" });
   const report = (line: string): void => {

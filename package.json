@@ -9,9 +9,11 @@
       "spikes/s1-claude-alpine",
       "spikes/s3-docker-api",
       "spikes/s4-orpc-ws",
-      "spikes/s5-git-bridge"
+      "spikes/s5-git-bridge",
+      "spikes/s6-acp-mock"
     ],
     "catalog": {
+      "@agentclientprotocol/sdk": "1.4.0",
       "@modelcontextprotocol/sdk": "1.30.0",
       "@orpc/client": "1.15.0",
       "@orpc/contract": "1.15.0",

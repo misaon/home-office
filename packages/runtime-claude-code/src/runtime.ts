@@ -11,6 +11,7 @@ import { type ClaudeCommandOptions, claudeArgv, userMessage } from "./command.ts
 import { normalizeLine } from "./stream-json.ts";
 
 export const OAUTH_TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN";
+export const API_KEY_ENV = "ANTHROPIC_API_KEY";
 
 type Line = { stream: "stdout" | "stderr"; text: string } | { stream: "exit"; code: number | null };
 
@@ -66,13 +67,15 @@ export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions = {}): Age
       const claudeSessionId = spec.resume ?? crypto.randomUUID();
       let resumeToken: string | null = spec.resume;
       const reader = new Reader(channel.lines());
-      const token = secrets[OAUTH_TOKEN_ENV];
-      if (token === undefined) {
-        throw new Error(`${OAUTH_TOKEN_ENV} is not available for this session`);
+      // Subscription sessions carry the OAuth token, API-key sessions the key; never both.
+      const credential = spec.auth === "api-key" ? API_KEY_ENV : OAUTH_TOKEN_ENV;
+      const value = secrets[credential];
+      if (value === undefined) {
+        throw new Error(`${credential} is not available for this session`);
       }
       await channel.spawn(
         claudeArgv(spec, claudeSessionId, options),
-        { [OAUTH_TOKEN_ENV]: token },
+        { [credential]: value },
         spec.cwd,
       );
 

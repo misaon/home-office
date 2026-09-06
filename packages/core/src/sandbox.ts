@@ -6,6 +6,8 @@ export type ImageSpec = {
   ref: string;
   contextDir: string;
   dockerfile?: string;
+  /** Multi-stage build target (provider variants share one Dockerfile). */
+  target?: string;
   platform?: string;
   labels: Readonly<Record<string, string>>;
   /** Content hash of the build inputs; the provider skips the build when an image with this label exists. */

@@ -1,4 +1,12 @@
-import type { AgentId, EffortLevel, RuntimeEvent, SessionId, TaskId } from "@ho/protocol";
+import type {
+  AgentId,
+  AuthKind,
+  EffortLevel,
+  ProviderId,
+  RuntimeEvent,
+  SessionId,
+  TaskId,
+} from "@ho/protocol";
 import type { Cancellation } from "./ports.ts";
 
 export type { RuntimeErrorCode, RuntimeEvent } from "@ho/protocol";
@@ -25,9 +33,13 @@ export type RuntimeSessionSpec = {
   sessionId: SessionId;
   taskId: TaskId;
   agentId: AgentId;
+  provider: ProviderId;
+  auth: AuthKind;
   model: string;
   effort: EffortLevel;
   maxTurns: number;
+  /** Spending cap for API-key sessions where the CLI supports one (Claude Code `--max-budget-usd`). */
+  maxUsd: number | null;
   systemPromptAppendix: string;
   cwd: string;
   /** Provider-specific session id to resume, when the runtime supports it. */
@@ -63,7 +75,7 @@ export type RuntimeSession = {
 };
 
 export type AgentRuntime = {
-  readonly id: "claude-code" | (string & {});
+  readonly id: ProviderId;
   capabilities: () => RuntimeCapabilities;
   /** `secrets` is the environment the child must receive at spawn time (never persisted, never logged). */
   open: (
