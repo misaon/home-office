@@ -141,7 +141,6 @@ function structure(p: OfficePlan): void {
   door(p, "qa", { x: 57, y: 15, w: 3, h: 1 });
   door(p, "analyst", { x: 69, y: 15, w: 3, h: 1 });
   door(p, "meeting", { x: 35, y: 20, w: 3, h: 1 });
-  door(p, "kitchen", { x: 69, y: 23, w: 1, h: 3 });
   door(p, "terrace", { x: 72, y: 20, w: 3, h: 1 });
   door(p, "toilets", { x: 13, y: 33, w: 3, h: 1 });
   door(p, "lounge", { x: 26, y: 33, w: 3, h: 1 });
