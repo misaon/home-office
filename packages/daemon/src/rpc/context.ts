@@ -1,6 +1,9 @@
-import type { SandboxProvider, SecretStore } from "@ho/core";
+import type { EventStore, SandboxProvider, SecretStore } from "@ho/core";
 import type { UsageSummary } from "@ho/protocol";
 import type { DaemonConfig } from "../config.ts";
+import { ensureImages, type ImageStatus, imageStatus } from "../images.ts";
+import type { Resources } from "../paths.ts";
+import { usageSummary } from "../usage.ts";
 import type { HandoffGate } from "../handoff-gate.ts";
 import type { Office } from "../office.ts";
 import type { SessionManager } from "../sessions.ts";
@@ -15,7 +18,28 @@ export type RpcContext = {
   version: string;
   startedAt: string;
   buildImages: (onLine: (line: string) => void) => Promise<void>;
-  imageStatus: () => Promise<{ ref: string; present: boolean; upToDate: boolean }[]>;
+  imageStatus: () => Promise<ImageStatus[]>;
   gc: () => Promise<{ containers: string[]; volumes: string[]; images: string[] }>;
   usage: (sinceHours: number | undefined) => Promise<UsageSummary>;
 };
+
+export type RpcContextDeps = Pick<
+  RpcContext,
+  | "office"
+  | "sessions"
+  | "gate"
+  | "provider"
+  | "secrets"
+  | "config"
+  | "version"
+  | "startedAt"
+  | "gc"
+> & { resources: Resources; store: EventStore };
+
+/** Binds the image, GC and usage operations the RPC handlers expose to the daemon's own services. */
+export const createRpcContext = ({ resources, store, ...deps }: RpcContextDeps): RpcContext => ({
+  ...deps,
+  buildImages: (onLine) => ensureImages(deps.provider, deps.config, resources, onLine),
+  imageStatus: () => imageStatus(deps.config, resources),
+  usage: (sinceHours) => usageSummary(deps.office, store, sinceHours),
+});

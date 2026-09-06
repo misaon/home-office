@@ -62,6 +62,8 @@ type UiState = {
   selectedAgentId: AgentId | null;
   chatProjectId: ProjectId | null;
   spriteSets: string[];
+  /** The first-run checklist (Docker, images, token, team, smoke test). */
+  setupOpen: boolean;
   setConnection: (connection: Connection) => void;
   setHeadcounts: (headcounts: Record<string, number>) => void;
   setError: (message: string | null) => void;
@@ -70,6 +72,7 @@ type UiState = {
   selectAgent: (agentId: AgentId | null) => void;
   setChatProject: (projectId: ProjectId | null) => void;
   setSpriteSets: (sets: string[]) => void;
+  setSetupOpen: (open: boolean) => void;
 };
 
 export const useUi = create<UiState>()((set) => ({
@@ -83,6 +86,7 @@ export const useUi = create<UiState>()((set) => ({
   selectedAgentId: null,
   chatProjectId: null,
   spriteSets: [],
+  setupOpen: false,
   setConnection: (connection) => {
     set({ connection });
   },
@@ -106,6 +110,9 @@ export const useUi = create<UiState>()((set) => ({
   },
   setSpriteSets: (spriteSets) => {
     set({ spriteSets });
+  },
+  setSetupOpen: (setupOpen) => {
+    set({ setupOpen });
   },
 }));
 

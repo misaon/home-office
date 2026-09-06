@@ -1,9 +1,12 @@
 import type { ImageSpec, SandboxProvider } from "@ho/core";
+import { createDockerApi } from "@ho/sandbox-docker";
 import { $, CryptoHasher, Glob } from "bun";
+import { existsSync } from "node:fs";
 import { cp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { DaemonConfig } from "./config.ts";
-import { imageContext, repoRoot } from "./paths.ts";
+import { imageHash } from "./images-hash.ts";
+import type { Resources } from "./paths.ts";
 
 export const LABELS = {
   managed: "ho.managed",
@@ -28,12 +31,20 @@ async function hashTree(dir: string): Promise<string> {
   return hasher.digest("hex").slice(0, 32);
 }
 
-/** Compiles ho-runner for the Alpine arm64 sandbox into the agent image build context. */
-async function buildRunner(onLine?: (line: string) => void): Promise<void> {
-  const target = join(imageContext("agent"), RUNNER_IN_CONTEXT);
-  const entry = join(repoRoot(), "packages/runner/src/main.ts");
+/**
+ * Compiles ho-runner for the Alpine arm64 sandbox into the agent image build context. Packaged builds ship
+ * the binary inside the context (no sources, no `bun` on PATH), so the step only checks that it is there.
+ */
+async function ensureRunner(resources: Resources, onLine?: (line: string) => void): Promise<void> {
+  const target = join(resources.imageContext("agent"), RUNNER_IN_CONTEXT);
+  if (resources.runnerEntry === null) {
+    if (!existsSync(target)) {
+      throw new Error(`ho-runner binary missing from the bundled image context (${target})`);
+    }
+    return;
+  }
   const result =
-    await $`bun build --compile --minify --target=bun-linux-arm64-musl ${entry} --outfile ${target}`
+    await $`bun build --compile --minify --target=bun-linux-arm64-musl ${resources.runnerEntry} --outfile ${target}`
       .quiet()
       .nothrow();
   onLine?.(result.stdout.toString().trim());
@@ -43,14 +54,17 @@ async function buildRunner(onLine?: (line: string) => void): Promise<void> {
 }
 
 /** Copies the role skill packs from @ho/agent-kit into the build context (replacing the previous copy). */
-async function syncPlugins(): Promise<void> {
-  const target = join(imageContext("agent"), PLUGINS_IN_CONTEXT);
+async function syncPlugins(resources: Resources): Promise<void> {
+  if (resources.pluginsSource === null) {
+    return;
+  }
+  const target = join(resources.imageContext("agent"), PLUGINS_IN_CONTEXT);
   await rm(target, { recursive: true, force: true });
-  await cp(join(repoRoot(), "packages/agent-kit/plugins"), target, { recursive: true });
+  await cp(resources.pluginsSource, target, { recursive: true });
 }
 
-export async function agentImageSpec(config: DaemonConfig): Promise<ImageSpec> {
-  const context = imageContext("agent");
+async function agentImageSpec(config: DaemonConfig, resources: Resources): Promise<ImageSpec> {
+  const context = resources.imageContext("agent");
   return {
     ref: config.docker.agentImage,
     contextDir: context,
@@ -60,8 +74,8 @@ export async function agentImageSpec(config: DaemonConfig): Promise<ImageSpec> {
   };
 }
 
-export async function bridgeImageSpec(config: DaemonConfig): Promise<ImageSpec> {
-  const context = imageContext("git-bridge");
+async function bridgeImageSpec(config: DaemonConfig, resources: Resources): Promise<ImageSpec> {
+  const context = resources.imageContext("git-bridge");
   return {
     ref: config.docker.bridgeImage,
     contextDir: context,
@@ -74,12 +88,33 @@ export async function bridgeImageSpec(config: DaemonConfig): Promise<ImageSpec> 
 export async function ensureImages(
   provider: SandboxProvider,
   config: DaemonConfig,
+  resources: Resources,
   onLine?: (line: string) => void,
 ): Promise<void> {
-  await buildRunner(onLine);
-  await syncPlugins();
-  for (const spec of [await agentImageSpec(config), await bridgeImageSpec(config)]) {
+  await ensureRunner(resources, onLine);
+  await syncPlugins(resources);
+  for (const spec of [
+    await agentImageSpec(config, resources),
+    await bridgeImageSpec(config, resources),
+  ]) {
     onLine?.(`ensuring ${spec.ref} (${spec.contentHash})`);
     await provider.ensureImage(spec, (p) => onLine?.(p.line));
   }
+}
+
+export type ImageStatus = { ref: string; present: boolean; upToDate: boolean };
+
+/** Whether each image exists locally and was built from the current build context. */
+export async function imageStatus(
+  config: DaemonConfig,
+  resources: Resources,
+): Promise<ImageStatus[]> {
+  const api = createDockerApi(config.docker.socket);
+  const specs = [await agentImageSpec(config, resources), await bridgeImageSpec(config, resources)];
+  return Promise.all(
+    specs.map(async (spec) => {
+      const hash = await imageHash(api, spec.ref);
+      return { ref: spec.ref, present: hash !== null, upToDate: hash === spec.contentHash };
+    }),
+  );
 }

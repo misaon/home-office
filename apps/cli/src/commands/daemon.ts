@@ -1,11 +1,20 @@
 import { startDaemon } from "@ho/daemon";
+import { parse } from "../args.ts";
 import { line } from "../output.ts";
 
-export async function daemon(): Promise<void> {
+/** Runs the daemon in the foreground; `--ui` also prints where the office UI is served (token stays in daemon.json). */
+export async function daemon(args: readonly string[]): Promise<void> {
+  const parsed = parse(args, [], ["ui"]);
   const handle = await startDaemon();
-  line(
-    `daemon ${handle.info.version} listening on ${handle.info.host}:${String(handle.info.port)} (pid ${String(process.pid)})`,
-  );
+  const { host, port, version } = handle.info;
+  line(`daemon ${version} listening on ${host}:${String(port)} (pid ${String(process.pid)})`);
+  if (parsed.flags["ui"] === true) {
+    line(
+      handle.config.ui.dir === null
+        ? "office UI: not served (build it with `bun run ui:build`)"
+        : `office UI: http://${host}:${String(port)}/ — the token is in daemon.json (0600); \`ho ui\` opens the UI with it`,
+    );
+  }
   const shutdown = (): void => {
     void handle.stop().then(() => process.exit(0));
   };

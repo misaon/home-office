@@ -7,7 +7,10 @@ import * as schema from "./schema.ts";
 export type HoDatabase = ReturnType<typeof openDatabase>["db"];
 
 /** Opens (or creates) the SQLite file in WAL mode and applies pending migrations. */
-export function openDatabase(path: string): {
+export function openDatabase(
+  path: string,
+  options: { migrationsDir?: string | null } = {},
+): {
   db: ReturnType<typeof drizzle<typeof schema>>;
   close: () => void;
 } {
@@ -17,7 +20,10 @@ export function openDatabase(path: string): {
   client.run("PRAGMA foreign_keys = ON");
   client.run("PRAGMA busy_timeout = 5000");
   const db = drizzle({ client, schema });
-  migrate(db, { migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)) });
+  // Bundled builds (the desktop app) pass the copied folder; in development it sits next to this package.
+  const migrationsFolder =
+    options.migrationsDir ?? fileURLToPath(new URL("../drizzle", import.meta.url));
+  migrate(db, { migrationsFolder });
   return {
     db,
     close: () => {

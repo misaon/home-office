@@ -4,7 +4,8 @@
     ".": {
       "entry": ["scripts/*.ts"],
       "project": ["scripts/**/*.ts"],
-      "ignoreDependencies": ["tailwindcss"]
+      "ignoreDependencies": ["tailwindcss"],
+      "ignoreBinaries": ["hutch"]
     },
     "packages/*": {
       "project": ["src/**/*.{ts,tsx}"]
@@ -12,6 +13,10 @@
     "spikes/*": {
       "entry": ["src/*.ts"],
       "project": ["src/**/*.{ts,tsx}"]
+    },
+    "apps/desktop": {
+      "entry": ["src/bun/index.ts", "electrobun.config.ts", "hutch.config.ts"],
+      "project": ["src/**/*.ts"]
     }
   },
   "ignoreWorkspaces": ["spikes/s2-electrobun", "packages/agent-kit"]

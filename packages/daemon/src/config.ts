@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { defaultUiDirs } from "./paths.ts";
+import type { Resources } from "./paths.ts";
 
 export const DaemonConfig = z.object({
   host: z.string().min(1).default("127.0.0.1"),
@@ -37,9 +37,9 @@ export const DaemonConfig = z.object({
     .prefault({}),
   ui: z
     .object({
-      /** Directory with the built office UI (index.html + chunks); null disables serving. */
+      /** Directory with the built office UI (index.html + chunks); null means the bundled default. */
       dir: z.string().min(1).nullable().default(null),
-      /** Directory with sprite sources and the manifest (`assets/`); null disables serving. */
+      /** Directory with sprite sources and the manifest (`assets/`); null means the bundled default. */
       assetsDir: z.string().min(1).nullable().default(null),
     })
     .prefault({}),
@@ -64,16 +64,15 @@ export type DaemonConfig = z.infer<typeof DaemonConfig>;
 export const resolveHome = (env: Record<string, string | undefined> = Bun.env): string =>
   env["HO_HOME"] ?? join(homedir(), ".config", "home-office");
 
-export async function loadConfig(home: string): Promise<DaemonConfig> {
+export async function loadConfig(home: string, resources: Resources): Promise<DaemonConfig> {
   const file = Bun.file(join(home, "config.json"));
   const raw: unknown = (await file.exists()) ? await file.json() : {};
   const config = DaemonConfig.parse(raw);
-  const fallback = defaultUiDirs();
   return {
     ...config,
     ui: {
-      dir: config.ui.dir ?? fallback.dir,
-      assetsDir: config.ui.assetsDir ?? fallback.assetsDir,
+      dir: config.ui.dir ?? resources.uiDir,
+      assetsDir: config.ui.assetsDir ?? resources.assetsDir,
     },
   };
 }

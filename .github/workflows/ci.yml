@@ -19,4 +19,10 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
+      # The desktop app typechecks against the Electrobun devkit Hutch projects into apps/desktop/.hutch;
+      # without it scripts/typecheck.ts skips that workspace silently.
+      - name: Install Hutch and project the Electrobun devkit
+        run: |
+          curl -fsSL https://hutch.blackboard.sh/hutch/install.sh | sh -s -- --version 0.25.0 --no-modify-path
+          cd apps/desktop && "$HOME/.hutch/bin/hutch" electrobun sync
       - run: bun run check

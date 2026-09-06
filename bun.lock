@@ -29,6 +29,14 @@
         "zod": "catalog:",
       },
     },
+    "apps/desktop": {
+      "name": "@ho/desktop",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ho/daemon": "workspace:*",
+        "electrobun": "catalog:",
+      },
+    },
     "packages/agent-kit": {
       "name": "@ho/agent-kit",
       "version": "0.0.0",
@@ -174,6 +182,7 @@
     "bun-plugin-tailwind": "0.1.2",
     "drizzle-kit": "0.31.10",
     "drizzle-orm": "0.45.2",
+    "electrobun": "2.0.1",
     "knip": "6.34.0",
     "oxfmt": "0.66.0",
     "oxlint": "1.81.0",
@@ -259,6 +268,8 @@
     "@ho/core": ["@ho/core@workspace:packages/core"],
 
     "@ho/daemon": ["@ho/daemon@workspace:packages/daemon"],
+
+    "@ho/desktop": ["@ho/desktop@workspace:apps/desktop"],
 
     "@ho/protocol": ["@ho/protocol@workspace:packages/protocol"],
 
@@ -615,6 +626,8 @@
     "earcut": ["earcut@3.2.3", "", {}, "sha512-vnS4AVwp1KHAF13i1vp1/2D5evWy3k5u/iW/B81QVsUZtV8cv2tU0b2VNFlqvh4kYwrFMDdjPCfAmfyJW9y14Q=="],
 
     "ee-first": ["ee-first@1.1.1", "", {}, "sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow=="],
+
+    "electrobun": ["electrobun@2.0.1", "", { "bin": { "electrobun": "bin/electrobun.cjs" } }, "sha512-1+OjJ0tMemjVrUEsh/AhmxnqUNpyCfJslCbcWOvkogFJuNVMmTlWMzyZem/Ts/7lg8f7ULWu8uuQBsKeGQsu7A=="],
 
     "encodeurl": ["encodeurl@2.0.0", "", {}, "sha512-Q0n9HRi4m6JuGIV1eFlmvJB7ZEVxu93IrMyiMsGC0lrMJMWzRgx6WGquyfQgZVb31vhGgXnfmPNNXmxnOkRBrg=="],
 

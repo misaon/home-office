@@ -24,8 +24,8 @@ Decisions taken with the owner on 2026-09-06: Electrobun desktop shell · Docker
 │        ├─ Runner gateway (WebSocket) for ho-runner in containers    │
 │        ├─ SQLite (bun:sqlite, WAL)  ~/.config/home-office/ho.db     │
 │        └─ Docker Engine API  fetch({ unix: "/var/run/docker.sock" })│
-│   └─ WKWebView  ← loads static @ho/ui bundle (React + PixiJS)       │
-│                    connects to oRPC WS with the launch token         │
+│   └─ WKWebView  ← loads the @ho/ui bundle from the daemon (HTTP)    │
+│                    token parked in sessionStorage by a preload       │
 │                                                                     │
 │  CLI mode:  `ho daemon` (same library) + `ho …` commands (oRPC)     │
 │             browser UI served at http://127.0.0.1:<port>            │
@@ -57,7 +57,7 @@ home-office/
 ├─ tsconfig.base.json / tsconfig.json (references)
 ├─ .oxlintrc.json  .oxfmtrc.json  knip.json
 ├─ apps/
-│  ├─ desktop/               # Electrobun app: electrobun.config.ts, src/main.ts (starts daemon), native RPC only
+│  ├─ desktop/               # Electrobun app (Hutch project): electrobun.config.ts, src/bun/ (starts daemon), native shell only
 │  └─ cli/                   # `ho` binary: daemon, project, agent, task, session, usage, doctor
 ├─ packages/
 │  ├─ protocol/              # Zod schemas, branded IDs, domain events, oRPC contract, MCP tool schemas (shared by all)
@@ -226,7 +226,8 @@ Sandbox extras: Claude settings travel inline (`--settings '<json>'`) and includ
 
 Left: office canvas (current floor) with floor tabs and building strip. Right: chat with the boss (streaming), task cards linked to floors. Panels: **Board** (per project: inbox/planned/in progress/review/done), **Agent inspector** (live normalised event log, usage, current branch, "open terminal" later), **Usage** (tokens per agent/project/day, rate-limit state, cache hit share), **Resources** (containers, volumes, disk from `docker system df`, one-click prune), **Settings** (projects, agents, budgets, auth). All data through the oRPC contract; the Pixi scene reads the simulation world directly each frame, React reads immutable snapshots.
 
-- **Serving and launch.** The daemon serves the built bundle (`packages/ui/dist`, `bun run ui:build`) at `/` with an SPA fallback and the sprite tree at `/assets/`, both read-only and unauthenticated (they contain no data); `config.ui.dir`/`assetsDir` default to the repository layout, Electrobun bundles the same files. `ho ui` opens `http://127.0.0.1:<port>/#token=<daemon token>`; the fragment never reaches the server, the page stores it in sessionStorage, wipes it from the address bar and history, and presents it as the WebSocket subprotocol `ho.bearer.<token>`. A fresh launch URL supersedes the remembered token on reconnect.
+- **Serving and launch.** The daemon serves the built bundle (`packages/ui/dist`, `bun run ui:build`) at `/` with an SPA fallback and the sprite tree at `/assets/`, both read-only and unauthenticated (they contain no data); `config.ui.dir`/`assetsDir` default to the daemon's `resourcesRoot` (the repository in development, `Resources/app/ho` in the packaged desktop app). `ho ui` opens `http://127.0.0.1:<port>/#token=<daemon token>`; the fragment never reaches the server, the page stores it in sessionStorage, wipes it from the address bar and history, and presents it as the WebSocket subprotocol `ho.bearer.<token>`. A fresh launch URL supersedes the remembered token on reconnect. The desktop window loads the same URL and skips the fragment: a `preload` statement writes the token into sessionStorage before the page runs (D16).
+- **First-run checklist.** The UI opens a setup overlay whenever the office cannot work yet (Docker missing or API < 1.44, images missing/stale, no subscription token, no boss) unless it was dismissed: Docker check, image build with a streamed log, token paste (`claude setup-token`), default team (D12), optional first project (workers and reviewer join it), and a smoke test that sends a hello to the boss and shows the reply. The header's **Setup** button reopens it; the same checklist serves desktop and browser.
 - **State.** The client rebuilds the read model from `events.subscribe` with the same pure reducers as the daemon (`events.head` marks where the replay ends and live handling begins), keeps a bounded live log per session from `sessions.stream`, and publishes immutable snapshots to React through Zustand. Components never read the mutable model: the React Compiler memoises JSX derived from non-reactive module state.
 - **Handoff gating.** While the UI holds the `office.presence` stream open, the daemon's `HandoffGate` holds back the recipient's session of a task whose latest `handoff` note is fresh (20 s) and undelivered; the UI calls `office.handoffDelivered` when the handover animation ends, and immediately when the document is hidden (no animation frames). Without viewers nothing waits.
 
@@ -235,7 +236,7 @@ Left: office canvas (current floor) with floor tabs and building strip. Right: c
 - Containers: non-root `agent` user (also required by `--permission-mode bypassPermissions`), `CapDrop: ["ALL"]`, `SecurityOpt: ["no-new-privileges"]`, `ReadonlyRootfs` + tmpfs, `PidsLimit`, `Memory`/`NanoCpus` limits, `--init`, no host bind mounts (only the git-bridge sees the host repo), dedicated bridge network `ho-agents` with `enable_icc=false`.
 - Egress: Phase 8 adds an allowlist HTTP(S) CONNECT proxy container (Bun) and sets `HTTPS_PROXY` in agent containers; required hosts per Claude Code docs: `api.anthropic.com`, `platform.claude.com`, `claude.ai`, plus git/package hosts per project. Until then: default bridge egress with telemetry disabled.
 - Secrets: `SecretStore` (Keychain). OAuth token reaches only the `claude` process env via the runner's authenticated WS. One-time runner tokens expire in 60 s. No secrets in images, container config, labels, logs or events.
-- Daemon: `127.0.0.1` only, per-launch bearer token shared with the webview by Electrobun RPC (never in the URL). Remote/server mode (Phase 8): `--host`, TLS certificate, long-lived token; recommended path is an SSH tunnel or Tailscale.
+- Daemon: `127.0.0.1` only, per-launch bearer token. The desktop shell hands it to the webview through a preload statement into sessionStorage (never in a URL); browsers get it in the URL fragment from `ho ui`, which never leaves the machine and is wiped on load. `daemon.json` (0600) is the only copy on disk. Remote/server mode (Phase 8): `--host`, TLS certificate, long-lived token; recommended path is an SSH tunnel or Tailscale.
 - Inputs: all RPC/MCP/JSONL parsed by Zod; agent output is data. Task branches are pushed to `ho/*` only; merging is a human action (or an explicit setting).
 - No telemetry from HO itself.
 
@@ -263,7 +264,8 @@ Left: office canvas (current floor) with floor tabs and building strip. Right: c
 
 - `~/.config/home-office/config.json` (Zod-validated; projects, agents, budgets, retention), `~/.config/home-office/ho.db`, `~/.config/home-office/logs/`. Override with `HO_HOME`.
 - Secrets in macOS Keychain service `home-office` (`security add-generic-password`); Linux fallback `~/.config/home-office/secrets.json` (0600).
-- First-run wizard (desktop) / `ho doctor` (CLI): checks Docker API, builds the agent image, asks for the token from `claude setup-token` (pasted; the CLI cannot complete the browser flow headlessly), stores it, runs a smoke session.
+- First-run checklist (UI, desktop and browser alike) / `ho doctor` + `ho image build` + `ho secret set` (CLI): checks the Docker API, builds the images, asks for the token from `claude setup-token` (pasted; the CLI cannot complete the browser flow headlessly), stores it, hires the default team, runs a smoke session.
+- Desktop app: `HO_HOME/desktop.lock` (single instance), `HO_HOME/logs/desktop.log` (pino NDJSON; stdout of a packaged app is invisible). Bundled resources live in `Home Office.app/Contents/Resources/app/ho` and mirror the repository paths the daemon reads (`images/`, `packages/ui/dist`, `assets/`, `packages/store/drizzle`); `HO_REPO_ROOT` overrides the location for development.
 
 ## 15. Extensibility roadmap
 

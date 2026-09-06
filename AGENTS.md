@@ -15,6 +15,7 @@ containers, and an Electrobun desktop app that renders them as a pixel-art offic
 - `bun run check` — typecheck (TypeScript 7 native `tsc`), `oxlint --type-aware`, `oxfmt --check`, `knip`.
   Must pass before every commit; `bun run setup` installs the git hook that enforces it.
 - `bun run fmt` — format everything with oxfmt.
+- `bun run desktop:dev` / `bun run desktop:build` — Electrobun app via Hutch (`apps/desktop`; resources assembled by `bun run desktop:prepare`).
 
 ## Layout
 

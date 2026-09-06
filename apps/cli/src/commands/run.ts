@@ -20,7 +20,7 @@ export async function run(argv: readonly string[]): Promise<void> {
   const [command, ...rest] = argv;
   switch (command) {
     case "daemon": {
-      await daemon();
+      await daemon(rest);
       return;
     }
     case "health": {

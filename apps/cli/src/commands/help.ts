@@ -1,6 +1,6 @@
 export const USAGE = `ho — Home Office command line
 
-  ho daemon                                   run the daemon in the foreground
+  ho daemon [--ui]                            run the daemon in the foreground (--ui: print the office URL)
   ho health | doctor                          doctor: docker, images, secrets, sessions, disk
   ho image build                              build the agent and git-bridge images
   ho secret status | set <key> | rm <key>     keys: anthropic-oauth-token, anthropic-api-key, github-token

@@ -6,6 +6,7 @@ import { InspectorPanel } from "./panels/inspector.tsx";
 import { ResourcesPanel } from "./panels/resources.tsx";
 import { SettingsPanel } from "./panels/settings.tsx";
 import { UsagePanel } from "./panels/usage.tsx";
+import { SetupOverlay, useSetupAutoOpen } from "./setup/overlay.tsx";
 import { type Panel, useUi } from "./store.ts";
 
 const PANELS: { id: Panel; label: string }[] = [
@@ -35,8 +36,11 @@ export function App(): React.JSX.Element {
   const panel = useUi((s) => s.panel);
   const selectPanel = useUi((s) => s.selectPanel);
   const connection = useUi((s) => s.connection);
+  const setSetupOpen = useUi((s) => s.setSetupOpen);
+  useSetupAutoOpen();
   return (
-    <div className="flex h-full">
+    <div className="relative flex h-full">
+      <SetupOverlay />
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-3 border-b border-line bg-panel px-3 py-1">
           <span className="font-semibold tracking-wide">Home Office</span>
@@ -45,6 +49,16 @@ export function App(): React.JSX.Element {
             title={connection}
           />
           <FloorTabs />
+          <button
+            type="button"
+            className="ml-auto rounded bg-panel px-2 py-1 text-xs text-gray-300 hover:bg-line"
+            title="Docker, images, token, team, smoke test"
+            onClick={() => {
+              setSetupOpen(true);
+            }}
+          >
+            Setup
+          </button>
         </header>
         <div className="min-h-0 flex-1">
           <OfficeCanvas />

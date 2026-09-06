@@ -3,11 +3,11 @@ import { createClaudeCodeRuntime } from "@ho/runtime-claude-code";
 import { createDockerProvider } from "@ho/sandbox-docker";
 import { createSecretStore } from "@ho/secrets";
 import { createSqliteEventStore, openDatabase } from "@ho/store";
-import { chmod, mkdir, rm } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { z } from "zod";
 import { type DaemonConfig, loadConfig, resolveHome } from "./config.ts";
-import { agentImageSpec, bridgeImageSpec, ensureImages } from "./images.ts";
+import { type DaemonInfo, removeDaemonInfo, writeDaemonInfo } from "./daemon-info.ts";
+import { resolveResources } from "./paths.ts";
 import { startGc } from "./gc.ts";
 import { createLogger } from "./logger.ts";
 import { HandoffGate } from "./handoff-gate.ts";
@@ -15,32 +15,16 @@ import { McpGateway } from "./mcp.ts";
 import { Office } from "./office.ts";
 import { RunnerGateway } from "./runner-gateway.ts";
 import { startScheduler } from "./scheduler.ts";
+import { createRpcContext } from "./rpc/context.ts";
 import { startServer } from "./server.ts";
 import { SessionManager } from "./sessions.ts";
-import { usageSummary } from "./usage.ts";
 
 export { DaemonConfig, loadConfig, resolveHome } from "./config.ts";
+export { DaemonInfo, daemonInfoPath, readDaemonInfo } from "./daemon-info.ts";
+export { defaultResourcesRoot, type Resources, resolveResources } from "./paths.ts";
 export { Office } from "./office.ts";
 
 const VERSION = "0.0.0-dev";
-
-/** Written next to the database so local clients (CLI, webview) can find and authenticate to the daemon. */
-export const DaemonInfo = z.object({
-  host: z.string(),
-  port: z.int().positive(),
-  token: z.string().min(16),
-  pid: z.int().positive(),
-  startedAt: z.iso.datetime(),
-  version: z.string(),
-});
-export type DaemonInfo = z.infer<typeof DaemonInfo>;
-
-export const daemonInfoPath = (home: string): string => join(home, "daemon.json");
-
-export async function readDaemonInfo(home: string): Promise<DaemonInfo | null> {
-  const file = Bun.file(daemonInfoPath(home));
-  return (await file.exists()) ? DaemonInfo.parse(await file.json()) : null;
-}
 
 export type DaemonHandle = {
   info: DaemonInfo;
@@ -49,13 +33,22 @@ export type DaemonHandle = {
   stop: () => Promise<void>;
 };
 
-export async function startDaemon(
-  options: { home?: string; overrides?: Partial<DaemonConfig> } = {},
-): Promise<DaemonHandle> {
+export type DaemonOptions = {
+  /** State directory (config.json, ho.db, daemon.json, logs/); defaults to `HO_HOME` or `~/.config/home-office`. */
+  home?: string;
+  overrides?: Partial<DaemonConfig>;
+  /** Where image contexts, the UI bundle, sprites and migrations live; defaults to the repository. */
+  resourcesRoot?: string;
+  /** Log to this file instead of stdout (the desktop app has no visible stdout). */
+  logFile?: string;
+};
+
+export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHandle> {
   const home = options.home ?? resolveHome();
   await mkdir(home, { recursive: true, mode: 0o700 });
-  const config: DaemonConfig = { ...(await loadConfig(home)), ...options.overrides };
-  const log = createLogger(config.logLevel);
+  const resources = resolveResources(options.resourcesRoot);
+  const config: DaemonConfig = { ...(await loadConfig(home, resources)), ...options.overrides };
+  const log = createLogger(config.logLevel, options.logFile);
   const clock = { now: () => new Date() };
   const ids = createIdFactory(clock, {
     randomize: (bytes) => {
@@ -63,7 +56,7 @@ export async function startDaemon(
     },
   });
 
-  const database = openDatabase(join(home, "ho.db"));
+  const database = openDatabase(join(home, "ho.db"), { migrationsDir: resources.migrationsDir });
   const store = createSqliteEventStore(database.db, { ids, clock });
   const office = await Office.open(store, clock, log);
   const secrets = createSecretStore(home, config.secrets.store);
@@ -105,19 +98,6 @@ export async function startDaemon(
     },
   });
 
-  const imageStatus = async (): Promise<{ ref: string; present: boolean; upToDate: boolean }[]> => {
-    const specs = [await agentImageSpec(config), await bridgeImageSpec(config)];
-    const { createDockerApi } = await import("@ho/sandbox-docker");
-    const { imageHash } = await import("./images-hash.ts");
-    const api = createDockerApi(config.docker.socket);
-    return Promise.all(
-      specs.map(async (spec) => {
-        const hash = await imageHash(api, spec.ref);
-        return { ref: spec.ref, present: hash !== null, upToDate: hash === spec.contentHash };
-      }),
-    );
-  };
-
   const gc = startGc(provider, config, log);
   const server = startServer({
     host: config.host,
@@ -126,20 +106,19 @@ export async function startDaemon(
     gateway,
     mcp,
     log,
-    context: {
+    context: createRpcContext({
       office,
       sessions,
       gate,
       provider,
       secrets,
       config,
+      resources,
+      store,
       version: VERSION,
       startedAt,
-      buildImages: (onLine) => ensureImages(provider, config, onLine),
-      imageStatus,
       gc: () => gc.runOnce(),
-      usage: (sinceHours) => usageSummary(office, store, sinceHours),
-    },
+    }),
   });
   gatewayUrl.value = `ws://${config.docker.gatewayHost}:${String(server.port)}`;
   mcpUrl.value = `http://${config.docker.gatewayHost}:${String(server.port)}${McpGateway.path}`;
@@ -153,8 +132,7 @@ export async function startDaemon(
     startedAt,
     version: VERSION,
   };
-  await Bun.write(daemonInfoPath(home), `${JSON.stringify(info, null, 2)}\n`);
-  await chmod(daemonInfoPath(home), 0o600);
+  await writeDaemonInfo(home, info);
 
   let stopped = false;
   const stop = async (): Promise<void> => {
@@ -168,7 +146,8 @@ export async function startDaemon(
     await sessions.stopAll();
     await server.stop();
     database.close();
-    await rm(daemonInfoPath(home), { force: true });
+    await removeDaemonInfo(home);
   };
+  log.info({ home, resources: resources.root }, "daemon started");
   return { info, office, config, stop };
 }
