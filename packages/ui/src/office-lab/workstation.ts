@@ -7,7 +7,7 @@ export class Workstation {
   readonly floor = new Container({ eventMode: "none" });
   readonly desk: Sprite;
   readonly chair: Sprite;
-  readonly #occupied: Texture;
+  readonly #occupied: Texture[];
 
   constructor(sprites: SpriteLibrary) {
     const texture = (name: string): Texture => {
@@ -38,11 +38,17 @@ export class Workstation {
       eventMode: "none",
     });
     this.chair.anchor.set(0.5, 1);
-    this.#occupied = texture("seated");
+    const occupied = sprites.frames("furniture/sample-alex-typing-v1", "type_n");
+    if (occupied === undefined || occupied.length === 0) {
+      throw new Error("Missing Alex typing animation");
+    }
+    this.#occupied = occupied;
   }
 
   actorTexture(actor: Actor): Texture | undefined {
-    return this.#seated(actor) ? this.#occupied : undefined;
+    return this.#seated(actor)
+      ? this.#occupied[Math.floor(actor.animTime / 180) % this.#occupied.length]
+      : undefined;
   }
 
   update(actor: Actor): void {

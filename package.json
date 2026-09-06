@@ -55,7 +55,8 @@
     "desktop:prepare": "bun run scripts/desktop-prepare.ts",
     "desktop:dev": "bun run desktop:prepare && cd apps/desktop && hutch electrobun dev",
     "desktop:build": "bun run desktop:prepare && cd apps/desktop && hutch electrobun build --env=stable",
-    "assets:workstation": "bun run scripts/assets-workstation.ts"
+    "assets:workstation": "bun run scripts/assets-workstation.ts",
+    "assets:alex": "bun run scripts/assets-alex.ts"
   },
   "devDependencies": {
     "@types/bun": "catalog:",

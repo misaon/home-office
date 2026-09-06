@@ -34,7 +34,7 @@ export class LabSession {
   constructor() {
     addFloor(this.world, this.plan.template);
     addFloor(this.world, { ...this.plan.template, id: TRANSIT });
-    this.actor = spawnActor(this.world, ID, "characters/agent-a", TRANSIT);
+    this.actor = spawnActor(this.world, ID, "characters/alex-v1", TRANSIT);
     this.replay();
   }
 
