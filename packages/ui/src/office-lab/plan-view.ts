@@ -22,7 +22,10 @@ export class PlanView {
     this.#plan = plan;
     const root = new Container();
     const floor = architecture(plan);
-    this.#workstation = new Workstation(sprites);
+    this.#workstation = new Workstation(
+      sprites,
+      plan.objects.filter((item) => /^dev-\d$/u.test(item.id)),
+    );
     floor.addChild(this.#workstation.floor);
     floor.eventMode = "static";
     floor.cursor = "crosshair";
@@ -33,11 +36,11 @@ export class PlanView {
     });
     const objects = new Container({ sortableChildren: true, eventMode: "passive" });
     for (const f of plan.objects) {
-      if (f.id !== "dev-3" && f.id !== "dev-3-chair") {
+      if (!/^dev-\d(?:-chair)?$/u.test(f.id)) {
         objects.addChild(furniture(f));
       }
     }
-    objects.addChild(this.#workstation.desk, this.#workstation.chair);
+    objects.addChild(this.#workstation.objects);
     for (const pane of plan.glass) {
       objects.addChild(glassWall(pane));
     }

@@ -1,15 +1,17 @@
-import type { Actor } from "@ho/sim";
+import type { Actor, PlanObject } from "@ho/sim";
 import { Container, Sprite, type Texture } from "pixi.js";
 import type { SpriteLibrary } from "../office/sprites.ts";
 
-/** Art calibration at DEV 3; visual bounds are independent of the approved collision grid. */
+type WorkstationPair = { desk: Sprite; chair: Sprite; id: string };
+
+/** Reusable developer workstation presentation; visual scale is independent of grid collision. */
 export class Workstation {
   readonly floor = new Container({ eventMode: "none" });
-  readonly desk: Sprite;
-  readonly chair: Sprite;
+  readonly objects = new Container({ sortableChildren: true, eventMode: "none" });
   readonly #occupied: Texture[];
+  readonly #pairs: WorkstationPair[] = [];
 
-  constructor(sprites: SpriteLibrary) {
+  constructor(sprites: SpriteLibrary, desks: readonly PlanObject[]) {
     const texture = (name: string): Texture => {
       const result = sprites.frames(`furniture/sample-${name}-v1`, "static")?.[0];
       if (result === undefined) {
@@ -18,28 +20,34 @@ export class Workstation {
       return result;
     };
     const carpet = texture("carpet");
-    for (let y = 5; y < 12; y += 1) {
-      for (let x = 29; x < 35; x += 1) {
-        this.floor.addChild(new Sprite({ texture: carpet, x: x * 16, y: y * 16 }));
+    const deskTexture = texture("desk");
+    const chairTexture = texture("chair");
+    for (const item of desks.filter((candidate) => /^dev-\d$/u.test(candidate.id))) {
+      for (let y = item.at.y - 2; y < item.at.y + 5; y += 1) {
+        for (let x = item.at.x; x < item.at.x + 5; x += 1) {
+          this.floor.addChild(new Sprite({ texture: carpet, x: x * 16, y: y * 16 }));
+        }
       }
+      const desk = new Sprite({
+        texture: deskTexture,
+        x: (item.at.x - 0.5) * 16,
+        y: item.at.y * 16 - 46,
+        zIndex: (item.at.y + 2) * 16 - 1,
+        eventMode: "none",
+      });
+      const chair = new Sprite({
+        texture: chairTexture,
+        x: (item.at.x + 2.5) * 16,
+        y: (item.at.y + 3) * 16,
+        zIndex: (item.at.y + 3) * 16 - 1,
+        eventMode: "none",
+      });
+      desk.scale.set(1.5);
+      chair.scale.set(1.5);
+      chair.anchor.set(0.5, 1);
+      this.objects.addChild(desk, chair);
+      this.#pairs.push({ desk, chair, id: item.id });
     }
-    this.desk = new Sprite({
-      texture: texture("desk"),
-      x: 28.5 * 16,
-      y: 66,
-      zIndex: 9 * 16 - 1,
-      eventMode: "none",
-    });
-    this.chair = new Sprite({
-      texture: texture("chair"),
-      x: 31.5 * 16,
-      y: 10 * 16,
-      zIndex: 10 * 16 - 1,
-      eventMode: "none",
-    });
-    this.desk.scale.set(1.5);
-    this.chair.scale.set(1.5);
-    this.chair.anchor.set(0.5, 1);
     const occupied = sprites.frames("furniture/sample-alex-typing-v1", "type_n");
     if (occupied === undefined || occupied.length === 0) {
       throw new Error("Missing Alex typing animation");
@@ -58,7 +66,9 @@ export class Workstation {
   }
 
   update(actor: Actor): void {
-    this.chair.visible = !this.#seated(actor);
+    for (const pair of this.#pairs) {
+      pair.chair.visible = !(this.#seated(actor) && pair.id === "dev-3");
+    }
   }
 
   #seated(actor: Actor): boolean {
