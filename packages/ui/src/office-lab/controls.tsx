@@ -32,10 +32,11 @@ export function LabControls({ lab, session }: Props): React.JSX.Element {
         type="button"
         disabled={!lab.ready}
         onClick={() => {
-          focus({ x: 28 * 16, y: 4 * 16, width: 16 * 16, height: 17 * 16 });
+          focus({ x: 28 * 16, y: 4 * 16, width: 8 * 16, height: 10 * 16 });
+          session.visit("dev-3");
         }}
       >
-        Detail pracoviště
+        Vzorek DEV 3
       </button>
       <button
         className={LAB_BUTTON}

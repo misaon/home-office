@@ -54,7 +54,8 @@
     "office:lab": "bun run scripts/office-lab.ts",
     "desktop:prepare": "bun run scripts/desktop-prepare.ts",
     "desktop:dev": "bun run desktop:prepare && cd apps/desktop && hutch electrobun dev",
-    "desktop:build": "bun run desktop:prepare && cd apps/desktop && hutch electrobun build --env=stable"
+    "desktop:build": "bun run desktop:prepare && cd apps/desktop && hutch electrobun build --env=stable",
+    "assets:workstation": "bun run scripts/assets-workstation.ts"
   },
   "devDependencies": {
     "@types/bun": "catalog:",

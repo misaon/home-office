@@ -1,6 +1,8 @@
 /* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
 import { type Actor, type OfficePlan, type PlanDoor, type Point, type World } from "@ho/sim";
 import { Container, Graphics, Rectangle, type Text } from "pixi.js";
+import type { SpriteLibrary } from "../office/sprites.ts";
+import { Workstation } from "./workstation.ts";
 import type { FloorView } from "../office/scene.ts";
 import { architecture, furniture, glassWall, label, TILE } from "./drawing.ts";
 
@@ -14,11 +16,14 @@ export class PlanView {
   readonly #doors: DoorView[] = [];
   readonly #indicator: Text;
   readonly #plan: OfficePlan;
+  readonly #workstation: Workstation;
 
-  constructor(plan: OfficePlan, onPoint: (point: Point) => void) {
+  constructor(plan: OfficePlan, onPoint: (point: Point) => void, sprites: SpriteLibrary) {
     this.#plan = plan;
     const root = new Container();
     const floor = architecture(plan);
+    this.#workstation = new Workstation(sprites);
+    floor.addChild(this.#workstation.floor);
     floor.eventMode = "static";
     floor.cursor = "crosshair";
     floor.hitArea = new Rectangle(0, 0, plan.template.width * TILE, plan.template.height * TILE);
@@ -28,8 +33,11 @@ export class PlanView {
     });
     const objects = new Container({ sortableChildren: true, eventMode: "passive" });
     for (const f of plan.objects) {
-      objects.addChild(furniture(f));
+      if (f.id !== "dev-3" && f.id !== "dev-3-chair") {
+        objects.addChild(furniture(f));
+      }
     }
+    objects.addChild(this.#workstation.desk, this.#workstation.chair);
     for (const pane of plan.glass) {
       objects.addChild(glassWall(pane));
     }
@@ -46,6 +54,7 @@ export class PlanView {
     this.view = {
       root,
       objects,
+      actorTexture: (actor) => this.#workstation.actorTexture(actor),
       width: plan.template.width * TILE,
       height: plan.template.height * TILE,
     };
@@ -80,6 +89,7 @@ export class PlanView {
   }
 
   update(world: World, actor: Actor, dt: number): void {
+    this.#workstation.update(actor);
     const arriving = actor.steps.some(
       (s) => s.kind === "elevator" && s.toFloorId === this.#plan.template.id,
     );

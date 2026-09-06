@@ -16,7 +16,7 @@ export function OfficeLab(): React.JSX.Element {
             Home Office <span className="font-normal text-[#9db4af]">/ Layout Lab</span>
           </h1>
           <p className="text-xs text-[#9db4af]">
-            Schválený půdorys · technický prototyp · grafika objektů je dočasná
+            Schválený půdorys · výtvarný vzorek DEV 3 · ostatní objekty jsou dočasné
           </p>
         </div>
         <span

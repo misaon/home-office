@@ -43,9 +43,13 @@ export function useLabRuntime(session: LabSession): LabRuntime {
       if (isDisposed()) {
         return;
       }
-      const view = new PlanView(session.plan, (point) => {
-        session.point(point);
-      });
+      const view = new PlanView(
+        session.plan,
+        (point) => {
+          session.point(point);
+        },
+        sprites,
+      );
       const scene = new OfficeScene(sprites, (floor) =>
         floor.template.id === session.plan.template.id
           ? view.view

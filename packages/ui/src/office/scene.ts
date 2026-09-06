@@ -11,7 +11,13 @@ const LABEL_STYLE = {
   stroke: { color: "#000000", width: 2 },
 };
 
-export type FloorView = { root: Container; objects: Container; width: number; height: number };
+export type FloorView = {
+  root: Container;
+  objects: Container;
+  width: number;
+  height: number;
+  actorTexture?: (actor: Actor) => Texture | undefined;
+};
 type SceneFrame = { x: number; y: number; width: number; height: number };
 type ActorView = {
   root: Container;
@@ -184,8 +190,12 @@ export class OfficeScene {
       Math.round(actor.pos.y * TILE + TILE),
     );
     view.root.zIndex = actor.pos.y * TILE + TILE;
+    const presentation = this.#floors.get(actor.floorId)?.actorTexture?.(actor);
     const clip = this.#sprites.clip(actor.sprite, actor.activity, actor.facing);
-    if (clip !== null) {
+    if (presentation !== undefined) {
+      view.body.texture = presentation;
+      view.body.scale.x = 1;
+    } else if (clip !== null) {
       const frame = Math.floor(actor.animTime / clip.frameMs) % clip.textures.length;
       const texture = clip.textures[frame];
       if (texture !== undefined && view.body.texture !== texture) {
