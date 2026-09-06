@@ -3,7 +3,7 @@
 A local multi-agent harness with a pixel-art office. AI agents (your "employees") work in isolated Docker containers on your repositories; a boss agent takes work from a chat panel or a mailbox and hands it out; you watch the team walk around, hand each other folders, drink coffee and ship branches.
 
 - Runtime: **Bun** · Language: **TypeScript 7** · Desktop: **Electrobun** · Rendering: **PixiJS 8** · Agents: **Claude Code** (subscription) first, provider-agnostic by design · Sandboxes: **Docker** (Alpine), cloud later.
-- Status: **Phase 0 (foundations and spikes) in progress** — see the Log in docs/PLAN.md.
+- Status: **Phases 0–1 done, Phase 2 (sandboxed sessions) running end to end; a real Claude session needs the owner's `claude setup-token` in Keychain** — see the Log in docs/PLAN.md.
 
 ## Documents
 
