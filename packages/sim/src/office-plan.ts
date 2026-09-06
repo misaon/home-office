@@ -5,8 +5,9 @@ export const OFFICE_FLOOR_ID = "office";
 
 /**
  * Art density (D20): pixels per cell in every delivered sprite (assets/README.md). The renderer draws the floor
- * at this scale, `bun run assets:import` sizes sprites by it and the manifest records it. Characters are 2 × 2
- * cells, bubbles 1 × 1. 24 sits close to the approved reference (≈21) and near 1:1 on a Retina laptop pane.
+ * at this scale, `bun run assets:import` sizes sprites by it and the manifest records it. Characters are 2 cells
+ * wide and 5 tall (D21), bubbles 1 × 1. 24 sits close to the approved reference (≈21) and near 1:1 on a Retina
+ * laptop pane.
  */
 export const CELL_PX = 24;
 

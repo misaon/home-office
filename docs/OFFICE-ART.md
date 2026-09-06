@@ -83,7 +83,7 @@ Object keys and footprints (width × height in cells; art may rise above the foo
 | `ashtray`            | 1 × 1               | 1     |                                                                                      |
 
 Characters: sets `boss`, `agent-a`, `agent-b`, `agent-c` and `postman` are the placeholders in use today (32 × 32
-frames from the 16 px era; the renderer scales any set to two cells tall). A delivered set replaces one by name: 2 × 2-cell frames,
+frames from the 16 px era; the renderer scales any set to two cells tall). A delivered set replaces one by name: frames 2 cells wide × 5 tall (D21),
 `bun run assets:import <strip.png> characters/<set>/<activity>_<dir> --frames N`. The activities and facings the
 simulation asks for are tabulated in `assets/README.md`; `idle_s` alone already renders, the rest falls back to it.
 

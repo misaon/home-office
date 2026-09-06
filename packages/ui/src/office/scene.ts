@@ -4,8 +4,8 @@ import { Application, Container, Sprite, Text, type Texture } from "pixi.js";
 import { fitScale, type SpriteLibrary } from "./sprites.ts";
 import { TILE } from "./stand-ins.ts";
 
-/** Characters stand two cells tall, bubbles one cell; other sizes are scaled to fit (see #fitTexture). */
-const CHARACTER_PX = 2 * TILE;
+/** Character canvas: two cells wide (D21); a set delivered at another width is scaled by width, bubbles to one cell. */
+const CHARACTER_W = 2 * TILE;
 const LABEL_STYLE = {
   fontFamily: "monospace",
   fontSize: Math.round(TILE * 0.4),
@@ -137,7 +137,7 @@ export class OfficeScene {
     });
     const body = new Sprite();
     body.anchor.set(0.5, 1);
-    const bubble = new Sprite({ visible: false, y: -(CHARACTER_PX + 2) });
+    const bubble = new Sprite({ visible: false });
     bubble.anchor.set(0.5, 1);
     const label = new Text({ text: name, style: LABEL_STYLE, resolution: 4, y: 1 });
     label.anchor.set(0.5, 0);
@@ -170,8 +170,10 @@ export class OfficeScene {
       if (texture !== undefined && view.body.texture !== texture) {
         view.body.texture = texture;
       }
-      const size = fitScale(view.body.texture.height, CHARACTER_PX);
+      const size = fitScale(view.body.texture.width, CHARACTER_W);
       view.body.scale.set(clip.flip ? -size : size, size);
+      // The bubble floats just above the head, whatever the set's height.
+      view.bubble.y = -(view.body.height + 2);
     }
     const emotion = actor.emotion?.kind ?? null;
     const bubbleTexture: Texture | undefined =

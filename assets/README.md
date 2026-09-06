@@ -50,9 +50,10 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
 
 **Characters**
 
-- Canvas 2 × 2 cells per frame (48 × 48 at `CELL_PX` 24), feet on the bottom row, centred horizontally, the same
-  canvas for every frame of a set. The renderer places the bottom centre on the actor's cell; a set with another
-  canvas height is scaled to two cells.
+- Canvas 2 cells wide × 5 cells tall per frame (48 × 120 at `CELL_PX` 24; people in the reference stand ≈5 cells
+  tall and 1.7 wide), feet on the bottom row, centred horizontally, the same canvas for every frame of a set. The
+  renderer places the bottom centre on the actor's cell; a set with another canvas width is scaled to two cells
+  wide (the 32 px placeholders become 48 × 48).
 - Lookup for an actor doing `activity` while facing `dir`: `<activity>_<dir>` → `<activity>_s` → `<activity>` →
   `idle_<dir>` → `idle_s` → `static`. Any frame count works; frame timing is fixed per activity: `walk` 140 ms,
   `type` 180 ms, `celebrate` 250 ms, `idle` 600 ms, `sleep` 900 ms, everything else 320 ms.
@@ -93,7 +94,7 @@ bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--fr
 
 - Uses the delivered alpha, trims the art to the visible object (alpha below 16/255 counts as empty — generators
   leave an invisible halo far outside the object), scales it with an area-averaging filter to the footprint width
-  (furniture) or into the 2 × 2 canvas (characters) or 1 × 1 (bubbles), anchors it bottom-left or bottom-centre,
+  (furniture) or into the 2 × 2 canvas (characters, 2 × 5 cells) or 1 × 1 (bubbles), anchors it bottom-left or bottom-centre,
   writes the frames and refreshes the manifest. `--frames N` splits a horizontal strip of equal frames;
   `--cells WxH` overrides the size for objects outside the plan.
 - A delivery without a single transparent pixel is refused: the background was baked in (a painted
@@ -116,9 +117,9 @@ Rules for the generation prompt (one object or one frame strip per image):
    glow** outside the object. The object fills the frame with a small margin.
 3. Frame aspect ratio = footprint ratio plus the intended overhang (a 4 × 2 desk with a half-cell monitor →
    4 : 2.5). Detail only at the level a `CELL_PX` grid can hold; hairline textures turn to noise.
-4. Characters: square frames, feet on the bottom edge of every frame, the same scale in every frame of a set
-   (the converter maps the whole frame to the canvas, so a shorter figure in one frame stays shorter). Walk
-   cycles as one horizontal strip of equal-width frames.
+4. Characters: portrait frames in the canvas ratio 2 : 5, feet on the bottom edge of every frame, the same scale
+   in every frame of a set (the converter maps the whole frame to the canvas, so a shorter figure in one frame
+   stays shorter). Walk cycles as one horizontal strip of equal-width frames.
 5. Furniture with two states (mailbox) is drawn twice from the same view; character sets keep one outfit and
    proportions across all activities.
 

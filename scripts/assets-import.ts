@@ -27,7 +27,8 @@ import {
   splitStrip,
 } from "./lib/raster.ts";
 
-const CHARACTER_CELLS = 2;
+const CHARACTER_W = 2;
+const CHARACTER_H = 5;
 
 type Target = {
   category: string;
@@ -78,14 +79,13 @@ function resolveTarget(key: string, cells: { w: number; h: number } | null): Tar
     );
   }
   if (category === "characters") {
-    const size = (cells?.w ?? CHARACTER_CELLS) * CELL_PX;
     return {
       category,
       sprite,
       animation,
-      width: size,
-      height: (cells?.h ?? CHARACTER_CELLS) * CELL_PX,
-      footprintCells: cells?.h ?? CHARACTER_CELLS,
+      width: (cells?.w ?? CHARACTER_W) * CELL_PX,
+      height: (cells?.h ?? CHARACTER_H) * CELL_PX,
+      footprintCells: cells?.h ?? CHARACTER_H,
       anchor: "bottom-centre",
       trim: false,
     };
