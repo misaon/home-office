@@ -93,6 +93,13 @@
         "zod": "catalog:",
       },
     },
+    "packages/sim": {
+      "name": "@ho/sim",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ho/protocol": "workspace:*",
+      },
+    },
     "packages/store": {
       "name": "@ho/store",
       "version": "0.0.0",
@@ -232,6 +239,8 @@
     "@ho/sandbox-docker": ["@ho/sandbox-docker@workspace:packages/sandbox-docker"],
 
     "@ho/secrets": ["@ho/secrets@workspace:packages/secrets"],
+
+    "@ho/sim": ["@ho/sim@workspace:packages/sim"],
 
     "@ho/spike-s1-claude-alpine": ["@ho/spike-s1-claude-alpine@workspace:spikes/s1-claude-alpine"],
 
