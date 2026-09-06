@@ -3,7 +3,6 @@
 // Output: apps/desktop/resources/ho (mirrors the repository paths @ho/daemon resolves) and
 // apps/desktop/icon.iconset. Both are git-ignored; `bun run desktop:dev|build` runs this first.
 import { $ } from "bun";
-import { existsSync } from "node:fs";
 import { cp, mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { drawIcon, ICONSET_FILES, scaleNearest } from "./lib/desktop-icon.ts";
@@ -20,11 +19,8 @@ const say = (text: string): void => {
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 
-// 1. Office UI bundle and sprite manifest (placeholders when no sprites were imported yet).
+// 1. Office UI bundle and sprite manifest.
 await $`bun run ${at("scripts/ui-build.ts")}`.cwd(root);
-if (!existsSync(at("assets/src/characters"))) {
-  await $`bun run ${at("scripts/assets-placeholders.ts")}`.cwd(root);
-}
 await $`bun run ${at("scripts/assets-manifest.ts")}`.cwd(root);
 await cp(at("packages/ui/dist"), resolve(out, "packages/ui/dist"), { recursive: true });
 await cp(at("assets/src"), resolve(out, "assets/src"), { recursive: true });

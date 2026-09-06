@@ -3,7 +3,7 @@
 
 export type Rgba = { width: number; height: number; data: Uint8Array };
 
-export const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 
 const CRC_TABLE = new Uint32Array(256);
 for (let n = 0; n < 256; n += 1) {
@@ -30,20 +30,13 @@ const adler32 = (bytes: Uint8Array): number => {
   return ((b << 16) | a) >>> 0;
 };
 
-export const u32 = (view: DataView, offset: number): number => view.getUint32(offset);
-
 export const blank = (width: number, height: number): Rgba => ({
   width,
   height,
   data: new Uint8Array(width * height * 4),
 });
 
-const getPixel = (img: Rgba, x: number, y: number): [number, number, number, number] => {
-  const i = (y * img.width + x) * 4;
-  return [img.data[i] ?? 0, img.data[i + 1] ?? 0, img.data[i + 2] ?? 0, img.data[i + 3] ?? 0];
-};
-
-export const setPixel = (
+const setPixel = (
   img: Rgba,
   x: number,
   y: number,
@@ -67,41 +60,6 @@ export const fillRect = (
   for (let yy = y; yy < y + h; yy += 1) {
     for (let xx = x; xx < x + w; xx += 1) {
       setPixel(img, xx, yy, rgba);
-    }
-  }
-};
-
-export const crop = (img: Rgba, x: number, y: number, w: number, h: number): Rgba => {
-  const out = blank(w, h);
-  for (let yy = 0; yy < h; yy += 1) {
-    out.data.set(
-      img.data.subarray(((y + yy) * img.width + x) * 4, ((y + yy) * img.width + x + w) * 4),
-      yy * w * 4,
-    );
-  }
-  return out;
-};
-
-/** Reduces an image drawn on a `factor`×`factor` block grid by sampling each block's centre pixel. */
-export const sampleBlocks = (img: Rgba, factor: number): Rgba => {
-  const out = blank(Math.floor(img.width / factor), Math.floor(img.height / factor));
-  const half = Math.floor(factor / 2);
-  for (let y = 0; y < out.height; y += 1) {
-    for (let x = 0; x < out.width; x += 1) {
-      setPixel(out, x, y, getPixel(img, x * factor + half, y * factor + half));
-    }
-  }
-  return out;
-};
-
-/** Turns near-magenta pixels transparent (generator fallback background). */
-export const keyOut = (img: Rgba, tolerance = 40): void => {
-  for (let i = 0; i < img.data.length; i += 4) {
-    const r = img.data[i] ?? 0;
-    const g = img.data[i + 1] ?? 0;
-    const b = img.data[i + 2] ?? 0;
-    if (r > 255 - tolerance && g < tolerance && b > 255 - tolerance) {
-      img.data[i + 3] = 0;
     }
   }
 };
@@ -147,5 +105,3 @@ export function encodePng(img: Rgba): Uint8Array {
   }
   return out;
 }
-
-export { decodePng } from "./png-decode.ts";

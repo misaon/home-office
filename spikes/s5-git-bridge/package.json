@@ -1,9 +1,0 @@
-{
-  "name": "@ho/spike-s5-git-bridge",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "run": "bun run ./src/run.ts"
-  }
-}

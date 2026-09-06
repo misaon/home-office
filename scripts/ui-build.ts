@@ -25,13 +25,17 @@ async function build(): Promise<void> {
   process.stdout.write(
     `ui: ${String(result.outputs.length)} files, ${(total / 1024).toFixed(0)} KiB → ${outdir}\n`,
   );
+  if (watch) {
+    // The page polls this in development and reloads when it changes (packages/ui/src/dev-reload.ts).
+    await Bun.write(resolve(outdir, "dev-revision.txt"), `${String(Date.now())}\n`);
+  }
 }
 
 await build();
 if (watch) {
   const { watch: fsWatch } = await import("node:fs");
   let timer: ReturnType<typeof setTimeout> | null = null;
-  fsWatch(resolve(root, "packages/ui/src"), { recursive: true }, () => {
+  const rebuild = (): void => {
     if (timer !== null) {
       clearTimeout(timer);
     }
@@ -40,8 +44,18 @@ if (watch) {
         process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
       });
     }, 150);
-  });
-  process.stdout.write("watching packages/ui/src\n");
+  };
+  // Everything the bundle is built from: the UI, the simulation and the shared packages it imports.
+  const watched = [
+    "packages/ui/src",
+    "packages/sim/src",
+    "packages/core/src",
+    "packages/protocol/src",
+  ];
+  for (const dir of watched) {
+    fsWatch(resolve(root, dir), { recursive: true }, rebuild);
+  }
+  process.stdout.write(`watching ${watched.join(", ")}\n`);
   await new Promise<never>(() => {
     // keep watching
   });

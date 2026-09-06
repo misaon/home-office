@@ -1,12 +1,13 @@
 import type { Facing, Point } from "./grid.ts";
-import type { AnchorKind, FloorTemplate, Furniture } from "./templates.ts";
+import type { Anchor, AnchorKind, FloorTemplate, Furniture } from "./templates.ts";
+
+/** The whole company works on one floor: the owner-approved office (docs/OFFICE-ART.md). */
+export const OFFICE_FLOOR_ID = "office";
 
 export type PlanRect = { x: number; y: number; w: number; h: number };
-export type PlanRoom = PlanRect & {
-  id: string;
-  label: string;
-  surface: "office" | "tile" | "wood";
-};
+export type Surface = "office" | "tile" | "wood" | "carpet";
+export type PlanRoom = PlanRect & { id: string; label: string; surface: Surface };
+/** A placed object with its label and orientation; `sprite` doubles as the delivery key for real art. */
 export type PlanObject = Furniture & { id: string; label: string; facing: Facing };
 export type PlanDoor = PlanRect & { id: string; kind: "door" | "sliding" | "elevator" };
 export type OfficePlan = {
@@ -14,236 +15,249 @@ export type OfficePlan = {
   rooms: PlanRoom[];
   objects: PlanObject[];
   doors: PlanDoor[];
+  /** Fixed glazing: impassable like a wall, drawn as tall translucent panels. */
   glass: PlanRect[];
 };
 
-/** The approved composition on a navigable grid; art and domain role assignment are separate. */
-export function officePlan(): OfficePlan {
-  const width = 80;
-  const height = 46;
-  const plan: OfficePlan = {
-    template: {
-      id: "office-base-v1",
-      name: "Office Base · v1",
-      width,
-      height,
-      floor: Array.from({ length: width * height }, () => "tiles/floor-lobby"),
-      walls: new Uint8Array(width * height),
-      furniture: [],
-      anchors: [],
-    },
-    rooms: [],
-    objects: [],
-    doors: [],
-    glass: [],
-  };
-  structure(plan);
-  for (const region of plan.rooms) {
-    paintRoom(plan, region);
-  }
-  workplaces(plan);
-  sharedSpaces(plan);
-  // The enlarged DEV 3 art extends one ground cell west; preserve its seat and room layout.
-  const sampleDesk = plan.objects.find((item) => item.id === "dev-3");
-  if (sampleDesk !== undefined) {
-    sampleDesk.at.x -= 1;
-    sampleDesk.w += 1;
-  }
-  plan.template.furniture = plan.objects;
-  return plan;
-}
+const WIDTH = 80;
+const HEIGHT = 46;
+const SURFACE_TILE: Record<Surface, string> = {
+  office: "tiles/floor-office",
+  carpet: "tiles/floor-carpet",
+  tile: "tiles/floor-tile",
+  wood: "tiles/floor-wood",
+};
 
-function wall(plan: OfficePlan, x: number, y: number, w: number, h: number): void {
-  for (let yy = y; yy < y + h; yy += 1) {
-    for (let xx = x; xx < x + w; xx += 1) {
-      if (xx === x || xx === x + w - 1 || yy === y || yy === y + h - 1) {
-        plan.template.walls[yy * plan.template.width + xx] = 1;
+/** Seat zones map to agent roles: developers work at dev desks, reviewers in QA, clerks with the analysts. */
+export const SEAT_GROUPS = ["dev", "qa", "analyst"] as const;
+export type SeatGroup = (typeof SEAT_GROUPS)[number];
+
+class Plan {
+  readonly plan: OfficePlan;
+
+  constructor() {
+    this.plan = {
+      template: {
+        id: OFFICE_FLOOR_ID,
+        name: "Office",
+        width: WIDTH,
+        height: HEIGHT,
+        floor: Array.from({ length: WIDTH * HEIGHT }, () => SURFACE_TILE.office),
+        walls: new Uint8Array(WIDTH * HEIGHT),
+        furniture: [],
+        anchors: [],
+      },
+      rooms: [],
+      objects: [],
+      doors: [],
+      glass: [],
+    };
+  }
+
+  /** Walls on the rectangle's perimeter. */
+  wall(rect: PlanRect): void {
+    const { walls, width } = this.plan.template;
+    for (let y = rect.y; y < rect.y + rect.h; y += 1) {
+      for (let x = rect.x; x < rect.x + rect.w; x += 1) {
+        if (
+          x === rect.x ||
+          x === rect.x + rect.w - 1 ||
+          y === rect.y ||
+          y === rect.y + rect.h - 1
+        ) {
+          walls[y * width + x] = 1;
+        }
       }
     }
   }
-}
 
-function room(
-  plan: OfficePlan,
-  id: string,
-  label: string,
-  rect: PlanRect,
-  surface: PlanRoom["surface"] = "office",
-): void {
-  plan.rooms.push({ id, label, ...rect, surface });
-  wall(plan, rect.x, rect.y, rect.w, rect.h);
-}
-
-/** Surface bounds also define the lab's room fill, including open rooms without perimeter walls. */
-function paintRoom(plan: OfficePlan, rect: PlanRoom): void {
-  for (let y = rect.y + 1; y < rect.y + rect.h - 1; y += 1) {
-    for (let x = rect.x + 1; x < rect.x + rect.w - 1; x += 1) {
-      plan.template.floor[y * plan.template.width + x] =
-        rect.surface === "tile"
-          ? "tiles/floor-kitchen"
-          : rect.surface === "wood"
-            ? "tiles/floor-lobby"
-            : "tiles/floor-carpet";
+  clear(rect: PlanRect): void {
+    const { walls, width } = this.plan.template;
+    for (let y = rect.y; y < rect.y + rect.h; y += 1) {
+      for (let x = rect.x; x < rect.x + rect.w; x += 1) {
+        walls[y * width + x] = 0;
+      }
     }
   }
-}
 
-function door(plan: OfficePlan, id: string, rect: PlanRect, kind: PlanDoor["kind"] = "door"): void {
-  plan.doors.push({ id, ...rect, kind });
-  for (let y = rect.y; y < rect.y + rect.h; y += 1) {
-    for (let x = rect.x; x < rect.x + rect.w; x += 1) {
-      plan.template.walls[y * plan.template.width + x] = 0;
+  /** A walled room; `open` rooms only paint their floor (reception, terrace, spa). */
+  room(id: string, label: string, rect: PlanRect, surface: Surface = "carpet", open = false): void {
+    this.plan.rooms.push({ id, label, ...rect, surface });
+    if (!open) {
+      this.wall(rect);
+    }
+    const { floor, width } = this.plan.template;
+    for (let y = rect.y + 1; y < rect.y + rect.h - 1; y += 1) {
+      for (let x = rect.x + 1; x < rect.x + rect.w - 1; x += 1) {
+        floor[y * width + x] = SURFACE_TILE[surface];
+      }
     }
   }
-}
 
-function object(
-  plan: OfficePlan,
-  id: string,
-  label: string,
-  sprite: string,
-  rect: PlanRect,
-  facing: Facing = "n",
-  blocks = true,
-): void {
-  plan.objects.push({
-    id,
-    label,
-    sprite: `furniture/${sprite}`,
-    animation: "static",
-    at: { x: rect.x, y: rect.y },
-    w: rect.w,
-    h: rect.h,
-    blocks,
-    facing,
-  });
-}
-
-function anchor(
-  plan: OfficePlan,
-  id: string,
-  kind: AnchorKind,
-  at: Point,
-  facing: Facing = "n",
-): void {
-  plan.template.anchors.push({ id, kind, at, facing });
-}
-
-function structure(p: OfficePlan): void {
-  wall(p, 0, 0, 80, 46);
-  room(p, "boss", "ŠÉF", { x: 0, y: 0, w: 15, h: 16 });
-  room(p, "dev", "VÝVOJÁŘI · 6", { x: 14, y: 0, w: 42, h: 16 });
-  room(p, "qa", "QA · 2", { x: 55, y: 0, w: 13, h: 16 });
-  room(p, "analyst", "ANALYTICI · 2", { x: 67, y: 0, w: 13, h: 16 });
-  room(p, "meeting", "ZASEDAČKA", { x: 33, y: 20, w: 16, h: 14 });
-  room(p, "kitchen", "KUCHYŇ / JÍDELNA", { x: 48, y: 20, w: 22, h: 14 }, "tile");
-  room(p, "toilets", "TOALETY", { x: 0, y: 33, w: 20, h: 13 }, "tile");
-  room(p, "lounge", "RELAX", { x: 19, y: 33, w: 30, h: 13 });
-  room(p, "call-1", "CALL 1", { x: 29, y: 20, w: 5, h: 7 });
-  room(p, "call-2", "CALL 2", { x: 29, y: 26, w: 5, h: 8 });
-  p.rooms.push(
-    { id: "reception", label: "RECEPCE", x: 9, y: 21, w: 17, h: 12, surface: "office" },
-    { id: "terrace", label: "TERASA", x: 49, y: 34, w: 30, h: 11, surface: "wood" },
-    { id: "spa", label: "SPA", x: 70, y: 21, w: 9, h: 13, surface: "wood" },
-  );
-  // Elevator shaft is physically part of the lobby wall.
-  wall(p, 0, 22, 10, 8);
-  // Continuous backdrop joins the elevator shaft at x=9; entry stays on the right.
-  wall(p, 9, 21, 16, 1);
-  // Both stalls share the restroom's north wall; no passage behind them.
-  wall(p, 1, 33, 5, 6);
-  wall(p, 5, 33, 5, 6);
-  wall(p, 70, 20, 10, 1);
-  door(p, "boss", { x: 10, y: 15, w: 3, h: 1 });
-  door(p, "dev", { x: 34, y: 15, w: 4, h: 1 }, "sliding");
-  door(p, "qa", { x: 57, y: 15, w: 3, h: 1 });
-  door(p, "analyst", { x: 69, y: 15, w: 3, h: 1 });
-  door(p, "meeting", { x: 35, y: 20, w: 3, h: 1 });
-  door(p, "terrace", { x: 72, y: 20, w: 3, h: 1 });
-  door(p, "toilets", { x: 13, y: 33, w: 3, h: 1 });
-  door(p, "lounge", { x: 26, y: 33, w: 3, h: 1 });
-  door(p, "call-1", { x: 29, y: 23, w: 1, h: 2 });
-  door(p, "call-2", { x: 29, y: 29, w: 1, h: 2 });
-  door(p, "stall-1", { x: 2, y: 38, w: 2, h: 1 });
-  door(p, "stall-2", { x: 6, y: 38, w: 2, h: 1 });
-  door(p, "elevator", { x: 3, y: 29, w: 4, h: 1 }, "elevator");
-  // The former corridor is part of the kitchen, with its existing north entrance left open.
-  for (let x = 49; x < 54; x += 1) {
-    p.template.walls[20 * p.template.width + x] = 0;
+  door(id: string, rect: PlanRect, kind: PlanDoor["kind"] = "door"): void {
+    this.plan.doors.push({ id, ...rect, kind });
+    this.clear(rect);
   }
-  // Fixed glazing spans the corridor too, joining the meeting-room wall at x=48.
-  p.glass.push({ x: 49, y: 33, w: 20, h: 1 });
-  // Glazing is a solid boundary even when its visual representation is transparent.
-  for (const pane of p.glass) {
-    wall(p, pane.x, pane.y, pane.w, pane.h);
+
+  glass(rect: PlanRect): void {
+    this.plan.glass.push(rect);
+    this.wall(rect);
   }
-  anchor(p, "elevator", "elevator", { x: 4, y: 30 });
+
+  object(
+    id: string,
+    label: string,
+    sprite: string,
+    rect: PlanRect,
+    facing: Facing = "s",
+    blocks = true,
+  ): void {
+    this.plan.objects.push({
+      id,
+      label,
+      sprite: `furniture/${sprite}`,
+      animation: "static",
+      at: { x: rect.x, y: rect.y },
+      w: rect.w,
+      h: rect.h,
+      blocks,
+      facing,
+    });
+  }
+
+  anchor(id: string, kind: AnchorKind, at: Point, facing: Facing = "n", group?: string): void {
+    const anchor: Anchor = { id, kind, at, facing, ...(group === undefined ? {} : { group }) };
+    this.plan.template.anchors.push(anchor);
+  }
+
+  /** A four-cell desk with its chair; the seat faces the monitor (`facing` = where the person looks). */
+  desk(id: string, label: string, x: number, y: number, facing: "n" | "s", group?: string): void {
+    this.object(id, label, `desk-${facing}`, { x, y, w: 4, h: 2 }, facing);
+    const seat = { x: x + 1, y: facing === "s" ? y - 1 : y + 2 };
+    this.object(`${id}-chair`, "", `chair-${facing}`, { ...seat, w: 1, h: 1 }, facing, false);
+    this.anchor(id, id === "boss-desk" ? "boss-desk" : "desk", seat, facing, group);
+  }
 }
 
-function desk(
-  p: OfficePlan,
-  id: string,
-  label: string,
-  x: number,
-  y: number,
-  facing: Facing,
-): void {
-  object(p, id, label, "desk-monitor", { x, y, w: 4, h: 2 }, facing);
-  const at = { x: x + 1, y: facing === "s" ? y - 1 : y + 2 };
-  object(p, `${id}-chair`, "", "chair", { ...at, w: 1, h: 1 }, facing, false);
-  anchor(p, id, id === "boss-desk" ? "boss-desk" : "desk", at, facing);
+function structure(p: Plan): void {
+  p.wall({ x: 0, y: 0, w: WIDTH, h: HEIGHT });
+  p.room("boss", "ŠÉF", { x: 0, y: 0, w: 15, h: 16 });
+  p.room("dev", "VÝVOJÁŘI · 6", { x: 14, y: 0, w: 42, h: 16 });
+  p.room("qa", "QA · 2", { x: 55, y: 0, w: 13, h: 16 });
+  p.room("analyst", "ANALYTICI · 2", { x: 67, y: 0, w: 13, h: 16 });
+  p.room("meeting", "ZASEDAČKA", { x: 33, y: 20, w: 16, h: 14 });
+  p.room("kitchen", "KUCHYŇ / JÍDELNA", { x: 48, y: 20, w: 22, h: 14 }, "tile");
+  p.room("toilets", "TOALETY", { x: 0, y: 33, w: 20, h: 13 }, "tile");
+  p.room("lounge", "RELAX", { x: 19, y: 33, w: 30, h: 13 });
+  p.room("call-1", "CALL 1", { x: 29, y: 20, w: 5, h: 7 });
+  p.room("call-2", "CALL 2", { x: 29, y: 26, w: 5, h: 8 });
+  p.room("reception", "RECEPCE", { x: 9, y: 21, w: 17, h: 12 }, "office", true);
+  p.room("terrace", "TERASA", { x: 49, y: 34, w: 30, h: 11 }, "wood", true);
+  p.room("spa", "SPA", { x: 70, y: 21, w: 9, h: 13 }, "wood", true);
+  // The elevator shaft is part of the lobby wall; the reception backdrop joins it at x=9.
+  p.wall({ x: 0, y: 22, w: 10, h: 8 });
+  p.wall({ x: 9, y: 21, w: 16, h: 1 });
+  // Two WC stalls share the restroom's north wall.
+  p.wall({ x: 1, y: 33, w: 5, h: 6 });
+  p.wall({ x: 5, y: 33, w: 5, h: 6 });
+  p.wall({ x: 70, y: 20, w: 10, h: 1 });
+  p.door("boss", { x: 10, y: 15, w: 3, h: 1 });
+  p.door("dev", { x: 34, y: 15, w: 4, h: 1 }, "sliding");
+  p.door("qa", { x: 57, y: 15, w: 3, h: 1 });
+  p.door("analyst", { x: 69, y: 15, w: 3, h: 1 });
+  p.door("meeting", { x: 35, y: 20, w: 3, h: 1 });
+  p.door("terrace", { x: 72, y: 20, w: 3, h: 1 });
+  p.door("toilets", { x: 13, y: 33, w: 3, h: 1 });
+  p.door("lounge", { x: 26, y: 33, w: 3, h: 1 });
+  p.door("call-1", { x: 29, y: 23, w: 1, h: 2 });
+  p.door("call-2", { x: 29, y: 29, w: 1, h: 2 });
+  p.door("stall-1", { x: 2, y: 38, w: 2, h: 1 });
+  p.door("stall-2", { x: 6, y: 38, w: 2, h: 1 });
+  p.door("elevator", { x: 3, y: 29, w: 4, h: 1 }, "elevator");
+  // The kitchen absorbs the former corridor strip and keeps its north entrance open.
+  p.clear({ x: 49, y: 20, w: 5, h: 1 });
+  // Fixed glazing from the meeting-room wall across the kitchen front to the east wall.
+  p.glass({ x: 49, y: 33, w: 20, h: 1 });
+  // Arrival: the elevator threshold is where everybody (and the postman) enters the office.
+  p.anchor("elevator", "elevator", { x: 4, y: 30 });
+  p.anchor("entrance", "entrance", { x: 5, y: 30 }, "s");
 }
 
-function workplaces(p: OfficePlan): void {
-  desk(p, "boss-desk", "BOSS", 4, 6, "s");
+function workplaces(p: Plan): void {
+  p.desk("boss-desk", "BOSS", 4, 6, "s");
   for (const [i, x] of [18, 24, 30, 38, 44, 50].entries()) {
-    desk(p, `dev-${String(i + 1)}`, `DEV ${String(i + 1)}`, x, 7, "n");
+    p.desk(`dev-${String(i + 1)}`, `DEV ${String(i + 1)}`, x, 7, "n", "dev");
   }
-  desk(p, "qa-1", "QA 1", 59, 5, "s");
-  desk(p, "qa-2", "QA 2", 59, 8, "n");
-  desk(p, "analyst-1", "AN 1", 71, 5, "s");
-  desk(p, "analyst-2", "AN 2", 71, 8, "n");
-  object(p, "boss-visitors", "HOSTÉ", "sofa", { x: 4, y: 11, w: 5, h: 2 });
+  p.desk("qa-1", "QA 1", 59, 5, "s", "qa");
+  p.desk("qa-2", "QA 2", 59, 8, "n", "qa");
+  p.desk("analyst-1", "AN 1", 71, 5, "s", "analyst");
+  p.desk("analyst-2", "AN 2", 71, 8, "n", "analyst");
+  p.object("boss-visitors", "HOSTÉ", "sofa", { x: 4, y: 11, w: 5, h: 2 });
+  p.anchor("boss-visitors", "sleep", { x: 6, y: 13 }, "n");
   for (const x of [17, 39, 51]) {
-    object(p, `shelf-${String(x)}`, "SLOŽKY", "bookshelf", { x, y: 2, w: 3, h: 2 });
+    p.object(`shelf-${String(x)}`, "SLOŽKY", "bookshelf", { x, y: 2, w: 3, h: 2 });
   }
 }
 
-function sharedSpaces(p: OfficePlan): void {
-  object(p, "lift-shaft", "VÝTAH", "elevator", { x: 1, y: 23, w: 8, h: 6 });
-  object(p, "reception", "název firmy", "reception", { x: 14, y: 27, w: 8, h: 2 });
-  anchor(p, "reception", "reception", { x: 17, y: 30 });
-  anchor(p, "reception-staff", "wander", { x: 17, y: 26 }, "s");
-  object(p, "meeting-table", "JEDNÁNÍ", "boss-desk", { x: 37, y: 26, w: 7, h: 3 });
-  anchor(p, "meeting", "whiteboard", { x: 40, y: 25 }, "s");
-  object(p, "kitchen-units", "LINKA", "sink", { x: 56, y: 22, w: 11, h: 2 });
-  anchor(p, "coffee", "coffee", { x: 58, y: 24 });
-  object(p, "dining", "JÍDELNA", "boss-desk", { x: 59, y: 28, w: 6, h: 2 });
-  anchor(p, "dining", "relax", { x: 61, y: 31 });
+function sharedSpaces(p: Plan): void {
+  p.object("lift-shaft", "VÝTAH", "elevator", { x: 1, y: 23, w: 8, h: 6 });
+  p.object("reception", "název firmy", "reception-desk", { x: 14, y: 27, w: 8, h: 2 });
+  p.anchor("reception", "reception", { x: 17, y: 30 });
+  p.anchor("reception-staff", "wander", { x: 17, y: 26 }, "s");
+  // The post lands on the reception counter; a courier carries it to the boss.
+  p.object("mailbox", "", "mailbox", { x: 22, y: 27, w: 1, h: 1 }, "s", true);
+  p.anchor("mailbox", "mailbox", { x: 22, y: 28 }, "n");
+  p.object("meeting-table", "JEDNÁNÍ", "meeting-table", { x: 37, y: 26, w: 7, h: 3 });
+  p.anchor("meeting", "whiteboard", { x: 40, y: 25 }, "s");
+  p.object("kitchen-units", "LINKA", "kitchen-units", { x: 56, y: 22, w: 11, h: 2 });
+  p.anchor("coffee", "coffee", { x: 58, y: 24 });
+  p.object("dining", "JÍDELNA", "dining-table", { x: 59, y: 28, w: 6, h: 2 });
+  p.anchor("dining", "relax", { x: 61, y: 31 });
   for (const x of [2, 6]) {
-    object(p, `wc-${String(x)}`, "WC", "toilet", { x, y: 34, w: 2, h: 2 });
-    anchor(p, `wc-${String(x)}`, "restroom", { x, y: 36 });
+    p.object(`wc-${String(x)}`, "WC", "toilet", { x, y: 34, w: 2, h: 2 });
+    p.anchor(`wc-${String(x)}`, "restroom", { x, y: 36 });
   }
-  object(p, "sinks", "UMYVADLA", "sink", { x: 17, y: 37, w: 2, h: 4 });
-  anchor(p, "sinks", "wander", { x: 16, y: 39 }, "e");
-  object(p, "dryer-bin", "", "trash-bin", { x: 10, y: 36, w: 1, h: 2 });
-  object(p, "tv", "TV / PS5", "whiteboard", { x: 20, y: 38, w: 1, h: 4 });
-  object(p, "sofa", "POHOVKA", "sofa", { x: 28, y: 38, w: 3, h: 5 });
-  anchor(p, "sofa", "relax", { x: 27, y: 40 }, "w");
-  object(p, "foosball", "FOTBÁLEK", "boss-desk", { x: 39, y: 38, w: 4, h: 5 });
-  anchor(p, "foosball-left", "relax", { x: 38, y: 40 }, "e");
-  anchor(p, "foosball-right", "relax", { x: 43, y: 40 }, "w");
-  anchor(p, "darts", "relax", { x: 24, y: 37 });
-  for (const y of [21, 27]) {
-    object(p, `call-desk-${String(y)}`, "", "desk-monitor", { x: 31, y, w: 2, h: 1 });
-    anchor(p, `call-${y === 21 ? "1" : "2"}`, "wander", { x: 31, y: y + 2 });
+  p.object("sinks", "UMYVADLA", "sinks", { x: 17, y: 37, w: 2, h: 4 }, "w");
+  p.anchor("sinks", "wander", { x: 16, y: 39 }, "e");
+  p.object("dryer-bin", "", "dryer-bin", { x: 10, y: 36, w: 1, h: 2 });
+  p.object("tv", "TV / PS5", "tv", { x: 20, y: 38, w: 1, h: 4 }, "e");
+  p.object("sofa", "POHOVKA", "sofa-lounge", { x: 28, y: 38, w: 3, h: 5 }, "w");
+  p.anchor("sofa", "relax", { x: 27, y: 40 }, "w");
+  p.anchor("sofa-nap", "sleep", { x: 27, y: 41 }, "w");
+  p.object("foosball", "FOTBÁLEK", "foosball", { x: 39, y: 38, w: 4, h: 5 });
+  p.anchor("foosball-left", "relax", { x: 38, y: 40 }, "e");
+  p.anchor("foosball-right", "relax", { x: 43, y: 40 }, "w");
+  p.anchor("darts", "relax", { x: 24, y: 37 });
+  for (const [i, y] of [21, 27].entries()) {
+    p.object(`call-desk-${String(i + 1)}`, "", "call-desk", { x: 31, y, w: 2, h: 1 });
+    p.anchor(`call-${String(i + 1)}`, "wander", { x: 31, y: y + 2 });
   }
-  object(p, "hot-tub", "VÍŘIVKA", "sofa", { x: 72, y: 26, w: 5, h: 6 });
-  anchor(p, "hot-tub", "relax", { x: 74, y: 33 });
-  object(p, "grill", "GRIL", "coffee-machine", { x: 66, y: 36, w: 3, h: 2 });
-  anchor(p, "grill", "coffee", { x: 67, y: 38 });
-  object(p, "outdoor-table", "POSEZENÍ", "boss-desk", { x: 54, y: 38, w: 7, h: 4 });
-  anchor(p, "terrace-table", "relax", { x: 57, y: 42 });
-  object(p, "ashtray", "", "ashtray-stand", { x: 78, y: 23, w: 1, h: 1 });
-  anchor(p, "smoke", "smoke", { x: 77, y: 23 }, "e");
+  p.object("hot-tub", "VÍŘIVKA", "hot-tub", { x: 72, y: 26, w: 5, h: 6 });
+  p.anchor("hot-tub", "relax", { x: 74, y: 33 });
+  p.object("grill", "GRIL", "grill", { x: 66, y: 36, w: 3, h: 2 });
+  p.anchor("grill", "coffee", { x: 67, y: 38 });
+  p.object("outdoor-table", "POSEZENÍ", "outdoor-table", { x: 54, y: 38, w: 7, h: 4 });
+  p.anchor("terrace-table", "relax", { x: 57, y: 42 });
+  p.object("ashtray", "", "ashtray", { x: 78, y: 23, w: 1, h: 1 });
+  p.anchor("smoke", "smoke", { x: 77, y: 23 }, "e");
+  // Corridor spots for idle wandering.
+  for (const [i, at] of [
+    { x: 20, y: 18 },
+    { x: 45, y: 18 },
+    { x: 62, y: 18 },
+    { x: 27, y: 30 },
+    { x: 40, y: 36 },
+  ].entries()) {
+    p.anchor(`corridor-${String(i + 1)}`, "wander", at, "s");
+  }
+}
+
+/** The approved composition on a navigable 80×46 grid, 16 px per cell; art is looked up by object sprite key. */
+export function officePlan(): OfficePlan {
+  const p = new Plan();
+  structure(p);
+  workplaces(p);
+  sharedSpaces(p);
+  p.plan.template.furniture = p.plan.objects;
+  return p.plan;
 }

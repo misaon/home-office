@@ -1,4 +1,4 @@
-import { FloorTabs } from "./office/floor-tabs.tsx";
+import { useDevReload } from "./dev-reload.ts";
 import { OfficeCanvas } from "./office/office-canvas.tsx";
 import { BoardPanel } from "./panels/board.tsx";
 import { ChatPanel } from "./panels/chat.tsx";
@@ -38,6 +38,7 @@ export function App(): React.JSX.Element {
   const connection = useUi((s) => s.connection);
   const setSetupOpen = useUi((s) => s.setSetupOpen);
   useSetupAutoOpen();
+  useDevReload();
   return (
     <div className="relative flex h-full">
       <SetupOverlay />
@@ -48,10 +49,6 @@ export function App(): React.JSX.Element {
             className={`h-2 w-2 rounded-full ${connection === "online" ? "bg-emerald-400" : "bg-red-400"}`}
             title={connection}
           />
-          <FloorTabs />
-          <a href="/office-lab" className="text-xs text-gray-300 hover:text-white">
-            Office Lab
-          </a>
           <button
             type="button"
             className="ml-auto rounded bg-panel px-2 py-1 text-xs text-gray-300 hover:bg-line"

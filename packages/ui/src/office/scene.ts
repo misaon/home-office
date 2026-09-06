@@ -1,5 +1,5 @@
 import type { AgentId } from "@ho/protocol";
-import type { Actor, Floor, FloorTemplate, Furniture, World } from "@ho/sim";
+import type { Actor, Floor, World } from "@ho/sim";
 import { Application, Container, Sprite, Text, type Texture } from "pixi.js";
 import type { SpriteLibrary } from "./sprites.ts";
 
@@ -11,52 +11,34 @@ const LABEL_STYLE = {
   stroke: { color: "#000000", width: 2 },
 };
 
-/** A furniture sprite and the template entry it mirrors, so state changes (mailbox full) can swap the art. */
-type FurnitureView = { item: Furniture; sprite: Sprite; animation: string };
+/** What a floor renderer hands the scene: static layers plus the sorted layer actors join. */
 export type FloorView = {
   root: Container;
+  /** Y-sorted layer for furniture and characters. */
   objects: Container;
-  furniture?: FurnitureView[];
   width: number;
   height: number;
-  actorTexture?: (actor: Actor) => Texture | undefined;
-  actorScale?: (actor: Actor) => number;
+  /** Per-frame hook for animated pieces (doors, object states). */
+  update?: (world: World, dtMs: number) => void;
 };
-type SceneFrame = { x: number; y: number; width: number; height: number };
-type ActorView = {
-  root: Container;
-  body: Sprite;
-  bubble: Sprite;
-  label: Text;
-  floorId: string;
-  clipKey: string;
-};
+export type FloorRenderer = (floor: Floor) => FloorView;
 
-/** Which of the nine autotile pieces a wall cell shows, from its wall neighbours. */
-function wallPiece(t: FloorTemplate, x: number, y: number): number {
-  const wall = (px: number, py: number): boolean =>
-    px >= 0 && py >= 0 && px < t.width && py < t.height && t.walls[py * t.width + px] === 1;
-  const row = wall(x, y - 1) ? (wall(x, y + 1) ? 1 : 2) : 0;
-  const col = wall(x - 1, y) ? (wall(x + 1, y) ? 1 : 2) : 0;
-  return row * 3 + col;
-}
+type ActorView = { root: Container; body: Sprite; bubble: Sprite; label: Text; floorId: string };
 
-/** PixiJS view of the office: baked tiles per floor, z-sorted furniture and characters, bubbles. */
+/** PixiJS view of the office: floor views from the renderer, z-sorted characters with bubbles and names. */
 export class OfficeScene {
   readonly app = new Application();
   readonly #sprites: SpriteLibrary;
+  readonly #render: FloorRenderer;
   readonly #stage = new Container();
   readonly #floors = new Map<string, FloorView>();
   readonly #actors = new Map<AgentId, ActorView>();
   #current: string | null = null;
-  readonly #floorRenderer: ((floor: Floor) => FloorView) | undefined;
-  frame: SceneFrame | null = null;
-  fitMode: "pixels" | "contain" = "pixels";
   onSelect: (agentId: AgentId | null) => void = () => undefined;
 
-  constructor(sprites: SpriteLibrary, floorRenderer?: (floor: Floor) => FloorView) {
+  constructor(sprites: SpriteLibrary, render: FloorRenderer) {
     this.#sprites = sprites;
-    this.#floorRenderer = floorRenderer;
+    this.#render = render;
   }
 
   async init(host: HTMLElement): Promise<void> {
@@ -81,50 +63,10 @@ export class OfficeScene {
     this.app.destroy(true, { children: true });
   }
 
-  #texture(key: string, animation: string, frame = 0): Texture | undefined {
-    const frames = this.#sprites.frames(key, animation);
-    return frames?.[frame % Math.max(1, frames.length)];
-  }
-
-  #buildFloor(floor: Floor): FloorView {
-    const t = floor.template;
-    const root = new Container({ visible: false });
-    const tiles = new Container();
-    for (let y = 0; y < t.height; y += 1) {
-      for (let x = 0; x < t.width; x += 1) {
-        const floorKey = t.floor[y * t.width + x] ?? null;
-        const isWall = t.walls[y * t.width + x] === 1;
-        const texture = isWall
-          ? this.#texture("tiles/wall-office", "autotile", wallPiece(t, x, y))
-          : floorKey === null
-            ? undefined
-            : this.#texture(floorKey, "static");
-        if (texture !== undefined) {
-          tiles.addChild(new Sprite({ texture, x: x * TILE, y: y * TILE }));
-        }
-      }
-    }
-    tiles.cacheAsTexture(true);
-    const objects = new Container({ sortableChildren: true });
-    const furniture: FurnitureView[] = [];
-    for (const f of t.furniture) {
-      const texture = this.#texture(f.sprite, f.animation) ?? this.#texture(f.sprite, "static");
-      if (texture !== undefined) {
-        const sprite = new Sprite({ texture, x: f.at.x * TILE, y: (f.at.y + f.h) * TILE });
-        sprite.anchor.set(0, 1);
-        sprite.zIndex = (f.at.y + f.h) * TILE - (f.blocks ? 1 : 3);
-        objects.addChild(sprite);
-        furniture.push({ item: f, sprite, animation: f.animation });
-      }
-    }
-    root.addChild(tiles, objects);
-    return { root, objects, furniture, width: t.width * TILE, height: t.height * TILE };
-  }
-
   syncFloors(world: World): void {
     for (const [id, floor] of world.floors) {
       if (!this.#floors.has(id)) {
-        const view = this.#floorRenderer?.(floor) ?? this.#buildFloor(floor);
+        const view = this.#render(floor);
         this.#floors.set(id, view);
         this.#stage.addChild(view.root);
       }
@@ -144,20 +86,18 @@ export class OfficeScene {
     }
   }
 
+  /**
+   * Camera: integer zoom when the whole floor fits (crisp pixels), otherwise scale down to fit — the office is
+   * 1280×736 native and most windows are smaller once the side panel is open.
+   */
   #fit(view: FloorView): void {
     const { width, height } = this.app.screen;
-    const frame = this.frame ?? { x: 0, y: 0, width: view.width, height: view.height };
-    const fit = Math.min(width / frame.width, height / frame.height);
-    const scale =
-      this.fitMode === "contain"
-        ? fit
-        : fit >= 1
-          ? Math.floor(fit)
-          : 1 / Math.ceil(1 / Math.max(fit, 0.001));
+    const fit = Math.min(width / view.width, height / view.height);
+    const scale = fit >= 1 ? Math.floor(fit) : fit;
     this.#stage.scale.set(scale);
     this.#stage.position.set(
-      Math.floor((width - frame.width * scale) / 2 - frame.x * scale),
-      Math.floor((height - frame.height * scale) / 2 - frame.y * scale),
+      Math.floor((width - view.width * scale) / 2),
+      Math.floor((height - view.height * scale) / 2),
     );
   }
 
@@ -183,7 +123,7 @@ export class OfficeScene {
       e.stopPropagation();
       this.onSelect(actor.id);
     });
-    const view: ActorView = { root, body, bubble, label, floorId: "", clipKey: "" };
+    const view: ActorView = { root, body, bubble, label, floorId: "" };
     this.#actors.set(actor.id, view);
     return view;
   }
@@ -200,25 +140,18 @@ export class OfficeScene {
       Math.round(actor.pos.y * TILE + TILE),
     );
     view.root.zIndex = actor.pos.y * TILE + TILE;
-    const presentation = this.#floors.get(actor.floorId)?.actorTexture?.(actor);
-    const scale = this.#floors.get(actor.floorId)?.actorScale?.(actor) ?? 1;
-    view.body.scale.set(scale);
-    view.bubble.y = -Math.max(34, view.body.texture.height * scale + 2);
     const clip = this.#sprites.clip(actor.sprite, actor.activity, actor.facing);
-    if (presentation !== undefined) {
-      view.body.texture = presentation;
-      view.body.scale.x = scale;
-    } else if (clip !== null) {
+    if (clip !== null) {
       const frame = Math.floor(actor.animTime / clip.frameMs) % clip.textures.length;
       const texture = clip.textures[frame];
       if (texture !== undefined && view.body.texture !== texture) {
         view.body.texture = texture;
       }
-      view.body.scale.x = clip.flip ? -scale : scale;
+      view.body.scale.x = clip.flip ? -1 : 1;
     }
     const emotion = actor.emotion?.kind ?? null;
-    const bubbleTexture =
-      emotion === null ? undefined : this.#texture(`bubbles/${emotion}`, "static");
+    const bubbleTexture: Texture | undefined =
+      emotion === null ? undefined : this.#sprites.frames(`bubbles/${emotion}`, "static")?.[0];
     view.bubble.visible = bubbleTexture !== undefined;
     if (bubbleTexture !== undefined && view.bubble.texture !== bubbleTexture) {
       view.bubble.texture = bubbleTexture;
@@ -227,20 +160,16 @@ export class OfficeScene {
   }
 
   /** Called every frame with the current world; cheap when nothing moved. */
-  update(world: World, names: (id: AgentId) => string, selected: AgentId | null): void {
+  update(
+    world: World,
+    dtMs: number,
+    names: (id: AgentId) => string,
+    selected: AgentId | null,
+  ): void {
     const current = this.#current === null ? undefined : this.#floors.get(this.#current);
     if (current !== undefined) {
       this.#fit(current);
-    }
-    // Furniture whose state changed (the mailbox filling up) swaps its texture; nothing else is touched.
-    for (const view of current?.furniture ?? []) {
-      if (view.animation !== view.item.animation) {
-        const texture = this.#texture(view.item.sprite, view.item.animation);
-        if (texture !== undefined) {
-          view.sprite.texture = texture;
-          view.animation = view.item.animation;
-        }
-      }
+      current.update?.(world, dtMs);
     }
     for (const actor of world.actors.values()) {
       this.#placeActor(actor, this.#ensureActor(actor, names(actor.id)), actor.id === selected);

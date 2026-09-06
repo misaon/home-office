@@ -1,26 +1,12 @@
 import type { AgentId } from "@ho/protocol";
+import { OFFICE_FLOOR_ID } from "@ho/sim";
 import { useEffect, useRef } from "react";
 import { useUi } from "../store.ts";
-import type { World } from "@ho/sim";
+import { createPlanView } from "./plan-view.ts";
 import { bridge, sprites } from "./runtime.ts";
 import { OfficeScene } from "./scene.ts";
 
 const nameOf = (id: AgentId): string => bridge.nameOf(id);
-const HEADCOUNT_MS = 500;
-
-const headcounts = (world: World): Record<string, number> => {
-  const counts: Record<string, number> = {};
-  for (const actor of world.actors.values()) {
-    if (!actor.hidden) {
-      counts[actor.floorId] = (counts[actor.floorId] ?? 0) + 1;
-    }
-  }
-  return counts;
-};
-
-const sameCounts = (a: Readonly<Record<string, number>>, b: Record<string, number>): boolean =>
-  Object.keys(a).length === Object.keys(b).length &&
-  Object.entries(b).every(([k, v]) => a[k] === v);
 
 /** Mounts the PixiJS office once, ticks the simulation at the render rate and pauses when hidden. */
 export function OfficeCanvas(): React.JSX.Element {
@@ -51,7 +37,10 @@ export function OfficeCanvas(): React.JSX.Element {
     void (async () => {
       await sprites.load();
       useUi.getState().setSpriteSets(sprites.characterSets());
-      const created = new OfficeScene(sprites);
+      if (bridge.layoutIssues.length > 0) {
+        useUi.getState().setError(`office layout: ${bridge.layoutIssues.join("; ")}`);
+      }
+      const created = new OfficeScene(sprites, () => createPlanView(bridge.plan, sprites));
       await created.init(element);
       if (state.disposed) {
         created.destroy();
@@ -62,22 +51,12 @@ export function OfficeCanvas(): React.JSX.Element {
         useUi.getState().selectAgent(agentId);
       };
       Object.assign(window, { __ho: { bridge, sprites, scene: created } });
-      let nextCount = 0;
       created.app.ticker.add((ticker) => {
         try {
           bridge.tick(ticker.deltaMS);
           created.syncFloors(bridge.world);
-          const ui = useUi.getState();
-          created.showFloor(bridge.world.floors.has(ui.floorId) ? ui.floorId : "lobby");
-          created.update(bridge.world, nameOf, ui.selectedAgentId);
-          nextCount -= ticker.deltaMS;
-          if (nextCount <= 0) {
-            nextCount = HEADCOUNT_MS;
-            const counts = headcounts(bridge.world);
-            if (!sameCounts(ui.headcounts, counts)) {
-              ui.setHeadcounts(counts);
-            }
-          }
+          created.showFloor(OFFICE_FLOOR_ID);
+          created.update(bridge.world, ticker.deltaMS, nameOf, useUi.getState().selectedAgentId);
         } catch (error) {
           useUi.getState().setError(error instanceof Error ? error.message : String(error));
         }

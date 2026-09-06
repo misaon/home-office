@@ -156,7 +156,8 @@ export function findPath(
     for (const [direction, d] of NEIGHBOURS.entries()) {
       const next = { x: current.p.x + d.x, y: current.p.y + d.y };
       const id = key(next) * 5 + direction;
-      if (closed.has(id) || !grid.isWalkable(next) || blocked(next)) {
+      // Cells occupied by standing actors are avoided, except the destination itself (meeting points).
+      if (closed.has(id) || !grid.isWalkable(next) || (blocked(next) && !samePoint(next, to))) {
         continue;
       }
       const turn = current.direction !== -1 && current.direction !== direction ? TURN_COST : 0;

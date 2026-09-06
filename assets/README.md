@@ -2,41 +2,41 @@
 
 ## Approved office design
 
-[office-base-v1.png](reference/office-base-v1.png) is the owner's approved visual reference (2026-09-06). Keep it unchanged and use [the office art production plan](../docs/OFFICE-ART.md) for the verified renderer contract, room requirements and conversion sequence. This concept image is separate from runtime sprites in `src/`.
+[office-base-v1.png](reference/office-base-v1.png) is the owner-approved visual reference (2026-09-06): an overhead
+cutaway office with warm orange floors, teal furniture and dark wall caps. Keep it unchanged; see
+[docs/OFFICE-ART.md](../docs/OFFICE-ART.md) for the room list, the current state of the integration and what is
+still drawn as a geometric stand-in.
 
-## Current runtime contract
+## How sprites reach the app
 
-Pixel-art sources for the office, inspired by LimeZu _Modern Office_: **16×16 tiles**, top-down, PNG with alpha, rendered at integer zoom in the app. The owner generates sprites with AI tools; this folder defines the current import contract. New object behaviours and sizes can require renderer or importer changes; see the production plan above.
-
-## Layout and naming
+The layout is data (`packages/sim/src/office-plan.ts`): every object has a **sprite key**, a footprint in 16 px
+cells and a facing. The renderer looks the key up in the manifest and shows the delivered PNG when it exists,
+otherwise a geometric stand-in. Delivering a sprite therefore means dropping correctly named PNG files into
+`assets/src/` and running `bun run assets:manifest` (the dev build reloads the page).
 
 ```
 assets/src/<category>/<sprite>/<animation>[_<dir>]_f<frame>.png
 ```
 
-- `category`: `characters`, `tiles`, `furniture`, `props`, `bubbles`.
-- `sprite`: kebab-case identifier (`agent-a`, `boss`, `postman`, `desk-monitor`, `coffee-machine`).
-- `animation`: `idle`, `walk`, `sit`, `type`, `drink`, `sleep`, `handover`, `receive`, `open`, `brew`, or `static` for single-frame art.
-- `dir` (optional): `n`, `s`, `e`, `w` for 4-direction animations.
+- `category`: `furniture`, `characters`, `bubbles`.
+- `sprite`: the key from the plan (`desk-n`, `chair-s`, `elevator`, `hot-tub`, …) or a character set name.
+- `animation`: `static` for furniture without states; `empty`/`full` for the mailbox; characters use `idle`,
+  `walk`, `type`, `drink`, `sleep`, `handover`, `receive`, `celebrate`, `smoke`, `relax`, `restroom`, `drop`.
+- `dir`: `n`, `s`, `e` for characters; the renderer mirrors `e` for west.
 - `frame`: zero-based, `f0`, `f1`, …; single-frame art still uses `f0`.
 
-Examples: `characters/agent-a/walk_s_f0.png`, `furniture/desk-monitor/type_f1.png`, `bubbles/question/static_f0.png`.
+## Pixel contract
 
-## Frame sizes
-
-- Asset dimensions are chosen per finished object. They must be recorded with the object's pivot, sorting baseline, interaction anchors and collision footprint; the importer does not impose a fixed canvas size or a furniture maximum.
-- Emotion bubbles: 16×16.
-
-## Delivery format from image generators (`@8x` strips)
-
-Image models cannot emit true 16×16 canvases, so generated art is delivered **8× scaled** on a pixel grid (every logical pixel is an 8×8 block) with a transparent background (fallback: solid `#FF00FF`, which the importer keys out):
-
-- single frame: `<animation>[_<dir>]_f0@8x.png`; the native output dimensions are determined by the supplied artwork after the optional 8× reduction.
-- animation: one **horizontal strip** `<animation>[_<dir>]_strip<N>@8x.png`, N equal frames side by side, no gaps, no borders
-- wall autotile: `autotile3x3@8x.png` (48×48 logical: a 3×3 set of corners, edges and centre)
-- only directions `s`, `n`, `e` are drawn; `w` is the renderer flipping `e`
-
-Drop the files under `assets/inbox/<category>/<sprite>/`; `bun run assets:import` (Phase 4, P4.0) samples the centre of each 8×8 block, slices strips into `_f<n>.png` frames at native size and writes them to `assets/src/…`, so the manifest below never sees scaled art.
+- Native 16 px grid, PNG with alpha, no scaling by the renderer: a sprite is drawn at its own pixel size with its
+  **bottom-left corner on the bottom-left cell of the footprint**. Art may overhang upwards (tall shelves, a
+  monitor on a desk) and slightly sideways, never below the footprint.
+- Furniture sizes therefore follow the footprint in the plan: a desk is 64×32 (+ overhang), a chair 16×16, the
+  elevator 128×96, the hot tub 80×96, the meeting table 112×48 and so on. `bun run assets:manifest` prints the
+  objects that still lack a sprite together with their footprint size.
+- Characters: 32×32 canvas per frame, feet on the bottom row, centred horizontally; the same canvas for every
+  animation of a set. Four frames for `walk`, two for `idle`/`type`/`drink`/`sleep`/`handover`/`receive`.
+- Emotion bubbles: 16×16, `static_f0.png`.
+- No `@8x` deliveries, no chroma keys, no importer: files land in `assets/src` exactly as the app shows them.
 
 ## Manifest
 
@@ -46,16 +46,13 @@ Drop the files under `assets/inbox/<category>/<sprite>/`; `bun run assets:import
 {
   "version": 1,
   "tileSize": 16,
-  "sprites": {
-    "characters/agent-a": {
-      "walk_s": ["characters/agent-a/walk_s_f0.png", "characters/agent-a/walk_s_f1.png"]
-    }
-  }
+  "sprites": { "furniture/desk-n": { "static": ["assets/src/furniture/desk-n/static_f0.png"] } }
 }
 ```
 
-The UI currently loads PNG textures individually. Atlas packing is a later optimisation; measure the completed scene before deciding it is required.
+The UI loads the PNGs individually; atlas packing is a later optimisation.
 
 ## Attribution
 
-LimeZu assets themselves are **not** committed here (their license forbids redistribution). Only original or AI-generated sprites in the same style live in this folder.
+LimeZu assets themselves are **not** committed here (their license forbids redistribution). Only original or
+AI-generated sprites live in this folder.

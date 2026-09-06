@@ -2,7 +2,6 @@ import {
   type Actor,
   type Activity,
   freeAnchors,
-  LOBBY_ANCHORS_FLOOR,
   NEEDS,
   type NeedKind,
   reserve,
@@ -32,22 +31,13 @@ export function idleBehaviour(world: World, actor: Actor): void {
   )[0];
   if (pressing !== undefined && world.rng.chance(0.7)) {
     const plan = DWELL[pressing];
-    const candidates = [actor.floorId, LOBBY_ANCHORS_FLOOR].flatMap((floorId) =>
-      freeAnchors(world, floorId, plan.anchor).map((anchor) => ({ floorId, anchor })),
-    );
-    const pick = world.rng.pick(candidates);
-    if (pick !== undefined && reserve(world, actor, pick.floorId, pick.anchor.id)) {
+    const anchor = world.rng.pick(freeAnchors(world, actor.floorId, plan.anchor));
+    if (anchor !== undefined && reserve(world, actor, actor.floorId, anchor.id)) {
       actor.needs[pressing] = 0;
       setSteps(actor, [
-        ...walkSteps(world, actor, pick.floorId, pick.anchor.at),
-        {
-          kind: "dwell",
-          activity: plan.activity,
-          facing: pick.anchor.facing,
-          until: null,
-          ms: plan.ms,
-        },
-        { kind: "emit", event: { kind: "arrived", agentId: actor.id, anchorId: pick.anchor.id } },
+        ...walkSteps(world, actor, actor.floorId, anchor.at),
+        { kind: "dwell", activity: plan.activity, facing: anchor.facing, until: null, ms: plan.ms },
+        { kind: "emit", event: { kind: "arrived", agentId: actor.id, anchorId: anchor.id } },
       ]);
       actor.idleUntil = world.time + plan.ms;
       return;

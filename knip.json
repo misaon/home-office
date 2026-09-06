@@ -19,5 +19,5 @@
       "project": ["src/**/*.ts"]
     }
   },
-  "ignoreWorkspaces": ["spikes/s2-electrobun", "packages/agent-kit"]
+  "ignoreWorkspaces": ["packages/agent-kit"]
 }

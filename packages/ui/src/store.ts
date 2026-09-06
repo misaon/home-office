@@ -59,9 +59,7 @@ type UiState = {
   connection: Connection;
   snapshot: Snapshot;
   live: ReadonlyMap<SessionId, readonly LiveEvent[]>;
-  headcounts: Readonly<Record<string, number>>;
   lastError: string | null;
-  floorId: string;
   panel: Panel;
   selectedAgentId: AgentId | null;
   chatProjectId: ProjectId | null;
@@ -69,9 +67,7 @@ type UiState = {
   /** The first-run checklist (Docker, images, token, team, smoke test). */
   setupOpen: boolean;
   setConnection: (connection: Connection) => void;
-  setHeadcounts: (headcounts: Record<string, number>) => void;
   setError: (message: string | null) => void;
-  selectFloor: (floorId: string) => void;
   selectPanel: (panel: Panel) => void;
   selectAgent: (agentId: AgentId | null) => void;
   setChatProject: (projectId: ProjectId | null) => void;
@@ -83,9 +79,7 @@ export const useUi = create<UiState>()((set) => ({
   connection: "connecting",
   snapshot: takeSnapshot(),
   live: new Map(),
-  headcounts: {},
   lastError: null,
-  floorId: "lobby",
   panel: "chat",
   selectedAgentId: null,
   chatProjectId: null,
@@ -94,14 +88,8 @@ export const useUi = create<UiState>()((set) => ({
   setConnection: (connection) => {
     set({ connection });
   },
-  setHeadcounts: (headcounts) => {
-    set({ headcounts });
-  },
   setError: (lastError) => {
     set({ lastError });
-  },
-  selectFloor: (floorId) => {
-    set({ floorId });
   },
   selectPanel: (panel) => {
     set({ panel });

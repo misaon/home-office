@@ -7,7 +7,6 @@
     "**/build/**",
     "**/artifacts/**",
     "bun.lock",
-    "spikes/s2-electrobun/**",
     "**/.hutch/**",
     "apps/desktop/resources/**"
   ]

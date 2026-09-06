@@ -6,10 +6,6 @@
     "packages": [
       "apps/*",
       "packages/*",
-      "spikes/s1-claude-alpine",
-      "spikes/s3-docker-api",
-      "spikes/s4-orpc-ws",
-      "spikes/s5-git-bridge",
       "spikes/s6-acp-mock"
     ],
     "catalog": {
@@ -49,16 +45,11 @@
     "knip": "knip",
     "setup": "git config core.hooksPath .githooks",
     "assets:manifest": "bun run scripts/assets-manifest.ts",
-    "assets:import": "bun run scripts/assets-import.ts",
-    "assets:placeholders": "bun run scripts/assets-placeholders.ts",
     "ui:build": "bun run scripts/ui-build.ts",
     "ui:watch": "bun run scripts/ui-build.ts --watch",
-    "office:lab": "bun run scripts/office-lab.ts",
     "desktop:prepare": "bun run scripts/desktop-prepare.ts",
     "desktop:dev": "bun run desktop:prepare && cd apps/desktop && hutch electrobun dev",
     "desktop:build": "bun run desktop:prepare && cd apps/desktop && hutch electrobun build --env=stable",
-    "assets:workstation": "bun run scripts/assets-workstation.ts",
-    "assets:workstation:native": "bun run scripts/assets-workstation-native.ts",
     "assets:alex": "bun run scripts/assets-alex.ts"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 import type { AgentId } from "@ho/protocol";
 import { facingTowards, type Point } from "./grid.ts";
-import { LOBBY_ID } from "./templates.ts";
+import { OFFICE_FLOOR_ID } from "./office-plan.ts";
 import {
   type Actor,
   anchorOf,
@@ -19,7 +19,7 @@ const HANDOVER_MS = 1200;
 const MAILBOX_SPRITE = "furniture/mailbox";
 
 const mailboxAnchor = (world: World): { at: Point; facing: "n" | "e" | "s" | "w" } | undefined =>
-  world.floors.get(LOBBY_ID)?.template.anchors.find((a) => a.kind === "mailbox");
+  world.floors.get(OFFICE_FLOOR_ID)?.template.anchors.find((a) => a.kind === "mailbox");
 
 /**
  * The postman: a visitor spawned at the Lobby's street door who walks to the mailbox, drops the envelope
@@ -33,17 +33,20 @@ export function deliverMail(
   mailId: string,
 ): boolean {
   const mailbox = mailboxAnchor(world);
-  const entrance = anchorOf(world, LOBBY_ID, "entrance");
+  const entrance = anchorOf(world, OFFICE_FLOOR_ID, "entrance");
   if (mailbox === undefined) {
     return false;
   }
   const door = entrance?.at ?? mailbox.at;
-  const postman = spawnActor(world, visitorId, sprite, LOBBY_ID, { kind: "visitor", at: door });
+  const postman = spawnActor(world, visitorId, sprite, OFFICE_FLOOR_ID, {
+    kind: "visitor",
+    at: door,
+  });
   setSteps(postman, [
-    ...walkSteps(world, postman, LOBBY_ID, mailbox.at),
+    ...walkSteps(world, postman, OFFICE_FLOOR_ID, mailbox.at),
     { kind: "dwell", activity: "drop", facing: mailbox.facing, until: null, ms: DROP_MS },
     { kind: "emit", event: { kind: "mail_dropped", mailId } },
-    ...walkSteps(world, postman, LOBBY_ID, door),
+    ...walkSteps(world, postman, OFFICE_FLOOR_ID, door),
     { kind: "emit", event: { kind: "visitor_left", actorId: visitorId } },
   ]);
   return true;
@@ -78,7 +81,7 @@ export function fetchMail(
     return false;
   }
   const pickup: Step[] = [
-    ...walkSteps(world, courier, LOBBY_ID, mailbox.at),
+    ...walkSteps(world, courier, OFFICE_FLOOR_ID, mailbox.at),
     { kind: "dwell", activity: "receive", facing: mailbox.facing, until: null, ms: PICKUP_MS },
   ];
   const delivered: Step = {
@@ -115,7 +118,7 @@ export const idleCandidates = (world: World, ids: readonly AgentId[]): AgentId[]
 
 /** Mailbox art follows the pile: `full` while envelopes wait, `empty` otherwise. */
 export function setMailboxState(world: World, state: "empty" | "full"): void {
-  const floor = world.floors.get(LOBBY_ID);
+  const floor = world.floors.get(OFFICE_FLOOR_ID);
   if (floor === undefined) {
     return;
   }
@@ -127,4 +130,4 @@ export function setMailboxState(world: World, state: "empty" | "full"): void {
 }
 
 export const hasMailbox = (world: World): boolean =>
-  freeAnchors(world, LOBBY_ID, "mailbox").length > 0 || mailboxAnchor(world) !== undefined;
+  freeAnchors(world, OFFICE_FLOOR_ID, "mailbox").length > 0 || mailboxAnchor(world) !== undefined;

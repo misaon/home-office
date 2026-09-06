@@ -1,5 +1,6 @@
-import type { AgentId } from "@ho/protocol";
+import type { AgentId, AgentRole } from "@ho/protocol";
 import { facingTowards, type Point } from "./grid.ts";
+import type { Anchor } from "./templates.ts";
 import {
   type Actor,
   type Emotion,
@@ -22,12 +23,36 @@ const pendingHandoff = (actor: Actor): Step[] => {
   return index < 0 ? [] : actor.steps.slice(0, index + 1);
 };
 
-/** Send an agent to a free desk on a floor (the boss desk in the Lobby) and keep it typing there. */
+/** Seat zones per role: the boss has an office, reviewers sit in QA, clerks with the analysts, workers in dev. */
+const SEAT_GROUP: Partial<Record<AgentRole, string>> = {
+  worker: "dev",
+  reviewer: "qa",
+  clerk: "analyst",
+};
+
+/** A free seat for the role: its own zone first, any free desk otherwise (overflow shares the open office). */
+function seatFor(world: World, floorId: string, role: AgentRole): Anchor | undefined {
+  if (role === "boss") {
+    const own = world.rng.pick(freeAnchors(world, floorId, "boss-desk"));
+    if (own !== undefined) {
+      return own;
+    }
+  }
+  const desks = freeAnchors(world, floorId, "desk");
+  const group = SEAT_GROUP[role];
+  return (
+    world.rng.pick(desks.filter((a) => a.group === group)) ??
+    world.rng.pick(desks.filter((a) => a.group === "dev")) ??
+    world.rng.pick(desks)
+  );
+}
+
+/** Send an agent to a free seat for its role and keep it typing there. */
 export function assignWork(
   world: World,
   agentId: AgentId,
   floorId: string,
-  kind: "desk" | "boss-desk" = "desk",
+  role: AgentRole,
 ): boolean {
   const actor = world.actors.get(agentId);
   if (actor === undefined) {
@@ -36,9 +61,7 @@ export function assignWork(
   if (actor.work !== null && actor.work.floorId === floorId) {
     return true;
   }
-  const anchor =
-    world.rng.pick(freeAnchors(world, floorId, kind)) ??
-    world.rng.pick(freeAnchors(world, floorId, "desk"));
+  const anchor = seatFor(world, floorId, role);
   if (anchor === undefined || !reserve(world, actor, floorId, anchor.id)) {
     return false;
   }
@@ -133,27 +156,17 @@ export function sleep(world: World, agentId: AgentId): void {
   if (actor === undefined) {
     return;
   }
-  const spot = world.rng.pick([
-    ...freeAnchors(world, actor.floorId, "sleep"),
-    ...freeAnchors(world, "lobby", "sleep"),
-  ]);
+  const spot = world.rng.pick(freeAnchors(world, actor.floorId, "sleep"));
   actor.work = null;
   release(world, actor);
   if (spot === undefined) {
     setSteps(actor, [...pendingHandoff(actor), { kind: "hold", activity: "sleep", facing: "s" }]);
     return;
   }
-  reserve(
-    world,
-    actor,
-    spot.kind === "sleep" && freeAnchors(world, actor.floorId, "sleep").includes(spot)
-      ? actor.floorId
-      : "lobby",
-    spot.id,
-  );
+  reserve(world, actor, actor.floorId, spot.id);
   setSteps(actor, [
     ...pendingHandoff(actor),
-    ...walkSteps(world, actor, actor.reservation?.floorId ?? actor.floorId, spot.at),
+    ...walkSteps(world, actor, actor.floorId, spot.at),
     { kind: "hold", activity: "sleep", facing: spot.facing },
   ]);
 }

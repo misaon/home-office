@@ -79,7 +79,6 @@ export type World = {
   outbox: SimEvent[];
 };
 
-export const LOBBY_ANCHORS_FLOOR = "lobby";
 export const SPEED_TILES_PER_S = 3;
 export const ELEVATOR_MS = 1500;
 

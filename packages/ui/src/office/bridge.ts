@@ -1,19 +1,18 @@
 import { createIdFactory, isSessionActive } from "@ho/core";
-import type { AgentId, LiveEvent, ProjectId, Session, StoredEvent, TaskId } from "@ho/protocol";
+import type { AgentId, LiveEvent, Session, StoredEvent, TaskId } from "@ho/protocol";
 import {
   addFloor,
   assignWork,
+  auditOffice,
   createWorld,
   emotionFor,
   handoff,
   idleBehaviour,
-  LOBBY_ID,
-  lobbyTemplate,
-  projectTemplate,
+  OFFICE_FLOOR_ID,
+  officePlan,
   receive,
   releaseWork,
   removeActor,
-  removeFloor,
   setEmotion,
   sleep,
   spawnActor,
@@ -34,6 +33,10 @@ const POSTMAN_NAME = "Postman";
  */
 export class Bridge {
   readonly world = createWorld("home-office");
+  /** The approved office layout; every project shares this one floor. */
+  readonly plan = officePlan();
+  /** Layout problems found once at start (unreachable seats, blocked doors); empty for a sound plan. */
+  readonly layoutIssues: readonly string[];
   #client: Client | null = null;
   readonly #pending: PendingHandoff[] = [];
   readonly #mail: MailFlow;
@@ -51,7 +54,8 @@ export class Bridge {
   #watching = true;
 
   constructor() {
-    addFloor(this.world, lobbyTemplate());
+    addFloor(this.world, this.plan.template);
+    this.layoutIssues = auditOffice(this.plan).issues;
     this.#mail = new MailFlow(
       this.world,
       () => this.#ids.agent(),
@@ -90,31 +94,14 @@ export class Bridge {
     }
   }
 
-  floorFor(projectId: ProjectId): string {
-    const project = model.projects.get(projectId);
-    return project === undefined || project.repo.kind === "none" ? LOBBY_ID : project.id;
-  }
-
   /** Reconciles floors, actors and seats with the read model (after replay and on roster changes). */
   syncFromModel(): void {
     const { world } = this;
-    for (const project of model.projects.values()) {
-      if (project.repo.kind !== "none" && !world.floors.has(project.id)) {
-        const seats = [...model.agents.values()].filter((a) => a.projectIds.includes(project.id));
-        addFloor(world, projectTemplate(project.id, project.name, Math.max(4, seats.length)));
-      }
-    }
-    const projectIds = new Set<string>(model.projects.keys());
-    for (const floorId of world.floors.keys()) {
-      if (floorId !== LOBBY_ID && !projectIds.has(floorId)) {
-        removeFloor(world, floorId);
-      }
-    }
     for (const agent of model.agents.values()) {
       const sprite = `characters/${agent.appearance.spriteSet}`;
       const actor = world.actors.get(agent.id);
       if (actor === undefined) {
-        spawnActor(world, agent.id, sprite, LOBBY_ID);
+        spawnActor(world, agent.id, sprite, OFFICE_FLOOR_ID);
       } else {
         actor.sprite = sprite;
       }
@@ -137,9 +124,7 @@ export class Bridge {
     if (task === undefined || agent === undefined) {
       return;
     }
-    const floorId = this.floorFor(task.projectId);
-    const kind = agent.role === "boss" && floorId === LOBBY_ID ? "boss-desk" : "desk";
-    assignWork(this.world, session.agentId, floorId, kind);
+    assignWork(this.world, session.agentId, OFFICE_FLOOR_ID, agent.role);
   }
 
   onEvent(event: StoredEvent): void {
