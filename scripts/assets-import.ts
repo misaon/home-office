@@ -1,7 +1,11 @@
 // Converts generated art into the sprites the app loads (contract: assets/README.md).
 //
 //   bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--frames N] [--cells WxH]
-//                         [--no-key] [--tolerance 40]
+//                         [--no-key] [--no-align] [--tolerance 40] [--like <category>/<sprite>]
+//
+// `--like furniture/elevator-cabin` imports a layer drawn on the same source canvas as another sprite: the crop
+// and output size recorded for that sprite (assets/src/<category>/<sprite>/import.json) are reused verbatim, so
+// door panels land exactly where they sit over the cabin.
 //
 // `<source.png>` may be a pattern such as "assets/inbox/spa-animate-*.png": the matching files, sorted by the
 // number in their name, become frames f0, f1, … of one animation. Furniture frames are each trimmed to their own
@@ -13,16 +17,24 @@
 // #FF00FF background is keyed out as a fallback). The converter trims, scales the art to the footprint of the
 // plan object (furniture) or to the character/bubble canvas, aligns it the way the renderer expects and writes
 // the frame files, then rewrites the manifest and lists what is still a stand-in.
-import { CELL_PX, officePlan } from "@ho/sim";
+import { CELL_PX } from "@ho/sim";
 import { Glob } from "bun";
 import { mkdir } from "node:fs/promises";
 import { parseArgs } from "node:util";
+import {
+  fail,
+  fit,
+  parseCells,
+  readSidecar,
+  resolveTarget,
+  type Sidecar,
+  sidecarOf,
+} from "./lib/import-target.ts";
 import { describeManifest, writeManifest } from "./lib/manifest.ts";
 import { encodePng, type Rgba } from "./lib/png.ts";
 import { decodePng } from "./lib/png-decode.ts";
 import {
   ALPHA_MIN,
-  type Anchor,
   type Box,
   clearFaint,
   crop,
@@ -35,114 +47,6 @@ import {
   splitStrip,
 } from "./lib/raster.ts";
 
-const CHARACTER_W = 2;
-const CHARACTER_H = 5;
-
-type Target = {
-  category: string;
-  sprite: string;
-  animation: string;
-  /** Canvas width in px; the art is scaled to fill it exactly (furniture) or to fit inside it. */
-  width: number;
-  /** Canvas height in px, or null when the height follows the art (furniture may overhang upwards). */
-  height: number | null;
-  /** Footprint height in cells (furniture), to report how far the art rises above it. */
-  footprintCells: number;
-  anchor: Anchor;
-  trim: boolean;
-};
-
-// A function declaration, so TypeScript narrows after a call (a const arrow would not).
-function fail(message: string): never {
-  process.stderr.write(`assets:import: ${message}\n`);
-  process.exit(1);
-}
-
-function parseCells(value: string | undefined): { w: number; h: number } | null {
-  if (value === undefined) {
-    return null;
-  }
-  const match = /^(\d+)x(\d+)$/u.exec(value);
-  if (match === null) {
-    return fail(`--cells expects WxH in cells, got "${value}"`);
-  }
-  return { w: Number(match[1]), h: Number(match[2]) };
-}
-
-/** Where the art goes and how big it must be, from the manifest key and the office plan. */
-function resolveTarget(key: string, cells: { w: number; h: number } | null): Target {
-  const parts = key.split("/");
-  const [category, sprite, animation] = parts;
-  if (
-    parts.length !== 3 ||
-    category === undefined ||
-    sprite === undefined ||
-    animation === undefined
-  ) {
-    return fail(`expected <category>/<sprite>/<animation>[_<dir>], got "${key}"`);
-  }
-  if (!/^[a-z]+(?:_[nse])?$/u.test(animation)) {
-    return fail(
-      `animation "${animation}" must be lowercase letters with an optional _n/_s/_e suffix (west is mirrored)`,
-    );
-  }
-  if (category === "characters") {
-    return {
-      category,
-      sprite,
-      animation,
-      width: (cells?.w ?? CHARACTER_W) * CELL_PX,
-      height: (cells?.h ?? CHARACTER_H) * CELL_PX,
-      footprintCells: cells?.h ?? CHARACTER_H,
-      anchor: "bottom-centre",
-      trim: false,
-    };
-  }
-  if (category === "bubbles") {
-    return {
-      category,
-      sprite,
-      animation,
-      width: (cells?.w ?? 1) * CELL_PX,
-      height: (cells?.h ?? 1) * CELL_PX,
-      footprintCells: cells?.h ?? 1,
-      anchor: "bottom-centre",
-      trim: true,
-    };
-  }
-  const footprint: { w: number; h: number; artWidth?: number } | undefined =
-    cells ?? officePlan().objects.find((o) => o.sprite === `${category}/${sprite}`);
-  if (footprint === undefined) {
-    return fail(
-      `"${category}/${sprite}" is not in the office plan; pass --cells WxH for objects outside it`,
-    );
-  }
-  const artWidth = footprint.artWidth ?? footprint.w;
-  return {
-    category,
-    sprite,
-    animation,
-    width: Math.round(artWidth * CELL_PX),
-    height: null,
-    footprintCells: footprint.h,
-    anchor: "bottom-left",
-    trim: true,
-  };
-}
-
-/** Scales `art` to the target: furniture fills the footprint width, everything else fits inside the canvas. */
-function fit(art: Rgba, target: Target): { frame: Rgba; scale: number } {
-  const byWidth = target.width / art.width;
-  const scale = target.height === null ? byWidth : Math.min(byWidth, target.height / art.height);
-  const scaled = resample(
-    art,
-    Math.max(1, Math.round(art.width * scale)),
-    Math.max(1, Math.round(art.height * scale)),
-  );
-  const height = target.height ?? scaled.height;
-  return { frame: place(scaled, target.width, height, target.anchor), scale };
-}
-
 const { values, positionals } = parseArgs({
   args: Bun.argv.slice(2),
   allowPositionals: true,
@@ -150,13 +54,15 @@ const { values, positionals } = parseArgs({
     frames: { type: "string", default: "1" },
     cells: { type: "string" },
     key: { type: "boolean", default: true },
+    align: { type: "boolean", default: true },
+    like: { type: "string" },
     tolerance: { type: "string", default: "40" },
   },
 });
 const [source, key] = positionals;
 if (source === undefined || key === undefined) {
   fail(
-    "usage: bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--frames N] [--cells WxH] [--no-key] [--tolerance 40]",
+    "usage: bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--frames N] [--cells WxH] [--no-key] [--no-align] [--tolerance 40]",
   );
 }
 const frameCount = Number(values.frames);
@@ -205,12 +111,24 @@ const first = rawFrames[0];
 if (first === undefined) {
   fail("nothing to import");
 }
+const like: Sidecar | null = values.like === undefined ? null : await readSidecar(values.like);
+if (values.like !== undefined && like === null) {
+  fail(`--like ${values.like}: no ${sidecarOf(values.like)} — import that sprite first`);
+}
+if (like !== null && (like.source.width !== first.width || like.source.height !== first.height)) {
+  fail(
+    `--like ${values.like ?? ""}: that sprite came from a ${String(like.source.width)}×${String(like.source.height)} canvas, this file is ${String(first.width)}×${String(first.height)}`,
+  );
+}
 // One crop for the whole animation: the union of every frame's visible pixels, so frames never jitter.
-let bounds: Box | null = null;
+let bounds: Box | null = like === null ? null : like.crop;
 for (const [index, raw] of rawFrames.entries()) {
   const b = opaqueBounds(raw);
   if (b === null) {
     fail(`frame ${String(index)} is fully transparent`);
+  }
+  if (like !== null) {
+    continue;
   }
   bounds =
     bounds === null
@@ -231,12 +149,26 @@ const report: string[] = [
   `${files.length > 1 ? `${String(files.length)} files (${files[0] ?? ""} …)` : source}: ${String(first.width)}×${String(first.height)}, ${keyed ? "flat #FF00FF background keyed out" : "transparent as delivered"}, ${String(rawFrames.length)} frame(s)`,
 ];
 // Size of the union crop after scaling: every furniture frame is resampled to exactly this canvas.
-const unionScale = target.width / bounds.w;
-const unionSize = { w: target.width, h: Math.max(1, Math.round(bounds.h * unionScale)) };
+const unionScale = (like?.output.width ?? target.width) / bounds.w;
+const unionSize = {
+  w: like?.output.width ?? target.width,
+  h: like?.output.height ?? Math.max(1, Math.round(bounds.h * unionScale)),
+};
 for (const [index, raw] of rawFrames.entries()) {
   let art = raw;
   let fitted: { frame: Rgba; scale: number };
-  if (target.trim && rawFrames.length > 1) {
+  if (like !== null) {
+    // A layer over another sprite: identical crop and canvas, whatever this layer's own silhouette is.
+    fitted = {
+      frame: place(
+        resample(crop(raw, bounds), unionSize.w, unionSize.h),
+        unionSize.w,
+        unionSize.h,
+        "bottom-left",
+      ),
+      scale: unionScale,
+    };
+  } else if (target.trim && rawFrames.length > 1 && values.align) {
     const own = opaqueBounds(raw);
     art = crop(raw, own ?? bounds);
     fitted = {
@@ -257,9 +189,11 @@ for (const [index, raw] of rawFrames.entries()) {
   await Bun.write(file, encodePng(frame));
   if (target.trim && index === 0) {
     report.push(
-      rawFrames.length > 1
-        ? `  frames trimmed individually and resampled to the common ${String(unionSize.w)}×${String(unionSize.h)} px (silhouette drift removed)`
-        : `  trimmed to the visible object (alpha ≥ ${String(ALPHA_MIN)}): ${String(bounds.w)}×${String(bounds.h)} px at (${String(bounds.x)}, ${String(bounds.y)})`,
+      like !== null
+        ? `  registered on ${values.like ?? ""}: same crop and ${String(unionSize.w)}×${String(unionSize.h)} px canvas`
+        : rawFrames.length > 1
+          ? `  frames trimmed individually and resampled to the common ${String(unionSize.w)}×${String(unionSize.h)} px (silhouette drift removed)`
+          : `  trimmed to the visible object (alpha ≥ ${String(ALPHA_MIN)}): ${String(bounds.w)}×${String(bounds.h)} px at (${String(bounds.x)}, ${String(bounds.y)})`,
     );
   }
   const overhang =
@@ -270,5 +204,21 @@ for (const [index, raw] of rawFrames.entries()) {
     `  ${file}: ${String(frame.width)}×${String(frame.height)} px, scale ${scale.toFixed(3)}${overhang}`,
   );
 }
+const sidecar: Sidecar = {
+  source: { width: first.width, height: first.height },
+  crop: bounds,
+  output: { width: unionSize.w, height: like === null && rawFrames.length === 1 ? 0 : unionSize.h },
+};
+if (sidecar.output.height === 0) {
+  // A single frame keeps its own height: read it back from the written file's dimensions.
+  const written = decodePng(
+    new Uint8Array(await Bun.file(`${dir}/${target.animation}_f0.png`).arrayBuffer()),
+  );
+  sidecar.output.height = written.height;
+}
+await Bun.write(
+  sidecarOf(`${target.category}/${target.sprite}`),
+  `${JSON.stringify(sidecar, null, 2)}\n`,
+);
 process.stdout.write(`${report.join("\n")}\n`);
 process.stdout.write(describeManifest(await writeManifest()));

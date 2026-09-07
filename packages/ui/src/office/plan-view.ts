@@ -63,14 +63,15 @@ export function createPlanView(
     template.width,
     template.height,
   );
-  floor.cacheAsTexture(true);
   const objects = new Container({ sortableChildren: true });
   const views: ObjectView[] = [];
   for (const item of plan.objects) {
     const frames = framesOf(sprites, item);
     const texture = frames?.[0];
+    // Floor-layer art (the elevator cabin) is baked into the cached floor under everybody else.
+    const layer = item.layer === "floor" ? floor : objects;
     if (frames === undefined || texture === undefined) {
-      objects.addChild(standIn(item));
+      layer.addChild(standIn(item));
       continue;
     }
     // Art sits with its bottom-left corner on the footprint's bottom-left cell; art declared wider than the
@@ -92,15 +93,26 @@ export function createPlanView(
       sprite.scale.set(scale);
     }
     sprite.zIndex = (item.at.y + item.h) * TILE - (item.blocks ? 1 : 3);
-    objects.addChild(sprite);
-    views.push({ item, sprite, animation: item.animation, frames, frame: 0, timeMs: 0, amount: 0 });
+    layer.addChild(sprite);
+    if (layer === objects) {
+      views.push({
+        item,
+        sprite,
+        animation: item.animation,
+        frames,
+        frame: 0,
+        timeMs: 0,
+        amount: 0,
+      });
+    }
   }
+  floor.cacheAsTexture(true);
   for (const pane of plan.glass) {
     objects.addChild(glassWall(pane));
   }
   // The elevator's doors belong to its sprite once real art exists; the stand-in door graphic then goes away.
   const doors: DoorView[] = plan.doors
-    .filter((spec) => spec.kind !== "elevator" || !sprites.has("furniture/elevator"))
+    .filter((spec) => spec.kind !== "elevator" || !sprites.has("furniture/elevator-doors"))
     .map((spec) => {
       const graphic = new Graphics({ x: spec.x * TILE, y: spec.y * TILE });
       graphic.zIndex = (spec.y + spec.h) * TILE + 1;

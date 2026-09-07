@@ -41,8 +41,10 @@ function structure(p: Plan): void {
   p.room("reception", "RECEPCE", { x: 9, y: 21, w: 17, h: 12 }, "office", true);
   p.room("terrace", "TERASA", { x: 49, y: 34, w: 30, h: 11 }, "wood", true);
   p.room("spa", "SPA", { x: 70, y: 21, w: 9, h: 13 }, "wood", true);
-  // The elevator shaft is a solid block of the lobby wall; the reception backdrop joins it at x=9.
+  // The elevator shaft is a solid block of the lobby wall; the reception backdrop joins it at x=9. The car's
+  // interior is walkable so passengers stand inside it and step out through the doors.
   p.solid({ x: 0, y: 22, w: 10, h: 8 });
+  p.clear({ x: 4, y: 25, w: 4, h: 4 });
   p.wall({ x: 9, y: 21, w: 16, h: 1 });
   // Two WC stalls (walls at x 1, 5 and 10 in the reference) share the restroom's north wall.
   p.wall({ x: 1, y: 33, w: 5, h: 6 });
@@ -69,6 +71,7 @@ function structure(p: Plan): void {
   // Arrival: the elevator threshold is where everybody (and the postman) enters the office.
   p.anchor("elevator", "elevator", { x: 4, y: 30 });
   p.anchor("entrance", "entrance", { x: 5, y: 30 }, "s");
+  p.anchor("car", "car", { x: 5, y: 26 }, "s");
 }
 
 function workplaces(p: Plan): void {
@@ -114,14 +117,23 @@ function workplaces(p: Plan): void {
 }
 
 function sharedSpaces(p: Plan): void {
-  // The elevator's doors open frame by frame while somebody stands at the threshold and close the same way back.
+  // The elevator is two layers on one footprint: the static cabin under the passengers (floor layer) and the
+  // doors above them, opening frame by frame while a car arrives or somebody stands at the threshold.
   p.object(
-    "lift-shaft",
+    "elevator-cabin",
     "VÝTAH",
-    "elevator",
+    "elevator-cabin",
     { x: 3, y: 23, w: 6, h: 6 },
-    { animation: "open", playback: "near" },
+    { blocks: false, layer: "floor" },
   );
+  p.object(
+    "elevator-doors",
+    "",
+    "elevator-doors",
+    { x: 3, y: 23, w: 6, h: 6 },
+    { blocks: false, animation: "open", playback: "near" },
+  );
+  p.object("elevator-frame", "", "elevator-frame", { x: 3, y: 23, w: 6, h: 6 }, { blocks: false });
   // The reception counter is drawn frontally (four cells tall); the receptionist stands behind it.
   p.object("reception", "název firmy", "desk-reception-rotated", { x: 14, y: 26, w: 8, h: 4 });
   p.anchor("reception", "reception", { x: 17, y: 30 });

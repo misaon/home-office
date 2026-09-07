@@ -13,6 +13,7 @@ export type AnchorKind =
   | "reception"
   | "whiteboard"
   | "elevator"
+  | "car"
   | "wander";
 
 /** A named cell an actor can walk to and use; `group` narrows seats to a zone (dev, qa, analyst). */
@@ -40,6 +41,8 @@ export type Furniture = {
    * forward while somebody stands within reach (doors opening), backward as they leave (the same frames closing).
    */
   playback?: "loop" | "near";
+  /** `floor` draws the art under everybody (rugs, the elevator cabin); default `objects` sorts it with the actors. */
+  layer?: "floor" | "objects";
 };
 
 export type FloorTemplate = {

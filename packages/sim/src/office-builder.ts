@@ -29,6 +29,7 @@ export type ObjectOptions = {
   artWidth?: number;
   animation?: string;
   playback?: "loop" | "near";
+  layer?: "floor" | "objects";
 };
 
 /** Art width of a chair in cells (the seat footprint stays 1 × 1; see `Furniture.artWidth`). */
@@ -141,6 +142,7 @@ export class Plan {
       facing: options.facing ?? "s",
       ...(options.artWidth === undefined ? {} : { artWidth: options.artWidth }),
       ...(options.playback === undefined ? {} : { playback: options.playback }),
+      ...(options.layer === undefined ? {} : { layer: options.layer }),
     });
   }
 

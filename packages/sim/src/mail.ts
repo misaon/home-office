@@ -37,14 +37,15 @@ export function deliverMail(
   if (mailbox === undefined) {
     return false;
   }
-  const door = entrance?.at ?? mailbox.at;
+  // The postman leaves the way they came: back into the elevator car.
+  const car = anchorOf(world, OFFICE_FLOOR_ID, "car")?.at ?? entrance?.at ?? mailbox.at;
   // The postman rides the elevator like everybody else (no explicit place → arrival queue).
   const postman = spawnActor(world, visitorId, sprite, OFFICE_FLOOR_ID, { kind: "visitor" });
   setSteps(postman, [
     ...walkSteps(world, postman, OFFICE_FLOOR_ID, mailbox.at),
     { kind: "dwell", activity: "drop", facing: mailbox.facing, until: null, ms: DROP_MS },
     { kind: "emit", event: { kind: "mail_dropped", mailId } },
-    ...walkSteps(world, postman, OFFICE_FLOOR_ID, door),
+    ...walkSteps(world, postman, OFFICE_FLOOR_ID, car),
     { kind: "emit", event: { kind: "visitor_left", actorId: visitorId } },
   ]);
   return true;

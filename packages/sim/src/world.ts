@@ -149,7 +149,7 @@ export function spawnActor(
     options.at ??
     (floor === undefined
       ? { x: 3, y: 10 }
-      : (anchorById(floor, "elevator")?.at ?? { x: 3, y: 10 }));
+      : (anchorById(floor, "car")?.at ?? anchorById(floor, "elevator")?.at ?? { x: 3, y: 10 }));
   const at = nearestWalkable(world, floorId, spawn);
   // Without an explicit place the newcomer arrives by elevator: hidden in the car until it is their turn.
   const arriving = options.at === undefined;

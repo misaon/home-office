@@ -44,16 +44,14 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   `open`) scrubs the frames by proximity — forward while somebody stands within three cells, backward as they
   leave, so one closed→open sequence serves both opening and closing. Missing frames fall back to `static`. Frames
   must share one canvas — the converter guarantees that for a sequence.
-- Desks (footprints measured from the reference) are per room and their keys are the delivery file names:
-  `desk-developer` (5 × 3, six of them), `desk-qa` / `desk-qa-rotated` and `desk-analyst` / `desk-analyst-rotated`
-  (5 × 3 each, back to back as one long desk), `desk-boss-rotated` (6 × 3), `desk-reception-rotated` (8 × 3).
-  **`-rotated`** means the sitter is _north_ of the desk facing the room: the art shows the desk's front panel and
-  the monitors' backs. Plain desk art shows drawers and screens; its sitter is south of it. A desk is drawn over
-  whoever sits north of it, so an upward overhang hides that sitter's chest, not the head.
-- Chairs are per room too (`chair-developer`, `chair-qa`, `chair-qa-rotated`, `chair-analyst`,
-  `chair-analyst-rotated`, `chair-boss`), on a 1 × 1 seat with art **1.5 cells wide** (36 px), centred on the
-  seat — the one case where art is wider than its footprint (`artWidth` in the plan); the seated pose belongs to
-  the character.
+- **Layered objects** (the elevator): three objects share one footprint and one source canvas. `elevator-cabin`
+  (floor layer, under everybody — a passenger stands _inside_ it), `elevator-doors` (`open_f0` closed …
+  `open_f9` open, drawn above the passenger, sliding apart as the car arrives) and `elevator-frame` (the shaft's
+  front frame, drawn above the doors). Import the base layer first, then the others with
+  `--like furniture/elevator-cabin`: every import records its source canvas, crop and output size in
+  `assets/src/<category>/<sprite>/import.json`, and `--like` reuses them verbatim, so a layer that is only door
+  panels in the middle of the canvas lands exactly where it sits over the cabin. Layers must be drawn on the same
+  canvas size. For a lone sequence whose outline really changes between frames, `--no-align` keeps the shared crop.
 
 **Characters**
 

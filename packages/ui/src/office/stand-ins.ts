@@ -196,11 +196,24 @@ export function standIn(f: PlanObject): Container {
       .fill(0x9dccdf)
       .rect(9, 9, w - 18, h - 18)
       .fill(0x3aa7c2);
-  } else if (kind === "elevator") {
+  } else if (kind === "elevator-cabin") {
     g.rect(0, 0, w, h)
       .fill(0x253238)
-      .rect(8, 8, w - 16, h - 16)
+      .rect(8, 8, w - 16, h - 8)
       .fill(0x55666c);
+  } else if (kind === "elevator-frame") {
+    g.rect(0, 0, w, 8)
+      .fill(0x253238)
+      .rect(0, 0, 8, h)
+      .fill(0x253238)
+      .rect(w - 8, 0, 8, h)
+      .fill(0x253238);
+  } else if (kind === "elevator-doors") {
+    const leaf = (w - 16) / 2 - 2;
+    g.rect(8, 8, leaf, h - 8)
+      .fill(0x8a949a)
+      .rect(w / 2 + 2, 8, leaf, h - 8)
+      .fill(0x8a949a);
   } else if (kind === "foosball") {
     g.rect(0, 0, w, h)
       .fill(0x553c24)

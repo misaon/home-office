@@ -15,9 +15,9 @@ const STEP_OUT_MS = 400;
 const ARRIVAL_GAP_MS = 2200;
 
 /**
- * One elevator car per arrival: call it (doors open for ELEVATOR_DOORS_MS), let the first waiting actor step onto
- * the threshold, pause, then walk off — to their work when it is already assigned, otherwise to a free corridor
- * spot — so the doors can close before the next car. Proximity keeps the doors open while they stand there.
+ * One elevator car per arrival: the passenger appears inside the cabin as the doors open (ELEVATOR_DOORS_MS),
+ * pauses, then walks out — to their work when it is already assigned, otherwise to a free corridor spot — so
+ * the doors can close before the next car. Proximity keeps the doors open while anybody is in or at the car.
  */
 function arrive(world: World): void {
   const a = world.arrivals;
@@ -26,8 +26,14 @@ function arrive(world: World): void {
     return;
   }
   if (a.carAt === 0) {
+    // The car arrives: the passenger becomes visible inside the cabin while the doors part.
     a.carAt = world.time + ELEVATOR_DOORS_MS;
-    world.held.add("elevator");
+    world.held.add("elevator-doors");
+    const passenger = world.actors.get(next);
+    if (passenger !== undefined) {
+      passenger.hidden = false;
+      passenger.facing = "s";
+    }
     return;
   }
   if (world.time < a.carAt) {
@@ -36,13 +42,11 @@ function arrive(world: World): void {
   a.queue.shift();
   a.carAt = 0;
   a.nextAt = world.time + ARRIVAL_GAP_MS;
-  world.held.delete("elevator");
+  world.held.delete("elevator-doors");
   const actor = world.actors.get(next);
   if (actor === undefined) {
     return;
   }
-  actor.hidden = false;
-  actor.facing = "s";
   const spot = world.rng.pick(freeAnchors(world, actor.floorId, "wander"))?.at ?? {
     x: actor.tile.x,
     y: actor.tile.y + 2,
@@ -61,8 +65,8 @@ export function tick(
   world.time += dtMs;
   arrive(world);
   for (const actor of world.actors.values()) {
-    if (actor.hidden && world.arrivals.queue.includes(actor.id)) {
-      // Still in the elevator car.
+    if (world.arrivals.queue.includes(actor.id)) {
+      // Waiting in the elevator car.
       continue;
     }
     actor.animTime += dtMs;

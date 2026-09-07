@@ -30,9 +30,10 @@ production geometry lives in code and every destination must be reachable.
   UI shows a red banner if a layout change breaks a route.
 - **Seats by role.** The boss has the boss office; workers take `dev` desks, reviewers `qa`, clerks `analyst`;
   a full zone overflows into any free desk (`assignWork` in `packages/sim/src/intents.ts`).
-- **Arrivals.** Everybody comes by elevator, one car at a time: the doors open (700 ms), the newcomer steps onto
-  the threshold, pauses, walks off to their desk or a corridor spot, the doors close and the next car follows
-  2.2 s later. The postman arrives the same way, drops the mail beside the reception counter (`mailbox`, state
+- **Arrivals.** Everybody comes by elevator, one car at a time: the passenger appears inside the cabin (a
+  walkable 4 × 4 car behind the doors), the doors open (700 ms), they pause, walk out to their desk or a corridor
+  spot, the doors close and the next car follows 2.2 s later. The cabin is a floor-layer sprite under the actors,
+  the doors an animated sprite above them. The postman arrives the same way, drops the mail beside the reception counter (`mailbox`, state
   `empty`/`full`) and a courier carries it to the boss.
 - **Routing.** A* with cached clearance and turn costs prefers corridor centres and straight runs (walls and
   furniture cost 4 per step alongside, 1.5 two cells away, 1 further; a turn costs 6). Occupied destinations stay
@@ -87,7 +88,9 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | `dining-chair`           | 2 × 1             | 6     | kitchen                                                                             | walk-through                              |
 | `dining-table`           | 8 × 2             | 1     | kitchen                                                                             |                                           |
 | `dryer-bin`              | 1 × 4             | 1     | toilets                                                                             |                                           |
-| `elevator`               | 6 × 6             | 1     | corridor                                                                            |                                           |
+| `elevator-cabin`         | 6 × 6             | 1     | corridor                                                                            | walk-through; floor layer                 |
+| `elevator-doors`         | 6 × 6             | 1     | corridor                                                                            | walk-through; animation `open`            |
+| `elevator-frame`         | 6 × 6             | 1     | corridor                                                                            | walk-through                              |
 | `floor-lamp`             | 1 × 1             | 1     | boss                                                                                | art 2 cells wide, centred                 |
 | `foosball`               | 4 × 6             | 1     | lounge                                                                              |                                           |
 | `fridge`                 | 3 × 3             | 1     | kitchen                                                                             |                                           |
@@ -113,7 +116,7 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | `projector`              | 2 × 2             | 1     | meeting                                                                             |                                           |
 | `radiator`               | 1 × 4             | 1     | analyst                                                                             | walk-through                              |
 | `sinks`                  | 2 × 4             | 1     | toilets                                                                             |                                           |
-| `spa`                    | 5 × 6             | 1     | spa                                                                                 |                                           |
+| `spa`                    | 5 × 6             | 1     | spa                                                                                 | animation `bubbles`                       |
 | `spa-bench`              | 2 × 2             | 1     | spa                                                                                 |                                           |
 | `terrace-chair`          | 2 × 1             | 4     | terrace                                                                             | walk-through                              |
 | `terrace-chair`          | 2 × 2             | 2     | terrace                                                                             | walk-through                              |
