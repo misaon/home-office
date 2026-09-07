@@ -39,8 +39,6 @@ export const label = (
     style: { fontFamily: "monospace", fontSize: size, fill: color, fontWeight: "bold" },
   });
 
-export const SURFACES: readonly Surface[] = ["office", "room", "tile", "wood"];
-
 export const surfaceColor = (surface: Surface): number =>
   surface === "wood" ? PALETTE.wood : surface === "tile" ? PALETTE.tile : PALETTE.corridor;
 

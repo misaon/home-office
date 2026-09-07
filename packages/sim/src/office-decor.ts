@@ -70,11 +70,10 @@ export function decor(p: Plan): void {
   wall("picture-lounge-1", "picture", 35, 34, 2, 2);
   wall("picture-lounge-2", "picture", 38, 34, 2, 2);
   plant("lounge", 43, 37);
-  // South outer wall: two windows. Terrace: string lights under the glass wall, glass railing along the edge.
+  // South outer wall: two windows. Terrace: string lights under the glass wall (the rail is glazing in the plan).
   wall("window-south-1", "window", 7, 45, 4, 1);
   wall("window-south-2", "window", 34, 45, 4, 1);
   wall("string-lights", "string-lights", 49, 34, 20, 1);
-  wall("railing", "railing", 49, 44, 30, 2);
   // Terrace and spa: hedge along the west edge, bushes under the glass wall, potted plants.
   p.object("hedge", "", "hedge", { x: 49, y: 34, w: 2, h: 11 });
   p.object("bushes", "", "bushes", { x: 66, y: 34, w: 4, h: 2 });

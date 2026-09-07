@@ -123,7 +123,6 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | `planter-tall`           | 2 × 1             | 1     | dev                                                                                 |                                           |
 | `projector`              | 2 × 2             | 1     | meeting                                                                             |                                           |
 | `radiator`               | 1 × 4             | 1     | analyst                                                                             | walk-through                              |
-| `railing`                | 30 × 2            | 1     | terrace                                                                             | walk-through                              |
 | `rug-beige`              | 8 × 8             | 1     | lounge                                                                              | walk-through; floor layer                 |
 | `rug-green`              | 10 × 7            | 1     | kitchen                                                                             | walk-through; floor layer                 |
 | `rug-teal`               | 8 × 8             | 3     | boss, qa, analyst                                                                   | walk-through; floor layer                 |

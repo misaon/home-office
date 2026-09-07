@@ -68,6 +68,9 @@ function structure(p: Plan): void {
   p.clear({ x: 49, y: 20, w: 5, h: 1 });
   // Fixed glazing from the meeting-room wall across the kitchen front to the east wall.
   p.glass({ x: 49, y: 33, w: 20, h: 1 });
+  // The terrace is fenced by a low glass rail along its south and east edges instead of the outer wall.
+  p.glass({ x: 49, y: 45, w: 30, h: 1 }, "rail");
+  p.glass({ x: 79, y: 34, w: 1, h: 12 }, "rail");
   // Arrival: the elevator threshold is where everybody (and the postman) enters the office.
   p.anchor("elevator", "elevator", { x: 4, y: 30 });
   p.anchor("entrance", "entrance", { x: 5, y: 30 }, "s");

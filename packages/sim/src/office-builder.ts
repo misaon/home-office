@@ -8,16 +8,21 @@ export type PlanRoom = PlanRect & { id: string; label: string; surface: Surface 
 /** A placed object with its label and orientation; `sprite` doubles as the delivery key for real art. */
 export type PlanObject = Furniture & { id: string; label: string; facing: Facing };
 export type PlanDoor = PlanRect & { id: string; kind: "door" | "sliding" | "elevator" };
+/** Impassable glazing: `wall` is full-height (kitchen front), `rail` a low balustrade (terrace edge). */
+export type PlanGlass = PlanRect & { kind: "wall" | "rail" };
 export type OfficePlan = {
   template: FloorTemplate;
   rooms: PlanRoom[];
   objects: PlanObject[];
   doors: PlanDoor[];
-  /** Fixed glazing: impassable like a wall, drawn as tall translucent panels. */
-  glass: PlanRect[];
+  /** Fixed glazing: impassable like a wall, drawn as translucent panels or a low rail. */
+  glass: PlanGlass[];
 };
 
-/** Which delivered floor tile each surface uses (owner's choices): parquet in the corridors, decking outside. */
+/** The floor tile a room is looked up by: one delivered tile per room. */
+export const roomFloorKey = (roomId: string): string => `tiles/floor-${roomId}`;
+
+/** Floor tile of the corridor (surface `office`); room surfaces only pick the fallback colour. */
 export const SURFACE_TILE: Record<Surface, string> = {
   office: "tiles/floor-wood",
   room: "tiles/floor-room",
@@ -103,11 +108,12 @@ export class Plan {
       this.wall(rect);
     }
     // A walled room paints its interior; an open area (reception, terrace, spa) is floor to its very edge.
+    // Every room has its own floor tile key (`tiles/floor-<room id>`); the corridor uses the `office` surface tile.
     const inset = open ? 0 : 1;
     const { floor, width } = this.plan.template;
     for (let y = rect.y + inset; y < rect.y + rect.h - inset; y += 1) {
       for (let x = rect.x + inset; x < rect.x + rect.w - inset; x += 1) {
-        floor[y * width + x] = SURFACE_TILE[surface];
+        floor[y * width + x] = roomFloorKey(id);
       }
     }
   }
@@ -117,8 +123,8 @@ export class Plan {
     this.clear(rect);
   }
 
-  glass(rect: PlanRect): void {
-    this.plan.glass.push(rect);
+  glass(rect: PlanRect, kind: PlanGlass["kind"] = "wall"): void {
+    this.plan.glass.push({ ...rect, kind });
     this.wall(rect);
   }
 

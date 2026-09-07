@@ -57,14 +57,12 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
 
 **Floor tiles**
 
-- `tiles/<material>/static_f0.png`: a **seamless** square texture repeated over every room whose surface the plan
-  maps to that material (`SURFACE_TILE` in `packages/sim/src/office-builder.ts`): `floor-wood` → `office`
-  (corridors, reception), `floor-room` → offices, meeting room and lounge (the reference's orange floor; rugs are
-  separate floor-layer objects `rug-teal`, `rug-green`, `rug-beige`), `floor-tile` → kitchen and toilets,
-  `floor-deck` → terrace and spa (the kitchen and toilets share `floor-room`, as painted). `floor-room` and
-  `floor-deck` are cut out of the approved reference itself (`assets/inbox/floor-*-reference.png`, mirrored to
-  tile seamlessly), so the floor motif matches the base image; replace them by importing your own tiles under the
-  same keys. Import with the tile size in cells, e.g.
+- `tiles/<key>/static_f0.png`: a **seamless** square texture repeated over the cells of one floor. The corridor
+  uses `floor-wood` (surface `office`); every room has its own key `floor-<room id>` — `floor-boss`, `floor-dev`,
+  `floor-qa`, `floor-analyst`, `floor-meeting`, `floor-kitchen`, `floor-toilets`, `floor-lounge`, `floor-call-1`,
+  `floor-call-2`, `floor-reception`, `floor-terrace`, `floor-spa`. Until a room's tile lands it is a flat colour;
+  rugs are separate floor-layer objects (`rug-teal`, `rug-green`, `rug-beige`). Import with the tile size in cells,
+  e.g.
   `bun run assets:import assets/inbox/floor-wood.png tiles/floor-wood/static --cells 6x6` → 144 × 144 px, the
   pattern repeating every six cells. Surfaces without a delivered tile keep their flat palette colour.
 

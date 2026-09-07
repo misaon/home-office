@@ -1,7 +1,7 @@
 /* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
-import { type PlanRect, type PlanRoom, SURFACE_TILE } from "@ho/sim";
+import { type PlanGlass, type PlanRect, type PlanRoom, roomFloorKey, SURFACE_TILE } from "@ho/sim";
 import { Container, Graphics, type Texture, TilingSprite } from "pixi.js";
-import { label, PALETTE, SURFACES, surfaceColor, TILE } from "./stand-ins.ts";
+import { label, PALETTE, surfaceColor, TILE } from "./stand-ins.ts";
 
 /**
  * Floors, walls and glass as one static layer. Floors are painted cell by cell from the template: every surface
@@ -19,10 +19,14 @@ export function architecture(
   floorTexture: (key: string) => Texture | undefined,
 ): Container {
   const layer = new Container();
-  layer.addChild(new Graphics().rect(0, 0, width * TILE, height * TILE).fill(PALETTE.wallFace));
-  for (const surface of SURFACES) {
-    const key = SURFACE_TILE[surface];
-    // Horizontal runs of this surface's floor cells (walls excluded), as one Graphics.
+  layer.addChild(new Graphics().rect(0, 0, width * TILE, height * TILE).fill(PALETTE.wallCap));
+  // One entry per floor key: the corridor's surface tile and one tile per room, each with its fallback colour.
+  const keys = new Map<string, number>([[SURFACE_TILE.office, PALETTE.corridor]]);
+  for (const room of rooms) {
+    keys.set(roomFloorKey(room.id), surfaceColor(room.surface));
+  }
+  for (const [key, color] of keys) {
+    // Horizontal runs of this key's floor cells (walls excluded), as one Graphics.
     const cells = new Graphics();
     let any = false;
     for (let y = 0; y < height; y += 1) {
@@ -43,7 +47,7 @@ export function architecture(
     }
     const texture = floorTexture(key);
     if (texture === undefined) {
-      layer.addChild(cells.fill(surfaceColor(surface)));
+      layer.addChild(cells.fill(color));
     } else {
       const tiles = new TilingSprite({ texture, width: width * TILE, height: height * TILE });
       tiles.mask = cells.fill(0xffffff);
@@ -57,9 +61,9 @@ export function architecture(
     x >= 0 && y >= 0 && x < width && y < height && walls[y * width + x] === 1;
   const isFloor = (x: number, y: number): boolean =>
     x >= 0 && y >= 0 && x < width && y < height && walls[y * width + x] !== 1;
-  // Walls as painted in the reference: a grey cap on the wall line (the outer wall black over grey), and on
-  // horizontal runs a light face one cell tall hanging below it (over the room's first row) with a shadow line;
-  // vertical runs are a grey band with dark outlines.
+  // Walls as painted in the reference. A thin wall (floor above) gets a grey cap and, when floor follows below,
+  // a light face one cell tall over the room's first row with a shadow line. Cells inside a thick block (wall
+  // above) are the block's face. The outer wall is one dark band. Vertical runs are grey with dark outlines.
   const outer = (x: number, y: number): boolean =>
     x === 0 || y === 0 || x === width - 1 || y === height - 1;
   for (let y = 0; y < height; y += 1) {
@@ -70,15 +74,20 @@ export function architecture(
       const px0 = x * TILE;
       const py0 = y * TILE;
       const horizontal = isWall(x - 1, y) || isWall(x + 1, y);
-      g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallCap);
-      if (outer(x, y) && horizontal) {
-        g.rect(px0, py0, TILE, TILE / 2).fill(PALETTE.wallOuter);
-      }
-      if (horizontal && isFloor(x, y + 1)) {
-        g.rect(px0, py0 + TILE, TILE, TILE).fill(PALETTE.wallFace);
-        g.rect(px0, py0 + TILE * 2 - 3, TILE, 3).fill(PALETTE.wallEdge);
-      } else if (!horizontal) {
-        g.rect(px0, py0, 2, TILE)
+      if (outer(x, y)) {
+        g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallOuter);
+      } else if (horizontal && isWall(x, y - 1) && !outer(x, y - 1)) {
+        g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallFace);
+      } else if (horizontal) {
+        g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallCap);
+        if (isFloor(x, y + 1)) {
+          g.rect(px0, py0 + TILE, TILE, TILE).fill(PALETTE.wallFace);
+          g.rect(px0, py0 + TILE * 2 - 3, TILE, 3).fill(PALETTE.wallEdge);
+        }
+      } else {
+        g.rect(px0, py0, TILE, TILE)
+          .fill(PALETTE.wallCap)
+          .rect(px0, py0, 2, TILE)
           .fill(PALETTE.wallOuter)
           .rect(px0 + TILE - 2, py0, 2, TILE)
           .fill(PALETTE.wallOuter);
@@ -95,11 +104,39 @@ export function architecture(
   return layer;
 }
 
-/** Fixed full-height glazing, sorted in front of people standing behind it. */
-export function glassWall(pane: PlanRect): Graphics {
+/**
+ * Glazing. `wall`: full-height translucent panels rising three cells from the wall line (kitchen front).
+ * `rail`: a low balustrade with posts on the terrace edge, horizontal along the south edge or vertical along the
+ * east edge. Sorted in front of people standing behind it.
+ */
+export function glassWall(pane: PlanGlass): Graphics {
+  const bottom = (pane.y + pane.h) * TILE;
+  if (pane.kind === "rail") {
+    const vertical = pane.h > pane.w;
+    const width = pane.w * TILE;
+    const height = pane.h * TILE;
+    const g = new Graphics({ x: pane.x * TILE, y: pane.y * TILE, zIndex: bottom - 1 });
+    if (vertical) {
+      g.rect(6, 0, 12, height)
+        .fill({ color: 0x8de0df, alpha: 0.35 })
+        .rect(6, 0, 3, height)
+        .fill(0x8a9296);
+      for (let y = 0; y <= height - 6; y += 4 * TILE) {
+        g.rect(4, y, 16, 6).fill(0x6a7276);
+      }
+    } else {
+      g.rect(0, 6, width, 12)
+        .fill({ color: 0x8de0df, alpha: 0.35 })
+        .rect(0, 4, width, 3)
+        .fill(0x8a9296);
+      for (let x = 0; x <= width - 6; x += 4 * TILE) {
+        g.rect(x, 0, 6, 18).fill(0x6a7276);
+      }
+    }
+    return g;
+  }
   const height = 3 * TILE;
   const width = pane.w * TILE;
-  const bottom = (pane.y + pane.h) * TILE;
   const g = new Graphics({ x: pane.x * TILE, y: bottom - height, zIndex: bottom - 1 });
   g.rect(0, 0, width, height).fill({ color: 0x8de0df, alpha: 0.35 });
   for (let x = 0; x < width; x += 2 * TILE) {
