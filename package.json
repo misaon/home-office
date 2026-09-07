@@ -46,6 +46,7 @@
     "setup": "git config core.hooksPath .githooks",
     "assets:manifest": "bun run scripts/assets-manifest.ts",
     "assets:import": "bun run scripts/assets-import.ts",
+    "assets:placeholders": "bun run scripts/assets-placeholders.ts",
     "ui:build": "bun run scripts/ui-build.ts",
     "ui:watch": "bun run scripts/ui-build.ts --watch",
     "desktop:prepare": "bun run scripts/desktop-prepare.ts",

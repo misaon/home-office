@@ -29,7 +29,7 @@ export type NeedKind = "coffee" | "restroom" | "smoke" | "relax";
 export const NEEDS: readonly NeedKind[] = ["coffee", "restroom", "smoke", "relax"];
 
 export type Step =
-  | { kind: "walk"; floorId: string; to: Point; path: Point[] | null }
+  | { kind: "walk"; floorId: string; to: Point; path: Point[] | null; blockedMs?: number }
   | { kind: "elevator"; toFloorId: string; until: number | null }
   | { kind: "dwell"; activity: Activity; facing: Facing | null; until: number | null; ms: number }
   | { kind: "hold"; activity: Activity; facing: Facing | null }
@@ -59,6 +59,8 @@ export type Actor = {
   activity: Activity;
   animTime: number;
   hidden: boolean;
+  /** The cell this actor is currently stepping into (claimed so nobody else enters it at the same time). */
+  moving: Point | null;
   steps: Step[];
   reservation: { floorId: string; anchorId: string } | null;
   work: { floorId: string; anchorId: string } | null;
@@ -176,6 +178,7 @@ export function spawnActor(
     activity: "idle",
     animTime: 0,
     hidden: arriving,
+    moving: null,
     steps: [],
     reservation: null,
     work: null,
@@ -207,17 +210,25 @@ export function removeActor(world: World, id: AgentId): void {
   }
 }
 
-/** Cells occupied by other actors standing still (walking actors are transient and ignored). */
-export const occupied = (world: World, self: Actor): ((p: Point) => boolean) => {
+/**
+ * Cells other actors hold: where they stand, and — with `includeMoving` — the cell they are stepping into, so two
+ * walkers never enter one cell together. Planning ignores walkers (they move on); stepping does not.
+ */
+export const occupied = (
+  world: World,
+  self: Actor,
+  includeMoving = false,
+): ((p: Point) => boolean) => {
   const taken = new Set<number>();
   for (const other of world.actors.values()) {
-    if (
-      other.id !== self.id &&
-      other.floorId === self.floorId &&
-      other.activity !== "walk" &&
-      !other.hidden
-    ) {
+    if (other.id === self.id || other.floorId !== self.floorId || other.hidden) {
+      continue;
+    }
+    if (other.activity !== "walk" || includeMoving) {
       taken.add(other.tile.y * 4096 + other.tile.x);
+    }
+    if (includeMoving && other.moving !== null) {
+      taken.add(other.moving.y * 4096 + other.moving.x);
     }
   }
   return (p) => taken.has(p.y * 4096 + p.x);

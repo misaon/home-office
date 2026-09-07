@@ -13,7 +13,11 @@ import {
 const finishStep = (actor: Actor): void => {
   actor.steps.shift();
   actor.animTime = 0;
+  actor.moving = null;
 };
+
+/** How long a walker waits for a taken cell before looking for a way around it. */
+const BLOCKED_WAIT_MS = 500;
 
 function advanceWalk(
   world: World,
@@ -50,6 +54,23 @@ function advanceWalk(
     finishStep(actor);
     return;
   }
+  // Somebody stands in or is stepping into the next cell: wait a moment, then plan a detour around them.
+  if (actor.moving === null && occupied(world, actor, true)(next)) {
+    step.blockedMs = (step.blockedMs ?? 0) + dtMs;
+    actor.activity = "idle";
+    actor.facing = facingTowards(actor.tile, next);
+    if (step.blockedMs >= BLOCKED_WAIT_MS) {
+      step.blockedMs = 0;
+      const target = nearestWalkable(world, actor.floorId, step.to);
+      const around = occupied(world, actor, true);
+      const detour = findPath(floor.grid, actor.tile, target, around);
+      if (detour.length > 0) {
+        step.path = detour;
+      }
+    }
+    return;
+  }
+  actor.moving = next;
   actor.activity = "walk";
   actor.facing = facingTowards(actor.tile, next);
   const distance = (SPEED_TILES_PER_S * dtMs) / 1000;
@@ -59,6 +80,7 @@ function advanceWalk(
   if (remaining <= distance) {
     actor.pos = { x: next.x, y: next.y };
     actor.tile = { x: next.x, y: next.y };
+    actor.moving = null;
     step.path.shift();
     if (step.path.length === 0) {
       finishStep(actor);

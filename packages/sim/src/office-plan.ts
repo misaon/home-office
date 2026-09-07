@@ -82,7 +82,7 @@ function workplaces(p: Plan): void {
   p.seat("boss-desk", { x: 6, y: 6 }, "s", "chair-boss", undefined, "boss-desk");
   p.object("boss-visitors", "HOSTÉ", "boss-visitors", { x: 3, y: 11, w: 7, h: 3 });
   p.anchor("boss-visitors", "sleep", { x: 6, y: 14 }, "n");
-  // Developers: two rows of three touching desks (5 × 3), the chair two cells south with the sitter over the gap.
+  // Developers: two rows of three touching desks (5 × 3), the chair right against the desk's front edge.
   for (const [i, x] of [19, 24, 29, 39, 44, 49].entries()) {
     const id = `dev-${String(i + 1)}`;
     p.object(
@@ -92,7 +92,7 @@ function workplaces(p: Plan): void {
       { x, y: 7, w: 5, h: 3 },
       { facing: "n" },
     );
-    p.seat(id, { x: x + 2, y: 12 }, "n", "chair-developer", "dev");
+    p.seat(id, { x: x + 2, y: 11 }, "n", "chair-developer", "dev");
   }
   p.object("shelf-left", "SLOŽKY", "bookshelf", { x: 17, y: 3, w: 4, h: 3 });
   p.object("copier", "KOPÍRKA", "copier", { x: 42, y: 3, w: 3, h: 3 });
@@ -112,7 +112,7 @@ function workplaces(p: Plan): void {
       { x, y: 10, w: 5, h: 3 },
       { facing: "n" },
     );
-    p.seat(`${room}-2`, { x: x + 2, y: 14 }, "n", `chair-${room}`, room);
+    p.seat(`${room}-2`, { x: x + 2, y: 13 }, "n", `chair-${room}`, room);
   }
 }
 

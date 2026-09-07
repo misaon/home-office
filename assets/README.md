@@ -91,7 +91,8 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
 
   Minimum for a usable set: `idle_s`. Recommended full set: `idle` and `walk` in n/s/e, `type` in n/s, and a `_s`
   version of every other activity (it is used for every facing through the fallback). Two frames suffice for
-  poses, four for `walk`.
+  poses, four for `walk`. `bun run assets:placeholders` regenerates the procedural placeholder sets (`boss`,
+  `agent-a/b/c`, `postman`) in exactly this layout — open one to see the canvas, the feet line and the naming.
 
 **Bubbles**
 

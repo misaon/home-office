@@ -39,7 +39,10 @@ production geometry lives in code and every destination must be reachable.
   `empty`/`full`) and a courier carries it to the boss.
 - **Routing.** A* with cached clearance and turn costs prefers corridor centres and straight runs (walls and
   furniture cost 4 per step alongside, 1.5 two cells away, 1 further; a turn costs 6). Occupied destinations stay
-  reachable so meeting points work.
+  reachable so meeting points work. Walkers never share a cell: a walker claims the cell it is stepping into, a
+  walker whose next cell is taken waits half a second and then plans a detour around the blocker.
+- **Doors** open for whoever is about to pass through them — somebody standing in the doorway or with a door
+  cell among the next four cells of their path — not for people walking past.
 - **Rendering.** `packages/ui/src/office/plan-view.ts` draws the architecture once (cached), glass panels and
   doors that slide open when somebody is within three cells, and one node per object: the delivered sprite when
   `furniture/<key>` is in the manifest, otherwise a geometric stand-in from `stand-ins.ts` in the approved palette.

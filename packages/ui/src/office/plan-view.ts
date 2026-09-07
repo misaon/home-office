@@ -32,12 +32,21 @@ const FRAME_MS = 120;
 /** Full travel of a proximity-driven animation (elevator doors), forward and back. */
 const NEAR_MS = 700;
 
-/** True when an actor stands within NEAR_CELLS of the rect (doors, the elevator threshold). */
-const anyoneNear = (people: readonly Actor[], rect: PlanRect): boolean =>
+const inRect = (p: { x: number; y: number }, rect: PlanRect): boolean =>
+  p.x >= rect.x && p.x < rect.x + rect.w && p.y >= rect.y && p.y < rect.y + rect.h;
+
+/**
+ * True when an actor is about to pass through the rect: they stand in it, or one of the next LOOKAHEAD_CELLS
+ * cells of their current walk leads into it. Walking past a door does not open it.
+ */
+const anyoneHeading = (people: readonly Actor[], rect: PlanRect): boolean =>
   people.some((a) => {
-    const dx = Math.max(rect.x - a.pos.x, 0, a.pos.x - (rect.x + rect.w - 1));
-    const dy = Math.max(rect.y - a.pos.y, 0, a.pos.y - (rect.y + rect.h - 1));
-    return dx + dy < NEAR_CELLS;
+    if (inRect(a.tile, rect)) {
+      return true;
+    }
+    const step = a.steps[0];
+    const path = step?.kind === "walk" ? (step.path ?? []) : [];
+    return path.slice(0, LOOKAHEAD_CELLS).some((p) => inRect(p, rect));
   });
 
 /** Moves `amount` toward `target` at a fixed speed; returns the new value. */
@@ -49,7 +58,7 @@ const framesOf = (sprites: SpriteLibrary, item: PlanObject): Texture[] | undefin
   sprites.frames(item.sprite, item.animation) ?? sprites.frames(item.sprite, "static");
 
 const DOOR_MS = 220;
-const NEAR_CELLS = 3;
+const LOOKAHEAD_CELLS = 4;
 
 /**
  * Renders the office plan: cached architecture, glass, doors that slide open when somebody comes close,
@@ -152,7 +161,7 @@ export function createPlanView(
           const amount = world.animations.get(view.item.sprite.slice("furniture/".length)) ?? 0;
           frame = Math.round(amount * (view.frames.length - 1));
         } else if (view.item.playback === "near") {
-          const target = anyoneNear(people, { ...view.item.at, w: view.item.w, h: view.item.h })
+          const target = anyoneHeading(people, { ...view.item.at, w: view.item.w, h: view.item.h })
             ? 1
             : 0;
           view.amount = approach(view.amount, target, dtMs, NEAR_MS);
@@ -171,7 +180,7 @@ export function createPlanView(
     }
     for (const door of doors) {
       const { spec } = door;
-      const target = anyoneNear(people, spec) ? 1 : 0;
+      const target = anyoneHeading(people, spec) ? 1 : 0;
       door.amount = approach(door.amount, target, dtMs, DOOR_MS);
       drawDoor(door);
     }
