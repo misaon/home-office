@@ -9,9 +9,10 @@ import type {
 import { conflict, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { err, ok } from "../result.ts";
-import { isActive, isTerminal } from "../tasks/transitions.ts";
+import { isTerminal } from "../tasks/transitions.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
 import { bossFor, copyOf } from "./office-defaults.ts";
+import { isSessionActive } from "./sessions.ts";
 import { membersOf } from "./shared.ts";
 
 const nameTaken = (model: ReadModel, name: string, except?: ProjectId): boolean =>
@@ -87,6 +88,9 @@ export function updateProject(
   if (input.patch.name !== undefined && nameTaken(model, input.patch.name, input.id)) {
     return err(conflict(`project name "${input.patch.name}" is already used`));
   }
+  if (input.patch.repo !== undefined && !sameRepo(current.repo, input.patch.repo)) {
+    return err(conflict("a floor's repository cannot change; create a new floor"));
+  }
   const project: Project = { ...current, ...definedOnly(input.patch), updatedAt: ctx.now };
   return ok({
     events: [{ type: "project.updated", actor: ctx.actor, payload: { project } }],
@@ -109,8 +113,13 @@ export function removeProject(
   if (open > 0) {
     return err(conflict(`project has ${String(open)} open task(s); finish or cancel them first`));
   }
-  if (tasks.some((t) => isActive(t.status))) {
-    return err(conflict("project has active tasks"));
+  const taskIds = new Set(tasks.map((task) => task.id));
+  if (
+    [...model.sessions.values()].some(
+      (session) => taskIds.has(session.taskId) && isSessionActive(session.state),
+    )
+  ) {
+    return err(conflict("project has active sessions"));
   }
   const events: NewEvent[] = [
     ...membersOf(model, id).map((agent): NewEvent => ({

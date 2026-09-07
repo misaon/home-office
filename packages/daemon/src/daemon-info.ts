@@ -1,6 +1,7 @@
-import { chmod, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
+import { writePrivateFile } from "@ho/secrets";
 
 /** Written next to the database so local clients (CLI, desktop shell) can find and authenticate to the daemon. */
 export const DaemonInfo = z.object({
@@ -22,8 +23,7 @@ export async function readDaemonInfo(home: string): Promise<DaemonInfo | null> {
 
 /** The file carries the bearer token, so it is readable by the owner only. */
 export async function writeDaemonInfo(home: string, info: DaemonInfo): Promise<void> {
-  await Bun.write(daemonInfoPath(home), `${JSON.stringify(info, null, 2)}\n`);
-  await chmod(daemonInfoPath(home), 0o600);
+  await writePrivateFile(daemonInfoPath(home), `${JSON.stringify(info, null, 2)}\n`);
 }
 
 export const removeDaemonInfo = (home: string): Promise<void> =>

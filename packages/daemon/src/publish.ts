@@ -7,6 +7,8 @@ const run = async (argv: readonly string[], cwd?: string): Promise<string> => {
   const proc = Bun.spawn([...argv], {
     stdout: "pipe",
     stderr: "pipe",
+    timeout: 120_000,
+    env: { ...Bun.env, GH_PROMPT_DISABLED: "1", GIT_TERMINAL_PROMPT: "0" },
     ...(cwd === undefined ? {} : { cwd }),
   });
   const [stdout, stderr, code] = await Promise.all([

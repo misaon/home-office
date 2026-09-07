@@ -44,6 +44,8 @@ const containerConfig = (spec: SandboxSpec) => ({
     SecurityOpt: ["no-new-privileges"],
     ReadonlyRootfs: spec.readonlyRootfs,
     Memory: spec.limits.memoryBytes,
+    MemorySwap: spec.limits.memoryBytes,
+    LogConfig: { Type: "local", Config: { "max-size": "10m", "max-file": "2" } },
     NanoCpus: Math.round(spec.limits.cpus * CPU_NANOS),
     PidsLimit: spec.limits.pids,
     Init: true,

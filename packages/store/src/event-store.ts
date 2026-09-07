@@ -103,12 +103,20 @@ export function createSqliteEventStore(
   }
 
   const subscribe = (filter?: EventFilter, signal?: Cancellation): AsyncIterable<StoredEvent> => {
-    const chan = createChannel<StoredEvent>(signal);
-    const subscriber: Subscriber = { filter, push: chan.push };
-    subscribers.add(subscriber);
-    signal?.addEventListener("abort", () => {
-      subscribers.delete(subscriber);
+    const subscriber: Subscriber = {
+      filter,
+      push: (event) => {
+        chan.push(event);
+      },
+    };
+    const chan = createChannel<StoredEvent>(signal, {
+      onClose: () => {
+        subscribers.delete(subscriber);
+      },
     });
+    if (!chan.closed) {
+      subscribers.add(subscriber);
+    }
     return chan.iterate();
   };
 

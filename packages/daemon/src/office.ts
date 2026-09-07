@@ -23,6 +23,7 @@ export class Office {
   readonly store: EventStore;
   readonly clock: Clock;
   readonly #log: Logger;
+  #commands: Promise<unknown> = Promise.resolve();
 
   private constructor(store: EventStore, clock: Clock, log: Logger) {
     this.store = store;
@@ -46,7 +47,16 @@ export class Office {
     return office;
   }
 
-  async execute<T>(
+  execute<T>(
+    actor: Actor,
+    command: (model: ReadModel, ctx: CommandContext) => CommandResult<T>,
+  ): Promise<T> {
+    const result = this.#commands.then(() => this.#execute(actor, command));
+    this.#commands = result.catch(() => undefined);
+    return result;
+  }
+
+  async #execute<T>(
     actor: Actor,
     command: (model: ReadModel, ctx: CommandContext) => CommandResult<T>,
   ): Promise<T> {

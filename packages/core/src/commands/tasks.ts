@@ -51,6 +51,12 @@ export function createTask(
   if (input.parentId !== undefined && !model.tasks.has(input.parentId)) {
     return err(notFound("task", input.parentId));
   }
+  if (
+    input.parentId !== undefined &&
+    model.tasks.get(input.parentId)?.projectId !== input.projectId
+  ) {
+    return err(conflict("parent task belongs to another floor"));
+  }
   if (input.assigneeId !== undefined) {
     const check = assignable(model, input.assigneeId, input.projectId);
     if (!check.ok) {

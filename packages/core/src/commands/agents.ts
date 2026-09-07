@@ -10,7 +10,8 @@ import { conflict, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { err, ok } from "../result.ts";
 import { defaultChoice, validateChoice } from "../providers.ts";
-import { isActive } from "../tasks/transitions.ts";
+import { isTerminal } from "../tasks/transitions.ts";
+import { isSessionActive } from "./sessions.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
 import { copyOf } from "./office-defaults.ts";
 import { definedOnly } from "./projects.ts";
@@ -146,8 +147,11 @@ export function removeAgent(
     return err(conflict("the boss leaves with the floor; remove the project instead"));
   }
   const busy = [...model.tasks.values()].filter(
-    (t) => t.assigneeId === id && isActive(t.status),
+    (t) => (t.assigneeId === id || t.reviewerId === id) && !isTerminal(t.status),
   ).length;
+  if ([...model.sessions.values()].some((s) => s.agentId === id && isSessionActive(s.state))) {
+    return err(conflict("agent has an active session"));
+  }
   if (busy > 0) {
     return err(conflict(`agent has ${String(busy)} active task(s); reassign them first`));
   }

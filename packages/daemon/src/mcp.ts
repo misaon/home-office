@@ -88,7 +88,7 @@ function registerCommon(server: McpServer, office: Office, entry: Entry, run: Ru
       run(() => {
         const id = HoTaskStatusInput.parse(input).taskId ?? ctx.taskId;
         const task = office.model.tasks.get(id);
-        if (task === undefined) {
+        if (task === undefined || task.projectId !== ctx.projectId) {
           throw new Error(`task ${id} not found`);
         }
         return Promise.resolve({

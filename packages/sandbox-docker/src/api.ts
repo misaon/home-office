@@ -38,7 +38,7 @@ export function createDockerApi(socket = DEFAULT_SOCKET): DockerApi {
       method,
       unix: socket,
       headers: { "content-type": "application/json" },
-      ...(signal === undefined ? {} : { signal }),
+      signal: signal ?? AbortSignal.timeout(30_000),
     };
     if (body !== undefined) {
       init.body = JSON.stringify(body);

@@ -19,7 +19,6 @@ import type { RunnerConnection } from "./runner-gateway.ts";
 import type { SessionDeps } from "./sessions.ts";
 
 const REPORT_MAX = 4000;
-const CONNECT_TIMEOUT_MS = 30_000;
 const PLUGINS_ROOT = "/opt/ho/plugins";
 
 export type SessionContext = {
@@ -93,6 +92,7 @@ const sandboxSpec = (
 /** Network, task volume with the floor's repository, sandbox with the runner, runner connection. */
 export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {
   const { provider, config, gateway, mcp, home } = deps;
+  ctx.signal.throwIfAborted();
   const volume = `ho-task-${ctx.task.id.slice(-12)}`;
   const configVolume = `${volume}-claude-${ctx.agent.id.slice(-8)}`;
   const branch = branchFor(ctx.task.title, ctx.task.id);
@@ -117,23 +117,22 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     projectId: ctx.project.id,
     mode: ctx.session.mode,
   });
-  const sandbox = await provider.start(
-    sandboxSpec(config, ctx, volume, configVolume, deps.gatewayUrl, issued.token),
-  );
+  let sandbox: SandboxHandle | null = null;
   try {
-    const connection = await Promise.race([
-      issued.connected,
-      new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error("runner did not connect within 30s"));
-        }, CONNECT_TIMEOUT_MS);
-      }),
-    ]);
+    ctx.signal.throwIfAborted();
+    sandbox = await provider.start(
+      sandboxSpec(config, ctx, volume, configVolume, deps.gatewayUrl, issued.token),
+    );
+    const connection = await issued.connected;
+    ctx.signal.throwIfAborted();
     return { sandbox, connection, volume, branch, sourcePath, mcpToken };
   } catch (error) {
+    issued.cancel();
     mcp.unregister(mcpToken);
-    await provider.stop(sandbox, 2).catch(() => null);
-    await provider.remove(sandbox).catch(() => null);
+    if (sandbox !== null) {
+      await provider.stop(sandbox, 2).catch(() => null);
+      await provider.remove(sandbox).catch(() => null);
+    }
     throw error;
   }
 }

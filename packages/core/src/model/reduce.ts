@@ -118,6 +118,9 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
 
 /** Folds one stored event into the model. Unknown ids are ignored so a partial log never throws. */
 export function applyEvent(model: ReadModel, event: StoredEvent): void {
+  if (event.seq <= model.lastSeq) {
+    return;
+  }
   switch (event.type) {
     case "project.created":
     case "project.updated": {

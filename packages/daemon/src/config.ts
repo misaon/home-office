@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { Resources } from "./paths.ts";
 
 export const DaemonConfig = z.object({
-  host: z.string().min(1).default("127.0.0.1"),
+  host: z.enum(["127.0.0.1", "::1", "localhost"]).default("127.0.0.1"),
   port: z.int().min(0).max(65535).default(47800),
   logLevel: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
   scheduler: z
