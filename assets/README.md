@@ -18,7 +18,7 @@ assets/src/<category>/<sprite>/<animation>[_<dir>]_f<frame>.png
 ```
 
 - `category`: `furniture`, `characters`, `bubbles`.
-- `sprite`: the key from the plan (`desk-n`, `chair-s`, `elevator`, `hot-tub`, …), a character set name or an
+- `sprite`: the key from the plan (`desk-developer`, `chair-qa`, `elevator`, `spa`, …), a character set name or an
   emotion name.
 - `animation`: lowercase letters only. `static` for furniture without states; `empty`/`full` for the mailbox;
   character activities are listed below.
@@ -39,12 +39,14 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   footprint**. Art may rise above the footprint (a monitor, a tall shelf, the elevator's frame); it never extends
   below or to the sides. A wrong width is scaled to the footprint and reported in the red banner.
 - One frame per state, `static_f0.png` for most objects; the mailbox has `empty_f0.png` and `full_f0.png`.
-- Desks (footprints measured from the reference): `desk-n` (5 × 3) is the developer desk — the person sits
-  **south** of it facing north, so the viewer sees their back and the monitor's screen. `desk-pair` (5 × 6) is the
-  shared QA / analyst desk with a seat at each end and two monitors back to back. `desk-boss` (6 × 3) has the
-  boss **north** of it facing the room, the monitor seen from behind. A desk is drawn over whoever sits north of it,
-  so an upward overhang hides that sitter's chest, not the head. Empty chairs are separate sprites (`chair-n`
-  seen from behind, `chair-s` from the front, `chair-boss` for the boss) on a 1 × 1 seat with art **1.5 cells wide** (36 px), centred on the
+- Desks (footprints measured from the reference) are per room and their keys are the delivery file names:
+  `desk-developer` (5 × 3, six of them), `desk-qa` / `desk-qa-rotated` and `desk-analyst` / `desk-analyst-rotated`
+  (5 × 3 each, back to back as one long desk), `desk-boss-rotated` (6 × 3), `desk-reception-rotated` (8 × 3).
+  **`-rotated`** means the sitter is _north_ of the desk facing the room: the art shows the desk's front panel and
+  the monitors' backs. Plain desk art shows drawers and screens; its sitter is south of it. A desk is drawn over
+  whoever sits north of it, so an upward overhang hides that sitter's chest, not the head.
+- Chairs are per room too (`chair-developer`, `chair-qa`, `chair-qa-rotated`, `chair-analyst`,
+  `chair-analyst-rotated`, `chair-boss`), on a 1 × 1 seat with art **1.5 cells wide** (36 px), centred on the
   seat — the one case where art is wider than its footprint (`artWidth` in the plan); the seated pose belongs to
   the character.
 
@@ -134,7 +136,9 @@ look at it in the live app (`bun run ui:watch` + `ho daemon --ui`) and only then
 {
   "version": 1,
   "tileSize": 24,
-  "sprites": { "furniture/desk-n": { "static": ["assets/src/furniture/desk-n/static_f0.png"] } }
+  "sprites": {
+    "furniture/desk-developer": { "static": ["assets/src/furniture/desk-developer/static_f0.png"] }
+  }
 }
 ```
 

@@ -1,5 +1,5 @@
 import type { AgentId } from "@ho/protocol";
-import { OFFICE_FLOOR_ID } from "@ho/sim";
+import * as sim from "@ho/sim";
 import { useEffect, useRef } from "react";
 import { useUi } from "../store.ts";
 import { createPlanView } from "./plan-view.ts";
@@ -59,12 +59,13 @@ export function OfficeCanvas(): React.JSX.Element {
       created.onSelect = (agentId: AgentId | null) => {
         useUi.getState().selectAgent(agentId);
       };
-      Object.assign(window, { __ho: { bridge, sprites, scene: created } });
+      // Dev console handle: the bridge, the sprite library, the scene and the simulation's intents.
+      Object.assign(window, { __ho: { bridge, sprites, scene: created, sim } });
       created.app.ticker.add((ticker) => {
         try {
           bridge.tick(ticker.deltaMS);
           created.syncFloors(bridge.world);
-          created.showFloor(OFFICE_FLOOR_ID);
+          created.showFloor(sim.OFFICE_FLOOR_ID);
           created.update(bridge.world, ticker.deltaMS, nameOf, useUi.getState().selectedAgentId);
         } catch (error) {
           useUi.getState().setError(error instanceof Error ? error.message : String(error));

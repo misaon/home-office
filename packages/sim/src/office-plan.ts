@@ -62,29 +62,27 @@ function structure(p: Plan): void {
 }
 
 function workplaces(p: Plan): void {
-  // Boss: a six-cell desk seen with the monitor's back, the boss sits north of it facing the room.
-  p.object("boss-desk", "BOSS", "desk-boss", { x: 3, y: 7, w: 6, h: 3 }, "s");
-  p.seat("boss-desk", { x: 6, y: 6 }, "s", undefined, "boss-desk");
-  // Developers: two rows of three touching desks (5 × 3 each), the seat south of the desk facing the screen.
+  // Sprite keys are the delivery file names. "-rotated" art shows a desk's front panel and the monitors' backs:
+  // its sitter is north of the desk, facing the room; plain desk art shows drawers and screens, its sitter south.
+  // Boss: behind a six-cell desk, facing the room.
+  p.object("boss-desk", "BOSS", "desk-boss-rotated", { x: 3, y: 7, w: 6, h: 3 }, "s");
+  p.seat("boss-desk", { x: 6, y: 6 }, "s", "chair-boss", undefined, "boss-desk");
+  // Developers: two rows of three touching desks (5 × 3 each), the seat south of the desk facing the screens.
   for (const [i, x] of [19, 24, 29, 39, 44, 49].entries()) {
     const id = `dev-${String(i + 1)}`;
-    p.object(id, `DEV ${String(i + 1)}`, "desk-n", { x, y: 7, w: 5, h: 3 }, "n");
-    p.seat(id, { x: x + 2, y: 10 }, "n", "dev");
+    p.object(id, `DEV ${String(i + 1)}`, "desk-developer", { x, y: 7, w: 5, h: 3 }, "n");
+    p.seat(id, { x: x + 2, y: 10 }, "n", "chair-developer", "dev");
   }
-  // QA and analysts: one long shared desk per room (5 × 6) with a seat at each end, facing each other.
-  for (const [room, x] of [
-    ["qa", 60],
-    ["analyst", 72],
+  // QA and analysts: two desks back to back per room form the reference's long shared desk — the north one
+  // rotated (its sitter faces south), the south one plain (its sitter faces north).
+  for (const [room, label, x] of [
+    ["qa", "QA", 60],
+    ["analyst", "AN", 72],
   ] as const) {
-    p.object(
-      `${room}-desk`,
-      room === "qa" ? "QA · 2" : "AN · 2",
-      "desk-pair",
-      { x, y: 7, w: 5, h: 6 },
-      "s",
-    );
-    p.seat(`${room}-1`, { x: x + 2, y: 6 }, "s", room);
-    p.seat(`${room}-2`, { x: x + 2, y: 13 }, "n", room);
+    p.object(`${room}-desk-1`, `${label} 1`, `desk-${room}-rotated`, { x, y: 7, w: 5, h: 3 }, "s");
+    p.seat(`${room}-1`, { x: x + 2, y: 6 }, "s", `chair-${room}-rotated`, room);
+    p.object(`${room}-desk-2`, `${label} 2`, `desk-${room}`, { x, y: 10, w: 5, h: 3 }, "n");
+    p.seat(`${room}-2`, { x: x + 2, y: 13 }, "n", `chair-${room}`, room);
   }
   p.object("boss-visitors", "HOSTÉ", "sofa", { x: 4, y: 11, w: 5, h: 2 });
   p.anchor("boss-visitors", "sleep", { x: 6, y: 13 }, "n");
@@ -95,9 +93,10 @@ function workplaces(p: Plan): void {
 
 function sharedSpaces(p: Plan): void {
   p.object("lift-shaft", "VÝTAH", "elevator", { x: 1, y: 23, w: 8, h: 6 });
-  p.object("reception", "název firmy", "reception-desk", { x: 14, y: 27, w: 8, h: 2 });
+  // The reception counter is drawn frontally (≈4 cells tall); the receptionist stands behind it.
+  p.object("reception", "název firmy", "desk-reception-rotated", { x: 14, y: 26, w: 8, h: 3 });
   p.anchor("reception", "reception", { x: 17, y: 30 });
-  p.anchor("reception-staff", "wander", { x: 17, y: 26 }, "s");
+  p.anchor("reception-staff", "wander", { x: 17, y: 25 }, "s");
   // The post lands on the reception counter; a courier carries it to the boss.
   p.object("mailbox", "", "mailbox", { x: 22, y: 27, w: 1, h: 1 }, "s", true);
   p.anchor("mailbox", "mailbox", { x: 22, y: 28 }, "n");
@@ -126,7 +125,7 @@ function sharedSpaces(p: Plan): void {
     p.object(`call-desk-${String(i + 1)}`, "", "call-desk", { x: 31, y, w: 2, h: 1 });
     p.anchor(`call-${String(i + 1)}`, "wander", { x: 31, y: y + 2 });
   }
-  p.object("hot-tub", "VÍŘIVKA", "hot-tub", { x: 72, y: 26, w: 5, h: 6 });
+  p.object("hot-tub", "VÍŘIVKA", "spa", { x: 72, y: 26, w: 5, h: 6 });
   p.anchor("hot-tub", "relax", { x: 74, y: 33 });
   p.object("grill", "GRIL", "grill", { x: 66, y: 36, w: 3, h: 2 });
   p.anchor("grill", "coffee", { x: 67, y: 38 });

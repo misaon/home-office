@@ -135,20 +135,12 @@ export class Plan {
     id: string,
     seat: Point,
     facing: "n" | "s",
+    chair: string,
     group?: string,
     kind: "desk" | "boss-desk" = "desk",
   ): void {
     // Chairs in the reference are about 1.5 cells wide around a one-cell seat; the art is centred on it.
-    // The boss has an executive chair of its own; everyone else shares chair-n / chair-s.
-    this.object(
-      `${id}-chair`,
-      "",
-      kind === "boss-desk" ? "chair-boss" : `chair-${facing}`,
-      { ...seat, w: 1, h: 1 },
-      facing,
-      false,
-      CHAIR_ART_W,
-    );
+    this.object(`${id}-chair`, "", chair, { ...seat, w: 1, h: 1 }, facing, false, CHAIR_ART_W);
     this.anchor(id, kind, seat, facing, group);
   }
 }
