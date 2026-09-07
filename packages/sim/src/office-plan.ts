@@ -114,7 +114,14 @@ function workplaces(p: Plan): void {
 }
 
 function sharedSpaces(p: Plan): void {
-  p.object("lift-shaft", "VÝTAH", "elevator", { x: 3, y: 23, w: 6, h: 6 });
+  // The elevator's doors open frame by frame while somebody stands at the threshold and close the same way back.
+  p.object(
+    "lift-shaft",
+    "VÝTAH",
+    "elevator",
+    { x: 3, y: 23, w: 6, h: 6 },
+    { animation: "open", playback: "near" },
+  );
   // The reception counter is drawn frontally (four cells tall); the receptionist stands behind it.
   p.object("reception", "název firmy", "desk-reception-rotated", { x: 14, y: 26, w: 8, h: 4 });
   p.anchor("reception", "reception", { x: 17, y: 30 });

@@ -35,6 +35,11 @@ export type Furniture = {
    * is then centred on the footprint instead of pinned to its bottom-left corner.
    */
   artWidth?: number;
+  /**
+   * How a multi-frame animation plays: `loop` cycles (bubbling water); `near` scrubs the frames by proximity —
+   * forward while somebody stands within reach (doors opening), backward as they leave (the same frames closing).
+   */
+  playback?: "loop" | "near";
 };
 
 export type FloorTemplate = {

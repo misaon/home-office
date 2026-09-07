@@ -1,12 +1,15 @@
 /* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
-import type { OfficePlan, PlanDoor, PlanObject, World } from "@ho/sim";
+import type { Actor, OfficePlan, PlanDoor, PlanObject, PlanRect, World } from "@ho/sim";
 import { Container, Graphics, Sprite, type Texture } from "pixi.js";
 import type { FloorView } from "./scene.ts";
 import { fitScale, type SpriteLibrary } from "./sprites.ts";
 import { architecture, glassWall, standIn, TILE } from "./stand-ins.ts";
 
 type DoorView = { spec: PlanDoor; graphic: Graphics; amount: number };
-/** A placed sprite with the frames of its current animation; multi-frame animations loop at FRAME_MS. */
+/**
+ * A placed sprite with the frames of its current animation. Multi-frame animations either loop at FRAME_MS or,
+ * with `playback: "near"`, follow `amount` (0 closed … 1 open) driven by who stands within reach.
+ */
 type ObjectView = {
   item: PlanObject;
   sprite: Sprite;
@@ -14,10 +17,25 @@ type ObjectView = {
   frames: Texture[];
   frame: number;
   timeMs: number;
+  amount: number;
 };
 
 /** Furniture animations (bubbling water, blinking screens) run at ~8 fps; one clock per object, no allocation per tick. */
 const FRAME_MS = 120;
+/** Full travel of a proximity-driven animation (elevator doors), forward and back. */
+const NEAR_MS = 700;
+
+/** True when an actor stands within NEAR_CELLS of the rect (doors, the elevator threshold). */
+const anyoneNear = (people: readonly Actor[], rect: PlanRect): boolean =>
+  people.some((a) => {
+    const dx = Math.max(rect.x - a.pos.x, 0, a.pos.x - (rect.x + rect.w - 1));
+    const dy = Math.max(rect.y - a.pos.y, 0, a.pos.y - (rect.y + rect.h - 1));
+    return dx + dy < NEAR_CELLS;
+  });
+
+/** Moves `amount` toward `target` at a fixed speed; returns the new value. */
+const approach = (amount: number, target: number, dtMs: number, travelMs: number): number =>
+  amount + Math.sign(target - amount) * Math.min(Math.abs(target - amount), dtMs / travelMs);
 
 /** Frames of the object's current animation, falling back to its single `static` frame. */
 const framesOf = (sprites: SpriteLibrary, item: PlanObject): Texture[] | undefined =>
@@ -75,20 +93,24 @@ export function createPlanView(
     }
     sprite.zIndex = (item.at.y + item.h) * TILE - (item.blocks ? 1 : 3);
     objects.addChild(sprite);
-    views.push({ item, sprite, animation: item.animation, frames, frame: 0, timeMs: 0 });
+    views.push({ item, sprite, animation: item.animation, frames, frame: 0, timeMs: 0, amount: 0 });
   }
   for (const pane of plan.glass) {
     objects.addChild(glassWall(pane));
   }
-  const doors: DoorView[] = plan.doors.map((spec) => {
-    const graphic = new Graphics({ x: spec.x * TILE, y: spec.y * TILE });
-    graphic.zIndex = (spec.y + spec.h) * TILE + 1;
-    objects.addChild(graphic);
-    return { spec, graphic, amount: 0 };
-  });
+  // The elevator's doors belong to its sprite once real art exists; the stand-in door graphic then goes away.
+  const doors: DoorView[] = plan.doors
+    .filter((spec) => spec.kind !== "elevator" || !sprites.has("furniture/elevator"))
+    .map((spec) => {
+      const graphic = new Graphics({ x: spec.x * TILE, y: spec.y * TILE });
+      graphic.zIndex = (spec.y + spec.h) * TILE + 1;
+      objects.addChild(graphic);
+      return { spec, graphic, amount: 0 };
+    });
   root.addChild(floor, objects);
 
   const update = (world: World, dtMs: number): void => {
+    const people = [...world.actors.values()].filter((a) => a.floorId === template.id && !a.hidden);
     for (const view of views) {
       if (view.animation !== view.item.animation) {
         // State change (mailbox empty → full): swap to the new animation's frames, restart its clock.
@@ -103,9 +125,18 @@ export function createPlanView(
         }
       }
       if (view.frames.length > 1) {
-        const cycle = FRAME_MS * view.frames.length;
-        view.timeMs = (view.timeMs + dtMs) % cycle;
-        const frame = Math.floor(view.timeMs / FRAME_MS);
+        let frame = view.frame;
+        if (view.item.playback === "near") {
+          const target = anyoneNear(people, { ...view.item.at, w: view.item.w, h: view.item.h })
+            ? 1
+            : 0;
+          view.amount = approach(view.amount, target, dtMs, NEAR_MS);
+          frame = Math.round(view.amount * (view.frames.length - 1));
+        } else {
+          const cycle = FRAME_MS * view.frames.length;
+          view.timeMs = (view.timeMs + dtMs) % cycle;
+          frame = Math.floor(view.timeMs / FRAME_MS);
+        }
         const texture = view.frames[frame];
         if (frame !== view.frame && texture !== undefined) {
           view.frame = frame;
@@ -113,17 +144,10 @@ export function createPlanView(
         }
       }
     }
-    const people = [...world.actors.values()].filter((a) => a.floorId === template.id && !a.hidden);
     for (const door of doors) {
       const { spec } = door;
-      const near = people.some((a) => {
-        const dx = Math.max(spec.x - a.pos.x, 0, a.pos.x - (spec.x + spec.w - 1));
-        const dy = Math.max(spec.y - a.pos.y, 0, a.pos.y - (spec.y + spec.h - 1));
-        return dx + dy < NEAR_CELLS;
-      });
-      const target = near ? 1 : 0;
-      door.amount +=
-        Math.sign(target - door.amount) * Math.min(Math.abs(target - door.amount), dtMs / DOOR_MS);
+      const target = anyoneNear(people, spec) ? 1 : 0;
+      door.amount = approach(door.amount, target, dtMs, DOOR_MS);
       drawDoor(door);
     }
   };

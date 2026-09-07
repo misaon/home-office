@@ -40,8 +40,10 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   below or to the sides. A wrong width is scaled to the footprint and reported in the red banner.
 - One frame per state, `static_f0.png` for most objects; the mailbox has `empty_f0.png` and `full_f0.png`.
   **Animated furniture** (the hot tub's `bubbles`) is a numbered frame set `bubbles_f0.png … bubbles_f9.png`; the
-  plan names the animation the object plays, the renderer loops it at 120 ms per frame and falls back to `static`
-  while the frames are missing. Frames must share one canvas — the converter guarantees that for a sequence.
+  plan names the animation the object plays and how: `loop` cycles at 120 ms per frame; `near` (the elevator's
+  `open`) scrubs the frames by proximity — forward while somebody stands within three cells, backward as they
+  leave, so one closed→open sequence serves both opening and closing. Missing frames fall back to `static`. Frames
+  must share one canvas — the converter guarantees that for a sequence.
 - Desks (footprints measured from the reference) are per room and their keys are the delivery file names:
   `desk-developer` (5 × 3, six of them), `desk-qa` / `desk-qa-rotated` and `desk-analyst` / `desk-analyst-rotated`
   (5 × 3 each, back to back as one long desk), `desk-boss-rotated` (6 × 3), `desk-reception-rotated` (8 × 3).
