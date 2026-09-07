@@ -23,6 +23,8 @@ export type WallGrid = {
 };
 /** Which neighbours a cap cell continues into (other cap cells). */
 type Links = { n: boolean; e: boolean; s: boolean; w: boolean };
+/** A thick block's face cell bordering floor on one side. */
+type Edge = { x: number; y: number; side: "e" | "w" };
 
 /**
  * Walls as painted in the reference. Every wall cell is classified, then each class is drawn either from a
@@ -30,10 +32,12 @@ type Links = { n: boolean; e: boolean; s: boolean; w: boolean };
  *   cap-h  — top of a horizontal wall (grey cap);
  *   face   — the light wall face: the floor row right under a horizontal wall, and the bottom row of a thick block;
  *   block  — inner rows of a thick block (the elevator shaft);
- *   cap-v  — a vertical wall band, including the outer columns of a thick block. Where a vertical wall leaves a
- *            horizontal one the band runs straight from the cap (the face is only ever drawn over floor).
+ *   cap-v  — a vertical wall band, including a thick block's column on the map edge (the outer wall). Where a
+ *            vertical wall leaves a horizontal one the band runs straight from the cap (the face is only ever
+ *            drawn over floor).
+ * A thick block's column that borders floor keeps its face and gets a dark outline on that side (`edges`).
  */
-function classifyWalls(grid: WallGrid): Map<number, WallClass> {
+function classifyWalls(grid: WallGrid): { classes: Map<number, WallClass>; edges: Edge[] } {
   const { walls, glass, width, height } = grid;
   const isGlass = (x: number, y: number): boolean =>
     glass.some((p) => x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h);
@@ -42,6 +46,7 @@ function classifyWalls(grid: WallGrid): Map<number, WallClass> {
   const horizontalWall = (x: number, y: number): boolean =>
     isWall(x, y) && (isWall(x - 1, y) || isWall(x + 1, y));
   const classes = new Map<number, WallClass>();
+  const edges: Edge[] = [];
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       if (!isWall(x, y) || isGlass(x, y)) {
@@ -51,10 +56,15 @@ function classifyWalls(grid: WallGrid): Map<number, WallClass> {
       const underHorizontal = horizontalWall(x, y - 1) && !isGlass(x, y - 1);
       const id = y * width + x;
       if (horizontal && underHorizontal) {
-        // Inside a thick block; its outer columns (floor or the map edge beside them) are vertical bands.
-        const edge = !isWall(x - 1, y) || !isWall(x + 1, y);
+        // Inside a thick block: a band on the map edge, otherwise the face, outlined where floor borders it.
         const inner = y + 1 < height && horizontalWall(x, y + 1) ? "block" : "face";
-        classes.set(id, edge ? "cap-v" : inner);
+        classes.set(id, x === 0 || x === width - 1 ? "cap-v" : inner);
+        if (x > 0 && !isWall(x - 1, y)) {
+          edges.push({ x, y, side: "w" });
+        }
+        if (x < width - 1 && !isWall(x + 1, y)) {
+          edges.push({ x, y, side: "e" });
+        }
       } else if (horizontal) {
         classes.set(id, "cap-h");
         if (y + 1 < height && !isWall(x, y + 1)) {
@@ -65,7 +75,7 @@ function classifyWalls(grid: WallGrid): Map<number, WallClass> {
       }
     }
   }
-  return classes;
+  return { classes, edges };
 }
 
 const isCap = (cls: WallClass | undefined): boolean => cls === "cap-h" || cls === "cap-v";
@@ -226,7 +236,7 @@ export function drawWalls(
   floorTexture: (key: string) => Texture | undefined,
 ): void {
   const { width, height } = grid;
-  const classes = classifyWalls(grid);
+  const { classes, edges } = classifyWalls(grid);
   const runs = new Map<number, WallClass>();
   const joints = new Map<number, Links>();
   for (const [id, cls] of classes) {
@@ -266,6 +276,10 @@ export function drawWalls(
         }
       }
     }
+  }
+  for (const edge of edges) {
+    const x = edge.side === "w" ? edge.x * TILE : (edge.x + 1) * TILE - 2;
+    g.rect(x, edge.y * TILE, 2, TILE).fill(PALETTE.wallOuter);
   }
   const capH = floorTexture(WALL_TILE["cap-h"]);
   const capV = floorTexture(WALL_TILE["cap-v"]);

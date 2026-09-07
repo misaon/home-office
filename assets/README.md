@@ -52,8 +52,12 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   `assets/src/<category>/<sprite>/import.json`, and `--like` reuses them verbatim, so a layer that is only door
   panels in the middle of the canvas lands exactly where it sits over the cabin. Layers must be drawn on the same
   canvas size. For a lone sequence whose outline really changes between frames, `--no-align` keeps the shared crop.
-  When the base layer carries surroundings the plan already draws (the wall around the shaft), fix its crop with
-  `--crop x,y,w,h` in source pixels; the layers imported with `--like` inherit it.
+  Layers carry **no wall**: the shaft face behind the elevator is the plan's thick block, drawn from the wall
+  tiles. Crop the base layer to the union of all layers' visible art with `--crop x,y,w,h` in source pixels (the
+  delivered set: `elevator-back.png` → `elevator-cabin` with `--crop 295,227,786,900`, then `elevator-doors-*.png`
+  and `elevator-front-frame.png` with `--like`); the plan sizes the art at 6.25 cells across (`artWidth`), centred
+  on the 7-cell doorway, with the frame's feet a fifth of a cell out on the floor (`artOffsetY`), as measured on
+  the reference.
 
 **Floor tiles**
 

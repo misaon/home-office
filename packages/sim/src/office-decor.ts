@@ -62,8 +62,8 @@ export function decor(p: Plan): void {
   plant("corridor", 2, 19);
   p.object("bin", "", "bin", { x: 78, y: 19, w: 1, h: 1 });
   // Reception: binder shelf and picture on the backdrop wall, a plant west of the counter.
-  wall("wall-shelf", "wall-shelf", 13, 22, 7, 2);
-  wall("picture-reception", "picture", 21, 22, 2, 2);
+  wall("wall-shelf", "wall-shelf", 13, 21, 7, 2);
+  wall("picture-reception", "picture", 21, 21, 2, 2);
   plant("reception", 12, 28);
   // Meeting room: wall screen, projector stand, plant in the north-east corner.
   wall("wall-screen", "wall-screen", 40, 21, 5, 2);
