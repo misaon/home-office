@@ -1,5 +1,12 @@
 /* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
-import { CELL_PX, type PlanObject, type PlanRect, type PlanRoom, type Surface } from "@ho/sim";
+import {
+  CELL_PX,
+  type PlanObject,
+  type PlanRect,
+  type PlanRoom,
+  type Surface,
+  SURFACE_TILE,
+} from "@ho/sim";
 import { Container, Graphics, Text, type Texture, TilingSprite } from "pixi.js";
 
 /** Pixels per cell on the stage: the art density every sprite is delivered at. */
@@ -34,19 +41,23 @@ const label = (
     style: { fontFamily: "monospace", fontSize: size, fill: color, fontWeight: "bold" },
   });
 
-const surfaceColor = (room: PlanRoom): number =>
-  room.surface === "wood"
+const SURFACES: readonly Surface[] = ["office", "carpet", "tile", "wood"];
+
+const surfaceColor = (surface: Surface): number =>
+  surface === "wood"
     ? PALETTE.wood
-    : room.surface === "tile"
+    : surface === "tile"
       ? PALETTE.tile
-      : room.surface === "carpet"
+      : surface === "carpet"
         ? PALETTE.carpet
         : PALETTE.corridor;
 
 /** Floor fills per room and walls with a lit cap; glass cells are left to `glassWall`. Cached once per floor. */
 /**
- * Floors, walls and glass as one static layer. Each surface is a delivered seamless tile (the key the plan's
- * `SURFACE_TILE` names for it) repeated over the room when the manifest has it, otherwise the flat palette colour.
+ * Floors, walls and glass as one static layer. Floors are painted cell by cell from the template: every surface
+ * gets one floor-spanning tile (the material `SURFACE_TILE` names for it, when delivered) masked to its cells, so
+ * patterns stay continuous across rooms and corridors; surfaces without a tile get their flat palette colour.
+ * Wall cells (glass included) keep the dark wall face underneath.
  */
 export function architecture(
   rooms: readonly PlanRoom[],
@@ -54,34 +65,40 @@ export function architecture(
   walls: Uint8Array,
   width: number,
   height: number,
-  floorTexture: (surface: Surface) => Texture | undefined,
+  floor: readonly (string | null)[],
+  floorTexture: (key: string) => Texture | undefined,
 ): Container {
   const layer = new Container();
-  const paint = (
-    surface: Surface,
-    color: number,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-  ): void => {
-    const texture = floorTexture(surface);
-    if (texture === undefined) {
-      layer.addChild(new Graphics().rect(x, y, w, h).fill(color));
-    } else {
-      layer.addChild(new TilingSprite({ texture, x, y, width: w, height: h }));
+  layer.addChild(new Graphics().rect(0, 0, width * TILE, height * TILE).fill(PALETTE.wallFace));
+  for (const surface of SURFACES) {
+    const key = SURFACE_TILE[surface];
+    // Horizontal runs of this surface's floor cells (walls excluded), as one Graphics.
+    const cells = new Graphics();
+    let any = false;
+    for (let y = 0; y < height; y += 1) {
+      let run = -1;
+      for (let x = 0; x <= width; x += 1) {
+        const here = x < width && floor[y * width + x] === key && walls[y * width + x] !== 1;
+        if (here && run < 0) {
+          run = x;
+        } else if (!here && run >= 0) {
+          cells.rect(run * TILE, y * TILE, (x - run) * TILE, TILE);
+          any = true;
+          run = -1;
+        }
+      }
     }
-  };
-  paint("office", PALETTE.corridor, 0, 0, width * TILE, height * TILE);
-  for (const r of rooms) {
-    paint(
-      r.surface,
-      surfaceColor(r),
-      (r.x + 1) * TILE,
-      (r.y + 1) * TILE,
-      (r.w - 2) * TILE,
-      (r.h - 2) * TILE,
-    );
+    if (!any) {
+      continue;
+    }
+    const texture = floorTexture(key);
+    if (texture === undefined) {
+      layer.addChild(cells.fill(surfaceColor(surface)));
+    } else {
+      const tiles = new TilingSprite({ texture, width: width * TILE, height: height * TILE });
+      tiles.mask = cells.fill(0xffffff);
+      layer.addChild(tiles, cells);
+    }
   }
   const g = new Graphics();
   const isGlass = (x: number, y: number): boolean =>

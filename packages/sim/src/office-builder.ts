@@ -101,9 +101,11 @@ export class Plan {
     if (!open) {
       this.wall(rect);
     }
+    // A walled room paints its interior; an open area (reception, terrace, spa) is floor to its very edge.
+    const inset = open ? 0 : 1;
     const { floor, width } = this.plan.template;
-    for (let y = rect.y + 1; y < rect.y + rect.h - 1; y += 1) {
-      for (let x = rect.x + 1; x < rect.x + rect.w - 1; x += 1) {
+    for (let y = rect.y + inset; y < rect.y + rect.h - inset; y += 1) {
+      for (let x = rect.x + inset; x < rect.x + rect.w - inset; x += 1) {
         floor[y * width + x] = SURFACE_TILE[surface];
       }
     }

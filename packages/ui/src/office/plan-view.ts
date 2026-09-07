@@ -5,7 +5,6 @@ import {
   type PlanDoor,
   type PlanObject,
   type PlanRect,
-  SURFACE_TILE,
   type World,
 } from "@ho/sim";
 import { Container, Graphics, Sprite, type Texture } from "pixi.js";
@@ -70,7 +69,8 @@ export function createPlanView(
     template.walls,
     template.width,
     template.height,
-    (surface) => sprites.frames(SURFACE_TILE[surface], "static")?.[0],
+    template.floor,
+    (key) => sprites.frames(key, "static")?.[0],
   );
   const objects = new Container({ sortableChildren: true });
   const views: ObjectView[] = [];
