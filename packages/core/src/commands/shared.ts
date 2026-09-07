@@ -1,23 +1,51 @@
-import type { Agent, NewEvent, Project, Task, TaskId, TaskNote, TaskStatus } from "@ho/protocol";
+import type {
+  Agent,
+  AgentId,
+  NewEvent,
+  Project,
+  ProjectId,
+  Task,
+  TaskId,
+  TaskNote,
+  TaskStatus,
+} from "@ho/protocol";
 import { type DomainError, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { err, ok, type Result } from "../result.ts";
 import type { CommandContext } from "./context.ts";
 
-/** Agents refer to colleagues and projects by name in tool calls; ids also work. */
-export const findAgentByRef = (model: ReadModel, ref: string): Agent | undefined =>
+/** Enough of the model to find a floor's staff; the UI's immutable snapshot fits too. */
+export type Roster = { agents: ReadonlyMap<AgentId, Agent> };
+
+/** The staff of one floor (its boss included). */
+export const membersOf = (model: Roster, projectId: ProjectId): Agent[] =>
+  [...model.agents.values()].filter((a) => a.projectId === projectId);
+
+/** The floor's boss; every floor gets one when it is created, so `undefined` only shows up mid-removal. */
+export const bossOf = (model: Roster, projectId: ProjectId): Agent | undefined =>
+  membersOf(model, projectId).find((a) => a.role === "boss");
+
+/** Agents refer to colleagues by name in tool calls; ids also work. Scoped to a floor when one is given. */
+export const findAgentByRef = (
+  model: ReadModel,
+  ref: string,
+  projectId?: ProjectId,
+): Agent | undefined =>
   [...model.agents.values()].find(
-    (a) => a.id === ref || a.name.toLowerCase() === ref.toLowerCase(),
+    (a) =>
+      (projectId === undefined || a.projectId === projectId) &&
+      (a.id === ref || a.name.toLowerCase() === ref.toLowerCase()),
   );
 export const findProjectByRef = (model: ReadModel, ref: string): Project | undefined =>
   [...model.projects.values()].find(
     (p) => p.id === ref || p.name.toLowerCase() === ref.toLowerCase(),
   );
 
-export const officeProject = (model: ReadModel): Project | undefined =>
-  [...model.projects.values()].find((p) => p.repo.kind === "none");
-export const bossAgent = (model: ReadModel): Agent | undefined =>
-  [...model.agents.values()].find((a) => a.role === "boss");
+/** Floors are numbered by creation order (the first project is floor 1). */
+export const floorNumber = (model: ReadModel, projectId: ProjectId): number =>
+  [...model.projects.values()]
+    .toSorted((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+    .findIndex((p) => p.id === projectId) + 1;
 
 export const note = (ctx: CommandContext, kind: TaskNote["kind"], text: string): TaskNote => ({
   at: ctx.now,
@@ -46,4 +74,9 @@ export const statusChange = (
 export const requireTask = (model: ReadModel, taskId: TaskId): Result<Task, DomainError> => {
   const task = model.tasks.get(taskId);
   return task === undefined ? err(notFound("task", taskId)) : ok(task);
+};
+
+export const requireAgent = (model: ReadModel, agentId: AgentId): Result<Agent, DomainError> => {
+  const agent = model.agents.get(agentId);
+  return agent === undefined ? err(notFound("agent", agentId)) : ok(agent);
 };

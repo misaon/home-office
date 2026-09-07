@@ -1,5 +1,6 @@
 import {
   assignTask,
+  copyAgent,
   createAgent,
   createChannel,
   createProject,
@@ -137,6 +138,7 @@ export const router = base.router({
   },
   projects: {
     list: base.projects.list.handler(({ context }) => [...context.office.model.projects.values()]),
+    inspect: base.projects.inspect.handler(({ input, context }) => context.inspectRepo(input)),
     create: base.projects.create.handler(({ input, context }) =>
       context.office.execute(HUMAN, (m, ctx) => createProject(m, input, ctx)),
     ),
@@ -148,12 +150,19 @@ export const router = base.router({
     })),
   },
   agents: {
-    list: base.agents.list.handler(({ context }) => [...context.office.model.agents.values()]),
+    list: base.agents.list.handler(({ input, context }) =>
+      [...context.office.model.agents.values()].filter(
+        (a) => input.projectId === undefined || a.projectId === input.projectId,
+      ),
+    ),
     create: base.agents.create.handler(({ input, context }) =>
       context.office.execute(HUMAN, (m, ctx) => createAgent(m, input, ctx)),
     ),
     update: base.agents.update.handler(({ input, context }) =>
       context.office.execute(HUMAN, (m, ctx) => updateAgent(m, input, ctx)),
+    ),
+    copy: base.agents.copy.handler(({ input, context }) =>
+      context.office.execute(HUMAN, (m, ctx) => copyAgent(m, input, ctx)),
     ),
     remove: base.agents.remove.handler(async ({ input, context }) => ({
       id: await context.office.execute(HUMAN, (m, ctx) => removeAgent(m, input.id, ctx)),
@@ -206,7 +215,9 @@ export const router = base.router({
   },
   chat: {
     history: base.chat.history.handler(({ input, context }) =>
-      context.office.model.chat.slice(-input.limit),
+      context.office.model.chat
+        .filter((m) => input.projectId === undefined || m.projectId === input.projectId)
+        .slice(-input.limit),
     ),
     send: base.chat.send.handler(({ input, context }) =>
       context.office.execute(HUMAN, (m, ctx) => postChatMessage(m, input, ctx)),
@@ -269,11 +280,7 @@ export const router = base.router({
         detach();
       }
     }),
-    handoffDelivered: base.office.handoffDelivered.handler(({ input, context }) => {
-      context.gate.delivered(input.taskId, context.office.clock.now().toISOString());
-      return { ok: true as const };
-    }),
-    mailDelivered: base.office.mailDelivered.handler(({ input, context }) => {
+    delivered: base.office.delivered.handler(({ input, context }) => {
       context.gate.delivered(input.taskId, context.office.clock.now().toISOString());
       return { ok: true as const };
     }),

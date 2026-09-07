@@ -22,7 +22,7 @@ export type TaskStatus = z.infer<typeof TaskStatus>;
 export const TaskPriority = z.enum(["low", "normal", "high"]);
 export type TaskPriority = z.infer<typeof TaskPriority>;
 
-/** `work` changes a repository; `triage` is the boss processing a chat message in the Lobby. */
+/** `work` changes the repository; `triage` is the floor's boss planning a chat message or a mail item. */
 export const TaskKind = z.enum(["work", "triage"]);
 export type TaskKind = z.infer<typeof TaskKind>;
 
@@ -67,11 +67,10 @@ export type Actor = z.infer<typeof Actor>;
 
 // ---- value objects ------------------------------------------------------------------------------
 
-/** `none` is the office itself (the Lobby floor): no repository, home of triage tasks. */
+/** Every project (floor) has a repository: a checkout on this machine or a git URL mirrored by the daemon. */
 export const RepoSource = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("local"), path: z.string().min(1) }),
   z.object({ kind: z.literal("git"), url: z.url() }),
-  z.object({ kind: z.literal("none") }),
 ]);
 export type RepoSource = z.infer<typeof RepoSource>;
 
@@ -166,12 +165,12 @@ export type Author = z.infer<typeof Author>;
 
 // ---- entities -----------------------------------------------------------------------------------
 
+/** A project is one floor of the office (D23): the same plan, its own boss and staff. */
 export const Project = z.object({
   id: ProjectId,
   name: z.string().min(1).max(80),
   repo: RepoSource,
   defaultBranch: z.string().min(1).default("main"),
-  floorTemplateId: z.string().min(1).default("project-default"),
   publish: PublishPolicy.prefault({}),
   intake: IntakePolicy.prefault({}),
   createdAt: IsoDateTime,
@@ -192,7 +191,8 @@ export const Agent = z.object({
   basePrompt: z.string().max(4000).default(""),
   skillPack: z.string().min(1).default("none"),
   budgets: Budgets,
-  projectIds: z.array(ProjectId).default([]),
+  /** The floor this agent works on; every floor has exactly one boss and any number of staff. */
+  projectId: ProjectId,
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });
@@ -218,8 +218,10 @@ export const Task = z.object({
 });
 export type Task = z.infer<typeof Task>;
 
+/** One line of a floor's chat between the human and that floor's boss. */
 export const ChatMessage = z.object({
   id: ChatMessageId,
+  projectId: ProjectId,
   author: Author,
   text: z.string().min(1).max(20000),
   taskId: TaskId.optional(),

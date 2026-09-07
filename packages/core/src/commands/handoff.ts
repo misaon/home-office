@@ -27,15 +27,12 @@ export function handoffTask(
     return found;
   }
   const task = found.value;
-  const target = findAgentByRef(model, input.toAgent);
+  const target = findAgentByRef(model, input.toAgent, task.projectId);
   if (target === undefined) {
-    return err(notFound("agent", input.toAgent));
+    return err(notFound("agent", `${input.toAgent} (on this floor)`));
   }
   if (target.id === fromAgentId) {
     return err(conflict("cannot hand a task to yourself"));
-  }
-  if (target.role !== "boss" && !target.projectIds.includes(task.projectId)) {
-    return err(conflict(`${target.name} is not a member of this project`));
   }
   if (!canTransition(task.status, "assigned")) {
     return err(conflict(`task is ${task.status}; it cannot be handed off now`));
@@ -86,6 +83,7 @@ export function askHuman(
   }
   const message: ChatMessage = {
     id: ctx.ids.chatMessage(),
+    projectId: task.projectId,
     author: { kind: "agent", agentId: ctx.actor.agentId },
     text: question,
     taskId: task.id,
@@ -117,6 +115,7 @@ export function answerQuestion(
   const task = found.value;
   const message: ChatMessage = {
     id: ctx.ids.chatMessage(),
+    projectId: task.projectId,
     author: { kind: "human" },
     text,
     taskId: task.id,

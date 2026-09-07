@@ -14,6 +14,7 @@ async function runEvents(client: Client, bridge: Bridge, signal: AbortSignal): P
   let replayed = model.lastSeq >= head.seq;
   if (replayed) {
     bridge.syncFromModel();
+    useUi.getState().setReplayed(true);
   }
   const input = model.lastSeq < 0 ? {} : { afterSeq: model.lastSeq };
   for await (const event of await client.events.subscribe(input, { signal })) {
@@ -24,6 +25,7 @@ async function runEvents(client: Client, bridge: Bridge, signal: AbortSignal): P
     } else if (event.seq >= head.seq) {
       replayed = true;
       bridge.syncFromModel();
+      useUi.getState().setReplayed(true);
     }
   }
 }

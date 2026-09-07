@@ -1,6 +1,5 @@
 import { mailForTask } from "@ho/core";
-import { ProjectId, type Task, type TaskStatus } from "@ho/protocol";
-import { useState } from "react";
+import type { Task, TaskStatus } from "@ho/protocol";
 import { type Snapshot, useUi } from "../store.ts";
 
 const COLUMNS: { status: TaskStatus[]; title: string }[] = [
@@ -66,31 +65,19 @@ function TaskCard({ task, snapshot }: { task: Task; snapshot: Snapshot }): React
   );
 }
 
+/** The tasks of the selected floor by status; the floor tabs in the header pick the project. */
 export function BoardPanel(): React.JSX.Element {
   const snapshot = useUi((s) => s.snapshot);
-  const [projectId, setProjectId] = useState<ProjectId | "all">("all");
-  const projects = [...snapshot.projects.values()].toSorted((a, b) => a.name.localeCompare(b.name));
+  const floorId = useUi((s) => s.floorId);
+  const floor = floorId === null ? undefined : snapshot.projects.get(floorId);
   const tasks = [...snapshot.tasks.values()]
-    .filter((t) => projectId === "all" || t.projectId === projectId)
+    .filter((t) => t.projectId === floorId)
     .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-line p-2 text-xs">
-        <span className="text-gray-400">Project</span>
-        <select
-          className="rounded bg-panel px-1 py-0.5"
-          value={projectId}
-          onChange={(e) => {
-            setProjectId(e.target.value === "all" ? "all" : ProjectId.parse(e.target.value));
-          }}
-        >
-          <option value="all">All</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <span className="text-gray-400">Floor</span>
+        <span>{floor?.name ?? "—"}</span>
         <span className="ml-auto text-gray-400">{tasks.length} tasks</span>
       </div>
       <div className="flex-1 space-y-3 overflow-y-auto p-2">

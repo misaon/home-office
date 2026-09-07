@@ -1,97 +1,94 @@
-import type { AgentId, MailItem, TaskId } from "@ho/protocol";
+import { bossOf } from "@ho/core";
+import type { AgentId, MailItem, ProjectId, TaskId } from "@ho/protocol";
 import {
   deliverMail,
   fetchMail,
-  idleCandidates,
   receive,
-  setEmotion,
   setMailboxState,
   type SimEvent,
   type World,
 } from "@ho/sim";
 import { model } from "../store.ts";
 
-/** Mail on its way: dropped by the postman, then carried to the boss by a courier. */
-type PendingMail = { mailId: string; taskId: TaskId; stage: "postman" | "mailbox" | "courier" };
+/** Mail on its way: dropped at the reception by the postman, then carried to the boss by Lola. */
+type PendingMail = {
+  mailId: string;
+  taskId: TaskId;
+  floorId: ProjectId;
+  stage: "postman" | "counter" | "courier";
+};
 
 const POSTMAN_SPRITE = "characters/postman";
 
 /**
- * The postman-and-courier choreography for incoming mail. The host reports `delivered(taskId)` to the daemon
- * once the boss holds the envelope (or right away when nobody is watching), which releases the triage session.
+ * The postman-and-receptionist choreography for incoming mail, per floor. The host reports `delivered(taskId)`
+ * to the daemon once the boss holds the envelope (or right away when nobody is watching), which releases the
+ * triage session.
  */
 export class MailFlow {
   readonly #world: World;
   readonly #visitorId: () => AgentId;
   readonly #delivered: (taskId: TaskId) => void;
+  readonly #receptionist: (floorId: string) => AgentId | null;
   readonly #pending: PendingMail[] = [];
 
-  constructor(world: World, visitorId: () => AgentId, delivered: (taskId: TaskId) => void) {
+  constructor(
+    world: World,
+    visitorId: () => AgentId,
+    delivered: (taskId: TaskId) => void,
+    receptionist: (floorId: string) => AgentId | null,
+  ) {
     this.#world = world;
     this.#visitorId = visitorId;
     this.#delivered = delivered;
+    this.#receptionist = receptionist;
   }
 
   /** Nobody is watching any more: whatever is in flight counts as delivered. */
   flush(): void {
     for (const pending of this.#pending.splice(0)) {
       this.#delivered(pending.taskId);
+      setMailboxState(this.#world, pending.floorId, "empty");
     }
-    setMailboxState(this.#world, "empty");
   }
 
-  /** A new item: the postman walks in, or the boss gets it right away without viewers or a mailbox. */
+  /** A new item: the postman rides up to the floor, or the boss gets it right away without viewers. */
   onMail(mail: MailItem, watching: boolean): void {
     const taskId = mail.taskId;
     if (taskId === undefined) {
       return;
     }
-    const boss = [...model.agents.values()].find((a) => a.role === "boss");
+    const boss = bossOf(model, mail.projectId);
     if (
       !watching ||
       boss === undefined ||
-      !deliverMail(this.#world, this.#visitorId(), POSTMAN_SPRITE, mail.id)
+      !this.#world.floors.has(mail.projectId) ||
+      !deliverMail(this.#world, mail.projectId, this.#visitorId(), POSTMAN_SPRITE, mail.id)
     ) {
       this.#delivered(taskId);
       return;
     }
-    this.#pending.push({ mailId: mail.id, taskId, stage: "postman" });
+    this.#pending.push({ mailId: mail.id, taskId, floorId: mail.projectId, stage: "postman" });
   }
 
   /** Sim events that belong to the mail flow; returns false for anything else. */
   onSimEvent(event: SimEvent): boolean {
     if (event.kind === "mail_dropped") {
-      this.#onDropped(event.mailId);
+      this.#onDropped(event.ref);
       return true;
     }
-    if (event.kind === "mail_delivered") {
-      const pending = this.#pending.find((p) => p.mailId === event.mailId);
-      if (pending !== undefined) {
-        if (event.by !== event.to) {
-          receive(this.#world, event.to, event.by);
-        }
-        setEmotion(this.#world, event.to, "envelope", 4000);
-        this.#finish(pending);
+    if (event.kind === "envelope_delivered") {
+      const pending = this.#pending.find((p) => p.mailId === event.ref);
+      if (pending === undefined) {
+        return false;
       }
+      if (event.by !== event.to) {
+        receive(this.#world, event.to, event.by);
+      }
+      this.#finish(pending);
       return true;
     }
     return false;
-  }
-
-  /** The clerk if there is one, else an idle colleague, else the boss walks over himself. */
-  #courierFor(bossId: AgentId): AgentId | null {
-    const agents = [...model.agents.values()];
-    const clerks = idleCandidates(
-      this.#world,
-      agents.filter((a) => a.role === "clerk").map((a) => a.id),
-    );
-    const others = idleCandidates(
-      this.#world,
-      agents.filter((a) => a.role !== "clerk" && a.role !== "boss").map((a) => a.id),
-    );
-    return (
-      clerks[0] ?? this.#world.rng.pick(others) ?? (this.#world.actors.has(bossId) ? bossId : null)
-    );
   }
 
   #onDropped(mailId: string): void {
@@ -99,14 +96,15 @@ export class MailFlow {
     if (pending === undefined) {
       return;
     }
-    setMailboxState(this.#world, "full");
-    pending.stage = "mailbox";
-    const boss = [...model.agents.values()].find((a) => a.role === "boss");
-    const courier = boss === undefined ? null : this.#courierFor(boss.id);
+    setMailboxState(this.#world, pending.floorId, "full");
+    pending.stage = "counter";
+    const boss = bossOf(model, pending.floorId);
+    // Lola carries the post; a floor without her (mid-setup) sends the boss to fetch it himself.
+    const courier = this.#receptionist(pending.floorId) ?? boss?.id ?? null;
     if (
       boss === undefined ||
       courier === null ||
-      !fetchMail(this.#world, courier, boss.id, mailId)
+      !fetchMail(this.#world, pending.floorId, courier, boss.id, mailId)
     ) {
       this.#finish(pending);
       return;
@@ -119,8 +117,12 @@ export class MailFlow {
     if (index >= 0) {
       this.#pending.splice(index, 1);
     }
-    if (!this.#pending.some((p) => p.stage === "mailbox" || p.stage === "courier")) {
-      setMailboxState(this.#world, "empty");
+    if (
+      !this.#pending.some(
+        (p) => p.floorId === pending.floorId && (p.stage === "counter" || p.stage === "courier"),
+      )
+    ) {
+      setMailboxState(this.#world, pending.floorId, "empty");
     }
     this.#delivered(pending.taskId);
   }

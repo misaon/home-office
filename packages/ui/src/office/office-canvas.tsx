@@ -45,8 +45,8 @@ export function OfficeCanvas(): React.JSX.Element {
       if (bridge.layoutIssues.length > 0) {
         useUi.getState().setError(`office layout: ${bridge.layoutIssues.join("; ")}`);
       }
-      const created = new OfficeScene(sprites, () =>
-        createPlanView(bridge.plan, sprites, (issue) => {
+      const created = new OfficeScene(sprites, (floorId) =>
+        createPlanView(bridge.planFor(floorId), sprites, (issue) => {
           useUi.getState().setError(`sprite: ${issue}`);
         }),
       );
@@ -65,7 +65,7 @@ export function OfficeCanvas(): React.JSX.Element {
         try {
           bridge.tick(ticker.deltaMS);
           created.syncFloors(bridge.world);
-          created.showFloor(sim.OFFICE_FLOOR_ID);
+          created.showFloor(bridge.world, useUi.getState().floorId);
           created.update(bridge.world, ticker.deltaMS, nameOf, useUi.getState().selectedAgentId);
         } catch (error) {
           useUi.getState().setError(error instanceof Error ? error.message : String(error));

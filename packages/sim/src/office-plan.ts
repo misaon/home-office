@@ -1,10 +1,11 @@
 import { type OfficePlan, Plan, roomFloorKey } from "./office-builder.ts";
+import { strollSpots } from "./office-anchors.ts";
 import { decor } from "./office-decor.ts";
 
 /** Width of the elevator art in cells (frame with display and call button), measured on the reference. */
 const ELEVATOR_ART_W = 6.25;
 
-/** The whole company works on one floor: the owner-approved office (docs/OFFICE-ART.md). */
+/** Floor id of the plan when nobody asks for another (previews, audits); the app uses one floor per project. */
 export const OFFICE_FLOOR_ID = "office";
 
 /**
@@ -90,7 +91,9 @@ function workplaces(p: Plan): void {
   p.object("boss-desk", "BOSS", "desk-boss-rotated", { x: 3, y: 7, w: 6, h: 3 });
   p.seat("boss-desk", { x: 6, y: 6 }, "s", "chair-boss", undefined, "boss-desk");
   p.object("boss-visitors", "HOSTÉ", "boss-visitors", { x: 3, y: 11, w: 7, h: 3 });
-  p.anchor("boss-visitors", "sleep", { x: 6, y: 14 }, "n");
+  // The boss office is his alone: its spots carry the `boss` group, which keeps idle staff out.
+  p.anchor("boss-visitors", "sleep", { x: 6, y: 14 }, "n", "boss");
+  p.anchor("boss-pace", "wander", { x: 10, y: 4 }, "s", "boss");
   // Developers: two rows of three touching desks (5 × 3), the chair right against the desk's front edge.
   for (const [i, x] of [19, 24, 29, 39, 44, 49].entries()) {
     const id = `dev-${String(i + 1)}`;
@@ -273,25 +276,19 @@ function outdoors(p: Plan): void {
     { x: 76, y: 36, w: 3, h: 6 },
     { facing: "w", artWidth: 4 },
   );
-  // Corridor spots for idle wandering.
-  for (const [i, at] of [
-    { x: 20, y: 18 },
-    { x: 45, y: 18 },
-    { x: 62, y: 18 },
-    { x: 27, y: 30 },
-    { x: 40, y: 36 },
-  ].entries()) {
-    p.anchor(`corridor-${String(i + 1)}`, "wander", at, "s");
-  }
 }
 
-/** The approved composition on a navigable 80×46 grid, `CELL_PX` px per cell; art is looked up by object sprite key. */
-export function officePlan(): OfficePlan {
-  const p = new Plan(OFFICE_FLOOR_ID, WIDTH, HEIGHT);
+/**
+ * The approved composition on a navigable 80×46 grid, `CELL_PX` px per cell; art is looked up by object sprite
+ * key. Every project gets its own copy of the plan as a floor (`floorId` = the project id, D23).
+ */
+export function officePlan(floorId: string = OFFICE_FLOOR_ID): OfficePlan {
+  const p = new Plan(floorId, WIDTH, HEIGHT);
   structure(p);
   workplaces(p);
   sharedSpaces(p);
   outdoors(p);
+  strollSpots(p);
   decor(p);
   p.plan.template.furniture = p.plan.objects;
   return p.plan;

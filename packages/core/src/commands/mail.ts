@@ -8,12 +8,12 @@ import type {
   ProjectId,
   Task,
 } from "@ho/protocol";
-import { conflict, notFound } from "../errors.ts";
+import { notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import type { IntakeItem } from "../ports.ts";
 import { err, ok } from "../result.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
-import { bossAgent, officeProject } from "./shared.ts";
+import { bossOf } from "./shared.ts";
 
 const BODY_MAX = 12_000;
 const TITLE_MAX = 200;
@@ -47,9 +47,9 @@ export const findMail = (
 export type ReceivedMail = { mail: MailItem; task: Task | null; duplicate: boolean };
 
 /**
- * A connector item becomes a mail item plus its task: a triage task for the boss in the Lobby when the
- * office has one, otherwise a work task in the project's inbox for the human to assign. Items already
- * received (same project, connector and external id) return unchanged with `duplicate: true`.
+ * A connector item becomes a mail item plus its task: a triage task for the floor's boss (Lola carries it
+ * from the reception to his office), or a work task in the project's inbox when the floor has no boss.
+ * Items already received (same project, connector and external id) return unchanged with `duplicate: true`.
  */
 export function receiveMail(
   model: ReadModel,
@@ -62,16 +62,12 @@ export function receiveMail(
   if (project === undefined) {
     return err(notFound("project", projectId));
   }
-  if (project.repo.kind === "none") {
-    return err(conflict("the office project receives no mail"));
-  }
   const existing = findMail(model, projectId, connector, item.externalId);
   if (existing !== undefined) {
     const task = existing.taskId === undefined ? undefined : model.tasks.get(existing.taskId);
     return ok({ events: [], value: { mail: existing, task: task ?? null, duplicate: true } });
   }
-  const office = officeProject(model);
-  const boss = bossAgent(model);
+  const boss = bossOf(model, project.id);
   const shared = {
     id: ctx.ids.task(),
     title: mailTitle(item),
@@ -85,10 +81,10 @@ export function receiveMail(
     updatedAt: ctx.now,
   } satisfies Partial<Task>;
   const task: Task =
-    office !== undefined && boss !== undefined
+    boss !== undefined
       ? {
           ...shared,
-          projectId: office.id,
+          projectId: project.id,
           kind: "triage",
           status: "assigned",
           assigneeId: boss.id,

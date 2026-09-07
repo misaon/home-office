@@ -24,7 +24,7 @@ const REASSIGNABLE: ReadonlySet<TaskStatus> = new Set([
   "failed",
 ]);
 
-/** An agent may work on a project it is a member of; the boss may work anywhere. */
+/** An agent only works on its own floor (the boss included). */
 const assignable = (
   model: ReadModel,
   agentId: Agent["id"],
@@ -34,8 +34,8 @@ const assignable = (
   if (agent === undefined) {
     return err(notFound("agent", agentId));
   }
-  if (agent.role !== "boss" && !agent.projectIds.includes(projectId)) {
-    return err(conflict(`agent "${agent.name}" is not a member of this project`));
+  if (agent.projectId !== projectId) {
+    return err(conflict(`agent "${agent.name}" works on another floor`));
   }
   return ok(agent);
 };

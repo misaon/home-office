@@ -1,10 +1,11 @@
 import type { EventStore, SandboxProvider, SecretStore } from "@ho/core";
-import type { UsageSummary } from "@ho/protocol";
+import type { RepoInspection, RepoInspectInput, UsageSummary } from "@ho/protocol";
 import type { DaemonConfig } from "../config.ts";
 import { ensureImages, type ImageStatus, imageStatus, neededVariants } from "../images.ts";
 import type { Resources } from "../paths.ts";
+import { inspectRepo } from "../repo-inspect.ts";
 import { usageSummary } from "../usage.ts";
-import type { HandoffGate } from "../handoff-gate.ts";
+import type { OfficeGate } from "../office-gate.ts";
 import type { IntakeService } from "../intake.ts";
 import type { Office } from "../office.ts";
 import type { SessionManager } from "../sessions.ts";
@@ -12,7 +13,7 @@ import type { SessionManager } from "../sessions.ts";
 export type RpcContext = {
   office: Office;
   sessions: SessionManager;
-  gate: HandoffGate;
+  gate: OfficeGate;
   intake: IntakeService;
   provider: SandboxProvider;
   secrets: SecretStore;
@@ -23,6 +24,7 @@ export type RpcContext = {
   imageStatus: () => Promise<ImageStatus[]>;
   gc: () => Promise<{ containers: string[]; volumes: string[]; images: string[] }>;
   usage: (sinceHours: number | undefined) => Promise<UsageSummary>;
+  inspectRepo: (input: RepoInspectInput) => Promise<RepoInspection>;
 };
 
 export type RpcContextDeps = Pick<
@@ -46,4 +48,5 @@ export const createRpcContext = ({ resources, store, ...deps }: RpcContextDeps):
     ensureImages(deps.provider, deps.config, resources, neededVariants(deps.office.model), onLine),
   imageStatus: () => imageStatus(deps.config, resources, neededVariants(deps.office.model)),
   usage: (sinceHours) => usageSummary(deps.office, store, sinceHours),
+  inspectRepo,
 });

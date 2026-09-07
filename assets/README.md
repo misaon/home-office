@@ -134,6 +134,10 @@ shape.
   poses, four for `walk`. `bun run assets:placeholders` regenerates the procedural placeholder sets (`boss`,
   `agent-a/b/c`, `postman`) in exactly this layout — open one to see the canvas, the feet line and the naming.
 
+- Sets the office asks for by name: `boss` (Andrew, the default boss of every floor), `receptionist` (Lola, who
+  stands behind the reception counter and carries envelopes to the boss; `agent-a` stands in until delivered),
+  `postman`, and any set an agent's appearance names (`agent-a/b/c` today).
+
 **Bubbles**
 
 - `bubbles/<emotion>/static_f0.png`, 1 × 1 cell, drawn centred two pixels above the character canvas. Emotions:

@@ -1,17 +1,17 @@
-import { createIdFactory, ensureOfficeProject } from "@ho/core";
+import { createIdFactory } from "@ho/core";
 import { createDockerProvider } from "@ho/sandbox-docker";
 import { createSecretStore } from "@ho/secrets";
-import { createSqliteEventStore, openDatabase } from "@ho/store";
 import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { startBossVoice } from "./boss-voice.ts";
+import { openOffice } from "./open-office.ts";
 import { type DaemonConfig, loadConfig, resolveHome } from "./config.ts";
 import { type DaemonInfo, removeDaemonInfo, writeDaemonInfo } from "./daemon-info.ts";
 import { resolveResources } from "./paths.ts";
 import { createLogger } from "./logger.ts";
-import { HandoffGate } from "./handoff-gate.ts";
+import { OfficeGate } from "./office-gate.ts";
 import { startJobs } from "./jobs.ts";
 import { McpGateway } from "./mcp.ts";
-import { Office } from "./office.ts";
+import type { Office } from "./office.ts";
 import { RunnerGateway } from "./runner-gateway.ts";
 import { createRpcContext } from "./rpc/context.ts";
 import { createRuntimes } from "./runtimes.ts";
@@ -24,7 +24,6 @@ export { defaultResourcesRoot, type Resources, resolveResources } from "./paths.
 export { Office } from "./office.ts";
 
 const VERSION = "0.0.0-dev";
-
 export type DaemonHandle = {
   info: DaemonInfo;
   office: Office;
@@ -55,9 +54,13 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     },
   });
 
-  const database = openDatabase(join(home, "ho.db"), { migrationsDir: resources.migrationsDir });
-  const store = createSqliteEventStore(database.db, { ids, clock });
-  const office = await Office.open(store, clock, log);
+  const { database, store, office } = await openOffice(
+    home,
+    resources.migrationsDir,
+    ids,
+    clock,
+    log,
+  );
   const secrets = createSecretStore(home, config.secrets.store);
   const provider = createDockerProvider({
     socket: config.docker.socket,
@@ -66,8 +69,8 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   const runtimes = createRuntimes(log, clock);
   const gateway = new RunnerGateway(clock, log);
   const mcp = new McpGateway(office, log);
-  const gate = new HandoffGate(log);
-  await office.execute({ kind: "system" }, (m, ctx) => ensureOfficeProject(m, ctx));
+  const gate = new OfficeGate(log);
+  const voice = startBossVoice(office, gate, log);
 
   const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url");
   const startedAt = clock.now().toISOString();
@@ -135,6 +138,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     }
     stopped = true;
     log.info("daemon stopping");
+    voice.stop();
     jobs.stop();
     await sessions.stopAll();
     await server.stop();

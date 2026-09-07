@@ -1,47 +1,52 @@
-import { createIdFactory, isSessionActive } from "@ho/core";
-import type { AgentId, LiveEvent, Session, StoredEvent, TaskId } from "@ho/protocol";
+import { bossOf, createIdFactory, isSessionActive, RECEPTIONIST } from "@ho/core";
+import type { AgentId, LiveEvent, Session, StoredEvent, Task, TaskId } from "@ho/protocol";
 import {
-  addFloor,
   assignWork,
   auditOffice,
+  carryEnvelope,
   createWorld,
   emotionFor,
   handoff,
   idleBehaviour,
-  OFFICE_FLOOR_ID,
+  type OfficePlan,
   officePlan,
   receive,
   releaseWork,
   removeActor,
   setEmotion,
   sleep,
-  spawnActor,
   tick,
   wake,
 } from "@ho/sim";
 import type { Client } from "../rpc.ts";
 import { model } from "../store.ts";
 import { MailFlow } from "./mail-flow.ts";
+import { syncRoster } from "./roster.ts";
 
 type PendingHandoff = { from: AgentId; to: AgentId; taskId: TaskId };
 const MAX_DT_MS = 250;
 const POSTMAN_NAME = "Postman";
+const QUESTION_PREFIX = "question:";
 
 /**
- * Turns the office's history and live stream into simulation intents, and reports the moments the
- * daemon waits for (a delivered handoff) back over RPC.
+ * Turns the office's history and live stream into simulation intents — one floor per project, each with its
+ * boss, its staff and Lola at the reception — and reports the moments the daemon waits for (a delivered
+ * envelope) back over RPC.
  */
 export class Bridge {
   readonly world = createWorld("home-office");
-  /** The approved office layout; every project shares this one floor. */
-  readonly plan = officePlan();
   /** Layout problems found once at start (unreachable seats, blocked doors); empty for a sound plan. */
   readonly layoutIssues: readonly string[];
+  readonly #plans = new Map<string, OfficePlan>();
+  /** The receptionist of every floor (an office character, never an agent). */
+  readonly #receptionists = new Map<string, AgentId>();
   #client: Client | null = null;
   readonly #pending: PendingHandoff[] = [];
+  /** Chat envelopes on their way from the reception to the boss: the sim's ref (the task id as text) → task. */
+  readonly #envelopes = new Map<string, TaskId>();
   readonly #mail: MailFlow;
   readonly #sleeping = new Set<AgentId>();
-  /** Visitor ids come from the same UUIDv7 factory as agents so the sim's branded ids stay honest. */
+  /** Visitor and receptionist ids come from the same UUIDv7 factory as agents so the sim's branded ids stay honest. */
   readonly #ids = createIdFactory(
     { now: () => new Date() },
     {
@@ -54,22 +59,37 @@ export class Bridge {
   #watching = true;
 
   constructor() {
-    addFloor(this.world, this.plan.template);
-    this.layoutIssues = auditOffice(this.plan).issues;
+    this.layoutIssues = auditOffice(officePlan()).issues;
     this.#mail = new MailFlow(
       this.world,
       () => this.#ids.agent(),
       (taskId) => {
-        this.#deliverMail(taskId);
+        this.#deliver(taskId);
       },
+      (floorId) => this.#receptionists.get(floorId) ?? null,
     );
   }
 
-  /** Name shown above an actor: the agent's, or the visitor's role. */
+  /** The plan of a floor (every floor shares the approved layout under its own id). */
+  planFor(floorId: string): OfficePlan {
+    let plan = this.#plans.get(floorId);
+    if (plan === undefined) {
+      plan = officePlan(floorId);
+      this.#plans.set(floorId, plan);
+    }
+    return plan;
+  }
+
+  /** Name shown above an actor: the agent's, or the office character's. */
   nameOf(id: AgentId): string {
-    return this.world.actors.get(id)?.kind === "visitor"
-      ? POSTMAN_NAME
-      : (model.agents.get(id)?.name ?? "?");
+    const actor = this.world.actors.get(id);
+    if (actor?.kind === "visitor") {
+      return POSTMAN_NAME;
+    }
+    if (actor?.kind === "receptionist") {
+      return RECEPTIONIST.name;
+    }
+    return model.agents.get(id)?.name ?? "?";
   }
 
   attach(client: Client): void {
@@ -82,35 +102,33 @@ export class Bridge {
 
   /**
    * Whether somebody can see the office. A hidden window stops animation frames, so pending and new
-   * handoffs are reported right away instead of holding the recipient's session for nothing.
+   * envelopes are reported right away instead of holding the daemon for nothing.
    */
   setWatching(watching: boolean): void {
     this.#watching = watching;
     if (!watching) {
-      for (const pending of this.#pending) {
+      for (const pending of this.#pending.splice(0)) {
         this.#deliver(pending.taskId);
       }
+      for (const taskId of this.#envelopes.values()) {
+        this.#deliver(taskId);
+      }
+      this.#envelopes.clear();
       this.#mail.flush();
     }
   }
 
   /** Reconciles floors, actors and seats with the read model (after replay and on roster changes). */
   syncFromModel(): void {
-    const { world } = this;
-    for (const agent of model.agents.values()) {
-      const sprite = `characters/${agent.appearance.spriteSet}`;
-      const actor = world.actors.get(agent.id);
-      if (actor === undefined) {
-        spawnActor(world, agent.id, sprite, OFFICE_FLOOR_ID);
-      } else {
-        actor.sprite = sprite;
-      }
-    }
-    for (const [id, actor] of world.actors) {
-      if (actor.kind === "agent" && !model.agents.has(id)) {
-        removeActor(world, id);
-      }
-    }
+    syncRoster({
+      world: this.world,
+      planFor: (floorId) => this.planFor(floorId),
+      forgetFloor: (floorId) => {
+        this.#plans.delete(floorId);
+      },
+      receptionists: this.#receptionists,
+      newId: () => this.#ids.agent(),
+    });
     for (const session of model.sessions.values()) {
       if (isSessionActive(session.state)) {
         this.#seat(session);
@@ -124,7 +142,57 @@ export class Bridge {
     if (task === undefined || agent === undefined) {
       return;
     }
-    assignWork(this.world, session.agentId, OFFICE_FLOOR_ID, agent.role);
+    assignWork(this.world, session.agentId, agent.projectId, agent.role);
+  }
+
+  /** A carrier walks the envelope to a colleague; without viewers (or a walk) the daemon hears at once. */
+  #carry(from: AgentId, to: AgentId, taskId: TaskId): void {
+    if (from !== to && this.#watching && handoff(this.world, from, to)) {
+      this.#pending.push({ from, to, taskId });
+    } else {
+      this.#deliver(taskId);
+    }
+  }
+
+  /** The human wrote to a floor's boss: Lola takes the envelope from the reception to his office. */
+  #onChat(task: Task): void {
+    const boss = bossOf(model, task.projectId);
+    const lola = this.#receptionists.get(task.projectId);
+    if (
+      boss === undefined ||
+      lola === undefined ||
+      !this.#watching ||
+      !carryEnvelope(this.world, lola, boss.id, task.id)
+    ) {
+      this.#deliver(task.id);
+      return;
+    }
+    this.#envelopes.set(task.id, task.id);
+  }
+
+  /** Finished (or stuck) work walks back to the boss before he reports it in the chat. */
+  #onStatus(event: Extract<StoredEvent, { type: "task.status_changed" }>): void {
+    const task = model.tasks.get(event.payload.taskId);
+    const { from, to, reason } = event.payload;
+    if (task === undefined || task.kind !== "work") {
+      return;
+    }
+    const boss = bossOf(model, task.projectId);
+    if (boss === undefined) {
+      return;
+    }
+    const carrier = from === "review" ? task.reviewerId : task.assigneeId;
+    const walks =
+      (to === "done" || (to === "blocked" && reason?.startsWith(QUESTION_PREFIX) !== true)) &&
+      (from === "in_progress" || from === "review");
+    if (!walks || task.assigneeId === boss.id) {
+      return;
+    }
+    if (carrier === undefined || carrier === boss.id) {
+      this.#deliver(task.id);
+      return;
+    }
+    this.#carry(carrier, boss.id, task.id);
   }
 
   onEvent(event: StoredEvent): void {
@@ -138,14 +206,9 @@ export class Bridge {
       }
     } else if (event.type === "handoff.requested") {
       const { fromAgentId, toAgentId, taskId } = event.payload;
-      if (fromAgentId !== toAgentId && handoff(this.world, fromAgentId, toAgentId)) {
-        this.#pending.push({ from: fromAgentId, to: toAgentId, taskId });
-        if (!this.#watching) {
-          this.#deliver(taskId);
-        }
-      } else {
-        this.#deliver(taskId);
-      }
+      this.#carry(fromAgentId, toAgentId, taskId);
+    } else if (event.type === "task.status_changed") {
+      this.#onStatus(event);
     } else if (event.type === "task.note_added") {
       const task = model.tasks.get(event.payload.taskId);
       if (task?.assigneeId !== undefined && event.payload.note.kind === "question") {
@@ -154,11 +217,14 @@ export class Bridge {
         setEmotion(this.world, task.assigneeId, null, null);
       }
     } else if (event.type === "chat.message_posted") {
-      if (event.payload.author.kind === "human") {
-        const boss = [...model.agents.values()].find((a) => a.role === "boss");
-        if (boss !== undefined) {
-          setEmotion(this.world, boss.id, "envelope", 4000);
-        }
+      const { message } = event.payload;
+      const task = message.taskId === undefined ? undefined : model.tasks.get(message.taskId);
+      if (
+        message.author.kind === "human" &&
+        task?.kind === "triage" &&
+        task.source.kind === "chat"
+      ) {
+        this.#onChat(task);
       }
     } else if (event.type === "mail.received") {
       this.#mail.onMail(event.payload.mail, this.#watching);
@@ -188,14 +254,10 @@ export class Bridge {
   }
 
   #deliver(taskId: TaskId): void {
-    void this.#client?.office.handoffDelivered({ taskId }).catch(() => null);
+    void this.#client?.office.delivered({ taskId }).catch(() => null);
   }
 
-  #deliverMail(taskId: TaskId): void {
-    void this.#client?.office.mailDelivered({ taskId }).catch(() => null);
-  }
-
-  /** Advances the simulation and reports delivered handoffs. */
+  /** Advances the simulation and reports delivered envelopes. */
   tick(dtMs: number): void {
     tick(this.world, Math.min(dtMs, MAX_DT_MS), idleBehaviour);
     for (const event of this.world.outbox.splice(0)) {
@@ -207,6 +269,13 @@ export class Bridge {
             receive(this.world, pending.to, pending.from);
             this.#deliver(pending.taskId);
           }
+        }
+      } else if (event.kind === "envelope_delivered" && this.#envelopes.has(event.ref)) {
+        const taskId = this.#envelopes.get(event.ref);
+        this.#envelopes.delete(event.ref);
+        receive(this.world, event.to, event.by);
+        if (taskId !== undefined) {
+          this.#deliver(taskId);
         }
       } else if (event.kind === "visitor_left") {
         removeActor(this.world, event.actorId);

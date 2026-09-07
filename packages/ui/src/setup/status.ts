@@ -1,5 +1,4 @@
 import type { Doctor } from "@ho/protocol";
-import type { Snapshot } from "../store.ts";
 
 /** Docker Engine API level the daemon relies on (Docker Desktop 4.27+ / Engine 25+). */
 const MIN_DOCKER_API = 1.44;
@@ -51,19 +50,6 @@ export const tokenStatus = (doctor: Doctor | null): StepStatus =>
       ? { state: "ok", text: "stored in the Keychain" }
       : { state: "todo", text: "no Claude subscription token yet" };
 
-export const teamStatus = (snapshot: Snapshot): StepStatus => {
-  const agents = [...snapshot.agents.values()];
-  const boss = agents.find((a) => a.role === "boss");
-  return boss === undefined
-    ? { state: "todo", text: "the office has no boss" }
-    : {
-        state: "ok",
-        text: `${boss.name} runs the office with ${String(agents.length - 1)} colleague(s)`,
-      };
-};
-
-/** True while any step a working office depends on is still open. */
-export const setupNeeded = (doctor: Doctor, snapshot: Snapshot): boolean =>
-  [dockerStatus(doctor), imagesStatus(doctor), tokenStatus(doctor), teamStatus(snapshot)].some(
-    (s) => s.state !== "ok",
-  );
+/** True while any step a working office depends on is still open (floors and their teams are separate). */
+export const setupNeeded = (doctor: Doctor): boolean =>
+  [dockerStatus(doctor), imagesStatus(doctor), tokenStatus(doctor)].some((s) => s.state !== "ok");

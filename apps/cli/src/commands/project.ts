@@ -1,8 +1,8 @@
 import type { IntakePolicy, PublishPolicy, RepoSource } from "@ho/protocol";
 import { parse, str } from "../args.ts";
-import { withClient } from "../client.ts";
+import { type HoClient, withClient } from "../client.ts";
 import { line, print } from "../output.ts";
-import { findProject } from "./lookup.ts";
+import { findAgent, findProject } from "./lookup.ts";
 import { subcommand } from "./help.ts";
 
 const repoFrom = (path: string | undefined, url: string | undefined): RepoSource => {
@@ -76,50 +76,91 @@ const intakeFrom = (
   };
 };
 
+/** `--import` may repeat; parseArgs keeps only the last value, so repeats are collected by hand. */
+const splitImports = (argv: readonly string[]): { imports: string[]; remaining: string[] } => {
+  const imports: string[] = [];
+  const remaining: string[] = [];
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    const next = argv[i + 1];
+    if (arg === "--import" && next !== undefined) {
+      imports.push(next);
+      i += 1;
+    } else if (arg !== undefined) {
+      remaining.push(arg);
+    }
+  }
+  return { imports, remaining };
+};
+
+/** Asks the daemon what the repository is (git, name, default branch) before it becomes a floor. */
+const inspect = async (client: HoClient, repo: RepoSource) => {
+  const inspection = await client.projects.inspect({ repo });
+  if (!inspection.ok) {
+    throw new Error(inspection.message);
+  }
+  return inspection;
+};
+
+async function add(client: HoClient, argv: readonly string[]): Promise<void> {
+  const { imports, remaining } = splitImports(argv);
+  const parsed = parse(remaining, ["path", "url", "branch", "pr", "draft"]);
+  const inspection = await inspect(client, repoFrom(str(parsed, "path"), str(parsed, "url")));
+  const branch = str(parsed, "branch");
+  const publish = publishFrom(onOff(str(parsed, "pr")), onOff(str(parsed, "draft")));
+  const importAgentIds = await Promise.all(
+    imports.map(async (ref) => (await findAgent(client, ref)).id),
+  );
+  print(
+    await client.projects.create({
+      name: parsed.positionals[0] ?? inspection.name,
+      repo: inspection.repo,
+      defaultBranch: branch ?? inspection.defaultBranch,
+      ...(publish === undefined ? {} : { publish }),
+      importAgentIds,
+    }),
+  );
+}
+
 export async function project(args: readonly string[]): Promise<void> {
   const { sub, rest } = subcommand(args, "project");
-  const parsed = parse(rest, [
-    "path",
-    "url",
-    "branch",
-    "pr",
-    "draft",
-    "intake",
-    "labels",
-    "interval",
-    "dry-run",
-  ]);
   await withClient(async (client) => {
     switch (sub) {
       case "list": {
-        for (const p of await client.projects.list()) {
-          const source =
-            p.repo.kind === "local" ? p.repo.path : p.repo.kind === "git" ? p.repo.url : "(office)";
+        const projects = (await client.projects.list()).toSorted(
+          (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
+        );
+        for (const [i, p] of projects.entries()) {
+          const source = p.repo.kind === "local" ? p.repo.path : p.repo.url;
           line(
-            `${p.id}  ${p.name}  ${source}  [${p.defaultBranch}]  publish=${p.publish.mode}${p.publish.mode === "pull-request" && p.publish.draft ? " (draft)" : ""}${p.intake.enabled ? `  intake=on/${String(p.intake.intervalSeconds)}s${p.intake.dryRun ? " (dry run)" : ""}` : ""}`,
+            `floor ${String(i + 1)}  ${p.id}  ${p.name}  ${source}  [${p.defaultBranch}]  publish=${p.publish.mode}${p.publish.mode === "pull-request" && p.publish.draft ? " (draft)" : ""}${p.intake.enabled ? `  intake=on/${String(p.intake.intervalSeconds)}s${p.intake.dryRun ? " (dry run)" : ""}` : ""}`,
           );
         }
         return;
       }
-      case "add": {
-        const name = parsed.positionals[0];
-        if (name === undefined) {
-          throw new Error("project name is required");
-        }
-        const repo = repoFrom(str(parsed, "path"), str(parsed, "url"));
-        const branch = str(parsed, "branch");
-        const publish = publishFrom(onOff(str(parsed, "pr")), onOff(str(parsed, "draft")));
+      case "inspect": {
+        const parsed = parse(rest, ["path", "url"]);
         print(
-          await client.projects.create({
-            name,
-            repo,
-            ...(branch === undefined ? {} : { defaultBranch: branch }),
-            ...(publish === undefined ? {} : { publish }),
+          await client.projects.inspect({
+            repo: repoFrom(str(parsed, "path"), str(parsed, "url")),
           }),
         );
         return;
       }
+      case "add": {
+        await add(client, rest);
+        return;
+      }
       case "set": {
+        const parsed = parse(rest, [
+          "branch",
+          "pr",
+          "draft",
+          "intake",
+          "labels",
+          "interval",
+          "dry-run",
+        ]);
         const ref = parsed.positionals[0];
         if (ref === undefined) {
           throw new Error("project reference is required");
@@ -153,7 +194,7 @@ export async function project(args: readonly string[]): Promise<void> {
         return;
       }
       case "rm": {
-        const ref = parsed.positionals[0];
+        const ref = rest[0];
         if (ref === undefined) {
           throw new Error("project reference is required");
         }
