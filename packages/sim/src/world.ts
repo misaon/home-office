@@ -29,7 +29,15 @@ export type NeedKind = "coffee" | "restroom" | "smoke" | "relax";
 export const NEEDS: readonly NeedKind[] = ["coffee", "restroom", "smoke", "relax"];
 
 export type Step =
-  | { kind: "walk"; floorId: string; to: Point; path: Point[] | null; blockedMs?: number }
+  | {
+      kind: "walk";
+      floorId: string;
+      to: Point;
+      path: Point[] | null;
+      blockedMs?: number;
+      /** After a side-step the path is only the step aside; plan again from there instead of finishing. */
+      replan?: boolean;
+    }
   | { kind: "elevator"; toFloorId: string; until: number | null }
   | { kind: "dwell"; activity: Activity; facing: Facing | null; until: number | null; ms: number }
   | { kind: "hold"; activity: Activity; facing: Facing | null }

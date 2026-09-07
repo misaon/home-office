@@ -44,6 +44,8 @@ export type Furniture = {
   playback?: "loop" | "near" | "sim";
   /** `floor` draws the art under everybody (rugs, the elevator cabin); default `objects` sorts it with the actors. */
   layer?: "floor" | "objects";
+  /** Shifts the art down by this many cells (a chair tucked under a desk); the footprint and sorting stay put. */
+  artOffsetY?: number;
 };
 
 export type FloorTemplate = {

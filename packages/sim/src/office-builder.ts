@@ -37,6 +37,7 @@ export type ObjectOptions = {
   animation?: string;
   playback?: "loop" | "near" | "sim";
   layer?: "floor" | "objects";
+  artOffsetY?: number;
 };
 
 /** Art width of a chair in cells (the seat footprint stays 1 × 1; see `Furniture.artWidth`). */
@@ -108,12 +109,14 @@ export class Plan {
       this.wall(rect);
     }
     // A walled room paints its interior; an open area (reception, terrace, spa) is floor to its very edge.
-    // Every room has its own floor tile key (`tiles/floor-<room id>`); the corridor uses the `office` surface tile.
+    // Every room has its own floor tile key (`tiles/floor-<room id>`); rooms on the `office` surface (the
+    // reception) share the corridor's floor.
     const inset = open ? 0 : 1;
+    const key = surface === "office" ? SURFACE_TILE.office : roomFloorKey(id);
     const { floor, width } = this.plan.template;
     for (let y = rect.y + inset; y < rect.y + rect.h - inset; y += 1) {
       for (let x = rect.x + inset; x < rect.x + rect.w - inset; x += 1) {
-        floor[y * width + x] = roomFloorKey(id);
+        floor[y * width + x] = key;
       }
     }
   }
@@ -153,6 +156,7 @@ export class Plan {
       ...(options.artWidth === undefined ? {} : { artWidth: options.artWidth }),
       ...(options.playback === undefined ? {} : { playback: options.playback }),
       ...(options.layer === undefined ? {} : { layer: options.layer }),
+      ...(options.artOffsetY === undefined ? {} : { artOffsetY: options.artOffsetY }),
     });
   }
 
@@ -174,6 +178,8 @@ export class Plan {
     kind: "desk" | "boss-desk" = "desk",
   ): void {
     // Chairs in the reference are about 1.5 cells wide around a one-cell seat; the art is centred on it.
+    // A chair whose sitter faces south stands north of the desk: its art drops half a cell so the seat tucks
+    // under the desk's edge (the desk is drawn over it).
     this.object(
       `${id}-chair`,
       "",
@@ -183,6 +189,7 @@ export class Plan {
         facing,
         blocks: false,
         artWidth: CHAIR_ART_W,
+        ...(facing === "s" ? { artOffsetY: 0.5 } : {}),
       },
     );
     this.anchor(id, kind, seat, facing, group);
