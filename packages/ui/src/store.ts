@@ -40,6 +40,12 @@ const takeSnapshot = (): Snapshot => ({
   mail: new Map(model.mail),
 });
 
+/** Floors in the order they were built: the first project is floor 1. */
+export const sortedFloors = (snapshot: Pick<Snapshot, "projects">): Project[] =>
+  [...snapshot.projects.values()].toSorted(
+    (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
+  );
+
 /** Recent live runtime events per session (the daemon does not persist them either). */
 const liveLog = new Map<SessionId, LiveEvent[]>();
 const dirtyLive = new Set<SessionId>();
@@ -57,36 +63,47 @@ export function pushLive(event: LiveEvent): void {
 
 type UiState = {
   connection: Connection;
+  /** True once the stored events were replayed; before that the office does not know whether floors exist. */
+  replayed: boolean;
   snapshot: Snapshot;
   live: ReadonlyMap<SessionId, readonly LiveEvent[]>;
   lastError: string | null;
   panel: Panel;
   selectedAgentId: AgentId | null;
-  chatProjectId: ProjectId | null;
+  /** The floor (project) shown in the office and the side panels; null until the first project exists. */
+  floorId: ProjectId | null;
+  addProjectOpen: boolean;
   spriteSets: string[];
-  /** The first-run checklist (Docker, images, token, team, smoke test). */
+  /** The first-run checklist (Docker, images, token, smoke test). */
   setupOpen: boolean;
   setConnection: (connection: Connection) => void;
+  setReplayed: (replayed: boolean) => void;
   setError: (message: string | null) => void;
   selectPanel: (panel: Panel) => void;
   selectAgent: (agentId: AgentId | null) => void;
-  setChatProject: (projectId: ProjectId | null) => void;
+  selectFloor: (floorId: ProjectId | null) => void;
+  setAddProjectOpen: (open: boolean) => void;
   setSpriteSets: (sets: string[]) => void;
   setSetupOpen: (open: boolean) => void;
 };
 
 export const useUi = create<UiState>()((set) => ({
   connection: "connecting",
+  replayed: false,
   snapshot: takeSnapshot(),
   live: new Map(),
   lastError: null,
   panel: "chat",
   selectedAgentId: null,
-  chatProjectId: null,
+  floorId: null,
+  addProjectOpen: false,
   spriteSets: [],
   setupOpen: false,
   setConnection: (connection) => {
     set({ connection });
+  },
+  setReplayed: (replayed) => {
+    set({ replayed });
   },
   setError: (lastError) => {
     set({ lastError });
@@ -97,8 +114,11 @@ export const useUi = create<UiState>()((set) => ({
   selectAgent: (selectedAgentId) => {
     set(selectedAgentId === null ? { selectedAgentId } : { selectedAgentId, panel: "inspector" });
   },
-  setChatProject: (chatProjectId) => {
-    set({ chatProjectId });
+  selectFloor: (floorId) => {
+    set({ floorId, selectedAgentId: null });
+  },
+  setAddProjectOpen: (addProjectOpen) => {
+    set({ addProjectOpen });
   },
   setSpriteSets: (spriteSets) => {
     set({ spriteSets });
@@ -109,13 +129,21 @@ export const useUi = create<UiState>()((set) => ({
 }));
 
 let modelBumpScheduled = false;
-/** Coalesces model changes into one React update per frame (the replay can be thousands of events). */
+/**
+ * Coalesces model changes into one React update per frame (the replay can be thousands of events) and keeps the
+ * selected floor valid: the first floor when none is selected or the selected one was removed.
+ */
 export function scheduleModelBump(): void {
   if (!modelBumpScheduled) {
     modelBumpScheduled = true;
     requestAnimationFrame(() => {
       modelBumpScheduled = false;
-      useUi.setState({ snapshot: takeSnapshot() });
+      const snapshot = takeSnapshot();
+      const { floorId } = useUi.getState();
+      const valid = floorId !== null && snapshot.projects.has(floorId);
+      useUi.setState(
+        valid ? { snapshot } : { snapshot, floorId: sortedFloors(snapshot)[0]?.id ?? null },
+      );
     });
   }
 }

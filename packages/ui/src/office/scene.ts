@@ -13,6 +13,9 @@ const LABEL_STYLE = {
   stroke: { color: "#000000", width: 2 },
 };
 
+/** Placeholder set for characters whose own set has not been delivered yet (the receptionist until hers lands). */
+const FALLBACK_SET = "characters/agent-a";
+
 /** What a floor renderer hands the scene: static layers plus the sorted layer actors join. */
 export type FloorView = {
   root: Container;
@@ -23,7 +26,7 @@ export type FloorView = {
   /** Per-frame hook for animated pieces (doors, object states). */
   update?: (world: World, dtMs: number) => void;
 };
-export type FloorRenderer = (floor: Floor) => FloorView;
+export type FloorRenderer = (floorId: string, floor: Floor) => FloorView;
 
 type ActorView = { root: Container; body: Sprite; bubble: Sprite; label: Text; floorId: string };
 
@@ -80,14 +83,8 @@ export class OfficeScene {
     this.app.destroy(true, { children: true });
   }
 
+  /** Drops the views of floors that no longer exist; views are built lazily when a floor is first shown. */
   syncFloors(world: World): void {
-    for (const [id, floor] of world.floors) {
-      if (!this.#floors.has(id)) {
-        const view = this.#render(floor);
-        this.#floors.set(id, view);
-        this.#stage.addChild(view.root);
-      }
-    }
     for (const [id, view] of this.#floors) {
       if (!world.floors.has(id)) {
         view.root.destroy({ children: true });
@@ -96,8 +93,15 @@ export class OfficeScene {
     }
   }
 
-  showFloor(id: string): void {
+  /** Shows one floor, rendering it on first sight (every floor is a full cached texture, so only shown ones exist). */
+  showFloor(world: World, id: string | null): void {
     this.#current = id;
+    const floor = id === null ? undefined : world.floors.get(id);
+    if (id !== null && floor !== undefined && !this.#floors.has(id)) {
+      const view = this.#render(id, floor);
+      this.#floors.set(id, view);
+      this.#stage.addChild(view.root);
+    }
     for (const [floorId, view] of this.#floors) {
       view.root.visible = floorId === id;
     }
@@ -130,7 +134,7 @@ export class OfficeScene {
       existing.label.text = name;
       return existing;
     }
-    const selectable = actor.kind === "agent";
+    const selectable = actor.kind === "boss" || actor.kind === "staff";
     const root = new Container({
       eventMode: selectable ? "static" : "none",
       cursor: selectable ? "pointer" : "default",
@@ -154,8 +158,12 @@ export class OfficeScene {
   #placeActor(actor: Actor, view: ActorView, selected: boolean): void {
     if (view.floorId !== actor.floorId) {
       view.root.removeFromParent();
-      this.#floors.get(actor.floorId)?.objects.addChild(view.root);
-      view.floorId = actor.floorId;
+      const floor = this.#floors.get(actor.floorId);
+      // A floor not rendered yet has no layer to join; try again once it is shown.
+      if (floor !== undefined) {
+        floor.objects.addChild(view.root);
+        view.floorId = actor.floorId;
+      }
     }
     view.root.visible = !actor.hidden && actor.floorId === this.#current;
     // A sitter facing south sits north of the desk: drawn one cell lower, the desk covers the legs (as painted).
@@ -165,7 +173,9 @@ export class OfficeScene {
       Math.round(actor.pos.y * TILE + TILE + sink),
     );
     view.root.zIndex = actor.pos.y * TILE + TILE;
-    const clip = this.#sprites.clip(actor.sprite, actor.activity, actor.facing);
+    const clip =
+      this.#sprites.clip(actor.sprite, actor.activity, actor.facing) ??
+      this.#sprites.clip(FALLBACK_SET, actor.activity, actor.facing);
     if (clip !== null) {
       const frame = Math.floor(actor.animTime / clip.frameMs) % clip.textures.length;
       const texture = clip.textures[frame];

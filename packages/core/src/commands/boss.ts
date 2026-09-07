@@ -1,22 +1,24 @@
-import {
-  type Agent,
-  type AgentId,
-  type ChatMessage,
-  type HoDelegateInput,
-  IntakePolicy,
-  type NewEvent,
-  type Project,
-  type Task,
-  type TaskId,
+import type {
+  Agent,
+  AgentId,
+  ChatMessage,
+  HoDelegateInput,
+  NewEvent,
+  ProjectId,
+  Task,
+  TaskId,
 } from "@ho/protocol";
 import { conflict, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { err, ok } from "../result.ts";
 import { titleFromText } from "./chat.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
-import { bossAgent, findAgentByRef, findProjectByRef, note, officeProject } from "./shared.ts";
+import { bossOf, findAgentByRef, note } from "./shared.ts";
 
-/** The boss creates work for the team (source: delegation). Only the boss delegates. */
+/**
+ * The boss creates work for his floor (source: delegation). Only a boss delegates, only within his own
+ * project, and only to its members — himself included, which is how a floor without staff gets things done.
+ */
 export function delegateTask(
   model: ReadModel,
   input: HoDelegateInput,
@@ -27,21 +29,15 @@ export function delegateTask(
   if (boss?.role !== "boss") {
     return err(conflict("only the boss delegates tasks"));
   }
-  const project = findProjectByRef(model, input.project);
+  const project = model.projects.get(boss.projectId);
   if (project === undefined) {
-    return err(notFound("project", input.project));
-  }
-  if (project.repo.kind === "none") {
-    return err(conflict("work tasks need a project with a repository"));
+    return err(notFound("project", boss.projectId));
   }
   let assignee: Agent | undefined;
   if (input.assignee !== undefined) {
-    assignee = findAgentByRef(model, input.assignee);
+    assignee = findAgentByRef(model, input.assignee, project.id);
     if (assignee === undefined) {
-      return err(notFound("agent", input.assignee));
-    }
-    if (!assignee.projectIds.includes(project.id)) {
-      return err(conflict(`${assignee.name} is not a member of ${project.name}`));
+      return err(notFound("agent", `${input.assignee} (on floor "${project.name}")`));
     }
   }
   const task: Task = {
@@ -92,20 +88,27 @@ export function delegateTask(
   });
 }
 
-/** A chat message from the human that nobody addressed to a project becomes a triage task for the boss. */
+/**
+ * A chat message from the human to a floor: Lola carries it to the floor's boss as a triage task. Without a
+ * boss (a floor mid-removal) the message is only recorded.
+ */
 export function triageMessage(
   model: ReadModel,
+  projectId: ProjectId,
   text: string,
   ctx: CommandContext,
 ): CommandResult<{ message: ChatMessage; task: Task | null }> {
-  const office = officeProject(model);
-  const boss = bossAgent(model);
+  const project = model.projects.get(projectId);
+  if (project === undefined) {
+    return err(notFound("project", projectId));
+  }
+  const boss = bossOf(model, projectId);
   const messageId = ctx.ids.chatMessage();
   let task: Task | null = null;
-  if (office !== undefined && boss !== undefined) {
+  if (boss !== undefined) {
     task = {
       id: ctx.ids.task(),
-      projectId: office.id,
+      projectId,
       kind: "triage",
       title: titleFromText(text),
       brief: text,
@@ -122,6 +125,7 @@ export function triageMessage(
   }
   const message: ChatMessage = {
     id: messageId,
+    projectId,
     author: { kind: "human" },
     text,
     ...(task === null ? {} : { taskId: task.id }),
@@ -136,7 +140,7 @@ export function triageMessage(
   return ok({ events, value: { message, task } });
 }
 
-/** An agent (usually the boss) speaks in the office chat. */
+/** An agent (usually the boss) speaks in his floor's chat. */
 export function postAgentMessage(
   model: ReadModel,
   agentId: AgentId,
@@ -144,11 +148,13 @@ export function postAgentMessage(
   taskId: TaskId | undefined,
   ctx: CommandContext,
 ): CommandResult<ChatMessage> {
-  if (!model.agents.has(agentId)) {
+  const agent = model.agents.get(agentId);
+  if (agent === undefined) {
     return err(notFound("agent", agentId));
   }
   const message: ChatMessage = {
     id: ctx.ids.chatMessage(),
+    projectId: agent.projectId,
     author: { kind: "agent", agentId },
     text,
     ...(taskId === undefined ? {} : { taskId }),
@@ -163,28 +169,5 @@ export function postAgentMessage(
       },
     ],
     value: message,
-  });
-}
-
-/** The Lobby: created once by the daemon so triage tasks have a home. */
-export function ensureOfficeProject(model: ReadModel, ctx: CommandContext): CommandResult<Project> {
-  const existing = officeProject(model);
-  if (existing !== undefined) {
-    return ok({ events: [], value: existing });
-  }
-  const project: Project = {
-    id: ctx.ids.project(),
-    name: "Office",
-    repo: { kind: "none" },
-    defaultBranch: "main",
-    floorTemplateId: "lobby",
-    publish: { mode: "branch", draft: true },
-    intake: IntakePolicy.parse({}),
-    createdAt: ctx.now,
-    updatedAt: ctx.now,
-  };
-  return ok({
-    events: [{ type: "project.created", actor: ctx.actor, payload: { project } }],
-    value: project,
   });
 }

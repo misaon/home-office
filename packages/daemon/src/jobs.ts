@@ -2,7 +2,7 @@ import type { SandboxProvider } from "@ho/core";
 import { createGithubIssuesConnector } from "@ho/intake-github";
 import type { DaemonConfig } from "./config.ts";
 import { startGc } from "./gc.ts";
-import type { HandoffGate } from "./handoff-gate.ts";
+import type { OfficeGate } from "./office-gate.ts";
 import { IntakeService } from "./intake.ts";
 import type { Logger } from "./logger.ts";
 import type { Office } from "./office.ts";
@@ -21,7 +21,7 @@ export function startJobs(deps: {
   sessions: SessionManager;
   provider: SandboxProvider;
   config: DaemonConfig;
-  gate: HandoffGate;
+  gate: OfficeGate;
   log: Logger;
 }): Jobs {
   const { office, sessions, provider, config, gate, log } = deps;

@@ -35,7 +35,7 @@ export type Provisioned = {
   connection: RunnerConnection;
   volume: string;
   branch: string;
-  sourcePath: string | null;
+  sourcePath: string;
   mcpToken: string;
 };
 export type Outcome = {
@@ -44,8 +44,6 @@ export type Outcome = {
   runtimeSessionId: string | null;
   sawInit: boolean;
 };
-
-const hasRepository = (project: Project): boolean => project.repo.kind !== "none";
 
 const sandboxSpec = (
   config: DaemonConfig,
@@ -60,7 +58,7 @@ const sandboxSpec = (
   cmd: ["/usr/local/bin/ho-runner"],
   env: { HO_GATEWAY: gatewayUrl, HO_SESSION_TOKEN: token, HOME: "/home/agent", TERM: "dumb" },
   user: "1000:1000",
-  workdir: hasRepository(ctx.project) ? REPO_IN_VOLUME : "/work",
+  workdir: REPO_IN_VOLUME,
   labels: {
     [LABELS.managed]: "true",
     [LABELS.kind]: "session",
@@ -92,7 +90,7 @@ const sandboxSpec = (
   readonlyRootfs: true,
 });
 
-/** Network, task volume (with the repository when the project has one), sandbox with the runner, runner connection. */
+/** Network, task volume with the floor's repository, sandbox with the runner, runner connection. */
 export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {
   const { provider, config, gateway, mcp, home } = deps;
   const volume = `ho-task-${ctx.task.id.slice(-12)}`;
@@ -109,11 +107,8 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
   });
   await provider.createVolume(volume, { ...labels, [LABELS.kind]: "task-volume" });
   await provider.createVolume(configVolume, { ...labels, [LABELS.kind]: "claude-config" });
-  let sourcePath: string | null = null;
-  if (hasRepository(ctx.project)) {
-    sourcePath = await sourcePathFor(home, ctx.project);
-    await prepareRepo(provider, config, sourcePath, ctx.project.defaultBranch, volume, branch);
-  }
+  const sourcePath = await sourcePathFor(home, ctx.project);
+  await prepareRepo(provider, config, sourcePath, ctx.project.defaultBranch, volume, branch);
   const issued = gateway.issue(ctx.session.id, ctx.signal);
   const mcpToken = mcp.register({
     sessionId: ctx.session.id,
@@ -172,7 +167,7 @@ const openRuntime = (
       maxTurns: ctx.agent.budgets.maxTurnsPerTask,
       maxUsd: ctx.agent.budgets.maxUsdPerTask ?? null,
       systemPromptAppendix: promptFor(deps, ctx, provisioned.branch),
-      cwd: hasRepository(ctx.project) ? REPO_IN_VOLUME : "/work",
+      cwd: REPO_IN_VOLUME,
       resume,
       pluginDirs: ctx.agent.skillPack === "none" ? [] : [`${PLUGINS_ROOT}/${ctx.agent.skillPack}`],
       mcpServers: {
@@ -279,9 +274,6 @@ export async function publish(
   provisioned: Provisioned,
   report: string,
 ): Promise<TaskArtifacts> {
-  if (provisioned.sourcePath === null) {
-    return { report };
-  }
   await pushFromVolume(
     deps.provider,
     deps.config,

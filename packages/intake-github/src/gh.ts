@@ -8,14 +8,11 @@ export function ghTarget(project: Project): GhTarget {
   if (project.repo.kind === "local") {
     return { args: [], cwd: project.repo.path };
   }
-  if (project.repo.kind === "git") {
-    const repo = githubRepoFromUrl(project.repo.url);
-    if (repo === null) {
-      throw new Error(`intake needs a GitHub URL, got ${project.repo.url}`);
-    }
-    return { args: ["--repo", repo], cwd: undefined };
+  const repo = githubRepoFromUrl(project.repo.url);
+  if (repo === null) {
+    throw new Error(`intake needs a GitHub URL, got ${project.repo.url}`);
   }
-  throw new Error("the office project has no repository");
+  return { args: ["--repo", repo], cwd: undefined };
 }
 
 /** Runs the host's `gh` (already authenticated by the owner); never receives agent-controlled text. */

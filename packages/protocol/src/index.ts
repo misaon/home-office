@@ -2,6 +2,7 @@ export * from "./contract.ts";
 export * from "./domain.ts";
 export * from "./events.ts";
 export * from "./ids.ts";
+export * from "./inputs.ts";
 export * from "./intake.ts";
 export * from "./mcp.ts";
 export * from "./providers.ts";

@@ -63,18 +63,16 @@ export async function settle(
 
   // work: publish whatever was committed, then report on the agent's behalf if it did not.
   let artifacts: TaskArtifacts = { branch: provisioned.branch, report: summary.slice(0, 4000) };
-  if (provisioned.sourcePath !== null) {
-    try {
-      artifacts = {
-        ...artifacts,
-        ...(await publish(deps, ctx, provisioned, summary.slice(0, 4000))),
-      };
-    } catch (error) {
-      log.warn(
-        { taskId: ctx.task.id, err: error instanceof Error ? error.message : String(error) },
-        "publish failed",
-      );
-    }
+  try {
+    artifacts = {
+      ...artifacts,
+      ...(await publish(deps, ctx, provisioned, summary.slice(0, 4000))),
+    };
+  } catch (error) {
+    log.warn(
+      { taskId: ctx.task.id, err: error instanceof Error ? error.message : String(error) },
+      "publish failed",
+    );
   }
   const existing = office.model.tasks.get(ctx.task.id)?.artifacts;
   await office.execute(SYSTEM, (m, c) =>

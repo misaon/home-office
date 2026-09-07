@@ -33,9 +33,6 @@ export async function sourcePathFor(home: string, project: Project): Promise<str
   if (project.repo.kind === "local") {
     return project.repo.path;
   }
-  if (project.repo.kind !== "git") {
-    throw new Error("the office project has no repository");
-  }
   const path = mirrorPath(home, project);
   if (await Bun.file(join(path, "HEAD")).exists()) {
     await git(["-C", path, "fetch", "--prune", "--quiet", "origin"]);

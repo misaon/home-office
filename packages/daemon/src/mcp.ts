@@ -4,6 +4,7 @@ import {
   fileReport,
   handoffTask,
   isSessionActive,
+  membersOf,
   postAgentMessage,
   submitReview,
 } from "@ho/core";
@@ -102,41 +103,20 @@ function registerCommon(server: McpServer, office: Office, entry: Entry, run: Ru
   );
   server.registerTool(
     "ho_list_agents",
-    { description: "The team: names, roles, skill packs, project memberships and current load." },
+    { description: "The team on this floor: names, roles, skill packs and current load." },
     () =>
       run(() => {
         const active = [...office.model.sessions.values()].filter((s) => isSessionActive(s.state));
         return Promise.resolve(
-          [...office.model.agents.values()].map((a) => ({
+          membersOf(office.model, ctx.projectId).map((a) => ({
             id: a.id,
             name: a.name,
             role: a.role,
             skills: a.skillPack,
-            projects: a.projectIds.map((p) => office.model.projects.get(p)?.name ?? p),
             activeSessions: active.filter((s) => s.agentId === a.id).length,
           })),
         );
       }),
-  );
-  server.registerTool(
-    "ho_list_projects",
-    { description: "Projects with repositories and how many tasks are open in each." },
-    () =>
-      run(() =>
-        Promise.resolve(
-          [...office.model.projects.values()]
-            .filter((p) => p.repo.kind !== "none")
-            .map((p) => ({
-              id: p.id,
-              name: p.name,
-              repo:
-                p.repo.kind === "local" ? p.repo.path : p.repo.kind === "git" ? p.repo.url : "none",
-              openTasks: [...office.model.tasks.values()].filter(
-                (t) => t.projectId === p.id && t.status !== "done" && t.status !== "cancelled",
-              ).length,
-            })),
-        ),
-      ),
   );
 }
 
@@ -187,7 +167,7 @@ function registerTriage(server: McpServer, office: Office, entry: Entry, run: Ru
     "ho_delegate",
     {
       description:
-        "Create a task for a project and (optionally) assign it to an agent by name. One task per independent piece of work, with acceptance criteria in the brief.",
+        "Create a task on this floor and (optionally) assign it to a colleague by name — or to yourself when you do the work. One task per independent piece of work, with acceptance criteria in the brief.",
       inputSchema: HoDelegateInput.shape,
     },
     (input) =>

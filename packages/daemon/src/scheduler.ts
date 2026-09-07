@@ -1,6 +1,6 @@
 import { planSessionStarts } from "@ho/core";
 import type { DaemonConfig } from "./config.ts";
-import type { HandoffGate } from "./handoff-gate.ts";
+import type { OfficeGate } from "./office-gate.ts";
 import type { Logger } from "./logger.ts";
 import type { Office } from "./office.ts";
 import type { SessionManager } from "./sessions.ts";
@@ -12,7 +12,7 @@ export function startScheduler(
   office: Office,
   sessions: SessionManager,
   config: DaemonConfig,
-  gate: HandoffGate,
+  gate: OfficeGate,
   log: Logger,
 ): { stop: () => void } {
   const controller = new AbortController();

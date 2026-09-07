@@ -78,10 +78,13 @@ function SessionBlock({
 
 export function InspectorPanel(): React.JSX.Element {
   const snapshot = useUi((s) => s.snapshot);
+  const floorId = useUi((s) => s.floorId);
   const selected = useUi((s) => s.selectedAgentId);
   const selectAgent = useUi((s) => s.selectAgent);
   const agent = selected === null ? undefined : snapshot.agents.get(selected);
-  const agents = [...snapshot.agents.values()].toSorted((a, b) => a.name.localeCompare(b.name));
+  const agents = [...snapshot.agents.values()]
+    .filter((a) => a.projectId === floorId)
+    .toSorted((a, b) => a.name.localeCompare(b.name));
   if (agent === undefined) {
     return (
       <div className="p-3 text-xs">
@@ -111,7 +114,7 @@ export function InspectorPanel(): React.JSX.Element {
     .filter((s) => s.agentId === agent.id)
     .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt))
     .slice(0, 8);
-  const projects = agent.projectIds.map((id) => snapshot.projects.get(id)?.name ?? id);
+  const floor = snapshot.projects.get(agent.projectId)?.name ?? agent.projectId;
   return (
     <div className="space-y-2 overflow-y-auto p-3 text-xs">
       <div>
@@ -120,7 +123,7 @@ export function InspectorPanel(): React.JSX.Element {
           {agent.role} · {agent.provider} · {agent.model} / {agent.effort} · skills{" "}
           {agent.skillPack}
         </div>
-        <div className="text-gray-400">projects: {projects.join(", ") || "none"}</div>
+        <div className="text-gray-400">floor: {floor}</div>
         {agent.basePrompt === "" ? null : (
           <p className="mt-1 whitespace-pre-wrap text-gray-300">{agent.basePrompt}</p>
         )}

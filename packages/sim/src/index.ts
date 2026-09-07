@@ -1,3 +1,4 @@
+export * from "./actors.ts";
 export * from "./behaviours.ts";
 export * from "./emotions.ts";
 export * from "./grid.ts";

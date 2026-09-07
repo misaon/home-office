@@ -142,7 +142,10 @@ export function createPlanView(
         let frame = view.frame;
         if (view.item.playback === "sim") {
           // The simulation owns this animation (elevator doors): 0 closed … 1 open.
-          const amount = world.animations.get(view.item.sprite.slice("furniture/".length)) ?? 0;
+          const amount =
+            world.floors
+              .get(template.id)
+              ?.animations.get(view.item.sprite.slice("furniture/".length)) ?? 0;
           frame = Math.round(amount * (view.frames.length - 1));
         } else if (view.item.playback === "near") {
           const target = anyoneHeading(people, { ...view.item.at, w: view.item.w, h: view.item.h })

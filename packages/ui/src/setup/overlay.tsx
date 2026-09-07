@@ -2,9 +2,9 @@ import type { Doctor } from "@ho/protocol";
 import { useEffect, useState } from "react";
 import { getClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
-import { dockerStatus, imagesStatus, setupNeeded, teamStatus, tokenStatus } from "./status.ts";
+import { dockerStatus, imagesStatus, setupNeeded, tokenStatus } from "./status.ts";
 import { DockerStep, ImagesStep, TokenStep } from "./steps-environment.tsx";
-import { ProjectStep, SmokeStep, TeamStep } from "./steps-office.tsx";
+import { SmokeStep } from "./steps-office.tsx";
 
 const DISMISSED_KEY = "ho.setup.dismissed";
 
@@ -29,8 +29,9 @@ const fetchDoctor = (): Promise<Doctor | null> =>
     .catch(() => null) ?? Promise.resolve(null);
 
 /**
- * Opens the checklist once per connection when the office cannot work yet (no Docker, no images, no
- * token or no boss) unless the user dismissed it before; the header's "Setup" button reopens it.
+ * Opens the checklist once per connection when the office cannot work yet (no Docker, no images or no
+ * token) unless the user dismissed it before; the header's "Setup" button reopens it. Floors and their
+ * teams are not part of it: the empty office offers the first project itself.
  */
 export function useSetupAutoOpen(): void {
   const connection = useUi((s) => s.connection);
@@ -41,7 +42,7 @@ export function useSetupAutoOpen(): void {
     }
     let cancelled = false;
     void fetchDoctor().then((doctor) => {
-      if (!cancelled && doctor !== null && setupNeeded(doctor, useUi.getState().snapshot)) {
+      if (!cancelled && doctor !== null && setupNeeded(doctor)) {
         setSetupOpen(true);
       }
     });
@@ -77,12 +78,9 @@ export function SetupOverlay(): React.JSX.Element | null {
   if (!open) {
     return null;
   }
-  const ready = [
-    dockerStatus(doctor),
-    imagesStatus(doctor),
-    tokenStatus(doctor),
-    teamStatus(snapshot),
-  ].every((s) => s.state === "ok");
+  const ready = [dockerStatus(doctor), imagesStatus(doctor), tokenStatus(doctor)].every(
+    (s) => s.state === "ok",
+  );
   const close = (): void => {
     dismiss();
     setSetupOpen(false);
@@ -94,7 +92,7 @@ export function SetupOverlay(): React.JSX.Element | null {
           <div>
             <h2 className="text-base font-semibold">Set up your office</h2>
             <p className="text-gray-400">
-              Four things make the office work; the last two are the first hires and a hello.
+              Three things make the office work; the fourth is a hello to a floor's boss.
             </p>
           </div>
           <div className="flex gap-2">
@@ -109,8 +107,6 @@ export function SetupOverlay(): React.JSX.Element | null {
         <DockerStep doctor={doctor} refresh={refresh} />
         <ImagesStep doctor={doctor} refresh={refresh} />
         <TokenStep doctor={doctor} refresh={refresh} />
-        <TeamStep snapshot={snapshot} />
-        <ProjectStep snapshot={snapshot} />
         <SmokeStep snapshot={snapshot} ready={ready} />
       </div>
     </div>

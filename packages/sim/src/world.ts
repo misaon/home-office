@@ -1,5 +1,5 @@
 import type { AgentId } from "@ho/protocol";
-import { type Facing, type Grid, type Point, samePoint } from "./grid.ts";
+import type { Facing, Grid, Point } from "./grid.ts";
 import { createRng, hashSeed, type Rng } from "./rng.ts";
 import { type Anchor, type AnchorKind, type FloorTemplate, gridFor } from "./templates.ts";
 
@@ -38,23 +38,28 @@ export type Step =
       /** After a side-step the path is only the step aside; plan again from there instead of finishing. */
       replan?: boolean;
     }
-  | { kind: "elevator"; toFloorId: string; until: number | null }
   | { kind: "dwell"; activity: Activity; facing: Facing | null; until: number | null; ms: number }
   | { kind: "hold"; activity: Activity; facing: Facing | null }
+  /** Leaves the floor by the elevator (the actor must stand in the car) and comes back after `ms`. */
+  | { kind: "away"; ms: number }
   | { kind: "emit"; event: SimEvent };
 
 export type SimEvent =
+  /** A carrier handed an envelope (a task) to a colleague: delegation, handoff, review, work walking back. */
   | { kind: "handoff_delivered"; from: AgentId; to: AgentId }
   | { kind: "arrived"; agentId: AgentId; anchorId: string | null }
-  /** The postman left the envelope in the mailbox. */
-  | { kind: "mail_dropped"; mailId: string }
-  /** A courier handed the envelope to the boss. */
-  | { kind: "mail_delivered"; mailId: string; by: AgentId; to: AgentId }
+  /** The postman left the envelope at the reception. */
+  | { kind: "mail_dropped"; ref: string }
+  /** The receptionist (or the boss himself) brought an envelope to the boss. */
+  | { kind: "envelope_delivered"; ref: string; by: AgentId; to: AgentId }
   /** A visitor walked out; the host removes the actor. */
   | { kind: "visitor_left"; actorId: AgentId };
 
-/** Agents are the office's staff; visitors (the postman) come and go and never idle around. */
-export type ActorKind = "agent" | "visitor";
+/**
+ * Who an actor is in the office: the floor's boss (stays in his office), an agent of the staff, the
+ * receptionist (an office character, never an agent) or a visitor (the postman) who comes and goes.
+ */
+export type ActorKind = "boss" | "staff" | "receptionist" | "visitor";
 
 export type Actor = {
   id: AgentId;
@@ -72,19 +77,21 @@ export type Actor = {
   steps: Step[];
   reservation: { floorId: string; anchorId: string } | null;
   work: { floorId: string; anchorId: string } | null;
+  /** Where the actor belongs when nothing else is going on (the boss's desk, the reception counter). */
+  home: { floorId: string; anchorId: string } | null;
+  /** Set while the actor is off the floor by elevator; the car brings them back at this time (or earlier). */
+  awayUntil: number | null;
   needs: Record<NeedKind, number>;
   emotion: { kind: Emotion; until: number | null } | null;
   idleUntil: number;
 };
-
-export type Floor = { template: FloorTemplate; grid: Grid; reservations: Map<string, AgentId> };
 
 export type ElevatorPhase = "closed" | "opening" | "open" | "closing";
 /**
  * Everybody enters by elevator. Newcomers wait hidden in `queue`; one at a time a car "arrives": the passenger is
  * revealed inside the car behind the closed doors, the doors open (`amount` 0 → 1), the passenger walks out, the
  * doors stay open while anybody is in the car or on its threshold, close, pause, and the next car comes. Anyone
- * walking into the car from the office (a leaving visitor) opens the doors the same way.
+ * walking into the car from the office (a leaving visitor, staff off for a while) opens the doors the same way.
  */
 export type Elevator = {
   queue: AgentId[];
@@ -97,19 +104,25 @@ export type Elevator = {
   nextAt: number;
 };
 
+/** One floor: its plan, collision grid, anchor reservations, elevator and the animations the simulation drives. */
+export type Floor = {
+  template: FloorTemplate;
+  grid: Grid;
+  reservations: Map<string, AgentId>;
+  elevator: Elevator;
+  /** Animation positions by sprite key (`elevator-doors` → door amount 0…1). */
+  animations: Map<string, number>;
+};
+
 export type World = {
   time: number;
   rng: Rng;
   floors: Map<string, Floor>;
   actors: Map<AgentId, Actor>;
   outbox: SimEvent[];
-  elevator: Elevator;
-  /** Animation positions the simulation drives, by sprite key (`elevator-doors` → door amount 0…1). */
-  animations: Map<string, number>;
 };
 
 export const SPEED_TILES_PER_S = 3;
-export const ELEVATOR_MS = 1500;
 /** Door travel of the elevator (matches the renderer), the pause on the threshold, the gap between cars. */
 export const ELEVATOR_DOORS_MS = 700;
 
@@ -119,32 +132,59 @@ export const createWorld = (seed: string): World => ({
   floors: new Map(),
   actors: new Map(),
   outbox: [],
-  elevator: { queue: [], phase: "closed", amount: 0, passenger: null, nextAt: 0 },
-  animations: new Map(),
 });
 
 export function addFloor(world: World, template: FloorTemplate): void {
-  world.floors.set(template.id, { template, grid: gridFor(template), reservations: new Map() });
+  world.floors.set(template.id, {
+    template,
+    grid: gridFor(template),
+    reservations: new Map(),
+    elevator: { queue: [], phase: "closed", amount: 0, passenger: null, nextAt: 0 },
+    animations: new Map(),
+  });
 }
 
+/** Drops a floor with everybody on it. */
 export function removeFloor(world: World, floorId: string): void {
   world.floors.delete(floorId);
+  for (const [id, actor] of world.actors) {
+    if (actor.floorId === floorId) {
+      world.actors.delete(id);
+    }
+  }
 }
 
 const anchorById = (floor: Floor, id: string): Anchor | undefined =>
   floor.template.anchors.find((a) => a.id === id);
 
-export const freeAnchors = (world: World, floorId: string, kind: AnchorKind): Anchor[] => {
+/** Anchors marked `group: "boss"` (his office) are for the boss alone; everything else is shared. */
+const allowedFor = (anchor: Anchor, kind: ActorKind | undefined): boolean =>
+  anchor.group !== "boss" || kind === "boss";
+
+/** Unreserved anchors of a kind on a floor, narrowed to what an actor of `forKind` may use. */
+export const freeAnchors = (
+  world: World,
+  floorId: string,
+  kind: AnchorKind,
+  forKind?: ActorKind,
+): Anchor[] => {
   const floor = world.floors.get(floorId);
   return floor === undefined
     ? []
-    : floor.template.anchors.filter((a) => a.kind === kind && !floor.reservations.has(a.id));
+    : floor.template.anchors.filter(
+        (a) => a.kind === kind && !floor.reservations.has(a.id) && allowedFor(a, forKind),
+      );
 };
 
+/** Claims an anchor for the actor; an anchor the actor already holds (its home) counts as claimed. */
 export function reserve(world: World, actor: Actor, floorId: string, anchorId: string): boolean {
   const floor = world.floors.get(floorId);
-  if (floor === undefined || floor.reservations.has(anchorId)) {
+  if (floor === undefined) {
     return false;
+  }
+  const holder = floor.reservations.get(anchorId);
+  if (holder !== undefined) {
+    return holder === actor.id;
   }
   release(world, actor);
   floor.reservations.set(anchorId, actor.id);
@@ -152,137 +192,21 @@ export function reserve(world: World, actor: Actor, floorId: string, anchorId: s
   return true;
 }
 
+/** Gives up the actor's current anchor — except its home, which stays reserved for as long as the actor exists. */
 export function release(world: World, actor: Actor): void {
-  if (actor.reservation !== null) {
-    world.floors.get(actor.reservation.floorId)?.reservations.delete(actor.reservation.anchorId);
-    actor.reservation = null;
+  const current = actor.reservation;
+  if (current === null) {
+    return;
   }
+  const isHome =
+    actor.home !== null &&
+    actor.home.floorId === current.floorId &&
+    actor.home.anchorId === current.anchorId;
+  if (!isHome) {
+    world.floors.get(current.floorId)?.reservations.delete(current.anchorId);
+  }
+  actor.reservation = isHome ? current : null;
 }
-
-export function spawnActor(
-  world: World,
-  id: AgentId,
-  sprite: string,
-  floorId: string,
-  options: { kind?: ActorKind; at?: Point } = {},
-): Actor {
-  const floor = world.floors.get(floorId);
-  const spawn =
-    options.at ??
-    (floor === undefined
-      ? { x: 3, y: 10 }
-      : (anchorById(floor, "car")?.at ?? anchorById(floor, "elevator")?.at ?? { x: 3, y: 10 }));
-  const at = nearestWalkable(world, floorId, spawn);
-  // Without an explicit place the newcomer arrives by elevator: hidden in the car until it is their turn.
-  const arriving = options.at === undefined;
-  const actor: Actor = {
-    id,
-    kind: options.kind ?? "agent",
-    sprite,
-    floorId,
-    pos: { ...at },
-    tile: { ...at },
-    facing: "s",
-    activity: "idle",
-    animTime: 0,
-    hidden: arriving,
-    moving: null,
-    steps: [],
-    reservation: null,
-    work: null,
-    needs: {
-      coffee: world.rng.next() * 0.4,
-      restroom: world.rng.next() * 0.3,
-      smoke: world.rng.next() * 0.2,
-      relax: world.rng.next() * 0.3,
-    },
-    emotion: null,
-    idleUntil: 0,
-  };
-  world.actors.set(id, actor);
-  if (arriving) {
-    world.elevator.queue.push(id);
-  }
-  return actor;
-}
-
-export function removeActor(world: World, id: AgentId): void {
-  const actor = world.actors.get(id);
-  if (actor !== undefined) {
-    release(world, actor);
-    world.actors.delete(id);
-  }
-  world.elevator.queue = world.elevator.queue.filter((queued) => queued !== id);
-  if (world.elevator.passenger === id) {
-    world.elevator.passenger = null;
-  }
-}
-
-/**
- * Cells other actors hold: where they stand, and — with `includeMoving` — the cell they are stepping into, so two
- * walkers never enter one cell together. Planning ignores walkers (they move on); stepping does not.
- */
-export const occupied = (
-  world: World,
-  self: Actor,
-  includeMoving = false,
-): ((p: Point) => boolean) => {
-  const taken = new Set<number>();
-  for (const other of world.actors.values()) {
-    if (other.id === self.id || other.floorId !== self.floorId || other.hidden) {
-      continue;
-    }
-    if (other.activity !== "walk" || includeMoving) {
-      taken.add(other.tile.y * 4096 + other.tile.x);
-    }
-    if (includeMoving && other.moving !== null) {
-      taken.add(other.moving.y * 4096 + other.moving.x);
-    }
-  }
-  return (p) => taken.has(p.y * 4096 + p.x);
-};
-
-export function nearestWalkable(world: World, floorId: string, target: Point): Point {
-  const floor = world.floors.get(floorId);
-  if (floor === undefined || floor.grid.isWalkable(target)) {
-    return target;
-  }
-  for (let r = 1; r < 6; r += 1) {
-    for (let dy = -r; dy <= r; dy += 1) {
-      for (let dx = -r; dx <= r; dx += 1) {
-        const p = { x: target.x + dx, y: target.y + dy };
-        if (floor.grid.isWalkable(p)) {
-          return p;
-        }
-      }
-    }
-  }
-  return target;
-}
-
-/** A walk to a point on any floor; the executor inserts the elevator ride when the floor differs. */
-export const walkSteps = (_world: World, _actor: Actor, floorId: string, to: Point): Step[] => [
-  { kind: "walk", floorId, to, path: null },
-];
-
-/** Steps that bring a working actor back to its desk and keep it typing. */
-export function resumeSteps(world: World, actor: Actor): Step[] {
-  if (actor.work === null) {
-    return [];
-  }
-  const anchor = anchorOf(world, actor.work.floorId, actor.work.anchorId);
-  return anchor === undefined
-    ? []
-    : [
-        { kind: "walk", floorId: actor.work.floorId, to: anchor.at, path: null },
-        { kind: "hold", activity: "type", facing: anchor.facing },
-      ];
-}
-
-export const setSteps = (actor: Actor, steps: Step[]): void => {
-  actor.steps = steps;
-  actor.animTime = 0;
-};
 
 export const NEED_PERIOD_MS: Record<NeedKind, number> = {
   coffee: 240_000,
@@ -295,6 +219,3 @@ export const anchorOf = (world: World, floorId: string, anchorId: string): Ancho
   const floor = world.floors.get(floorId);
   return floor === undefined ? undefined : anchorById(floor, anchorId);
 };
-
-export const isAt = (actor: Actor, p: Point): boolean =>
-  samePoint(actor.tile, p) && actor.steps.length === 0;

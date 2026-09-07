@@ -94,26 +94,24 @@ export class IntakeService {
   }
 
   status(): IntakeStatus[] {
-    return [...this.#office.model.projects.values()]
-      .filter((p) => p.repo.kind !== "none")
-      .map((p) => {
-        const state = this.#state.get(p.id) ?? fresh();
-        return {
-          projectId: p.id,
-          enabled: p.intake.enabled,
-          lastPollAt: state.lastPollAt,
-          nextPollAt: p.intake.enabled ? state.nextPollAt : null,
-          lastError: state.lastError,
-          received: state.received,
-          lastDryRun: state.lastDryRun,
-        };
-      });
+    return [...this.#office.model.projects.values()].map((p) => {
+      const state = this.#state.get(p.id) ?? fresh();
+      return {
+        projectId: p.id,
+        enabled: p.intake.enabled,
+        lastPollAt: state.lastPollAt,
+        nextPollAt: p.intake.enabled ? state.nextPollAt : null,
+        lastError: state.lastError,
+        received: state.received,
+        lastDryRun: state.lastDryRun,
+      };
+    });
   }
 
   /** Polls now: one project, or every project with intake enabled. */
   async pollNow(projectId?: ProjectId): Promise<IntakePollResult[]> {
     const projects = [...this.#office.model.projects.values()].filter((p) =>
-      projectId === undefined ? p.intake.enabled && p.repo.kind !== "none" : p.id === projectId,
+      projectId === undefined ? p.intake.enabled : p.id === projectId,
     );
     const results: IntakePollResult[] = [];
     for (const project of projects) {
@@ -135,7 +133,7 @@ export class IntakeService {
   #reschedule(): void {
     const live = new Set<ProjectId>();
     for (const project of this.#office.model.projects.values()) {
-      if (project.repo.kind === "none" || !project.intake.enabled) {
+      if (!project.intake.enabled) {
         continue;
       }
       live.add(project.id);

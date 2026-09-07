@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TaskPriority } from "./domain.ts";
-import { AgentId, ProjectId, TaskId } from "./ids.ts";
+import { AgentId, TaskId } from "./ids.ts";
 
 /**
  * Tools the daemon exposes to agents over MCP. Inputs are deliberately small: the boss receives summaries,
@@ -47,8 +47,8 @@ export const HoAskHumanInput = z.object({
 });
 export type HoAskHumanInput = z.infer<typeof HoAskHumanInput>;
 
+/** The boss creates work on his own floor; `assignee` may be himself when nobody else is around. */
 export const HoDelegateInput = z.object({
-  project: z.string().min(1).describe("Project name or id"),
   title: z.string().min(1).max(200),
   brief: z
     .string()
@@ -59,7 +59,9 @@ export const HoDelegateInput = z.object({
     .string()
     .min(1)
     .optional()
-    .describe("Agent name or id; omit to leave the task in the project inbox"),
+    .describe(
+      "Colleague name or id on this floor (your own name when you do it yourself); omit to leave the task in the inbox",
+    ),
   priority: TaskPriority.optional(),
 });
 export type HoDelegateInput = z.infer<typeof HoDelegateInput>;
@@ -83,7 +85,6 @@ export const McpToolName = z.enum([
   "ho_reply",
   "ho_task_status",
   "ho_list_agents",
-  "ho_list_projects",
 ]);
 export type McpToolName = z.infer<typeof McpToolName>;
 
@@ -92,12 +93,5 @@ export const McpAgentSummary = z.object({
   name: z.string(),
   role: z.string(),
   skills: z.string(),
-  projects: z.array(z.string()),
   activeSessions: z.int().nonnegative(),
-});
-export const McpProjectSummary = z.object({
-  id: ProjectId,
-  name: z.string(),
-  repo: z.string(),
-  openTasks: z.int().nonnegative(),
 });

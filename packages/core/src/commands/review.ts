@@ -13,11 +13,10 @@ import { err, ok } from "../result.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
 import { note, noteEvent, requireTask, statusChange } from "./shared.ts";
 
-/** A reviewer for a project: a member with the reviewer role who is not the author. */
+/** A reviewer for a floor: a member with the reviewer role who is not the author. */
 export const reviewerFor = (model: ReadModel, task: Task): Agent | undefined =>
   [...model.agents.values()].find(
-    (a) =>
-      a.role === "reviewer" && a.id !== task.assigneeId && a.projectIds.includes(task.projectId),
+    (a) => a.role === "reviewer" && a.id !== task.assigneeId && a.projectId === task.projectId,
   );
 
 /** Worker (or boss in triage) closes its session: report text + the next status, with automatic review routing. */

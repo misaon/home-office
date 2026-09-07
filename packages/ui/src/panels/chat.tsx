@@ -1,4 +1,5 @@
-import { type ChatMessage, ProjectId, type TaskId } from "@ho/protocol";
+import { bossOf } from "@ho/core";
+import type { ChatMessage, ProjectId, TaskId } from "@ho/protocol";
 import { useEffect, useRef, useState } from "react";
 import { getClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
@@ -8,28 +9,44 @@ const authorName = (snapshot: Snapshot, message: ChatMessage): string =>
     ? "You"
     : (snapshot.agents.get(message.author.agentId)?.name ?? "agent");
 
-type Question = { taskId: TaskId; title: string; text: string };
+type Question = { taskId: TaskId; title: string; text: string; asker: string };
 
-/** Open questions agents asked the human; answering resumes the task. */
-const openQuestions = (snapshot: Snapshot): Question[] =>
+/** Open questions colleagues on this floor asked the human; answering resumes the task. */
+const openQuestions = (snapshot: Snapshot, floorId: ProjectId): Question[] =>
   [...snapshot.tasks.values()]
-    .filter((t) => t.status === "blocked")
+    .filter((t) => t.projectId === floorId && t.status === "blocked")
     .flatMap((t) => {
       const question = t.notes.findLast((n) => n.kind === "question");
       const answered = t.notes.findLast((n) => n.kind === "answer");
-      return question !== undefined && (answered === undefined || answered.at < question.at)
-        ? [{ taskId: t.id, title: t.title, text: question.text }]
-        : [];
+      if (question === undefined || (answered !== undefined && answered.at >= question.at)) {
+        return [];
+      }
+      const asker =
+        question.author.kind === "agent"
+          ? (snapshot.agents.get(question.author.agentId)?.name ?? "a colleague")
+          : "a colleague";
+      return [{ taskId: t.id, title: t.title, text: question.text, asker }];
     });
 
-function Messages({ snapshot }: { snapshot: Snapshot }): React.JSX.Element {
+function Messages({
+  messages,
+  snapshot,
+}: {
+  messages: ChatMessage[];
+  snapshot: Snapshot;
+}): React.JSX.Element {
   const bottom = useRef<HTMLDivElement>(null);
-  const messages = snapshot.chat.slice(-200);
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
   }, [messages.length]);
   return (
     <div className="flex-1 space-y-2 overflow-y-auto p-3">
+      {messages.length === 0 ? (
+        <p className="text-xs text-gray-500">
+          Write to the boss of this floor. Lola brings him your message; he plans, delegates and
+          reports back here.
+        </p>
+      ) : null}
       {messages.map((m) => (
         <div
           key={m.id}
@@ -50,14 +67,18 @@ function Messages({ snapshot }: { snapshot: Snapshot }): React.JSX.Element {
 
 export function ChatPanel(): React.JSX.Element {
   const snapshot = useUi((s) => s.snapshot);
-  const chatProjectId = useUi((s) => s.chatProjectId);
-  const setChatProject = useUi((s) => s.setChatProject);
+  const floorId = useUi((s) => s.floorId);
   const [text, setText] = useState("");
   const [answering, setAnswering] = useState<TaskId | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const projects = [...snapshot.projects.values()].filter((p) => p.repo.kind !== "none");
-  const questions = openQuestions(snapshot);
-  const hasBoss = [...snapshot.agents.values()].some((a) => a.role === "boss");
+  if (floorId === null) {
+    return <p className="p-3 text-xs text-gray-400">Add a project (floor) first.</p>;
+  }
+  const floor = snapshot.projects.get(floorId);
+  const boss = bossOf(snapshot, floorId);
+  const messages = snapshot.chat.filter((m) => m.projectId === floorId).slice(-200);
+  const questions = openQuestions(snapshot, floorId);
+  const question = questions.find((q) => q.taskId === answering);
 
   const send = (): void => {
     const client = getClient();
@@ -66,11 +87,7 @@ export function ChatPanel(): React.JSX.Element {
       return;
     }
     const input =
-      answering === null
-        ? chatProjectId === null
-          ? { text: body }
-          : { text: body, projectId: chatProjectId }
-        : { text: body, taskId: answering };
+      answering === null ? { text: body, projectId: floorId } : { text: body, taskId: answering };
     setText("");
     setAnswering(null);
     client.chat.send(input).then(
@@ -85,7 +102,11 @@ export function ChatPanel(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <Messages snapshot={snapshot} />
+      <div className="border-b border-line px-3 py-1 text-[11px] text-gray-400">
+        Chat with <span className="text-gray-200">{boss?.name ?? "the boss"}</span>
+        {floor === undefined ? "" : ` · floor ${floor.name}`}
+      </div>
+      <Messages messages={messages} snapshot={snapshot} />
       {questions.length > 0 ? (
         <div className="border-t border-line bg-amber-950/40 p-2 text-xs">
           {questions.map((q) => (
@@ -99,44 +120,43 @@ export function ChatPanel(): React.JSX.Element {
                 setAnswering(answering === q.taskId ? null : q.taskId);
               }}
             >
-              <span className="text-amber-300">? {q.title}</span>
+              <span className="text-amber-300">
+                ? {q.asker} on “{q.title}”
+              </span>
               <div className="text-gray-300">{q.text}</div>
             </button>
           ))}
         </div>
       ) : null}
       <div className="border-t border-line p-2">
-        {hasBoss || chatProjectId !== null || answering !== null ? null : (
-          <p className="mb-2 rounded bg-amber-950/60 px-2 py-1 text-xs text-amber-200">
-            The office has no boss yet. Add an agent with the role <b>boss</b> in Settings so
-            messages can be triaged, or pick a project above to file the message as a task directly.
-          </p>
-        )}
         {error === null ? null : (
           <p className="mb-2 rounded bg-red-950/70 px-2 py-1 text-xs text-red-200">{error}</p>
         )}
         <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
-          <span>To</span>
-          <select
-            className="rounded bg-panel px-1 py-0.5"
-            value={answering === null ? (chatProjectId ?? "") : "answer"}
-            disabled={answering !== null}
-            onChange={(e) => {
-              setChatProject(e.target.value === "" ? null : ProjectId.parse(e.target.value));
-            }}
-          >
-            <option value="">Boss (triage)</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} (new task)
-              </option>
-            ))}
-            {answering === null ? null : <option value="answer">Answer to question</option>}
-          </select>
+          {question === undefined ? (
+            <span>To {boss?.name ?? "the boss"}</span>
+          ) : (
+            <>
+              <span>Answer to {question.asker}</span>
+              <button
+                type="button"
+                className="text-gray-300 hover:underline"
+                onClick={() => {
+                  setAnswering(null);
+                }}
+              >
+                cancel
+              </button>
+            </>
+          )}
         </div>
         <textarea
           className="h-16 w-full resize-none rounded bg-panel p-2 outline-none"
-          placeholder="Ask the office for something… (Enter to send, Shift+Enter for a new line)"
+          placeholder={
+            question === undefined
+              ? "Ask the floor for something… (Enter to send, Shift+Enter for a new line)"
+              : "Your answer… (Enter to send)"
+          }
           value={text}
           onChange={(e) => {
             setText(e.target.value);

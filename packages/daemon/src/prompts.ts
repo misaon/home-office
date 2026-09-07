@@ -1,4 +1,4 @@
-import { isSessionActive, type ReadModel } from "@ho/core";
+import { isSessionActive, membersOf, type ReadModel } from "@ho/core";
 import type { Agent, Project, Session, Task, TaskNote } from "@ho/protocol";
 import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
@@ -11,7 +11,7 @@ const browserGuide = (enabled: boolean): string =>
 type Model = Pick<ReadModel, "agents" | "projects" | "tasks" | "sessions">;
 
 const common = (agent: Agent, project: Project): string[] => [
-  `You are ${agent.name}, a ${agent.role} at Home Office${project.repo.kind === "none" ? "" : ` working on the project "${project.name}"`}.`,
+  `You are ${agent.name}, ${agent.role === "boss" ? "the boss of" : `a ${agent.role} on`} the floor "${project.name}" at Home Office (one floor per project; this floor's repository is "${project.name}").`,
   agent.basePrompt.trim(),
   "Keep tool output small: prefer targeted reads and greps over dumping files. Never print secrets.",
 ];
@@ -19,7 +19,7 @@ const common = (agent: Agent, project: Project): string[] => [
 const workProtocol = [
   "Protocol: when the work is committed, call the MCP tool ho_report (status review or blocked, summary under 1500 characters) and stop.",
   "If you are truly stuck on a decision only the human can make, commit what you have and call ho_ask_human, then stop; you will be resumed with the answer.",
-  "If a colleague is better suited, commit and call ho_handoff with a clear brief, then stop.",
+  "If a colleague on this floor is better suited, commit and call ho_handoff with a clear brief, then stop.",
   "Do not push; do not open pull requests; do not leave uncommitted changes when you report.",
 ];
 
@@ -60,28 +60,29 @@ export const reviewPrompt = (
     .filter((line) => line !== "")
     .join("\n");
 
-export const triagePrompt = (agent: Agent, office: Project, model: Model): string => {
+/** The boss plans a chat message or a mail item for his floor: the roster is this floor's staff, nobody else. */
+export const triagePrompt = (agent: Agent, project: Project, model: Model): string => {
   const active = [...model.sessions.values()].filter((s) => isSessionActive(s.state));
-  const roster = [...model.agents.values()]
-    .filter((a) => a.id !== agent.id)
-    .map(
-      (a) =>
-        `- ${a.name} (${a.role}, skills: ${a.skillPack}, projects: ${a.projectIds.map((p) => model.projects.get(p)?.name ?? p).join(", ") || "none"}, active sessions: ${String(active.filter((s) => s.agentId === a.id).length)})`,
-    );
-  const projects = [...model.projects.values()]
-    .filter((p) => p.repo.kind !== "none")
-    .map(
-      (p) =>
-        `- ${p.name} (default branch ${p.defaultBranch}, open tasks: ${String([...model.tasks.values()].filter((t) => t.projectId === p.id && t.status !== "done" && t.status !== "cancelled").length)})`,
-    );
+  const staff = membersOf(model, project.id).filter((a) => a.id !== agent.id);
+  const roster = staff.map(
+    (a) =>
+      `- ${a.name} (${a.role}, skills: ${a.skillPack}, active sessions: ${String(active.filter((s) => s.agentId === a.id).length)})`,
+  );
+  const open = [...model.tasks.values()].filter(
+    (t) =>
+      t.projectId === project.id &&
+      t.kind === "work" &&
+      t.status !== "done" &&
+      t.status !== "cancelled",
+  ).length;
   return [
-    ...common(agent, office),
-    "You run the office. The human writes to you in the office chat; you turn requests into well-specified tasks for your team.",
-    `Team:\n${roster.join("\n") || "- (no other agents yet)"}`,
-    `Projects:\n${projects.join("\n") || "- (no projects with repositories yet)"}`,
-    "Protocol: for actionable requests call ho_delegate once per independent piece of work (clear title, brief with goal, acceptance criteria and constraints; assign a member of that project when one fits). Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to delegate. Use ho_list_agents / ho_list_projects when unsure. Finish with ho_report (status done, one-line summary) and stop.",
-    "Mail: some requests arrive as GitHub issues the postman brought in; their brief starts with the issue number, the project name and the link. Delegate them to that project (quote the issue link in the brief). If an issue is too vague to act on, finish with ho_report status blocked and say what is missing; the issue author gets that as a comment, ho_reply does not reach them.",
-    "You do not write code yourself and you have no repository here.",
+    ...common(agent, project),
+    `You run this floor. The human writes to you in the floor's chat; you turn requests into well-specified tasks for your team. The repository is checked out at ${REPO_IN_VOLUME} (branch ${project.defaultBranch}, ${String(open)} open task(s)) for planning only: read what you need to write precise briefs, do not modify or commit anything here — work happens in separate sessions.`,
+    `Team on this floor:\n${roster.join("\n") || "- nobody yet: you do the work yourself"}`,
+    staff.length === 0
+      ? "Protocol: for actionable requests call ho_delegate once per independent piece of work with a clear title and a brief (goal, acceptance criteria, constraints) and assignee set to your own name; you will get a separate work session in the repository for each. Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to do. Finish with ho_report (status done, one-line summary) and stop."
+      : "Protocol: for actionable requests call ho_delegate once per independent piece of work (clear title, brief with goal, acceptance criteria and constraints, assignee = the colleague who fits best; use your own name only when nobody fits). Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to delegate. Use ho_list_agents when unsure. Finish with ho_report (status done, one-line summary) and stop.",
+    "Mail: some requests arrive as GitHub issues the postman brought to the reception; their brief starts with the issue number and the link. Quote the issue link in the brief. If an issue is too vague to act on, finish with ho_report status blocked and say what is missing; the issue author gets that as a comment, ho_reply does not reach them.",
   ]
     .filter((line) => line !== "")
     .join("\n");

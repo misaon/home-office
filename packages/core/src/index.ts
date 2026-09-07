@@ -4,6 +4,7 @@ export * from "./commands/chat.ts";
 export * from "./commands/boss.ts";
 export * from "./commands/handoff.ts";
 export * from "./commands/mail.ts";
+export * from "./commands/office-defaults.ts";
 export * from "./commands/review.ts";
 export * from "./commands/shared.ts";
 export * from "./commands/context.ts";

@@ -1,39 +1,45 @@
-import type { Agent, AgentCreateInput, AgentId, AgentUpdateInput, ProjectId } from "@ho/protocol";
+import type {
+  Agent,
+  AgentCopyInput,
+  AgentCreateInput,
+  AgentId,
+  AgentUpdateInput,
+  ProjectId,
+} from "@ho/protocol";
 import { conflict, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { err, ok } from "../result.ts";
 import { defaultChoice, validateChoice } from "../providers.ts";
 import { isActive } from "../tasks/transitions.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
+import { copyOf } from "./office-defaults.ts";
 import { definedOnly } from "./projects.ts";
+import { bossOf, membersOf } from "./shared.ts";
 
-const nameTaken = (model: ReadModel, name: string, except?: AgentId): boolean =>
-  [...model.agents.values()].some(
+/** Names are unique per floor: Andrew runs every floor, Pam may work on two. */
+const nameTaken = (
+  model: ReadModel,
+  projectId: ProjectId,
+  name: string,
+  except?: AgentId,
+): boolean =>
+  membersOf(model, projectId).some(
     (a) => a.id !== except && a.name.toLowerCase() === name.toLowerCase(),
   );
-
-const bossExists = (model: ReadModel, except?: AgentId): boolean =>
-  [...model.agents.values()].some((a) => a.id !== except && a.role === "boss");
-
-const missingProject = (
-  model: ReadModel,
-  projectIds: readonly ProjectId[],
-): ProjectId | undefined => projectIds.find((id) => !model.projects.has(id));
 
 export function createAgent(
   model: ReadModel,
   input: AgentCreateInput,
   ctx: CommandContext,
 ): CommandResult<Agent> {
-  if (nameTaken(model, input.name)) {
-    return err(conflict(`agent name "${input.name}" is already used`));
+  if (!model.projects.has(input.projectId)) {
+    return err(notFound("project", input.projectId));
   }
-  if (input.role === "boss" && bossExists(model)) {
-    return err(conflict("the office already has a boss"));
+  if (nameTaken(model, input.projectId, input.name)) {
+    return err(conflict(`agent name "${input.name}" is already used on this floor`));
   }
-  const missing = missingProject(model, input.projectIds);
-  if (missing !== undefined) {
-    return err(notFound("project", missing));
+  if (input.role === "boss" && bossOf(model, input.projectId) !== undefined) {
+    return err(conflict("this floor already has a boss"));
   }
   const auth = input.auth ?? defaultChoice(input.provider).auth;
   const choice = validateChoice({
@@ -67,15 +73,19 @@ export function updateAgent(
   if (current === undefined) {
     return err(notFound("agent", input.id));
   }
-  if (input.patch.name !== undefined && nameTaken(model, input.patch.name, input.id)) {
-    return err(conflict(`agent name "${input.patch.name}" is already used`));
+  if (
+    input.patch.name !== undefined &&
+    nameTaken(model, current.projectId, input.patch.name, input.id)
+  ) {
+    return err(conflict(`agent name "${input.patch.name}" is already used on this floor`));
   }
-  if (input.patch.role === "boss" && bossExists(model, input.id)) {
-    return err(conflict("the office already has a boss"));
-  }
-  const missing = missingProject(model, input.patch.projectIds ?? []);
-  if (missing !== undefined) {
-    return err(notFound("project", missing));
+  if (input.patch.role !== undefined && input.patch.role !== current.role) {
+    if (current.role === "boss") {
+      return err(conflict("the floor's boss keeps the boss role"));
+    }
+    if (input.patch.role === "boss") {
+      return err(conflict("this floor already has a boss"));
+    }
   }
   const merged: Agent = { ...current, ...definedOnly(input.patch), updatedAt: ctx.now };
   // A provider switch keeps whatever still fits and takes the new provider's defaults for the rest.
@@ -93,13 +103,47 @@ export function updateAgent(
   });
 }
 
+/** Puts a copy of a character onto another floor (the import of D23). Bosses stay where they are. */
+export function copyAgent(
+  model: ReadModel,
+  input: AgentCopyInput,
+  ctx: CommandContext,
+): CommandResult<Agent> {
+  const source = model.agents.get(input.id);
+  if (source === undefined) {
+    return err(notFound("agent", input.id));
+  }
+  if (!model.projects.has(input.projectId)) {
+    return err(notFound("project", input.projectId));
+  }
+  if (source.role === "boss") {
+    return err(conflict("every floor has its own boss; copy the staff instead"));
+  }
+  if (source.projectId === input.projectId && input.name === undefined) {
+    return err(conflict("a copy on the same floor needs a different name"));
+  }
+  const name = input.name ?? source.name;
+  if (nameTaken(model, input.projectId, name)) {
+    return err(conflict(`agent name "${name}" is already used on this floor`));
+  }
+  const agent = copyOf(source, input.projectId, name, ctx);
+  return ok({
+    events: [{ type: "agent.created", actor: ctx.actor, payload: { agent } }],
+    value: agent,
+  });
+}
+
 export function removeAgent(
   model: ReadModel,
   id: AgentId,
   ctx: CommandContext,
 ): CommandResult<AgentId> {
-  if (!model.agents.has(id)) {
+  const agent = model.agents.get(id);
+  if (agent === undefined) {
     return err(notFound("agent", id));
+  }
+  if (agent.role === "boss" && model.projects.has(agent.projectId)) {
+    return err(conflict("the boss leaves with the floor; remove the project instead"));
   }
   const busy = [...model.tasks.values()].filter(
     (t) => t.assigneeId === id && isActive(t.status),

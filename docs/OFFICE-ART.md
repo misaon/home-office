@@ -22,14 +22,22 @@ production geometry lives in code and every destination must be reachable.
 | Terrace               | Grill, dining, seating, hot tub with clear passage around it, ashtray                                 |
 | Corridors             | Two call booths along the side; clear routes to every door and the elevator                           |
 
-## How the office is built (D19)
+## How the office is built (D19, D23)
 
-- **One floor.** The whole company works in this office; projects are columns on the Board, not floors. The
-  plan is pure data in `packages/sim/src/office-plan.ts`: 80 × 46 cells of 24 px (1920 × 1104, D20), rooms, walls,
-  doors, glass, 41 objects and 39 anchors. `auditOffice` checks reachability from the elevator on start and the
-  UI shows a red banner if a layout change breaks a route.
-- **Seats by role.** The boss has the boss office; workers take `dev` desks, reviewers `qa`, clerks `analyst`;
-  a full zone overflows into any free desk (`assignWork` in `packages/sim/src/intents.ts`).
+- **One plan, a floor per project.** Every project is a floor with this same layout (`officePlan(floorId)`),
+  its own boss Andrew, the receptionist Lola behind the reception counter and the staff hired for it; the header's
+  floor tabs switch between them. The plan is pure data in `packages/sim/src/office-plan.ts`: 80 × 46 cells of
+  24 px (1920 × 1104, D20), rooms, walls, doors, glass, objects and anchors. `auditOffice` checks reachability
+  from the elevator on start and the UI shows a red banner if a layout change breaks a route.
+- **Seats by role.** The boss has the boss office (its spots are his alone: `group: "boss"`); workers take `dev`
+  desks, reviewers `qa`, clerks `analyst`; a full zone overflows into any free desk (`assignWork` in
+  `packages/sim/src/intents.ts`). Idle staff stroll their room, the lounge, the kitchen and the terrace, and now
+  and then leave by the elevator for a minute or two; the boss stays at his desk apart from a coffee or the
+  restroom.
+- **Envelopes.** A chat message is an envelope Lola carries from the reception to the boss's office; the boss
+  carries delegated work to a colleague; colleagues carry handoffs to each other; finished work walks back to
+  the boss before he reports it in the chat. The postman still brings GitHub issues to the reception counter,
+  from where Lola takes them to the boss.
 - **Arrivals.** Everybody comes by elevator, one car at a time. The passenger is placed inside the car behind
   the closed doors; the doors open (700 ms) and reveal them through the widening gap, they pause 300 ms and walk
   out to their desk or a corridor spot; the doors stay open while anybody is in the car or on its threshold,
@@ -152,9 +160,11 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | `window`                 | 4 × 1             | 2     | toilets, lounge                                                                              | walk-through                                                                                |
 
 Characters: sets `boss`, `agent-a`, `agent-b`, `agent-c` and `postman` are the placeholders in use today (32 × 32
-frames from the 16 px era; the renderer scales any set to two cells tall). A delivered set replaces one by name: frames 2 cells wide × 5 tall (D21),
-`bun run assets:import <strip.png> characters/<set>/<activity>_<dir> --frames N`. The activities and facings the
-simulation asks for are tabulated in `assets/README.md`; `idle_s` alone already renders, the rest falls back to it.
+frames from the 16 px era; the renderer scales any set to two cells wide). The receptionist Lola looks for the set
+`receptionist` and wears `agent-a` until it is delivered. A delivered set replaces one by name: frames 2 cells wide ×
+5 tall (D21), `bun run assets:import <strip.png> characters/<set>/<activity>_<dir> --frames N`. The activities and
+facings the simulation asks for are tabulated in `assets/README.md`; `idle_s` alone already renders, the rest falls
+back to it.
 
 ## Later
 

@@ -1,14 +1,15 @@
+/** Advances the world by `dtMs`. Idle decisions are made by the behaviour module through `onIdle`. */
 import type { Point } from "./grid.ts";
 import { advanceStep } from "./steps.ts";
+import { setSteps, walkSteps } from "./actors.ts";
 import {
   type Actor,
   anchorOf,
   ELEVATOR_DOORS_MS,
+  type Floor,
   freeAnchors,
   NEED_PERIOD_MS,
   NEEDS,
-  setSteps,
-  walkSteps,
   type World,
 } from "./world.ts";
 
@@ -16,23 +17,26 @@ import {
 const STEP_OUT_MS = 300;
 const CAR_GAP_MS = 600;
 const DOORS_KEY = "elevator-doors";
+/** The boss keeps to his office: his needs build up this many times slower than the staff's. */
+const BOSS_NEED_SLOWDOWN = 4;
 
 /** The car interior and its threshold: while anybody visible stands here, the doors stay open. */
-const inCarZone = (world: World, actor: Actor, car: Point): boolean =>
+const inCarZone = (actor: Actor, car: Point): boolean =>
   !actor.hidden &&
   Math.abs(actor.tile.x - car.x) <= 3 &&
   actor.tile.y >= car.y - 1 &&
   actor.tile.y <= car.y + 4;
 
-/** Advances the elevator's doors and delivers one queued passenger per car (see `Elevator`). */
-function runElevator(world: World, dtMs: number): void {
-  const e = world.elevator;
-  const floorId = world.floors.keys().next().value;
-  const car = floorId === undefined ? undefined : anchorOf(world, floorId, "car")?.at;
+/** Advances one floor's elevator doors and delivers one queued passenger per car (see `Elevator`). */
+function runElevator(world: World, floorId: string, floor: Floor, dtMs: number): void {
+  const e = floor.elevator;
+  const car = anchorOf(world, floorId, "car")?.at;
   if (car === undefined) {
     return;
   }
-  const occupied = [...world.actors.values()].some((a) => inCarZone(world, a, car));
+  const occupied = [...world.actors.values()].some(
+    (a) => a.floorId === floorId && inCarZone(a, car),
+  );
   switch (e.phase) {
     case "closed": {
       const next = e.queue[0];
@@ -48,7 +52,7 @@ function runElevator(world: World, dtMs: number): void {
         e.passenger = next;
         e.phase = "opening";
       } else if (occupied) {
-        // Somebody walked up to the car from the office (a visitor leaving).
+        // Somebody walked up to the car from the office (a visitor leaving, staff off for a while).
         e.phase = "opening";
       }
       break;
@@ -61,15 +65,13 @@ function runElevator(world: World, dtMs: number): void {
         e.queue = e.queue.filter((id) => id !== e.passenger);
         e.passenger = null;
         if (passenger !== undefined) {
-          const spot = world.rng.pick(freeAnchors(world, passenger.floorId, "wander"))?.at ?? {
-            x: car.x,
-            y: car.y + 5,
-          };
+          const spot = world.rng.pick(freeAnchors(world, floorId, "wander", passenger.kind))
+            ?.at ?? { x: car.x, y: car.y + 5 };
           setSteps(passenger, [
             { kind: "dwell", activity: "idle", facing: "s", until: null, ms: STEP_OUT_MS },
             ...(passenger.steps.length > 0
               ? passenger.steps
-              : walkSteps(world, passenger, passenger.floorId, spot)),
+              : walkSteps(world, passenger, floorId, spot)),
           ]);
         }
       }
@@ -90,7 +92,7 @@ function runElevator(world: World, dtMs: number): void {
       break;
     }
   }
-  world.animations.set(DOORS_KEY, e.amount);
+  floor.animations.set(DOORS_KEY, e.amount);
 }
 
 export function tick(
@@ -99,15 +101,27 @@ export function tick(
   onIdle: (world: World, actor: Actor) => void,
 ): void {
   world.time += dtMs;
-  runElevator(world, dtMs);
+  for (const [floorId, floor] of world.floors) {
+    runElevator(world, floorId, floor, dtMs);
+  }
   for (const actor of world.actors.values()) {
-    if (world.elevator.queue.includes(actor.id)) {
+    const elevator = world.floors.get(actor.floorId)?.elevator;
+    if (elevator === undefined || elevator.queue.includes(actor.id)) {
       // Waiting in the elevator car (hidden, or standing behind the doors as they open).
       continue;
     }
+    if (actor.hidden) {
+      // Off the floor: the car brings them back when their time is up (or when somebody summons them).
+      if (actor.awayUntil !== null && world.time >= actor.awayUntil) {
+        actor.awayUntil = null;
+        elevator.queue.push(actor.id);
+      }
+      continue;
+    }
     actor.animTime += dtMs;
+    const slowdown = actor.kind === "boss" ? BOSS_NEED_SLOWDOWN : 1;
     for (const need of NEEDS) {
-      actor.needs[need] = Math.min(1, actor.needs[need] + dtMs / NEED_PERIOD_MS[need]);
+      actor.needs[need] = Math.min(1, actor.needs[need] + dtMs / (NEED_PERIOD_MS[need] * slowdown));
     }
     if (
       actor.emotion !== null &&
