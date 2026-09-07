@@ -129,15 +129,12 @@ export function architecture(
   return layer;
 }
 
-/**
- * Fixed glazing: the panels stand on the wall line and their face hangs half a cell below it (as painted in the
- * reference), so the room behind stays clear; sorted in front of people standing behind it.
- */
+/** Fixed full-height glazing, sorted in front of people standing behind it. */
 export function glassWall(pane: PlanRect): Graphics {
-  const height = Math.round(1.5 * TILE);
+  const height = 3 * TILE;
   const width = pane.w * TILE;
   const bottom = (pane.y + pane.h) * TILE;
-  const g = new Graphics({ x: pane.x * TILE, y: pane.y * TILE, zIndex: bottom - 1 });
+  const g = new Graphics({ x: pane.x * TILE, y: bottom - height, zIndex: bottom - 1 });
   g.rect(0, 0, width, height).fill({ color: 0x8de0df, alpha: 0.35 });
   for (let x = 0; x < width; x += 2 * TILE) {
     const panel = Math.min(2 * TILE, width - x);
