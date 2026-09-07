@@ -158,9 +158,11 @@ export class OfficeScene {
       view.floorId = actor.floorId;
     }
     view.root.visible = !actor.hidden && actor.floorId === this.#current;
+    // A sitter facing south sits north of the desk: drawn one cell lower, the desk covers the legs (as painted).
+    const sink = actor.activity === "type" && actor.facing === "s" ? TILE : 0;
     view.root.position.set(
       Math.round(actor.pos.x * TILE + TILE / 2),
-      Math.round(actor.pos.y * TILE + TILE),
+      Math.round(actor.pos.y * TILE + TILE + sink),
     );
     view.root.zIndex = actor.pos.y * TILE + TILE;
     const clip = this.#sprites.clip(actor.sprite, actor.activity, actor.facing);

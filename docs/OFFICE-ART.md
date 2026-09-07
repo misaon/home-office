@@ -53,35 +53,76 @@ Generated images never land in `assets/src` by hand: `bun run assets:import <png
 trims the transparent margins, scales the art to the footprint at `CELL_PX` and writes the contract file
 (`assets/README.md` has the full contract and the prompt rules). The renderer switches an object from stand-in to
 art the moment its key exists; `bun run assets:manifest` lists what is still missing with the size it needs.
-Object keys and footprints (width × height in cells; art may rise above the footprint, never sideways or below):
+Every footprint below was measured on the reference (80 × 46 cells of 20.75 px) and snapped to whole cells;
+the footprint is the floor contact, art rises above it. Keys are the delivery file names, one design per room;
+`-rotated` desks seat their user north of the desk (front panel and monitors' backs visible). Chairs and wall
+decor are walk-through. The table is generated from `officePlan()`; regenerate it after a plan change.
 
-| Key                                                                                         | Footprint           | Count             | Notes                                                                                                  |
-| ------------------------------------------------------------------------------------------- | ------------------- | ----------------- | ------------------------------------------------------------------------------------------------------ |
-| `desk-developer`                                                                            | 5 × 3               | 6                 | developer desk, drawers and screens to the viewer, sitter south of it                                  |
-| `desk-qa-rotated`, `desk-qa`                                                                | 5 × 3               | 1 / 1             | QA desks back to back: the rotated one (front panel, monitors' backs) seats north, the plain one south |
-| `desk-analyst-rotated`, `desk-analyst`                                                      | 5 × 3               | 1 / 1             | same pattern for the analysts                                                                          |
-| `desk-boss-rotated`                                                                         | 6 × 3               | 1                 | boss desk, boss behind it facing the room                                                              |
-| `chair-developer`, `chair-qa`, `chair-qa-rotated`, `chair-analyst`, `chair-analyst-rotated` | 1 × 1, art 1.5 wide | 6 / 1 / 1 / 1 / 1 | room-specific chairs centred on the seat (36 px wide); `-rotated` sits the north seat                  |
-| `chair-boss`                                                                                | 1 × 1, art 1.5 wide | 1                 | the boss's executive chair                                                                             |
-| `elevator`                                                                                  | 8 × 6               | 1                 | doors open toward the threshold below                                                                  |
-| `desk-reception-rotated`                                                                    | 8 × 3               | 1                 | reception counter, frontal, ≈4 cells tall; the receptionist stands behind it                           |
-| `mailbox`                                                                                   | 1 × 1               | 1                 | animations `empty` and `full`                                                                          |
-| `bookshelf`                                                                                 | 3 × 2               | 3                 |                                                                                                        |
-| `sofa`                                                                                      | 5 × 2               | 1                 | boss visitors                                                                                          |
-| `meeting-table`                                                                             | 7 × 3               | 1                 |                                                                                                        |
-| `kitchen-units`                                                                             | 11 × 2              | 1                 |                                                                                                        |
-| `dining-table`                                                                              | 6 × 2               | 1                 |                                                                                                        |
-| `toilet`                                                                                    | 2 × 2               | 2                 |                                                                                                        |
-| `sinks`                                                                                     | 2 × 4               | 1                 |                                                                                                        |
-| `dryer-bin`                                                                                 | 1 × 2               | 1                 |                                                                                                        |
-| `tv`                                                                                        | 1 × 4               | 1                 | TV with the console                                                                                    |
-| `sofa-lounge`                                                                               | 3 × 5               | 1                 |                                                                                                        |
-| `foosball`                                                                                  | 4 × 5               | 1                 | four rods per player                                                                                   |
-| `call-desk`                                                                                 | 2 × 1               | 2                 |                                                                                                        |
-| `spa`                                                                                       | 5 × 6               | 1                 | hot tub                                                                                                |
-| `grill`                                                                                     | 3 × 2               | 1                 |                                                                                                        |
-| `outdoor-table`                                                                             | 7 × 4               | 1                 |                                                                                                        |
-| `ashtray`                                                                                   | 1 × 1               | 1                 |                                                                                                        |
+| Key                      | Footprint (cells) | Count | Where                                                                               | Notes                                     |
+| ------------------------ | ----------------- | ----- | ----------------------------------------------------------------------------------- | ----------------------------------------- |
+| `aquarium`               | 3 × 2             | 1     | dev                                                                                 | walk-through                              |
+| `ashtray`                | 1 × 1             | 1     | spa                                                                                 |                                           |
+| `bin`                    | 1 × 1             | 1     | corridor                                                                            |                                           |
+| `bookshelf`              | 4 × 3             | 2     | dev                                                                                 |                                           |
+| `boss-visitors`          | 7 × 3             | 1     | boss                                                                                |                                           |
+| `bushes`                 | 4 × 2             | 1     | terrace                                                                             |                                           |
+| `call-desk`              | 2 × 1             | 2     | call-1, call-2                                                                      |                                           |
+| `chair-analyst`          | 1 × 1             | 1     | analyst                                                                             | art 1.5 cells wide, centred; walk-through |
+| `chair-analyst-rotated`  | 1 × 1             | 1     | analyst                                                                             | art 1.5 cells wide, centred; walk-through |
+| `chair-boss`             | 1 × 1             | 1     | boss                                                                                | art 1.5 cells wide, centred; walk-through |
+| `chair-developer`        | 1 × 1             | 6     | dev                                                                                 | art 1.5 cells wide, centred; walk-through |
+| `chair-qa`               | 1 × 1             | 1     | qa                                                                                  | art 1.5 cells wide, centred; walk-through |
+| `chair-qa-rotated`       | 1 × 1             | 1     | qa                                                                                  | art 1.5 cells wide, centred; walk-through |
+| `copier`                 | 3 × 3             | 1     | dev                                                                                 |                                           |
+| `dartboard`              | 2 × 2             | 1     | lounge                                                                              | walk-through                              |
+| `desk-analyst`           | 5 × 3             | 1     | analyst                                                                             |                                           |
+| `desk-analyst-rotated`   | 5 × 3             | 1     | analyst                                                                             |                                           |
+| `desk-boss-rotated`      | 6 × 3             | 1     | boss                                                                                |                                           |
+| `desk-developer`         | 5 × 3             | 6     | dev                                                                                 |                                           |
+| `desk-qa`                | 5 × 3             | 1     | qa                                                                                  |                                           |
+| `desk-qa-rotated`        | 5 × 3             | 1     | qa                                                                                  |                                           |
+| `desk-reception-rotated` | 8 × 4             | 1     | reception                                                                           |                                           |
+| `dining-chair`           | 2 × 1             | 6     | kitchen                                                                             | walk-through                              |
+| `dining-table`           | 8 × 2             | 1     | kitchen                                                                             |                                           |
+| `dryer-bin`              | 1 × 4             | 1     | toilets                                                                             |                                           |
+| `elevator`               | 6 × 6             | 1     | corridor                                                                            |                                           |
+| `floor-lamp`             | 1 × 1             | 1     | boss                                                                                | art 2 cells wide, centred                 |
+| `foosball`               | 4 × 6             | 1     | lounge                                                                              |                                           |
+| `fridge`                 | 3 × 3             | 1     | kitchen                                                                             |                                           |
+| `grill`                  | 4 × 4             | 1     | terrace                                                                             |                                           |
+| `grill-table`            | 2 × 3             | 1     | terrace                                                                             |                                           |
+| `hedge`                  | 2 × 11            | 1     | terrace                                                                             |                                           |
+| `kitchen-units`          | 8 × 3             | 1     | kitchen                                                                             |                                           |
+| `lounge-console`         | 2 × 2             | 1     | lounge                                                                              |                                           |
+| `lounge-sofa`            | 3 × 9             | 1     | lounge                                                                              |                                           |
+| `lounge-sofa-end`        | 3 × 3             | 1     | lounge                                                                              |                                           |
+| `lounge-table`           | 2 × 3             | 1     | lounge                                                                              |                                           |
+| `mailbox`                | 1 × 1             | 1     | reception                                                                           |                                           |
+| `meeting-chair`          | 2 × 1             | 6     | meeting                                                                             | walk-through                              |
+| `meeting-table`          | 8 × 3             | 1     | meeting                                                                             |                                           |
+| `outdoor-table`          | 7 × 4             | 1     | terrace                                                                             |                                           |
+| `picture`                | 4 × 2             | 1     | boss                                                                                | walk-through                              |
+| `picture`                | 3 × 2             | 3     | dev, qa, analyst                                                                    | walk-through                              |
+| `picture`                | 2 × 2             | 3     | reception, lounge                                                                   | walk-through                              |
+| `picture-small`          | 2 × 1             | 3     | dev                                                                                 | walk-through                              |
+| `plant`                  | 1 × 1             | 16    | boss, dev, qa, analyst, corridor, reception, meeting, kitchen, lounge, terrace, spa | art 2 cells wide, centred                 |
+| `plant`                  | 2 × 1             | 1     | toilets                                                                             |                                           |
+| `plant-table`            | 2 × 2             | 1     | dev                                                                                 |                                           |
+| `projector`              | 2 × 2             | 1     | meeting                                                                             |                                           |
+| `radiator`               | 1 × 4             | 1     | analyst                                                                             | walk-through                              |
+| `sinks`                  | 2 × 4             | 1     | toilets                                                                             |                                           |
+| `spa`                    | 5 × 6             | 1     | spa                                                                                 |                                           |
+| `spa-bench`              | 2 × 2             | 1     | spa                                                                                 |                                           |
+| `terrace-chair`          | 2 × 1             | 4     | terrace                                                                             | walk-through                              |
+| `terrace-chair`          | 2 × 2             | 2     | terrace                                                                             | walk-through                              |
+| `terrace-round-table`    | 3 × 4             | 1     | terrace                                                                             |                                           |
+| `terrace-sofa`           | 3 × 6             | 1     | terrace                                                                             | art 4 cells wide, centred                 |
+| `toilet`                 | 2 × 3             | 2     | toilets                                                                             |                                           |
+| `tv`                     | 1 × 6             | 1     | lounge                                                                              | art 1.5 cells wide, centred               |
+| `wall-screen`            | 5 × 2             | 1     | meeting                                                                             | walk-through                              |
+| `wall-shelf`             | 7 × 2             | 1     | reception                                                                           | walk-through                              |
+| `window`                 | 1 × 4             | 1     | boss                                                                                | walk-through                              |
+| `window`                 | 4 × 2             | 3     | dev                                                                                 | walk-through                              |
 
 Characters: sets `boss`, `agent-a`, `agent-b`, `agent-c` and `postman` are the placeholders in use today (32 × 32
 frames from the 16 px era; the renderer scales any set to two cells tall). A delivered set replaces one by name: frames 2 cells wide × 5 tall (D21),

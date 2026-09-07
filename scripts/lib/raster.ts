@@ -42,7 +42,7 @@ export function hasTransparency(img: Rgba): boolean {
   return false;
 }
 
-type Box = { x: number; y: number; w: number; h: number };
+export type Box = { x: number; y: number; w: number; h: number };
 
 /**
  * Generators leave an invisible halo (alpha 1–15) far outside the object; below this alpha a pixel counts as

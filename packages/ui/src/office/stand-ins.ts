@@ -139,8 +139,54 @@ export function standIn(f: PlanObject): Container {
   const w = f.w * TILE;
   const h = f.h * TILE;
   const kind = f.sprite.slice("furniture/".length);
-  if (kind.startsWith("chair")) {
-    g.rect(1, 4, 14, 11).fill(0x152e30).rect(2, 2, 12, 9).fill(0x478b80);
+  const cx = w / 2;
+  if (kind.includes("chair")) {
+    // Seat and backrest, centred on the footprint (chair art is wider than its seat cell).
+    const cw = Math.max(w, (f.artWidth ?? 1) * TILE);
+    g.roundRect(cx - cw / 2 + 2, h * 0.35, cw - 4, h * 0.6, 3)
+      .fill(0x152e30)
+      .roundRect(cx - cw / 2 + 4, 2, cw - 8, h * 0.5, 3)
+      .fill(0x478b80);
+  } else if (kind.startsWith("plant")) {
+    // Pot on the footprint, foliage above it as wide as the art.
+    const r = ((f.artWidth ?? f.w) * TILE) / 2;
+    g.rect(cx - w * 0.3, h - 8, w * 0.6, 8)
+      .fill(0x8d8d8d)
+      .circle(cx, h - 8 - r * 0.6, r * 0.9)
+      .fill(0x2f7a3a);
+  } else if (
+    kind.startsWith("picture") ||
+    kind === "window" ||
+    kind === "aquarium" ||
+    kind === "wall-screen" ||
+    kind === "wall-shelf" ||
+    kind === "radiator"
+  ) {
+    // Wall decor: a framed panel, no floor shadow.
+    const fill =
+      kind === "window" || kind === "aquarium"
+        ? 0x7fc4e0
+        : kind === "wall-screen"
+          ? 0x223038
+          : 0xc9b48a;
+    g.rect(0, 0, w, h)
+      .fill(0x4a3a2a)
+      .rect(2, 2, w - 4, h - 4)
+      .fill(fill);
+  } else if (kind === "dartboard") {
+    g.circle(cx, h / 2, Math.min(w, h) / 2)
+      .fill(0x4a3a2a)
+      .circle(cx, h / 2, Math.min(w, h) / 2 - 3)
+      .fill(0xe8e0c8);
+  } else if (kind === "floor-lamp") {
+    g.rect(cx - 2, 0, 4, h)
+      .fill(0x8a7a40)
+      .circle(cx, 4, 8)
+      .fill(0xf2c85a);
+  } else if (kind === "hedge" || kind === "bushes") {
+    g.roundRect(0, 0, w, h, 6).fill(0x2f7a3a);
+  } else if (kind === "bin") {
+    g.rect(3, 2, w - 6, h - 2).fill(0x7a7f80);
   } else if (kind.startsWith("desk")) {
     desk(g, f);
   } else if (kind === "hot-tub") {

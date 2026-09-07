@@ -1,12 +1,27 @@
 /* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
 import type { OfficePlan, PlanDoor, PlanObject, World } from "@ho/sim";
-import { Container, Graphics, Sprite } from "pixi.js";
+import { Container, Graphics, Sprite, type Texture } from "pixi.js";
 import type { FloorView } from "./scene.ts";
 import { fitScale, type SpriteLibrary } from "./sprites.ts";
 import { architecture, glassWall, standIn, TILE } from "./stand-ins.ts";
 
 type DoorView = { spec: PlanDoor; graphic: Graphics; amount: number };
-type ObjectView = { item: PlanObject; sprite: Sprite; animation: string };
+/** A placed sprite with the frames of its current animation; multi-frame animations loop at FRAME_MS. */
+type ObjectView = {
+  item: PlanObject;
+  sprite: Sprite;
+  animation: string;
+  frames: Texture[];
+  frame: number;
+  timeMs: number;
+};
+
+/** Furniture animations (bubbling water, blinking screens) run at ~8 fps; one clock per object, no allocation per tick. */
+const FRAME_MS = 120;
+
+/** Frames of the object's current animation, falling back to its single `static` frame. */
+const framesOf = (sprites: SpriteLibrary, item: PlanObject): Texture[] | undefined =>
+  sprites.frames(item.sprite, item.animation) ?? sprites.frames(item.sprite, "static");
 
 const DOOR_MS = 220;
 const NEAR_CELLS = 3;
@@ -34,8 +49,9 @@ export function createPlanView(
   const objects = new Container({ sortableChildren: true });
   const views: ObjectView[] = [];
   for (const item of plan.objects) {
-    const texture = sprites.frames(item.sprite, item.animation)?.[0];
-    if (texture === undefined) {
+    const frames = framesOf(sprites, item);
+    const texture = frames?.[0];
+    if (frames === undefined || texture === undefined) {
       objects.addChild(standIn(item));
       continue;
     }
@@ -59,7 +75,7 @@ export function createPlanView(
     }
     sprite.zIndex = (item.at.y + item.h) * TILE - (item.blocks ? 1 : 3);
     objects.addChild(sprite);
-    views.push({ item, sprite, animation: item.animation });
+    views.push({ item, sprite, animation: item.animation, frames, frame: 0, timeMs: 0 });
   }
   for (const pane of plan.glass) {
     objects.addChild(glassWall(pane));
@@ -75,10 +91,25 @@ export function createPlanView(
   const update = (world: World, dtMs: number): void => {
     for (const view of views) {
       if (view.animation !== view.item.animation) {
-        const texture = sprites.frames(view.item.sprite, view.item.animation)?.[0];
-        if (texture !== undefined) {
+        // State change (mailbox empty → full): swap to the new animation's frames, restart its clock.
+        const frames = framesOf(sprites, view.item);
+        const texture = frames?.[0];
+        if (frames !== undefined && texture !== undefined) {
+          view.frames = frames;
+          view.frame = 0;
+          view.timeMs = 0;
           view.sprite.texture = texture;
           view.animation = view.item.animation;
+        }
+      }
+      if (view.frames.length > 1) {
+        const cycle = FRAME_MS * view.frames.length;
+        view.timeMs = (view.timeMs + dtMs) % cycle;
+        const frame = Math.floor(view.timeMs / FRAME_MS);
+        const texture = view.frames[frame];
+        if (frame !== view.frame && texture !== undefined) {
+          view.frame = frame;
+          view.sprite.texture = texture;
         }
       }
     }

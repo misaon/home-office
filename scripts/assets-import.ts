@@ -3,11 +3,16 @@
 //   bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--frames N] [--cells WxH]
 //                         [--no-key] [--tolerance 40]
 //
+// `<source.png>` may be a pattern such as "assets/inbox/spa-animate-*.png": the matching files, sorted by the
+// number in their name, become frames f0, f1, … of one animation. Frames of one animation are trimmed to their
+// common bounding box and scaled by one factor, so nothing jitters between frames.
+//
 // The source is any PNG a generator produced (typically ~1024 px with a transparent background; a flat
 // #FF00FF background is keyed out as a fallback). The converter trims, scales the art to the footprint of the
 // plan object (furniture) or to the character/bubble canvas, aligns it the way the renderer expects and writes
 // the frame files, then rewrites the manifest and lists what is still a stand-in.
 import { CELL_PX, officePlan } from "@ho/sim";
+import { Glob } from "bun";
 import { mkdir } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { describeManifest, writeManifest } from "./lib/manifest.ts";
@@ -16,6 +21,7 @@ import { decodePng } from "./lib/png-decode.ts";
 import {
   ALPHA_MIN,
   type Anchor,
+  type Box,
   clearFaint,
   crop,
   hasKeyBackground,
@@ -158,27 +164,71 @@ if (!Number.isInteger(frameCount) || frameCount < 1) {
 const tolerance = Number(values.tolerance);
 const target = resolveTarget(key, parseCells(values.cells));
 
-let image = decodePng(new Uint8Array(await Bun.file(source).arrayBuffer()));
-const keyed = values.key && hasKeyBackground(image, tolerance);
-if (keyed) {
-  image = keyOut(image, tolerance);
+const numberOf = (path: string): number => Number(/(\d+)\.png$/u.exec(path)?.[1] ?? 0);
+
+/** The files behind `source`: one path, or a `*` pattern expanded and sorted by the number in each file name. */
+function sourceFiles(pattern: string): string[] {
+  if (!pattern.includes("*")) {
+    return [pattern];
+  }
+  const files = [...new Glob(pattern).scanSync(".")].toSorted((a, b) => numberOf(a) - numberOf(b));
+  if (files.length === 0) {
+    fail(`no file matches ${pattern}`);
+  }
+  return files;
 }
-if (!hasTransparency(image)) {
-  fail(
-    `${source} has no transparent pixel: the background is baked in (a painted checkerboard?). Re-export with a real alpha channel, or on a flat #FF00FF background.`,
+
+const files = sourceFiles(source);
+if (files.length > 1 && frameCount > 1) {
+  fail("--frames splits one strip; a file sequence already provides the frames");
+}
+const rawFrames: Rgba[] = [];
+let keyed = false;
+for (const file of files) {
+  let image = decodePng(new Uint8Array(await Bun.file(file).arrayBuffer()));
+  keyed = values.key && hasKeyBackground(image, tolerance);
+  if (keyed) {
+    image = keyOut(image, tolerance);
+  }
+  if (!hasTransparency(image)) {
+    fail(
+      `${file} has no transparent pixel: the background is baked in (a painted checkerboard?). Re-export with a real alpha channel, or on a flat #FF00FF background.`,
+    );
+  }
+  rawFrames.push(
+    ...(files.length > 1 ? [clearFaint(image)] : splitStrip(clearFaint(image), frameCount)),
   );
 }
-image = clearFaint(image);
+const first = rawFrames[0];
+if (first === undefined) {
+  fail("nothing to import");
+}
+// One crop for the whole animation: the union of every frame's visible pixels, so frames never jitter.
+let bounds: Box | null = null;
+for (const [index, raw] of rawFrames.entries()) {
+  const b = opaqueBounds(raw);
+  if (b === null) {
+    fail(`frame ${String(index)} is fully transparent`);
+  }
+  bounds =
+    bounds === null
+      ? b
+      : {
+          x: Math.min(bounds.x, b.x),
+          y: Math.min(bounds.y, b.y),
+          w: Math.max(bounds.x + bounds.w, b.x + b.w) - Math.min(bounds.x, b.x),
+          h: Math.max(bounds.y + bounds.h, b.y + b.h) - Math.min(bounds.y, b.y),
+        };
+}
+if (bounds === null) {
+  fail("nothing visible to import");
+}
 const dir = `assets/src/${target.category}/${target.sprite}`;
 await mkdir(dir, { recursive: true });
 const report: string[] = [
-  `${source}: ${String(image.width)}×${String(image.height)}, ${keyed ? "flat #FF00FF background keyed out" : "transparent as delivered"}, ${String(frameCount)} frame(s)`,
+  `${files.length > 1 ? `${String(files.length)} files (${files[0] ?? ""} …)` : source}: ${String(first.width)}×${String(first.height)}, ${keyed ? "flat #FF00FF background keyed out" : "transparent as delivered"}, ${String(rawFrames.length)} frame(s)`,
 ];
-for (const [index, raw] of splitStrip(image, frameCount).entries()) {
-  const bounds = opaqueBounds(raw);
-  if (bounds === null) {
-    fail(`frame ${String(index)} is fully transparent`);
-  }
+for (const [index, raw] of rawFrames.entries()) {
   const art = target.trim ? crop(raw, bounds) : raw;
   const { frame, scale } = fit(art, target);
   const file = `${dir}/${target.animation}_f${String(index)}.png`;

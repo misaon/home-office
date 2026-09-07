@@ -23,6 +23,13 @@ const SURFACE_TILE: Record<Surface, string> = {
   wood: "tiles/floor-wood",
 };
 
+export type ObjectOptions = {
+  facing?: Facing;
+  blocks?: boolean;
+  artWidth?: number;
+  animation?: string;
+};
+
 /** Art width of a chair in cells (the seat footprint stays 1 × 1; see `Furniture.artWidth`). */
 const CHAIR_ART_W = 1.5;
 
@@ -66,6 +73,16 @@ export class Plan {
     }
   }
 
+  /** A solid block of wall (the elevator shaft), as opposed to `wall`, which outlines a rect. */
+  solid(rect: PlanRect): void {
+    const { walls, width } = this.plan.template;
+    for (let y = rect.y; y < rect.y + rect.h; y += 1) {
+      for (let x = rect.x; x < rect.x + rect.w; x += 1) {
+        walls[y * width + x] = 1;
+      }
+    }
+  }
+
   clear(rect: PlanRect): void {
     const { walls, width } = this.plan.template;
     for (let y = rect.y; y < rect.y + rect.h; y += 1) {
@@ -99,26 +116,29 @@ export class Plan {
     this.wall(rect);
   }
 
+  /**
+   * A placed object. `facing` is the side the object opens to (default south), `blocks` whether the footprint is
+   * impassable (default yes; chairs and wall decor are not), `artWidth` the art width in cells when it is wider
+   * than the footprint, `animation` the manifest animation to play (default the single `static` frame).
+   */
   object(
     id: string,
     label: string,
     sprite: string,
     rect: PlanRect,
-    facing: Facing = "s",
-    blocks = true,
-    artWidth?: number,
+    options: ObjectOptions = {},
   ): void {
     this.plan.objects.push({
       id,
       label,
       sprite: `furniture/${sprite}`,
-      animation: "static",
+      animation: options.animation ?? "static",
       at: { x: rect.x, y: rect.y },
       w: rect.w,
       h: rect.h,
-      blocks,
-      facing,
-      ...(artWidth === undefined ? {} : { artWidth }),
+      blocks: options.blocks ?? true,
+      facing: options.facing ?? "s",
+      ...(options.artWidth === undefined ? {} : { artWidth: options.artWidth }),
     });
   }
 
@@ -140,7 +160,17 @@ export class Plan {
     kind: "desk" | "boss-desk" = "desk",
   ): void {
     // Chairs in the reference are about 1.5 cells wide around a one-cell seat; the art is centred on it.
-    this.object(`${id}-chair`, "", chair, { ...seat, w: 1, h: 1 }, facing, false, CHAIR_ART_W);
+    this.object(
+      `${id}-chair`,
+      "",
+      chair,
+      { ...seat, w: 1, h: 1 },
+      {
+        facing,
+        blocks: false,
+        artWidth: CHAIR_ART_W,
+      },
+    );
     this.anchor(id, kind, seat, facing, group);
   }
 }

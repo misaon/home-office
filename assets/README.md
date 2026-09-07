@@ -39,6 +39,9 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   footprint**. Art may rise above the footprint (a monitor, a tall shelf, the elevator's frame); it never extends
   below or to the sides. A wrong width is scaled to the footprint and reported in the red banner.
 - One frame per state, `static_f0.png` for most objects; the mailbox has `empty_f0.png` and `full_f0.png`.
+  **Animated furniture** (the hot tub's `bubbles`) is a numbered frame set `bubbles_f0.png … bubbles_f9.png`; the
+  plan names the animation the object plays, the renderer loops it at 120 ms per frame and falls back to `static`
+  while the frames are missing. Frames must share one canvas — the converter guarantees that for a sequence.
 - Desks (footprints measured from the reference) are per room and their keys are the delivery file names:
   `desk-developer` (5 × 3, six of them), `desk-qa` / `desk-qa-rotated` and `desk-analyst` / `desk-analyst-rotated`
   (5 × 3 each, back to back as one long desk), `desk-boss-rotated` (6 × 3), `desk-reception-rotated` (8 × 3).
@@ -97,8 +100,10 @@ bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--fr
 - Uses the delivered alpha, trims the art to the visible object (alpha below 16/255 counts as empty — generators
   leave an invisible halo far outside the object), scales it with an area-averaging filter to the footprint width
   (furniture) or into the 2 × 2 canvas (characters, 2 × 5 cells) or 1 × 1 (bubbles), anchors it bottom-left or bottom-centre,
-  writes the frames and refreshes the manifest. `--frames N` splits a horizontal strip of equal frames;
-  `--cells WxH` overrides the size for objects outside the plan.
+  writes the frames and refreshes the manifest. `--frames N` splits a horizontal strip of equal frames; a quoted `*` pattern
+  (`"assets/inbox/spa-animate-*.png"`) imports a numbered file sequence as frames f0, f1, … — every frame is cropped
+  to the common bounding box and scaled by one factor so nothing jitters; `--cells WxH` overrides the size for
+  objects outside the plan.
 - A delivery without a single transparent pixel is refused: the background was baked in (a painted
   checkerboard is the classic failure). Re-export with real alpha, or as a fallback on a flat `#FF00FF`
   background — when all four corners are magenta the converter keys it out (tolerance 40 per channel;
