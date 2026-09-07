@@ -57,8 +57,11 @@ export function architecture(
     x >= 0 && y >= 0 && x < width && y < height && walls[y * width + x] === 1;
   const isFloor = (x: number, y: number): boolean =>
     x >= 0 && y >= 0 && x < width && y < height && walls[y * width + x] !== 1;
-  // Walls as painted in the reference: a dark cap on the wall line and, on horizontal runs, a light face one and
-  // a half cells tall hanging below it (over the room's first row); vertical runs are a dark band with a lit edge.
+  // Walls as painted in the reference: a grey cap on the wall line (the outer wall black over grey), and on
+  // horizontal runs a light face one cell tall hanging below it (over the room's first row) with a shadow line;
+  // vertical runs are a grey band with dark outlines.
+  const outer = (x: number, y: number): boolean =>
+    x === 0 || y === 0 || x === width - 1 || y === height - 1;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       if (!isWall(x, y) || isGlass(x, y)) {
@@ -67,15 +70,18 @@ export function architecture(
       const px0 = x * TILE;
       const py0 = y * TILE;
       const horizontal = isWall(x - 1, y) || isWall(x + 1, y);
+      g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallCap);
+      if (outer(x, y) && horizontal) {
+        g.rect(px0, py0, TILE, TILE / 2).fill(PALETTE.wallOuter);
+      }
       if (horizontal && isFloor(x, y + 1)) {
-        g.rect(px0, py0, TILE, TILE * 0.55).fill(PALETTE.wallCap);
-        g.rect(px0, py0 + TILE * 0.55, TILE, TILE * 1.45).fill(PALETTE.wallFace);
-        g.rect(px0, py0 + TILE * 1.9, TILE, TILE * 0.1).fill(PALETTE.wallEdge);
-      } else if (horizontal) {
-        g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallCap);
-      } else {
-        g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallCap);
-        g.rect(px0 + TILE - 4, py0, 4, TILE).fill(PALETTE.wallFace);
+        g.rect(px0, py0 + TILE, TILE, TILE).fill(PALETTE.wallFace);
+        g.rect(px0, py0 + TILE * 2 - 3, TILE, 3).fill(PALETTE.wallEdge);
+      } else if (!horizontal) {
+        g.rect(px0, py0, 2, TILE)
+          .fill(PALETTE.wallOuter)
+          .rect(px0 + TILE - 2, py0, 2, TILE)
+          .fill(PALETTE.wallOuter);
       }
     }
   }

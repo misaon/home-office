@@ -7,15 +7,17 @@ export const TILE = CELL_PX;
 
 /** Approved palette (docs/OFFICE-ART.md): warm orange floors, teal furniture, dark wall caps. */
 export const PALETTE = {
-  corridor: 0xb88150,
-  carpet: 0x315e5b,
-  rugGreen: 0x4d7d5c,
-  rugBeige: 0xd9bb8e,
-  tile: 0xc49a66,
-  wood: 0x9c6743,
-  wallFace: 0xe6d6b4,
-  wallCap: 0x3c4245,
-  wallEdge: 0xb89c72,
+  // Sampled from the approved reference (medians of clean regions).
+  corridor: 0xd06c20,
+  carpet: 0x21665b,
+  rugGreen: 0x62613b,
+  rugBeige: 0xbf8045,
+  tile: 0xd06c20,
+  wood: 0xc16019,
+  wallFace: 0xd39d6b,
+  wallCap: 0x504d48,
+  wallOuter: 0x2a2926,
+  wallEdge: 0xb38958,
   teal: 0x246a61,
   wood2: 0x805d38,
   trim: 0xd9af70,
@@ -65,13 +67,8 @@ function desk(g: Graphics, f: PlanObject): void {
 }
 
 /** Geometric stand-in for an object whose sprite has not been delivered yet; keyed by the sprite name. */
-export function standIn(f: PlanObject): Container {
-  const root = new Container({ x: f.at.x * TILE, y: f.at.y * TILE });
-  root.zIndex = (f.at.y + f.h) * TILE - (f.blocks ? 1 : 3);
-  const g = new Graphics();
-  const w = f.w * TILE;
-  const h = f.h * TILE;
-  const kind = f.sprite.slice("furniture/".length);
+/** Stand-in shapes for decor and small props; false when `kind` is not one of them. */
+function decorStandIn(g: Graphics, kind: string, f: PlanObject, w: number, h: number): boolean {
   const cx = w / 2;
   if (kind.includes("chair")) {
     // Seat and backrest, centred on the footprint (chair art is wider than its seat cell).
@@ -89,6 +86,7 @@ export function standIn(f: PlanObject): Container {
       .fill(0x2f7a3a);
   } else if (
     kind.startsWith("picture") ||
+    kind === "picture-tall" ||
     kind === "window" ||
     kind === "aquarium" ||
     kind === "wall-screen" ||
@@ -106,6 +104,29 @@ export function standIn(f: PlanObject): Container {
       .fill(0x4a3a2a)
       .rect(2, 2, w - 4, h - 4)
       .fill(fill);
+  } else if (kind === "backsplash") {
+    g.rect(0, 0, w, h).fill(0xd9cfc2);
+    for (let yy = 0; yy < h; yy += 8) {
+      for (let xx = (yy / 8) % 2 === 0 ? 0 : 6; xx < w; xx += 12) {
+        g.rect(xx + 1, yy + 1, 10, 6).fill(0xeae2d6);
+      }
+    }
+  } else if (kind === "string-lights") {
+    g.rect(0, 2, w, 1).fill(0x3a2a1a);
+    for (let xx = 8; xx < w; xx += 30) {
+      g.rect(xx, 2, 2, 8)
+        .fill(0x3a2a1a)
+        .circle(xx + 1, 13, 3)
+        .fill(0xffc24a);
+    }
+  } else if (kind === "railing") {
+    g.rect(0, 6, w, h - 8)
+      .fill({ color: 0x8de0df, alpha: 0.35 })
+      .rect(0, 4, w, 3)
+      .fill(0x8a9296);
+    for (let xx = 0; xx <= w - 6; xx += 96) {
+      g.rect(xx, 0, 6, h).fill(0x6a7276);
+    }
   } else if (kind === "dartboard") {
     g.circle(cx, h / 2, Math.min(w, h) / 2)
       .fill(0x4a3a2a)
@@ -131,7 +152,15 @@ export function standIn(f: PlanObject): Container {
     g.roundRect(0, 0, w, h, 6).fill(0x2f7a3a);
   } else if (kind === "bin") {
     g.rect(3, 2, w - 6, h - 2).fill(0x7a7f80);
-  } else if (kind.startsWith("desk")) {
+  } else {
+    return false;
+  }
+  return true;
+}
+
+/** Stand-in shapes for furniture with a recognisable silhouette; false when `kind` is not one of them. */
+function furnitureStandIn(g: Graphics, kind: string, f: PlanObject, w: number, h: number): boolean {
+  if (kind.startsWith("desk")) {
     desk(g, f);
   } else if (kind === "hot-tub") {
     g.rect(0, 0, w, h)
@@ -173,6 +202,20 @@ export function standIn(f: PlanObject): Container {
   } else if (kind === "mailbox") {
     g.rect(2, 2, 12, 12).fill(0x8b3a2f).rect(4, 5, 8, 3).fill(0xf8deb0);
   } else {
+    return false;
+  }
+  return true;
+}
+
+export function standIn(f: PlanObject): Container {
+  const root = new Container({ x: f.at.x * TILE, y: f.at.y * TILE });
+  root.zIndex = (f.at.y + f.h) * TILE - (f.blocks ? 1 : 3);
+  const g = new Graphics();
+  const w = f.w * TILE;
+  const h = f.h * TILE;
+  const kind = f.sprite.slice("furniture/".length);
+  if (!decorStandIn(g, kind, f, w, h) && !furnitureStandIn(g, kind, f, w, h)) {
+    // Anything else: a wooden box with the object's label.
     g.rect(2, 4, w, h)
       .fill({ color: 0x101e24, alpha: 0.3 })
       .rect(0, 0, w, h)

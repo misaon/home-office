@@ -70,6 +70,7 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | ------------------------ | ----------------- | ----- | ----------------------------------------------------------------------------------- | ----------------------------------------- |
 | `aquarium`               | 3 × 2             | 1     | dev                                                                                 | walk-through                              |
 | `ashtray`                | 1 × 1             | 1     | spa                                                                                 |                                           |
+| `backsplash`             | 13 × 2            | 1     | kitchen                                                                             | walk-through                              |
 | `bin`                    | 1 × 1             | 1     | corridor                                                                            |                                           |
 | `bookshelf`              | 4 × 3             | 2     | dev                                                                                 |                                           |
 | `boss-visitors`          | 7 × 3             | 1     | boss                                                                                |                                           |
@@ -115,11 +116,14 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | `picture`                | 3 × 2             | 3     | dev, qa, analyst                                                                    | walk-through                              |
 | `picture`                | 2 × 2             | 3     | reception, lounge                                                                   | walk-through                              |
 | `picture-small`          | 2 × 1             | 3     | dev                                                                                 | walk-through                              |
+| `picture-tall`           | 1 × 4             | 1     | dev                                                                                 | walk-through                              |
 | `plant`                  | 1 × 1             | 16    | boss, dev, qa, analyst, corridor, reception, meeting, kitchen, lounge, terrace, spa | art 2 cells wide, centred                 |
 | `plant`                  | 2 × 1             | 1     | toilets                                                                             |                                           |
 | `plant-table`            | 2 × 2             | 1     | dev                                                                                 |                                           |
+| `planter-tall`           | 2 × 1             | 1     | dev                                                                                 |                                           |
 | `projector`              | 2 × 2             | 1     | meeting                                                                             |                                           |
 | `radiator`               | 1 × 4             | 1     | analyst                                                                             | walk-through                              |
+| `railing`                | 30 × 2            | 1     | terrace                                                                             | walk-through                              |
 | `rug-beige`              | 8 × 8             | 1     | lounge                                                                              | walk-through; floor layer                 |
 | `rug-green`              | 10 × 7            | 1     | kitchen                                                                             | walk-through; floor layer                 |
 | `rug-teal`               | 8 × 8             | 3     | boss, qa, analyst                                                                   | walk-through; floor layer                 |
@@ -128,6 +132,7 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | `sinks`                  | 2 × 4             | 1     | toilets                                                                             |                                           |
 | `spa`                    | 5 × 6             | 1     | spa                                                                                 | animation `bubbles`                       |
 | `spa-bench`              | 2 × 2             | 1     | spa                                                                                 |                                           |
+| `string-lights`          | 20 × 1            | 1     | terrace                                                                             | walk-through                              |
 | `terrace-chair`          | 2 × 1             | 4     | terrace                                                                             | walk-through                              |
 | `terrace-chair`          | 2 × 2             | 2     | terrace                                                                             | walk-through                              |
 | `terrace-round-table`    | 3 × 4             | 1     | terrace                                                                             |                                           |
@@ -138,6 +143,7 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | `wall-shelf`             | 7 × 2             | 1     | reception                                                                           | walk-through                              |
 | `window`                 | 1 × 4             | 1     | boss                                                                                | walk-through                              |
 | `window`                 | 4 × 2             | 3     | dev                                                                                 | walk-through                              |
+| `window`                 | 4 × 1             | 2     | toilets, lounge                                                                     | walk-through                              |
 
 Characters: sets `boss`, `agent-a`, `agent-b`, `agent-c` and `postman` are the placeholders in use today (32 × 32
 frames from the 16 px era; the renderer scales any set to two cells tall). A delivered set replaces one by name: frames 2 cells wide × 5 tall (D21),

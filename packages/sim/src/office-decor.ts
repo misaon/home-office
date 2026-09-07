@@ -31,7 +31,10 @@ export function decor(p: Plan): void {
   p.object("floor-lamp", "", "floor-lamp", { x: 12, y: 5, w: 1, h: 1 }, { artWidth: 2 });
   plant("boss-n", 3, 5);
   plant("boss-s", 2, 14);
-  // Developers: windows and an aquarium along the north wall, a picture, a plant stand, small pictures south.
+  // Developers: a tall picture leaning on the west wall, a planter between the desk blocks, windows and an
+  // aquarium along the north wall, a picture, a plant stand, small pictures south.
+  wall("picture-dev-w", "picture-tall", 15, 6, 1, 4);
+  p.object("planter", "", "planter-tall", { x: 35, y: 12, w: 2, h: 1 });
   plant("dev-w", 16, 5);
   wall("window-dev-1", "window", 23, 1, 4, 2);
   wall("aquarium", "aquarium", 28, 1, 3, 2);
@@ -59,13 +62,19 @@ export function decor(p: Plan): void {
   wall("wall-screen", "wall-screen", 40, 21, 5, 2);
   p.object("projector", "", "projector", { x: 37, y: 22, w: 2, h: 2 });
   plant("meeting", 46, 24);
-  // Kitchen: plant beside the fridge. Toilets: plant below the sinks.
+  // Kitchen: tiled backsplash on the north wall, plant beside the fridge. Toilets: plant below the sinks.
+  wall("backsplash", "backsplash", 54, 21, 13, 2);
   plant("kitchen", 67, 24);
   p.object("plant-toilets", "", "plant", { x: 17, y: 44, w: 2, h: 1 });
   // Lounge: two pictures on the north wall, plant by the foosball table.
   wall("picture-lounge-1", "picture", 35, 34, 2, 2);
   wall("picture-lounge-2", "picture", 38, 34, 2, 2);
   plant("lounge", 43, 37);
+  // South outer wall: two windows. Terrace: string lights under the glass wall, glass railing along the edge.
+  wall("window-south-1", "window", 7, 45, 4, 1);
+  wall("window-south-2", "window", 34, 45, 4, 1);
+  wall("string-lights", "string-lights", 49, 34, 20, 1);
+  wall("railing", "railing", 49, 44, 30, 2);
   // Terrace and spa: hedge along the west edge, bushes under the glass wall, potted plants.
   p.object("hedge", "", "hedge", { x: 49, y: 34, w: 2, h: 11 });
   p.object("bushes", "", "bushes", { x: 66, y: 34, w: 4, h: 2 });

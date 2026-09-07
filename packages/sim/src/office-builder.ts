@@ -21,7 +21,7 @@ export type OfficePlan = {
 export const SURFACE_TILE: Record<Surface, string> = {
   office: "tiles/floor-wood",
   room: "tiles/floor-room",
-  tile: "tiles/floor-tile",
+  tile: "tiles/floor-room",
   wood: "tiles/floor-deck",
 };
 
