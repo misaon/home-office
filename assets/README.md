@@ -68,10 +68,12 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
 
 **Characters**
 
-- Canvas 2 cells wide × 5 cells tall per frame (48 × 120 at `CELL_PX` 24; people in the reference stand ≈5 cells
-  tall and 1.7 wide), feet on the bottom row, centred horizontally, the same canvas for every frame of a set. The
-  renderer places the bottom centre on the actor's cell; a set with another canvas width is scaled to two cells
-  wide (the 32 px placeholders become 48 × 48).
+- Canvas 2 cells wide × 5 cells tall per frame (48 × 120 at `CELL_PX` 24), feet on the bottom row, centred
+  horizontally, the same canvas for every frame of a set; the canvas leaves headroom. Draw the figure about
+  **1.4× as tall as a desk with its monitor** — with the delivered desks (2.6 cells) that is ≈3.6 cells standing
+  and ≈2.9 seated, which is what the placeholders use; the reference keeps the same ratio with its taller desks.
+  The renderer places the bottom centre on the actor's cell; a set with another canvas width is scaled to two
+  cells wide.
 - Lookup for an actor doing `activity` while facing `dir`: `<activity>_<dir>` → `<activity>_s` → `<activity>` →
   `idle_<dir>` → `idle_s` → `static`. Any frame count works; frame timing is fixed per activity: `walk` 140 ms,
   `type` 180 ms, `celebrate` 250 ms, `idle` 600 ms, `sleep` 900 ms, everything else 320 ms.

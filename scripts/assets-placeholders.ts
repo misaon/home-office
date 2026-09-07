@@ -77,37 +77,40 @@ const px = (img: Rgba, x: number, y: number, w: number, h: number, c: Rgb): void
   ]);
 };
 
-/** One frame: a chunky figure ≈4.4 cells tall (≈3.4 seated), centred, feet on the bottom row. */
+/**
+ * One frame: a chunky figure ≈3.6 cells tall (≈2.9 seated) — about 1.4× the delivered desks with their monitors,
+ * the ratio the reference keeps — centred, feet on the bottom row of the 2 × 5 canvas (headroom stays free).
+ */
 function figure(p: Palette, f: Frame): Rgba {
   const img = blank(W, H);
   const bob = f.bob ?? 0;
   const seated = f.seated ?? false;
   const phase = f.phase ?? 0;
   const side = f.facing === "e";
-  const bodyW = side ? 18 : 24;
+  const bodyW = side ? 16 : 20;
   const cx = W / 2;
   // Vertical layout from the feet up.
-  const feetTop = H - 8;
-  const legH = seated ? 22 : 40;
+  const feetTop = H - 6;
+  const legH = seated ? 18 : 32;
   const legTop = feetTop - legH;
-  const torsoH = 34;
+  const torsoH = 28;
   const torsoTop = legTop - torsoH - bob;
-  const headH = 22;
+  const headH = 18;
   const headTop = torsoTop - headH - 2;
   const outline: Rgb = [30, 26, 30];
   // Legs and shoes.
-  const legW = side ? 9 : 10;
+  const legW = side ? 8 : 8;
   const legGap = side ? 0 : 4;
   const lx = cx - legGap / 2 - legW;
   const rx = cx + legGap / 2;
-  const lead = seated ? 0 : phase * 5;
+  const lead = seated ? 0 : phase * 4;
   px(img, lx + (side ? -lead : 0), legTop, legW, legH, p.pants);
   px(img, rx + (side ? lead : 0), legTop, legW, legH, p.pants);
-  px(img, lx - 1 + (side ? -lead : 0), feetTop, legW + 2, 8, p.shoes);
-  px(img, rx - 1 + (side ? lead : 0), feetTop, legW + 2, 8, p.shoes);
+  px(img, lx - 1 + (side ? -lead : 0), feetTop, legW + 2, 6, p.shoes);
+  px(img, rx - 1 + (side ? lead : 0), feetTop, legW + 2, 6, p.shoes);
   if (seated) {
     // Thighs reach forward over the chair.
-    px(img, cx - bodyW / 2, legTop - 6, bodyW, 8, p.pants);
+    px(img, cx - bodyW / 2, legTop - 5, bodyW, 7, p.pants);
   }
   // Torso.
   px(img, cx - bodyW / 2, torsoTop, bodyW, torsoH, p.shirt);
@@ -116,30 +119,30 @@ function figure(p: Palette, f: Frame): Rgba {
     px(img, cx - 2, torsoTop + 2, 4, 18, p.accent);
   }
   // Arms.
-  const armW = 7;
-  const armH = 28;
+  const armW = 6;
+  const armH = 22;
   const armTop = torsoTop + 2;
   const drawArm = (x: number, mode: Arms, swing: number): void => {
     switch (mode) {
       case "up":
-        px(img, x, torsoTop - 24, armW, 26, p.shirt);
-        px(img, x, torsoTop - 30, armW, 6, p.skin);
+        px(img, x, torsoTop - 20, armW, 22, p.shirt);
+        px(img, x, torsoTop - 25, armW, 5, p.skin);
         break;
       case "forward":
-        px(img, x, armTop + 14, armW, 12, p.shirt);
-        px(img, cx - 10, armTop + 22, 20, 6, p.skin);
+        px(img, x, armTop + 11, armW, 10, p.shirt);
+        px(img, cx - 9, armTop + 18, 18, 5, p.skin);
         break;
       case "behind":
-        px(img, x, headTop + 6, armW, 20, p.shirt);
+        px(img, x, headTop + 5, armW, 16, p.shirt);
         break;
       case "right":
-        px(img, cx + 4, armTop + 6, 18, 7, p.shirt);
-        px(img, cx + 22, armTop + 5, 6, 9, p.skin);
+        px(img, cx + 3, armTop + 5, 15, 6, p.shirt);
+        px(img, cx + 18, armTop + 4, 5, 8, p.skin);
         break;
       case "down":
       case "swing":
         px(img, x, armTop + swing, armW, armH, p.shirt);
-        px(img, x, armTop + swing + armH, armW, 6, p.skin);
+        px(img, x, armTop + swing + armH, armW, 5, p.skin);
         break;
     }
   };
@@ -153,35 +156,35 @@ function figure(p: Palette, f: Frame): Rgba {
     }
   }
   // Head: skin, hair cap, face for s/e.
-  const headW = side ? 18 : 22;
+  const headW = side ? 15 : 18;
   px(img, cx - headW / 2, headTop, headW, headH, p.skin);
-  px(img, cx - headW / 2, headTop, headW, f.facing === "n" ? headH - 4 : 8, p.hair);
+  px(img, cx - headW / 2, headTop, headW, f.facing === "n" ? headH - 3 : 7, p.hair);
   if (f.facing !== "n") {
-    const eyeY = headTop + 11;
+    const eyeY = headTop + 9;
     const closed = f.eyes === "closed";
     if (!side) {
-      px(img, cx - 6, eyeY, 3, closed ? 1 : 3, outline);
+      px(img, cx - 5, eyeY, 2, closed ? 1 : 2, outline);
     }
-    px(img, cx + 3, eyeY, 3, closed ? 1 : 3, outline);
+    px(img, cx + 3, eyeY, 2, closed ? 1 : 2, outline);
   }
   // Props.
   switch (f.prop) {
     case "cup":
-      px(img, cx + 6, headTop + 16, 8, 8, [250, 250, 250]);
+      px(img, cx + 5, headTop + 13, 7, 7, [250, 250, 250]);
       break;
     case "cigarette":
-      px(img, cx + 8, headTop + 17, 10, 2, [250, 250, 250]);
-      px(img, cx + 18, headTop + 10 - bob * 3, 3, 3, [200, 200, 200]);
+      px(img, cx + 7, headTop + 14, 8, 2, [250, 250, 250]);
+      px(img, cx + 15, headTop + 8 - bob * 3, 3, 3, [200, 200, 200]);
       break;
     case "folder":
-      px(img, cx + 22, armTop, 12, 14, p.accent);
+      px(img, cx + 18, armTop, 10, 12, p.accent);
       break;
     case "bag":
-      px(img, cx - bodyW / 2 - 6, torsoTop + 20 + bob * 4, 14, 14, p.accent);
+      px(img, cx - bodyW / 2 - 5, torsoTop + 16 + bob * 3, 12, 12, p.accent);
       break;
     case "zz":
-      px(img, cx + 14, headTop - 8 - bob * 4, 4, 4, [250, 250, 250]);
-      px(img, cx + 20, headTop - 16 - bob * 4, 3, 3, [250, 250, 250]);
+      px(img, cx + 12, headTop - 7 - bob * 3, 4, 4, [250, 250, 250]);
+      px(img, cx + 17, headTop - 13 - bob * 3, 3, 3, [250, 250, 250]);
       break;
     case undefined:
       break;
