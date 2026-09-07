@@ -2,6 +2,7 @@
 import { type PlanGlass, type PlanRect, type PlanRoom, roomFloorKey, SURFACE_TILE } from "@ho/sim";
 import { Container, Graphics, type Texture, TilingSprite } from "pixi.js";
 import { label, PALETTE, surfaceColor, TILE } from "./stand-ins.ts";
+import { drawWalls } from "./walls.ts";
 
 /**
  * Floors, walls and glass as one static layer. Floors are painted cell by cell from the template: every surface
@@ -55,48 +56,7 @@ export function architecture(
     }
   }
   const g = new Graphics();
-  const isGlass = (x: number, y: number): boolean =>
-    glass.some((p) => x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h);
-  const isWall = (x: number, y: number): boolean =>
-    x >= 0 && y >= 0 && x < width && y < height && walls[y * width + x] === 1;
-  // Walls as painted in the reference. A horizontal wall with floor above gets a grey cap and, unless a thick
-  // block continues below, a light face one cell tall over the next row with a shadow line — also across corners,
-  // where the vertical wall starts under the face instead of cutting it. Cells inside a thick block are the block's
-  // face. Vertical runs are grey bands with dark outlines. The bottom outer wall is a plain cap (nothing below).
-  const horizontalWall = (x: number, y: number): boolean =>
-    isWall(x, y) && (isWall(x - 1, y) || isWall(x + 1, y));
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      if (!isWall(x, y) || isGlass(x, y)) {
-        continue;
-      }
-      const px0 = x * TILE;
-      const py0 = y * TILE;
-      const horizontal = horizontalWall(x, y);
-      const underHorizontal = horizontalWall(x, y - 1) && !isGlass(x, y - 1);
-      if (horizontal && underHorizontal) {
-        // Second and further rows of a thick block: its light face.
-        g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallFace);
-      } else if (horizontal) {
-        g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallCap);
-        if (y + 1 < height && !horizontalWall(x, y + 1)) {
-          g.rect(px0, py0 + TILE, TILE, TILE).fill(PALETTE.wallFace);
-          g.rect(px0, py0 + TILE * 2 - 3, TILE, 3).fill(PALETTE.wallEdge);
-        }
-      } else if (underHorizontal) {
-        // Corner: the face of the wall above runs across; the vertical band begins one row lower.
-        g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallFace);
-        g.rect(px0, py0 + TILE - 3, TILE, 3).fill(PALETTE.wallEdge);
-      } else {
-        g.rect(px0, py0, TILE, TILE)
-          .fill(PALETTE.wallCap)
-          .rect(px0, py0, 2, TILE)
-          .fill(PALETTE.wallOuter)
-          .rect(px0 + TILE - 2, py0, 2, TILE)
-          .fill(PALETTE.wallOuter);
-      }
-    }
-  }
+  drawWalls(layer, g, { walls, glass, width, height }, floorTexture);
   layer.addChild(g);
   for (const r of rooms) {
     const labelX = r.x + (r.id === "toilets" ? 10 : 1);

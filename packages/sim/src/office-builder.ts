@@ -34,6 +34,7 @@ export type ObjectOptions = {
   facing?: Facing;
   blocks?: boolean;
   artWidth?: number;
+  artHeight?: number;
   animation?: string;
   playback?: "loop" | "near" | "sim";
   layer?: "floor" | "objects";
@@ -102,8 +103,18 @@ export class Plan {
     }
   }
 
-  /** A walled room; `open` rooms only paint their floor (reception, terrace, spa). */
-  room(id: string, label: string, rect: PlanRect, surface: Surface = "room", open = false): void {
+  /**
+   * A walled room; `open` rooms only paint their floor (reception, terrace, spa). `floorKey` makes the room share
+   * another floor's tile (the spa is decked like the terrace).
+   */
+  room(
+    id: string,
+    label: string,
+    rect: PlanRect,
+    surface: Surface = "room",
+    open = false,
+    floorKey?: string,
+  ): void {
     this.plan.rooms.push({ id, label, ...rect, surface });
     if (!open) {
       this.wall(rect);
@@ -112,7 +123,7 @@ export class Plan {
     // Every room has its own floor tile key (`tiles/floor-<room id>`); rooms on the `office` surface (the
     // reception) share the corridor's floor.
     const inset = open ? 0 : 1;
-    const key = surface === "office" ? SURFACE_TILE.office : roomFloorKey(id);
+    const key = floorKey ?? (surface === "office" ? SURFACE_TILE.office : roomFloorKey(id));
     const { floor, width } = this.plan.template;
     for (let y = rect.y + inset; y < rect.y + rect.h - inset; y += 1) {
       for (let x = rect.x + inset; x < rect.x + rect.w - inset; x += 1) {
@@ -154,6 +165,7 @@ export class Plan {
       blocks: options.blocks ?? true,
       facing: options.facing ?? "s",
       ...(options.artWidth === undefined ? {} : { artWidth: options.artWidth }),
+      ...(options.artHeight === undefined ? {} : { artHeight: options.artHeight }),
       ...(options.playback === undefined ? {} : { playback: options.playback }),
       ...(options.layer === undefined ? {} : { layer: options.layer }),
       ...(options.artOffsetY === undefined ? {} : { artOffsetY: options.artOffsetY }),

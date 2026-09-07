@@ -1,13 +1,28 @@
 import type { Plan } from "./office-builder.ts";
 
+/** Number of delivered potted plant designs. */
+const POTTED_PLANTS = 5;
+/** Every potted plant stands three cells tall whatever its shape (the art is sized by height). */
+const PLANT_ART_H = 3;
+
 /**
  * Props measured on the approved reference: plants (footprint = the pot, art two cells wide and centred), floor
  * lamp, pictures and windows on wall faces (non-blocking, drawn where the painting hangs), hedges and bins.
  * Keys double as delivery file names; the same key is shared by identical props.
  */
 export function decor(p: Plan): void {
-  const plant = (id: string, x: number, y: number): void => {
-    p.object(`plant-${id}`, "", "plant", { x, y, w: 1, h: 1 }, { artWidth: 2 });
+  // Five delivered potted plants (`potted-plant-1` … `-5`) take turns around the office.
+  let plants = 0;
+  const plant = (id: string, x: number, y: number, w = 1): void => {
+    const variant = String((plants % POTTED_PLANTS) + 1);
+    plants += 1;
+    p.object(
+      `plant-${id}`,
+      "",
+      `potted-plant-${variant}`,
+      { x, y, w, h: 1 },
+      { artHeight: PLANT_ART_H },
+    );
   };
   const wall = (id: string, sprite: string, x: number, y: number, w: number, h: number): void => {
     p.object(id, "", sprite, { x, y, w, h }, { blocks: false });
@@ -64,7 +79,7 @@ export function decor(p: Plan): void {
   plant("meeting", 46, 24);
   // Kitchen: plant beside the fridge. Toilets: plant below the sinks.
   plant("kitchen", 67, 24);
-  p.object("plant-toilets", "", "plant", { x: 17, y: 44, w: 2, h: 1 });
+  plant("toilets", 17, 44, 2);
   // Lounge: two pictures on the north wall, plant by the foosball table.
   wall("picture-lounge-1", "picture", 35, 34, 2, 2);
   wall("picture-lounge-2", "picture", 38, 34, 2, 2);

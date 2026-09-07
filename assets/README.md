@@ -52,19 +52,55 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   `assets/src/<category>/<sprite>/import.json`, and `--like` reuses them verbatim, so a layer that is only door
   panels in the middle of the canvas lands exactly where it sits over the cabin. Layers must be drawn on the same
   canvas size. For a lone sequence whose outline really changes between frames, `--no-align` keeps the shared crop.
-  When the base layer carries surroundings the plan already draws (the wall around the shaft), fix its crop with
-  `--crop x,y,w,h` in source pixels; the layers imported with `--like` inherit it.
+  Layers carry **no wall**: the shaft face behind the elevator is the plan's thick block, drawn from the wall
+  tiles. Crop the base layer to the union of all layers' visible art with `--crop x,y,w,h` in source pixels (the
+  delivered set: `elevator-back.png` → `elevator-cabin` with `--crop 295,227,786,900`, then `elevator-doors-*.png`
+  and `elevator-front-frame.png` with `--like`); the plan sizes the art at 6.25 cells across (`artWidth`), centred
+  on the 7-cell doorway, with the frame's feet a fifth of a cell out on the floor (`artOffsetY`), as measured on
+  the reference.
+
+- **Art sized by height** (`artHeight` in the plan): the converter scales the art to stand exactly that many cells
+  tall and lets the width follow, and the renderer centres it on the footprint. The five potted plants
+  (`potted-plant-1` … `-5`, 1 × 1 pots) are all three cells tall this way, whatever their shape — deliver them at
+  any size and aspect. Everything else is sized by width (`artWidth`, or the footprint width).
 
 **Floor tiles**
 
 - `tiles/<key>/static_f0.png`: a **seamless** square texture repeated over the cells of one floor. The corridor
   uses `floor-wood` (surface `office`); every room has its own key `floor-<room id>` — `floor-boss`, `floor-dev`,
   `floor-qa`, `floor-analyst`, `floor-meeting`, `floor-kitchen`, `floor-toilets`, `floor-lounge`, `floor-call-1`,
-  `floor-call-2`, `floor-reception`, `floor-terrace`, `floor-spa`. Until a room's tile lands it is a flat colour;
-  rugs are separate floor-layer objects (`rug-teal`, `rug-green`, `rug-beige`). Import with the tile size in cells,
-  e.g.
-  `bun run assets:import assets/inbox/floor-wood.png tiles/floor-wood/static --cells 6x6` → 144 × 144 px, the
-  pattern repeating every six cells. Surfaces without a delivered tile keep their flat palette colour.
+  `floor-call-2`, `floor-reception`, `floor-terrace` (the spa is one decked area with the terrace and shares its
+  tile). Until a room's tile lands it is a flat colour; rugs are separate floor-layer objects (`rug-teal`,
+  `rug-green`, `rug-beige`). Import with the tile size in cells — **3 × 3 cells** (72 × 72 px) is the size that reads
+  right: a marble slab or a plank is then about one cell, as in the reference — e.g.
+  `bun run assets:import assets/inbox/floor-wood.png tiles/floor-wood/static --cells 3x3`. Surfaces without a
+  delivered tile keep their flat palette colour.
+
+**Walls**
+
+Walls are one cell thick in the plan and assembled from four seamless tiles; deliver them at any size on a
+transparent or opaque background and import each with its size in cells (the pattern repeats along the run; a
+strip several cells long avoids visible repetition):
+
+| Key          | Where it is drawn                                                                        | Suggested delivery       |
+| ------------ | ---------------------------------------------------------------------------------------- | ------------------------ |
+| `wall-cap-h` | top of every horizontal wall (the dark cap seen from above), incl. the outer walls       | strip 4 × 1 cells        |
+| `wall-face`  | the light wall face one cell tall right under a horizontal wall (over the room's first   | strip 4 × 1 cells, with  |
+|              | row, across corners) and the bottom row of thick blocks — put the skirting on its bottom | the skirting in the tile |
+| `wall-block` | inner rows of thick blocks (the elevator shaft): plain face without skirting             | 4 × 4 cells              |
+| `wall-cap-v` | vertical walls: a band with its two edges                                                | strip 1 × 4 cells        |
+
+`bun run assets:import assets/inbox/wall-cap-h.png tiles/wall-cap-h/static --cells 4x1` and so on. A delivered
+strip usually has closed, rounded ends: import only its interior with `--crop x,y,w,h`, a whole number of cells
+long (band thickness = one cell), so the run tiles without a seam — the delivered set was imported as
+`wall-cap-h` 11 × 1 (`--crop 146,267,1881,171`), `wall-face` 6 × 1 (`--crop 222,214,1728,288`), `wall-cap-v`
+1 × 12 (`--crop 286,174,152,1824`) and `wall-block` 4 × 4. Junctions, corners and ends are composed by the
+renderer from the two straight cap tiles the way the reference paints them — the caps merge into one surface and
+the dark outline runs only around the outside; a vertical band runs straight from the cap through the face row —
+so no corner or T tiles are needed. The renderer swaps the outer **3 px** of a cap tile (at 24 px per cell) at
+every joint: keep the outline and its highlight inside that zone. Colours to match: cap #676768, face #f1be7b,
+skirting #977250 — the wall piece painted into the elevator sprite. Until a class is delivered it keeps its flat
+shape.
 
 **Characters**
 

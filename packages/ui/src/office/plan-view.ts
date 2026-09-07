@@ -93,24 +93,7 @@ export function createPlanView(
       layer.addChild(standIn(item));
       continue;
     }
-    // Art sits with its bottom-left corner on the footprint's bottom-left cell; art declared wider than the
-    // footprint (chairs) is centred on it instead. A wrong width is scaled to the contract size and reported.
-    const bottom = (item.at.y + item.h + (item.artOffsetY ?? 0)) * TILE;
-    const artWidth = (item.artWidth ?? item.w) * TILE;
-    const sprite =
-      item.artWidth === undefined
-        ? new Sprite({ texture, x: item.at.x * TILE, y: bottom, anchor: { x: 0, y: 1 } })
-        : new Sprite({
-            texture,
-            x: (item.at.x + item.w / 2) * TILE,
-            y: bottom,
-            anchor: { x: 0.5, y: 1 },
-          });
-    const scale = fitScale(texture.width, artWidth);
-    if (scale !== 1) {
-      report(`${item.sprite} is ${String(texture.width)} px wide, expected ${String(artWidth)} px`);
-      sprite.scale.set(scale);
-    }
+    const sprite = artSprite(item, texture, report);
     sprite.zIndex = (item.at.y + item.h) * TILE - (item.blocks ? 1 : 3);
     layer.addChild(sprite);
     if (layer === objects) {
@@ -193,6 +176,34 @@ export function createPlanView(
 }
 
 /** Sliding leaves retract toward the jambs; the threshold stays walkable regardless (visual only). */
+/**
+ * Art sits with its bottom-left corner on the footprint's bottom-left cell; art declared by its own width (chairs)
+ * or height (plants) is centred on the footprint instead. A wrong size is scaled to the contract size and reported.
+ */
+function artSprite(item: PlanObject, texture: Texture, report: (issue: string) => void): Sprite {
+  const bottom = (item.at.y + item.h + (item.artOffsetY ?? 0)) * TILE;
+  const byHeight = item.artHeight !== undefined;
+  const expected = (item.artHeight ?? item.artWidth ?? item.w) * TILE;
+  const sprite =
+    item.artWidth === undefined && !byHeight
+      ? new Sprite({ texture, x: item.at.x * TILE, y: bottom, anchor: { x: 0, y: 1 } })
+      : new Sprite({
+          texture,
+          x: (item.at.x + item.w / 2) * TILE,
+          y: bottom,
+          anchor: { x: 0.5, y: 1 },
+        });
+  const actual = byHeight ? texture.height : texture.width;
+  const scale = fitScale(actual, expected);
+  if (scale !== 1) {
+    report(
+      `${item.sprite} is ${String(actual)} px ${byHeight ? "tall" : "wide"}, expected ${String(expected)} px`,
+    );
+    sprite.scale.set(scale);
+  }
+  return sprite;
+}
+
 function drawDoor({ graphic: g, spec: d, amount }: DoorView): void {
   const w = d.w * TILE;
   const h = d.h * TILE;

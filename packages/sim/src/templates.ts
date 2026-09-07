@@ -37,6 +37,11 @@ export type Furniture = {
    */
   artWidth?: number;
   /**
+   * Height of the art in cells: the sprite is scaled to stand exactly this tall (its width follows the art) and
+   * centred on the footprint — potted plants of different shapes all stand equally tall.
+   */
+  artHeight?: number;
+  /**
    * How a multi-frame animation plays: `loop` cycles (bubbling water); `near` scrubs the frames by proximity —
    * forward while somebody stands within reach, backward as they leave; `sim` follows the 0…1 amount the
    * simulation publishes for the sprite key in `World.animations` (the elevator doors).

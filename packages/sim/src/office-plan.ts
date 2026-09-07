@@ -1,5 +1,8 @@
-import { type OfficePlan, Plan } from "./office-builder.ts";
+import { type OfficePlan, Plan, roomFloorKey } from "./office-builder.ts";
 import { decor } from "./office-decor.ts";
+
+/** Width of the elevator art in cells (frame with display and call button), measured on the reference. */
+const ELEVATOR_ART_W = 6.25;
 
 /** The whole company works on one floor: the owner-approved office (docs/OFFICE-ART.md). */
 export const OFFICE_FLOOR_ID = "office";
@@ -38,14 +41,17 @@ function structure(p: Plan): void {
   p.room("lounge", "RELAX", { x: 20, y: 33, w: 29, h: 13 });
   p.room("call-1", "CALL 1", { x: 29, y: 20, w: 5, h: 7 });
   p.room("call-2", "CALL 2", { x: 29, y: 26, w: 5, h: 8 });
-  p.room("reception", "RECEPCE", { x: 9, y: 21, w: 17, h: 12 }, "office", true);
+  p.room("reception", "RECEPCE", { x: 11, y: 21, w: 15, h: 12 }, "office", true);
   p.room("terrace", "TERASA", { x: 49, y: 34, w: 30, h: 11 }, "wood", true);
-  p.room("spa", "SPA", { x: 70, y: 21, w: 9, h: 13 }, "wood", true);
-  // The elevator shaft is a solid block of the lobby wall; the reception backdrop joins it at x=9. The car's
-  // interior is walkable so passengers stand inside it and step out through the doors.
-  p.solid({ x: 0, y: 22, w: 10, h: 8 });
+  // The spa is one decked area with the terrace: same floor tile.
+  p.room("spa", "SPA", { x: 70, y: 21, w: 9, h: 13 }, "wood", true, roomFloorKey("terrace"));
+  // The elevator shaft is a solid block of the lobby wall: cap on row 21, face down to the floor line at row 29,
+  // eleven cells wide. The reception backdrop continues its cap eastwards on the same row (owner's choice: one
+  // level line, no step). The car's interior is walkable so passengers stand inside it and step out through the
+  // doors.
+  p.solid({ x: 0, y: 21, w: 11, h: 8 });
   p.clear({ x: 4, y: 25, w: 4, h: 4 });
-  p.wall({ x: 9, y: 21, w: 16, h: 1 });
+  p.wall({ x: 11, y: 21, w: 14, h: 1 });
   // Two WC stalls (walls at x 1, 5 and 10 in the reference) share the restroom's north wall.
   p.wall({ x: 1, y: 33, w: 5, h: 6 });
   p.wall({ x: 5, y: 33, w: 6, h: 6 });
@@ -121,22 +127,18 @@ function workplaces(p: Plan): void {
 
 function sharedSpaces(p: Plan): void {
   // The elevator is three layers on one footprint: the static cabin under the passengers (floor layer), the
-  // doors above them (driven by the simulation's elevator state) and the front frame on top.
-  p.object(
-    "elevator-cabin",
-    "VÝTAH",
-    "elevator-cabin",
-    { x: 3, y: 23, w: 7, h: 6 },
-    { blocks: false, layer: "floor" },
-  );
-  p.object(
-    "elevator-doors",
-    "",
-    "elevator-doors",
-    { x: 3, y: 23, w: 7, h: 6 },
-    { blocks: false, animation: "open", playback: "sim" },
-  );
-  p.object("elevator-frame", "", "elevator-frame", { x: 3, y: 23, w: 7, h: 6 }, { blocks: false });
+  // doors above them (driven by the simulation's elevator state) and the front frame on top. The art (frame,
+  // display and call button, no wall behind) measures 6.25 cells across in the reference, centred on the doorway,
+  // and the frame's feet stand a fifth of a cell out on the floor; the shaft face shows around it.
+  const car = { x: 3, y: 23, w: 7, h: 6 };
+  const art = { blocks: false, artWidth: ELEVATOR_ART_W, artOffsetY: 0.2 };
+  p.object("elevator-cabin", "VÝTAH", "elevator-cabin", car, { ...art, layer: "floor" });
+  p.object("elevator-doors", "", "elevator-doors", car, {
+    ...art,
+    animation: "open",
+    playback: "sim",
+  });
+  p.object("elevator-frame", "", "elevator-frame", car, art);
   // The reception counter is drawn frontally (four cells tall); the receptionist stands behind it.
   p.object("reception", "název firmy", "desk-reception-rotated", { x: 14, y: 26, w: 8, h: 4 });
   p.anchor("reception", "reception", { x: 17, y: 30 });
