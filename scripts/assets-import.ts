@@ -175,11 +175,21 @@ await mkdir(dir, { recursive: true });
 const report: string[] = [
   `${files.length > 1 ? `${String(files.length)} files (${files[0] ?? ""} …)` : source}: ${String(first.width)}×${String(first.height)}, ${keyed ? "flat #FF00FF background keyed out" : "transparent as delivered"}, ${String(rawFrames.length)} frame(s)`,
 ];
-// Size of the union crop after scaling: every furniture frame is resampled to exactly this canvas.
-const unionScale = (like?.output.width ?? target.width) / bounds.w;
+// Size of the union crop after scaling: every furniture frame is resampled to exactly this canvas. Art sized by
+// height (`artHeight`) is scaled to the target height and its width follows.
+const unionScale =
+  like !== null
+    ? like.output.width / bounds.w
+    : target.byHeight && target.height !== null
+      ? target.height / bounds.h
+      : target.width / bounds.w;
 const unionSize = {
-  w: like?.output.width ?? target.width,
-  h: like?.output.height ?? Math.max(1, Math.round(bounds.h * unionScale)),
+  w:
+    like?.output.width ??
+    (target.byHeight ? Math.max(1, Math.round(bounds.w * unionScale)) : target.width),
+  h:
+    like?.output.height ??
+    (target.byHeight ? (target.height ?? 0) : Math.max(1, Math.round(bounds.h * unionScale))),
 };
 for (const [index, raw] of rawFrames.entries()) {
   let art = raw;
@@ -226,7 +236,7 @@ for (const [index, raw] of rawFrames.entries()) {
     );
   }
   const overhang =
-    target.height === null
+    target.height === null || target.byHeight
       ? ` (${(frame.height / CELL_PX - target.footprintCells).toFixed(1)} cells above the footprint)`
       : "";
   report.push(

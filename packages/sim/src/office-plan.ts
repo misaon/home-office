@@ -41,16 +41,17 @@ function structure(p: Plan): void {
   p.room("lounge", "RELAX", { x: 20, y: 33, w: 29, h: 13 });
   p.room("call-1", "CALL 1", { x: 29, y: 20, w: 5, h: 7 });
   p.room("call-2", "CALL 2", { x: 29, y: 26, w: 5, h: 8 });
-  p.room("reception", "RECEPCE", { x: 11, y: 20, w: 15, h: 13 }, "office", true);
+  p.room("reception", "RECEPCE", { x: 11, y: 21, w: 15, h: 12 }, "office", true);
   p.room("terrace", "TERASA", { x: 49, y: 34, w: 30, h: 11 }, "wood", true);
   // The spa is one decked area with the terrace: same floor tile.
   p.room("spa", "SPA", { x: 70, y: 21, w: 9, h: 13 }, "wood", true, roomFloorKey("terrace"));
   // The elevator shaft is a solid block of the lobby wall: cap on row 21, face down to the floor line at row 29,
-  // eleven cells wide. The reception backdrop starts east of it, one row higher. The car's interior is walkable
-  // so passengers stand inside it and step out through the doors.
+  // eleven cells wide. The reception backdrop continues its cap eastwards on the same row (owner's choice: one
+  // level line, no step). The car's interior is walkable so passengers stand inside it and step out through the
+  // doors.
   p.solid({ x: 0, y: 21, w: 11, h: 8 });
   p.clear({ x: 4, y: 25, w: 4, h: 4 });
-  p.wall({ x: 11, y: 20, w: 14, h: 1 });
+  p.wall({ x: 11, y: 21, w: 14, h: 1 });
   // Two WC stalls (walls at x 1, 5 and 10 in the reference) share the restroom's north wall.
   p.wall({ x: 1, y: 33, w: 5, h: 6 });
   p.wall({ x: 5, y: 33, w: 6, h: 6 });

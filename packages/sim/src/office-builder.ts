@@ -34,6 +34,7 @@ export type ObjectOptions = {
   facing?: Facing;
   blocks?: boolean;
   artWidth?: number;
+  artHeight?: number;
   animation?: string;
   playback?: "loop" | "near" | "sim";
   layer?: "floor" | "objects";
@@ -164,6 +165,7 @@ export class Plan {
       blocks: options.blocks ?? true,
       facing: options.facing ?? "s",
       ...(options.artWidth === undefined ? {} : { artWidth: options.artWidth }),
+      ...(options.artHeight === undefined ? {} : { artHeight: options.artHeight }),
       ...(options.playback === undefined ? {} : { playback: options.playback }),
       ...(options.layer === undefined ? {} : { layer: options.layer }),
       ...(options.artOffsetY === undefined ? {} : { artOffsetY: options.artOffsetY }),

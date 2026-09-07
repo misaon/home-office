@@ -15,6 +15,8 @@ export type Target = {
   width: number;
   /** Canvas height in px, or null when the height follows the art (furniture may overhang upwards). */
   height: number | null;
+  /** Furniture sized by `artHeight`: the art is scaled to `height` px and the width follows (`width` is 0). */
+  byHeight: boolean;
   /** Footprint height in cells (furniture), to report how far the art rises above it. */
   footprintCells: number;
   anchor: Anchor;
@@ -67,6 +69,7 @@ export function resolveTarget(key: string, cells: { w: number; h: number } | nul
       animation,
       width: cells.w * CELL_PX,
       height: cells.h * CELL_PX,
+      byHeight: false,
       footprintCells: cells.h,
       anchor: "bottom-left",
       trim: false,
@@ -80,6 +83,7 @@ export function resolveTarget(key: string, cells: { w: number; h: number } | nul
       animation,
       width: (cells?.w ?? CHARACTER_W) * CELL_PX,
       height: (cells?.h ?? CHARACTER_H) * CELL_PX,
+      byHeight: false,
       footprintCells: cells?.h ?? CHARACTER_H,
       anchor: "bottom-centre",
       trim: false,
@@ -93,13 +97,14 @@ export function resolveTarget(key: string, cells: { w: number; h: number } | nul
       animation,
       width: (cells?.w ?? 1) * CELL_PX,
       height: (cells?.h ?? 1) * CELL_PX,
+      byHeight: false,
       footprintCells: cells?.h ?? 1,
       anchor: "bottom-centre",
       trim: true,
       requireAlpha: true,
     };
   }
-  const footprint: { w: number; h: number; artWidth?: number } | undefined =
+  const footprint: { w: number; h: number; artWidth?: number; artHeight?: number } | undefined =
     cells ?? officePlan().objects.find((o) => o.sprite === `${category}/${sprite}`);
   if (footprint === undefined) {
     return fail(
@@ -107,12 +112,14 @@ export function resolveTarget(key: string, cells: { w: number; h: number } | nul
     );
   }
   const artWidth = footprint.artWidth ?? footprint.w;
+  const byHeight = footprint.artHeight !== undefined;
   return {
     category,
     sprite,
     animation,
-    width: Math.round(artWidth * CELL_PX),
-    height: null,
+    width: byHeight ? 0 : Math.round(artWidth * CELL_PX),
+    height: byHeight ? Math.round((footprint.artHeight ?? 0) * CELL_PX) : null,
+    byHeight,
     footprintCells: footprint.h,
     anchor: "bottom-left",
     trim: true,
@@ -120,8 +127,16 @@ export function resolveTarget(key: string, cells: { w: number; h: number } | nul
   };
 }
 
-/** Scales `art` to the target: furniture fills the footprint width, everything else fits inside the canvas. */
+/**
+ * Scales `art` to the target: furniture fills the footprint width (or stands exactly `height` tall when sized by
+ * height), everything else fits inside the canvas.
+ */
 export function fit(art: Rgba, target: Target): { frame: Rgba; scale: number } {
+  if (target.byHeight && target.height !== null) {
+    const scale = target.height / art.height;
+    const scaled = resample(art, Math.max(1, Math.round(art.width * scale)), target.height);
+    return { frame: place(scaled, scaled.width, target.height, target.anchor), scale };
+  }
   const byWidth = target.width / art.width;
   const scale = target.height === null ? byWidth : Math.min(byWidth, target.height / art.height);
   const scaled = resample(

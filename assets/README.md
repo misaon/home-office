@@ -59,6 +59,11 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   on the 7-cell doorway, with the frame's feet a fifth of a cell out on the floor (`artOffsetY`), as measured on
   the reference.
 
+- **Art sized by height** (`artHeight` in the plan): the converter scales the art to stand exactly that many cells
+  tall and lets the width follow, and the renderer centres it on the footprint. The five potted plants
+  (`potted-plant-1` … `-5`, 1 × 1 pots) are all three cells tall this way, whatever their shape — deliver them at
+  any size and aspect. Everything else is sized by width (`artWidth`, or the footprint width).
+
 **Floor tiles**
 
 - `tiles/<key>/static_f0.png`: a **seamless** square texture repeated over the cells of one floor. The corridor

@@ -2,6 +2,8 @@ import type { Plan } from "./office-builder.ts";
 
 /** Number of delivered potted plant designs. */
 const POTTED_PLANTS = 5;
+/** Every potted plant stands three cells tall whatever its shape (the art is sized by height). */
+const PLANT_ART_H = 3;
 
 /**
  * Props measured on the approved reference: plants (footprint = the pot, art two cells wide and centred), floor
@@ -14,7 +16,13 @@ export function decor(p: Plan): void {
   const plant = (id: string, x: number, y: number, w = 1): void => {
     const variant = String((plants % POTTED_PLANTS) + 1);
     plants += 1;
-    p.object(`plant-${id}`, "", `potted-plant-${variant}`, { x, y, w, h: 1 }, { artWidth: 2 });
+    p.object(
+      `plant-${id}`,
+      "",
+      `potted-plant-${variant}`,
+      { x, y, w, h: 1 },
+      { artHeight: PLANT_ART_H },
+    );
   };
   const wall = (id: string, sprite: string, x: number, y: number, w: number, h: number): void => {
     p.object(id, "", sprite, { x, y, w, h }, { blocks: false });
@@ -62,8 +70,8 @@ export function decor(p: Plan): void {
   plant("corridor", 2, 19);
   p.object("bin", "", "bin", { x: 78, y: 19, w: 1, h: 1 });
   // Reception: binder shelf and picture on the backdrop wall, a plant west of the counter.
-  wall("wall-shelf", "wall-shelf", 13, 21, 7, 2);
-  wall("picture-reception", "picture", 21, 21, 2, 2);
+  wall("wall-shelf", "wall-shelf", 13, 22, 7, 2);
+  wall("picture-reception", "picture", 21, 22, 2, 2);
   plant("reception", 12, 28);
   // Meeting room: wall screen, projector stand, plant in the north-east corner.
   wall("wall-screen", "wall-screen", 40, 21, 5, 2);

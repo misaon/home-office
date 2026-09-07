@@ -38,7 +38,8 @@ production geometry lives in code and every destination must be reachable.
   amount (`playback: "sim"`), the front frame sits on top. The shaft is a solid wall block (x 0–10, rows 21–28:
   cap on row 21, face to the floor line at row 29, outlined where it borders the lobby floor); the art has no wall
   of its own, so the block's face shows around the frame, the display sits just under the cap and the reception
-  backdrop (x 11–24, row 20) starts east of the shaft one row higher, as in the reference. The postman arrives the same way, drops the mail beside the reception counter (`mailbox`, state
+  backdrop (x 11–24) continues the cap eastwards on the same row 21 — one level line from the outer wall to the
+  end of the reception (the reference paints a small step there; the owner prefers it level). The postman arrives the same way, drops the mail beside the reception counter (`mailbox`, state
   `empty`/`full`) and a courier carries it to the boss.
 - **Routing.** A* with cached clearance and turn costs prefers corridor centres and straight runs (walls and
   furniture cost 4 per step alongside, 1.5 two cells away, 1 further; a turn costs 6). Occupied destinations stay
@@ -124,7 +125,7 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | `picture`                | 2 × 2             | 3     | reception, lounge                                                                            | walk-through                                                                                |
 | `picture-small`          | 2 × 1             | 3     | dev                                                                                          | walk-through                                                                                |
 | `picture-tall`           | 1 × 4             | 1     | dev                                                                                          | walk-through                                                                                |
-| `potted-plant-1` … `-5`  | 1 × 1             | 17    | boss, dev, qa, analyst, corridor, reception, meeting, kitchen, toilets, lounge, terrace, spa | five delivered designs in turn; art 2 cells wide, centred; toilets 2 × 1                    |
+| `potted-plant-1` … `-5`  | 1 × 1             | 17    | boss, dev, qa, analyst, corridor, reception, meeting, kitchen, toilets, lounge, terrace, spa | five delivered designs in turn; art 3 cells tall (`artHeight`), centred; toilets 2 × 1      |
 | `plant-table`            | 2 × 2             | 1     | dev                                                                                          |                                                                                             |
 | `planter-tall`           | 2 × 1             | 1     | dev                                                                                          |                                                                                             |
 | `projector`              | 2 × 2             | 1     | meeting                                                                                      |                                                                                             |

@@ -78,7 +78,8 @@ function decorStandIn(g: Graphics, kind: string, f: PlanObject, w: number, h: nu
       .fill(0x478b80);
   } else if (kind.startsWith("plant")) {
     // Pot on the footprint, foliage above it as wide as the art.
-    const r = ((f.artWidth ?? f.w) * TILE) / 2;
+    const r =
+      f.artHeight === undefined ? ((f.artWidth ?? f.w) * TILE) / 2 : (f.artHeight * TILE) / 3;
     g.rect(cx - w * 0.3, h - 8, w * 0.6, 8)
       .fill(0x8d8d8d)
       .circle(cx, h - 8 - r * 0.6, r * 0.9)
