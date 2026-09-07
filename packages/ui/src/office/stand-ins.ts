@@ -1,32 +1,28 @@
 /* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
-import {
-  CELL_PX,
-  type PlanObject,
-  type PlanRect,
-  type PlanRoom,
-  type Surface,
-  SURFACE_TILE,
-} from "@ho/sim";
-import { Container, Graphics, Text, type Texture, TilingSprite } from "pixi.js";
+import { CELL_PX, type PlanObject, type Surface } from "@ho/sim";
+import { Container, Graphics, Text } from "pixi.js";
 
 /** Pixels per cell on the stage: the art density every sprite is delivered at. */
 export const TILE = CELL_PX;
 
 /** Approved palette (docs/OFFICE-ART.md): warm orange floors, teal furniture, dark wall caps. */
-const PALETTE = {
+export const PALETTE = {
   corridor: 0xb88150,
   carpet: 0x315e5b,
-  tile: 0xb7a48a,
+  rugGreen: 0x4d7d5c,
+  rugBeige: 0xd9bb8e,
+  tile: 0xc49a66,
   wood: 0x9c6743,
-  wallFace: 0x333b3b,
-  wallCap: 0xddd0b0,
+  wallFace: 0xe6d6b4,
+  wallCap: 0x3c4245,
+  wallEdge: 0xb89c72,
   teal: 0x246a61,
   wood2: 0x805d38,
   trim: 0xd9af70,
   label: "#f2ddbe",
 } as const;
 
-const label = (
+export const label = (
   text: string,
   x: number,
   y: number,
@@ -41,118 +37,12 @@ const label = (
     style: { fontFamily: "monospace", fontSize: size, fill: color, fontWeight: "bold" },
   });
 
-const SURFACES: readonly Surface[] = ["office", "carpet", "tile", "wood"];
+export const SURFACES: readonly Surface[] = ["office", "room", "tile", "wood"];
 
-const surfaceColor = (surface: Surface): number =>
-  surface === "wood"
-    ? PALETTE.wood
-    : surface === "tile"
-      ? PALETTE.tile
-      : surface === "carpet"
-        ? PALETTE.carpet
-        : PALETTE.corridor;
+export const surfaceColor = (surface: Surface): number =>
+  surface === "wood" ? PALETTE.wood : surface === "tile" ? PALETTE.tile : PALETTE.corridor;
 
 /** Floor fills per room and walls with a lit cap; glass cells are left to `glassWall`. Cached once per floor. */
-/**
- * Floors, walls and glass as one static layer. Floors are painted cell by cell from the template: every surface
- * gets one floor-spanning tile (the material `SURFACE_TILE` names for it, when delivered) masked to its cells, so
- * patterns stay continuous across rooms and corridors; surfaces without a tile get their flat palette colour.
- * Wall cells (glass included) keep the dark wall face underneath.
- */
-export function architecture(
-  rooms: readonly PlanRoom[],
-  glass: readonly PlanRect[],
-  walls: Uint8Array,
-  width: number,
-  height: number,
-  floor: readonly (string | null)[],
-  floorTexture: (key: string) => Texture | undefined,
-): Container {
-  const layer = new Container();
-  layer.addChild(new Graphics().rect(0, 0, width * TILE, height * TILE).fill(PALETTE.wallFace));
-  for (const surface of SURFACES) {
-    const key = SURFACE_TILE[surface];
-    // Horizontal runs of this surface's floor cells (walls excluded), as one Graphics.
-    const cells = new Graphics();
-    let any = false;
-    for (let y = 0; y < height; y += 1) {
-      let run = -1;
-      for (let x = 0; x <= width; x += 1) {
-        const here = x < width && floor[y * width + x] === key && walls[y * width + x] !== 1;
-        if (here && run < 0) {
-          run = x;
-        } else if (!here && run >= 0) {
-          cells.rect(run * TILE, y * TILE, (x - run) * TILE, TILE);
-          any = true;
-          run = -1;
-        }
-      }
-    }
-    if (!any) {
-      continue;
-    }
-    const texture = floorTexture(key);
-    if (texture === undefined) {
-      layer.addChild(cells.fill(surfaceColor(surface)));
-    } else {
-      const tiles = new TilingSprite({ texture, width: width * TILE, height: height * TILE });
-      tiles.mask = cells.fill(0xffffff);
-      layer.addChild(tiles, cells);
-    }
-  }
-  const g = new Graphics();
-  const isGlass = (x: number, y: number): boolean =>
-    glass.some((p) => x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h);
-  const isWall = (x: number, y: number): boolean =>
-    x >= 0 && y >= 0 && x < width && y < height && walls[y * width + x] === 1;
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      if (!isWall(x, y) || isGlass(x, y)) {
-        continue;
-      }
-      const horizontal = isWall(x - 1, y) || isWall(x + 1, y);
-      g.rect(x * TILE, y * TILE, TILE, TILE).fill(PALETTE.wallFace);
-      if (horizontal) {
-        g.rect(x * TILE, y * TILE + 10, TILE, 6).fill(PALETTE.wallCap);
-      } else {
-        g.rect(x * TILE + 10, y * TILE, 6, TILE).fill(PALETTE.wallCap);
-      }
-    }
-  }
-  layer.addChild(g);
-  for (const r of rooms) {
-    const labelX = r.x + (r.id === "toilets" ? 10 : 1);
-    layer.addChild(
-      label(r.label, labelX * TILE + 4, (r.y + 1) * TILE + 3, PALETTE.label, r.w < 6 ? 7 : 10),
-    );
-  }
-  return layer;
-}
-
-/** Fixed full-height glazing, sorted in front of people standing behind it. */
-export function glassWall(pane: PlanRect): Graphics {
-  const height = 3 * TILE;
-  const width = pane.w * TILE;
-  const bottom = (pane.y + pane.h) * TILE;
-  const g = new Graphics({ x: pane.x * TILE, y: bottom - height, zIndex: bottom - 1 });
-  g.rect(0, 0, width, height).fill({ color: 0x8de0df, alpha: 0.35 });
-  for (let x = 0; x < width; x += 2 * TILE) {
-    const panel = Math.min(2 * TILE, width - x);
-    g.rect(x, 0, 3, height)
-      .fill(0x335d6b)
-      .moveTo(x + 6, height - 8)
-      .lineTo(x + panel - 6, 8)
-      .stroke({ color: 0xd7ffff, width: 2, alpha: 0.65 });
-  }
-  g.rect(0, 0, width, 3)
-    .fill(0x335d6b)
-    .rect(0, height - 4, width, 4)
-    .fill(0x335d6b)
-    .rect(width - 3, 0, 3, height)
-    .fill(0x335d6b);
-  return g;
-}
-
 function desk(g: Graphics, f: PlanObject): void {
   const w = f.w * TILE;
   const h = f.h * TILE;
@@ -226,6 +116,17 @@ export function standIn(f: PlanObject): Container {
       .fill(0x8a7a40)
       .circle(cx, 4, 8)
       .fill(0xf2c85a);
+  } else if (kind.startsWith("rug")) {
+    const color =
+      kind === "rug-green"
+        ? PALETTE.rugGreen
+        : kind === "rug-beige"
+          ? PALETTE.rugBeige
+          : PALETTE.carpet;
+    g.rect(0, 0, w, h)
+      .fill(color)
+      .rect(2, 2, w - 4, h - 4)
+      .stroke({ color: 0xffffff, alpha: 0.12, width: 2 });
   } else if (kind === "hedge" || kind === "bushes") {
     g.roundRect(0, 0, w, h, 6).fill(0x2f7a3a);
   } else if (kind === "bin") {

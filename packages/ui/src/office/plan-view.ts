@@ -10,7 +10,8 @@ import {
 import { Container, Graphics, Sprite, type Texture } from "pixi.js";
 import type { FloorView } from "./scene.ts";
 import { fitScale, type SpriteLibrary } from "./sprites.ts";
-import { architecture, glassWall, standIn, TILE } from "./stand-ins.ts";
+import { architecture, glassWall } from "./architecture.ts";
+import { standIn, TILE } from "./stand-ins.ts";
 
 type DoorView = { spec: PlanDoor; graphic: Graphics; amount: number };
 /**

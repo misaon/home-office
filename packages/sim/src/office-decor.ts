@@ -12,6 +12,19 @@ export function decor(p: Plan): void {
   const wall = (id: string, sprite: string, x: number, y: number, w: number, h: number): void => {
     p.object(id, "", sprite, { x, y, w, h }, { blocks: false });
   };
+  // Rugs (floor layer, walk-through): teal under the workplaces and the meeting table, green under the dining
+  // table, beige in the lounge — the reference's floor is the same orange everywhere else.
+  const rug = (id: string, sprite: string, x: number, y: number, w: number, h: number): void => {
+    p.object(`rug-${id}`, "", sprite, { x, y, w, h }, { blocks: false, layer: "floor" });
+  };
+  rug("boss", "rug-teal", 2, 6, 8, 8);
+  rug("dev-1", "rug-teal", 18, 6, 17, 7);
+  rug("dev-2", "rug-teal", 38, 6, 17, 7);
+  rug("qa", "rug-teal", 58, 6, 8, 8);
+  rug("analyst", "rug-teal", 70, 6, 8, 8);
+  rug("meeting", "rug-teal", 35, 24, 12, 8);
+  rug("dining", "rug-green", 53, 26, 10, 7);
+  rug("lounge", "rug-beige", 26, 37, 8, 8);
   // Boss office: picture over the desk, standing lamp, plants in both west corners, window in the west wall.
   wall("picture-boss", "picture", 6, 1, 4, 2);
   wall("window-boss", "window", 0, 4, 1, 4);

@@ -2,7 +2,8 @@ import type { Facing, Point } from "./grid.ts";
 import type { Anchor, AnchorKind, FloorTemplate, Furniture } from "./templates.ts";
 
 export type PlanRect = { x: number; y: number; w: number; h: number };
-export type Surface = "office" | "tile" | "wood" | "carpet";
+/** Floor materials: corridors/reception, indoor rooms, kitchen and toilets, outdoor decking. Rugs are objects. */
+export type Surface = "office" | "room" | "tile" | "wood";
 export type PlanRoom = PlanRect & { id: string; label: string; surface: Surface };
 /** A placed object with its label and orientation; `sprite` doubles as the delivery key for real art. */
 export type PlanObject = Furniture & { id: string; label: string; facing: Facing };
@@ -19,7 +20,7 @@ export type OfficePlan = {
 /** Which delivered floor tile each surface uses (owner's choices): parquet in the corridors, decking outside. */
 export const SURFACE_TILE: Record<Surface, string> = {
   office: "tiles/floor-wood",
-  carpet: "tiles/floor-carpet",
+  room: "tiles/floor-room",
   tile: "tiles/floor-tile",
   wood: "tiles/floor-deck",
 };
@@ -96,7 +97,7 @@ export class Plan {
   }
 
   /** A walled room; `open` rooms only paint their floor (reception, terrace, spa). */
-  room(id: string, label: string, rect: PlanRect, surface: Surface = "carpet", open = false): void {
+  room(id: string, label: string, rect: PlanRect, surface: Surface = "room", open = false): void {
     this.plan.rooms.push({ id, label, ...rect, surface });
     if (!open) {
       this.wall(rect);

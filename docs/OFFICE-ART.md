@@ -120,6 +120,11 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | `plant-table`            | 2 × 2             | 1     | dev                                                                                 |                                           |
 | `projector`              | 2 × 2             | 1     | meeting                                                                             |                                           |
 | `radiator`               | 1 × 4             | 1     | analyst                                                                             | walk-through                              |
+| `rug-beige`              | 8 × 8             | 1     | lounge                                                                              | walk-through; floor layer                 |
+| `rug-green`              | 10 × 7            | 1     | kitchen                                                                             | walk-through; floor layer                 |
+| `rug-teal`               | 8 × 8             | 3     | boss, qa, analyst                                                                   | walk-through; floor layer                 |
+| `rug-teal`               | 17 × 7            | 2     | dev                                                                                 | walk-through; floor layer                 |
+| `rug-teal`               | 12 × 8            | 1     | meeting                                                                             | walk-through; floor layer                 |
 | `sinks`                  | 2 × 4             | 1     | toilets                                                                             |                                           |
 | `spa`                    | 5 × 6             | 1     | spa                                                                                 | animation `bubbles`                       |
 | `spa-bench`              | 2 × 2             | 1     | spa                                                                                 |                                           |
