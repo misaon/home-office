@@ -51,7 +51,9 @@ production geometry lives in code and every destination must be reachable.
   art.
 - **Walls.** Every wall cell is classified (`cap-h`, `face`, `block`, `cap-v`) and drawn from the delivered
   seamless tiles `tiles/wall-*` (`assets/README.md`, “Walls”; all four are in), with flat palette shapes as the
-  fallback for a missing class.
+  fallback for a missing class. Straight pieces are tiled runs; every joint (corner, T, cross, end at a door or
+  glass) is composed per cell from the two cap tiles — connected sides lose their outline, open sides get an end
+  cap — so the caps read as one surface, as in the reference (`packages/ui/src/office/walls.ts`).
 - **Camera.** The floor always spans the pane's full width, uniformly scaled and never cropped; when it is taller
   than the pane, the pane scrolls. The canvas renders at the device's pixel ratio, so Retina displays sample the
   art once instead of upscaling a blurry canvas. A collapsible side panel is on the tuning list.

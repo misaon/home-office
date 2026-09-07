@@ -85,10 +85,13 @@ strip several cells long avoids visible repetition):
 strip usually has closed, rounded ends: import only its interior with `--crop x,y,w,h`, a whole number of cells
 long (band thickness = one cell), so the run tiles without a seam — the delivered set was imported as
 `wall-cap-h` 11 × 1 (`--crop 146,267,1881,171`), `wall-face` 6 × 1 (`--crop 222,214,1728,288`), `wall-cap-v`
-1 × 12 (`--crop 286,174,152,1824`) and `wall-block` 4 × 4. Junctions and corners are composed by the renderer
-(caps overlap, the face runs across a corner and the vertical band starts one row lower), so no corner tiles are
-needed. Colours to match: cap #676768, face #f1be7b, skirting #977250 — the wall piece painted into the elevator
-sprite. Until a class is delivered it keeps its flat shape.
+1 × 12 (`--crop 286,174,152,1824`) and `wall-block` 4 × 4. Junctions, corners and ends are composed by the
+renderer from the two straight cap tiles the way the reference paints them — the caps merge into one surface and
+the dark outline runs only around the outside; a vertical band runs straight from the cap through the face row —
+so no corner or T tiles are needed. The renderer swaps the outer **3 px** of a cap tile (at 24 px per cell) at
+every joint: keep the outline and its highlight inside that zone. Colours to match: cap #676768, face #f1be7b,
+skirting #977250 — the wall piece painted into the elevator sprite. Until a class is delivered it keeps its flat
+shape.
 
 **Characters**
 
