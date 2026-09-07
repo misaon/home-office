@@ -16,7 +16,7 @@ export class OfficeGate {
   readonly #log: Logger;
   #viewers = 0;
 
-  constructor(log: Logger, timeoutMs = 20_000) {
+  constructor(log: Logger, timeoutMs = 30_000) {
     this.#log = log;
     this.#timeoutMs = timeoutMs;
   }

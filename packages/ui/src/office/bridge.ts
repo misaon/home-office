@@ -216,14 +216,10 @@ export class Bridge {
       } else if (task?.assigneeId !== undefined && event.payload.note.kind === "answer") {
         setEmotion(this.world, task.assigneeId, null, null);
       }
-    } else if (event.type === "chat.message_posted") {
-      const { message } = event.payload;
-      const task = message.taskId === undefined ? undefined : model.tasks.get(message.taskId);
-      if (
-        message.author.kind === "human" &&
-        task?.kind === "triage" &&
-        task.source.kind === "chat"
-      ) {
+    } else if (event.type === "task.created") {
+      // The human's message is stored before its task; the task is what Lola carries and the daemon waits for.
+      const { task } = event.payload;
+      if (task.kind === "triage" && task.source.kind === "chat") {
         this.#onChat(task);
       }
     } else if (event.type === "mail.received") {
