@@ -127,9 +127,10 @@ export function createPlanView(
       if (view.frames.length > 1) {
         let frame = view.frame;
         if (view.item.playback === "near") {
-          const target = anyoneNear(people, { ...view.item.at, w: view.item.w, h: view.item.h })
-            ? 1
-            : 0;
+          // Held open by the simulation (an elevator car arriving) or by whoever stands within reach.
+          const held = world.held.has(view.item.sprite.slice("furniture/".length));
+          const target =
+            held || anyoneNear(people, { ...view.item.at, w: view.item.w, h: view.item.h }) ? 1 : 0;
           view.amount = approach(view.amount, target, dtMs, NEAR_MS);
           frame = Math.round(view.amount * (view.frames.length - 1));
         } else {

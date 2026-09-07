@@ -30,8 +30,10 @@ production geometry lives in code and every destination must be reachable.
   UI shows a red banner if a layout change breaks a route.
 - **Seats by role.** The boss has the boss office; workers take `dev` desks, reviewers `qa`, clerks `analyst`;
   a full zone overflows into any free desk (`assignWork` in `packages/sim/src/intents.ts`).
-- **Arrivals.** Agents appear at the elevator threshold; the postman comes the same way, drops the mail on the
-  reception counter (`mailbox`, state `empty`/`full`) and a courier carries it to the boss.
+- **Arrivals.** Everybody comes by elevator, one car at a time: the doors open (700 ms), the newcomer steps onto
+  the threshold, pauses, walks off to their desk or a corridor spot, the doors close and the next car follows
+  2.2 s later. The postman arrives the same way, drops the mail beside the reception counter (`mailbox`, state
+  `empty`/`full`) and a courier carries it to the boss.
 - **Routing.** A* with cached clearance and turn costs prefers corridor centres and straight runs (walls and
   furniture cost 4 per step alongside, 1.5 two cells away, 1 further; a turn costs 6). Occupied destinations stay
   reachable so meeting points work.

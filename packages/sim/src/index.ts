@@ -9,4 +9,5 @@ export * from "./office-plan.ts";
 export * from "./office-audit.ts";
 export * from "./rng.ts";
 export * from "./templates.ts";
+export * from "./tick.ts";
 export * from "./world.ts";

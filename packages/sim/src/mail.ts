@@ -38,10 +38,8 @@ export function deliverMail(
     return false;
   }
   const door = entrance?.at ?? mailbox.at;
-  const postman = spawnActor(world, visitorId, sprite, OFFICE_FLOOR_ID, {
-    kind: "visitor",
-    at: door,
-  });
+  // The postman rides the elevator like everybody else (no explicit place → arrival queue).
+  const postman = spawnActor(world, visitorId, sprite, OFFICE_FLOOR_ID, { kind: "visitor" });
   setSteps(postman, [
     ...walkSteps(world, postman, OFFICE_FLOOR_ID, mailbox.at),
     { kind: "dwell", activity: "drop", facing: mailbox.facing, until: null, ms: DROP_MS },

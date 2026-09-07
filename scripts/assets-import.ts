@@ -4,8 +4,10 @@
 //                         [--no-key] [--tolerance 40]
 //
 // `<source.png>` may be a pattern such as "assets/inbox/spa-animate-*.png": the matching files, sorted by the
-// number in their name, become frames f0, f1, … of one animation. Frames of one animation are trimmed to their
-// common bounding box and scaled by one factor, so nothing jitters between frames.
+// number in their name, become frames f0, f1, … of one animation. Furniture frames are each trimmed to their own
+// visible pixels and resampled to one common size: generators redraw a static silhouette a few pixels off from
+// frame to frame, and equalising the silhouettes is what keeps doors and water from jumping. Characters keep
+// their full frame canvas (their silhouette is meant to change).
 //
 // The source is any PNG a generator produced (typically ~1024 px with a transparent background; a flat
 // #FF00FF background is keyed out as a fallback). The converter trims, scales the art to the footprint of the
@@ -228,14 +230,36 @@ await mkdir(dir, { recursive: true });
 const report: string[] = [
   `${files.length > 1 ? `${String(files.length)} files (${files[0] ?? ""} …)` : source}: ${String(first.width)}×${String(first.height)}, ${keyed ? "flat #FF00FF background keyed out" : "transparent as delivered"}, ${String(rawFrames.length)} frame(s)`,
 ];
+// Size of the union crop after scaling: every furniture frame is resampled to exactly this canvas.
+const unionScale = target.width / bounds.w;
+const unionSize = { w: target.width, h: Math.max(1, Math.round(bounds.h * unionScale)) };
 for (const [index, raw] of rawFrames.entries()) {
-  const art = target.trim ? crop(raw, bounds) : raw;
-  const { frame, scale } = fit(art, target);
+  let art = raw;
+  let fitted: { frame: Rgba; scale: number };
+  if (target.trim && rawFrames.length > 1) {
+    const own = opaqueBounds(raw);
+    art = crop(raw, own ?? bounds);
+    fitted = {
+      frame: place(
+        resample(art, unionSize.w, unionSize.h),
+        unionSize.w,
+        unionSize.h,
+        target.anchor,
+      ),
+      scale: unionScale,
+    };
+  } else {
+    art = target.trim ? crop(raw, bounds) : raw;
+    fitted = fit(art, target);
+  }
+  const { frame, scale } = fitted;
   const file = `${dir}/${target.animation}_f${String(index)}.png`;
   await Bun.write(file, encodePng(frame));
-  if (target.trim) {
+  if (target.trim && index === 0) {
     report.push(
-      `  trimmed to the visible object (alpha ≥ ${String(ALPHA_MIN)}): ${String(bounds.w)}×${String(bounds.h)} px at (${String(bounds.x)}, ${String(bounds.y)})`,
+      rawFrames.length > 1
+        ? `  frames trimmed individually and resampled to the common ${String(unionSize.w)}×${String(unionSize.h)} px (silhouette drift removed)`
+        : `  trimmed to the visible object (alpha ≥ ${String(ALPHA_MIN)}): ${String(bounds.w)}×${String(bounds.h)} px at (${String(bounds.x)}, ${String(bounds.y)})`,
     );
   }
   const overhang =

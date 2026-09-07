@@ -1,7 +1,6 @@
 import type { AgentId } from "@ho/protocol";
 import { type Facing, type Grid, type Point, samePoint } from "./grid.ts";
 import { createRng, hashSeed, type Rng } from "./rng.ts";
-import { advanceStep } from "./steps.ts";
 import { type Anchor, type AnchorKind, type FloorTemplate, gridFor } from "./templates.ts";
 
 export type Activity =
@@ -70,16 +69,27 @@ export type Actor = {
 
 export type Floor = { template: FloorTemplate; grid: Grid; reservations: Map<string, AgentId> };
 
+/**
+ * Everybody enters by elevator: spawned actors wait hidden in the car and step out one at a time. `carAt` is
+ * when the arriving car's doors are fully open (0 while no car is called), `nextAt` when the next car may come.
+ */
+export type Arrivals = { queue: AgentId[]; carAt: number; nextAt: number };
+
 export type World = {
   time: number;
   rng: Rng;
   floors: Map<string, Floor>;
   actors: Map<AgentId, Actor>;
   outbox: SimEvent[];
+  arrivals: Arrivals;
+  /** Proximity animations the simulation holds open, by sprite key (`elevator` while a car is arriving). */
+  held: Set<string>;
 };
 
 export const SPEED_TILES_PER_S = 3;
 export const ELEVATOR_MS = 1500;
+/** Door travel of the elevator (matches the renderer), the pause on the threshold, the gap between cars. */
+export const ELEVATOR_DOORS_MS = 700;
 
 export const createWorld = (seed: string): World => ({
   time: 0,
@@ -87,6 +97,8 @@ export const createWorld = (seed: string): World => ({
   floors: new Map(),
   actors: new Map(),
   outbox: [],
+  arrivals: { queue: [], carAt: 0, nextAt: 0 },
+  held: new Set(),
 });
 
 export function addFloor(world: World, template: FloorTemplate): void {
@@ -139,6 +151,8 @@ export function spawnActor(
       ? { x: 3, y: 10 }
       : (anchorById(floor, "elevator")?.at ?? { x: 3, y: 10 }));
   const at = nearestWalkable(world, floorId, spawn);
+  // Without an explicit place the newcomer arrives by elevator: hidden in the car until it is their turn.
+  const arriving = options.at === undefined;
   const actor: Actor = {
     id,
     kind: options.kind ?? "agent",
@@ -149,7 +163,7 @@ export function spawnActor(
     facing: "s",
     activity: "idle",
     animTime: 0,
-    hidden: false,
+    hidden: arriving,
     steps: [],
     reservation: null,
     work: null,
@@ -163,6 +177,9 @@ export function spawnActor(
     idleUntil: 0,
   };
   world.actors.set(id, actor);
+  if (arriving) {
+    world.arrivals.queue.push(id);
+  }
   return actor;
 }
 
@@ -172,6 +189,7 @@ export function removeActor(world: World, id: AgentId): void {
     release(world, actor);
     world.actors.delete(id);
   }
+  world.arrivals.queue = world.arrivals.queue.filter((queued) => queued !== id);
 }
 
 /** Cells occupied by other actors standing still (walking actors are transient and ignored). */
@@ -231,36 +249,6 @@ export const setSteps = (actor: Actor, steps: Step[]): void => {
   actor.steps = steps;
   actor.animTime = 0;
 };
-
-export function tick(
-  world: World,
-  dtMs: number,
-  onIdle: (world: World, actor: Actor) => void,
-): void {
-  world.time += dtMs;
-  for (const actor of world.actors.values()) {
-    actor.animTime += dtMs;
-    for (const need of NEEDS) {
-      actor.needs[need] = Math.min(1, actor.needs[need] + dtMs / NEED_PERIOD_MS[need]);
-    }
-    if (
-      actor.emotion !== null &&
-      actor.emotion.until !== null &&
-      world.time >= actor.emotion.until
-    ) {
-      actor.emotion = null;
-    }
-    if (actor.steps.length === 0) {
-      if (actor.activity === "walk") {
-        actor.activity = "idle";
-      }
-      if (world.time >= actor.idleUntil) {
-        onIdle(world, actor);
-      }
-    }
-    advanceStep(world, actor, dtMs);
-  }
-}
 
 export const NEED_PERIOD_MS: Record<NeedKind, number> = {
   coffee: 240_000,
