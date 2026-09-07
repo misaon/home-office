@@ -126,7 +126,7 @@ export function architecture(
   //   face   — the light wall face: the row under a horizontal wall (over the room's first row and across corners,
   //            where the vertical wall starts one row lower) and the bottom row of a thick block;
   //   block  — inner rows of a thick block (the elevator shaft);
-  //   cap-v  — a vertical wall band.
+  //   cap-v  — a vertical wall band, including the outer columns of a thick block.
   const horizontalWall = (x: number, y: number): boolean =>
     isWall(x, y) && (isWall(x - 1, y) || isWall(x + 1, y));
   const classes = new Map<number, WallClass>();
@@ -139,7 +139,10 @@ export function architecture(
       const underHorizontal = horizontalWall(x, y - 1) && !isGlass(x, y - 1);
       const id = y * width + x;
       if (horizontal && underHorizontal) {
-        classes.set(id, y + 1 < height && horizontalWall(x, y + 1) ? "block" : "face");
+        // Inside a thick block; its outer columns (floor or the map edge beside them) are vertical bands.
+        const edge = !isWall(x - 1, y) || !isWall(x + 1, y);
+        const inner = y + 1 < height && horizontalWall(x, y + 1) ? "block" : "face";
+        classes.set(id, edge ? "cap-v" : inner);
       } else if (horizontal) {
         classes.set(id, "cap-h");
         if (y + 1 < height && !isWall(x, y + 1)) {

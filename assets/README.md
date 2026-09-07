@@ -60,11 +60,12 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
 - `tiles/<key>/static_f0.png`: a **seamless** square texture repeated over the cells of one floor. The corridor
   uses `floor-wood` (surface `office`); every room has its own key `floor-<room id>` — `floor-boss`, `floor-dev`,
   `floor-qa`, `floor-analyst`, `floor-meeting`, `floor-kitchen`, `floor-toilets`, `floor-lounge`, `floor-call-1`,
-  `floor-call-2`, `floor-reception`, `floor-terrace`, `floor-spa`. Until a room's tile lands it is a flat colour;
-  rugs are separate floor-layer objects (`rug-teal`, `rug-green`, `rug-beige`). Import with the tile size in cells,
-  e.g.
-  `bun run assets:import assets/inbox/floor-wood.png tiles/floor-wood/static --cells 6x6` → 144 × 144 px, the
-  pattern repeating every six cells. Surfaces without a delivered tile keep their flat palette colour.
+  `floor-call-2`, `floor-reception`, `floor-terrace` (the spa is one decked area with the terrace and shares its
+  tile). Until a room's tile lands it is a flat colour; rugs are separate floor-layer objects (`rug-teal`,
+  `rug-green`, `rug-beige`). Import with the tile size in cells — **3 × 3 cells** (72 × 72 px) is the size that reads
+  right: a marble slab or a plank is then about one cell, as in the reference — e.g.
+  `bun run assets:import assets/inbox/floor-wood.png tiles/floor-wood/static --cells 3x3`. Surfaces without a
+  delivered tile keep their flat palette colour.
 
 **Walls**
 

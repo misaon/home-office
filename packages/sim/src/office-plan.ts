@@ -1,4 +1,4 @@
-import { type OfficePlan, Plan } from "./office-builder.ts";
+import { type OfficePlan, Plan, roomFloorKey } from "./office-builder.ts";
 import { decor } from "./office-decor.ts";
 
 /** The whole company works on one floor: the owner-approved office (docs/OFFICE-ART.md). */
@@ -40,7 +40,8 @@ function structure(p: Plan): void {
   p.room("call-2", "CALL 2", { x: 29, y: 26, w: 5, h: 8 });
   p.room("reception", "RECEPCE", { x: 9, y: 21, w: 17, h: 12 }, "office", true);
   p.room("terrace", "TERASA", { x: 49, y: 34, w: 30, h: 11 }, "wood", true);
-  p.room("spa", "SPA", { x: 70, y: 21, w: 9, h: 13 }, "wood", true);
+  // The spa is one decked area with the terrace: same floor tile.
+  p.room("spa", "SPA", { x: 70, y: 21, w: 9, h: 13 }, "wood", true, roomFloorKey("terrace"));
   // The elevator shaft is a solid block of the lobby wall; the reception backdrop joins it at x=9. The car's
   // interior is walkable so passengers stand inside it and step out through the doors.
   p.solid({ x: 0, y: 22, w: 10, h: 8 });
