@@ -38,9 +38,10 @@ export type Furniture = {
   artWidth?: number;
   /**
    * How a multi-frame animation plays: `loop` cycles (bubbling water); `near` scrubs the frames by proximity —
-   * forward while somebody stands within reach (doors opening), backward as they leave (the same frames closing).
+   * forward while somebody stands within reach, backward as they leave; `sim` follows the 0…1 amount the
+   * simulation publishes for the sprite key in `World.animations` (the elevator doors).
    */
-  playback?: "loop" | "near";
+  playback?: "loop" | "near" | "sim";
   /** `floor` draws the art under everybody (rugs, the elevator cabin); default `objects` sorts it with the actors. */
   layer?: "floor" | "objects";
 };

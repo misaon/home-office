@@ -69,11 +69,23 @@ export type Actor = {
 
 export type Floor = { template: FloorTemplate; grid: Grid; reservations: Map<string, AgentId> };
 
+export type ElevatorPhase = "closed" | "opening" | "open" | "closing";
 /**
- * Everybody enters by elevator: spawned actors wait hidden in the car and step out one at a time. `carAt` is
- * when the arriving car's doors are fully open (0 while no car is called), `nextAt` when the next car may come.
+ * Everybody enters by elevator. Newcomers wait hidden in `queue`; one at a time a car "arrives": the passenger is
+ * revealed inside the car behind the closed doors, the doors open (`amount` 0 → 1), the passenger walks out, the
+ * doors stay open while anybody is in the car or on its threshold, close, pause, and the next car comes. Anyone
+ * walking into the car from the office (a leaving visitor) opens the doors the same way.
  */
-export type Arrivals = { queue: AgentId[]; carAt: number; nextAt: number };
+export type Elevator = {
+  queue: AgentId[];
+  phase: ElevatorPhase;
+  /** Door position, 0 closed … 1 open; the renderer maps it onto the door frames. */
+  amount: number;
+  /** The passenger of the current car, waiting for the doors to open. */
+  passenger: AgentId | null;
+  /** Earliest time the next car may arrive (a pause after the doors close). */
+  nextAt: number;
+};
 
 export type World = {
   time: number;
@@ -81,9 +93,9 @@ export type World = {
   floors: Map<string, Floor>;
   actors: Map<AgentId, Actor>;
   outbox: SimEvent[];
-  arrivals: Arrivals;
-  /** Proximity animations the simulation holds open, by sprite key (`elevator` while a car is arriving). */
-  held: Set<string>;
+  elevator: Elevator;
+  /** Animation positions the simulation drives, by sprite key (`elevator-doors` → door amount 0…1). */
+  animations: Map<string, number>;
 };
 
 export const SPEED_TILES_PER_S = 3;
@@ -97,8 +109,8 @@ export const createWorld = (seed: string): World => ({
   floors: new Map(),
   actors: new Map(),
   outbox: [],
-  arrivals: { queue: [], carAt: 0, nextAt: 0 },
-  held: new Set(),
+  elevator: { queue: [], phase: "closed", amount: 0, passenger: null, nextAt: 0 },
+  animations: new Map(),
 });
 
 export function addFloor(world: World, template: FloorTemplate): void {
@@ -178,7 +190,7 @@ export function spawnActor(
   };
   world.actors.set(id, actor);
   if (arriving) {
-    world.arrivals.queue.push(id);
+    world.elevator.queue.push(id);
   }
   return actor;
 }
@@ -189,7 +201,10 @@ export function removeActor(world: World, id: AgentId): void {
     release(world, actor);
     world.actors.delete(id);
   }
-  world.arrivals.queue = world.arrivals.queue.filter((queued) => queued !== id);
+  world.elevator.queue = world.elevator.queue.filter((queued) => queued !== id);
+  if (world.elevator.passenger === id) {
+    world.elevator.passenger = null;
+  }
 }
 
 /** Cells occupied by other actors standing still (walking actors are transient and ignored). */

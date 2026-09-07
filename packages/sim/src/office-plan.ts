@@ -117,8 +117,8 @@ function workplaces(p: Plan): void {
 }
 
 function sharedSpaces(p: Plan): void {
-  // The elevator is two layers on one footprint: the static cabin under the passengers (floor layer) and the
-  // doors above them, opening frame by frame while a car arrives or somebody stands at the threshold.
+  // The elevator is three layers on one footprint: the static cabin under the passengers (floor layer), the
+  // doors above them (driven by the simulation's elevator state) and the front frame on top.
   p.object(
     "elevator-cabin",
     "VÝTAH",
@@ -131,7 +131,7 @@ function sharedSpaces(p: Plan): void {
     "",
     "elevator-doors",
     { x: 3, y: 23, w: 6, h: 6 },
-    { blocks: false, animation: "open", playback: "near" },
+    { blocks: false, animation: "open", playback: "sim" },
   );
   p.object("elevator-frame", "", "elevator-frame", { x: 3, y: 23, w: 6, h: 6 }, { blocks: false });
   // The reception counter is drawn frontally (four cells tall); the receptionist stands behind it.

@@ -28,7 +28,7 @@ export type ObjectOptions = {
   blocks?: boolean;
   artWidth?: number;
   animation?: string;
-  playback?: "loop" | "near";
+  playback?: "loop" | "near" | "sim";
   layer?: "floor" | "objects";
 };
 

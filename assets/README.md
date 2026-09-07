@@ -40,10 +40,10 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   below or to the sides. A wrong width is scaled to the footprint and reported in the red banner.
 - One frame per state, `static_f0.png` for most objects; the mailbox has `empty_f0.png` and `full_f0.png`.
   **Animated furniture** (the hot tub's `bubbles`) is a numbered frame set `bubbles_f0.png … bubbles_f9.png`; the
-  plan names the animation the object plays and how: `loop` cycles at 120 ms per frame; `near` (the elevator's
-  `open`) scrubs the frames by proximity — forward while somebody stands within three cells, backward as they
-  leave, so one closed→open sequence serves both opening and closing. Missing frames fall back to `static`. Frames
-  must share one canvas — the converter guarantees that for a sequence.
+  plan names the animation the object plays and how: `loop` cycles at 120 ms per frame; `near` scrubs the frames
+  by proximity — forward while somebody stands within three cells, backward as they leave; `sim` (the elevator's
+  `open`) follows the 0…1 position the simulation publishes, so one closed→open sequence serves both opening and
+  closing. Missing frames fall back to `static`. Frames must share one canvas — the converter guarantees that.
 - **Layered objects** (the elevator): three objects share one footprint and one source canvas. `elevator-cabin`
   (floor layer, under everybody — a passenger stands _inside_ it), `elevator-doors` (`open_f0` closed …
   `open_f9` open, drawn above the passenger, sliding apart as the car arrives) and `elevator-frame` (the shaft's

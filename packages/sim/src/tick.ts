@@ -1,6 +1,8 @@
+import type { Point } from "./grid.ts";
 import { advanceStep } from "./steps.ts";
 import {
   type Actor,
+  anchorOf,
   ELEVATOR_DOORS_MS,
   freeAnchors,
   NEED_PERIOD_MS,
@@ -10,51 +12,85 @@ import {
   type World,
 } from "./world.ts";
 
-/** Pause on the elevator threshold before walking off, and the gap between cars (doors close in between). */
-const STEP_OUT_MS = 400;
-const ARRIVAL_GAP_MS = 2200;
+/** Pause on the threshold before walking off, and the pause with closed doors before the next car. */
+const STEP_OUT_MS = 300;
+const CAR_GAP_MS = 600;
+const DOORS_KEY = "elevator-doors";
 
-/**
- * One elevator car per arrival: the passenger appears inside the cabin as the doors open (ELEVATOR_DOORS_MS),
- * pauses, then walks out — to their work when it is already assigned, otherwise to a free corridor spot — so
- * the doors can close before the next car. Proximity keeps the doors open while anybody is in or at the car.
- */
-function arrive(world: World): void {
-  const a = world.arrivals;
-  const next = a.queue[0];
-  if (next === undefined || world.time < a.nextAt) {
+/** The car interior and its threshold: while anybody visible stands here, the doors stay open. */
+const inCarZone = (world: World, actor: Actor, car: Point): boolean =>
+  !actor.hidden &&
+  Math.abs(actor.tile.x - car.x) <= 3 &&
+  actor.tile.y >= car.y - 1 &&
+  actor.tile.y <= car.y + 4;
+
+/** Advances the elevator's doors and delivers one queued passenger per car (see `Elevator`). */
+function runElevator(world: World, dtMs: number): void {
+  const e = world.elevator;
+  const floorId = world.floors.keys().next().value;
+  const car = floorId === undefined ? undefined : anchorOf(world, floorId, "car")?.at;
+  if (car === undefined) {
     return;
   }
-  if (a.carAt === 0) {
-    // The car arrives: the passenger becomes visible inside the cabin while the doors part.
-    a.carAt = world.time + ELEVATOR_DOORS_MS;
-    world.held.add("elevator-doors");
-    const passenger = world.actors.get(next);
-    if (passenger !== undefined) {
-      passenger.hidden = false;
-      passenger.facing = "s";
+  const occupied = [...world.actors.values()].some((a) => inCarZone(world, a, car));
+  switch (e.phase) {
+    case "closed": {
+      const next = e.queue[0];
+      if (next !== undefined && world.time >= e.nextAt) {
+        // The car arrives: the passenger stands behind the closed doors and shows through as they part.
+        const passenger = world.actors.get(next);
+        if (passenger !== undefined) {
+          passenger.hidden = false;
+          passenger.facing = "s";
+          passenger.pos = { ...car };
+          passenger.tile = { ...car };
+        }
+        e.passenger = next;
+        e.phase = "opening";
+      } else if (occupied) {
+        // Somebody walked up to the car from the office (a visitor leaving).
+        e.phase = "opening";
+      }
+      break;
     }
-    return;
+    case "opening": {
+      e.amount = Math.min(1, e.amount + dtMs / ELEVATOR_DOORS_MS);
+      if (e.amount === 1) {
+        e.phase = "open";
+        const passenger = e.passenger === null ? undefined : world.actors.get(e.passenger);
+        e.queue = e.queue.filter((id) => id !== e.passenger);
+        e.passenger = null;
+        if (passenger !== undefined) {
+          const spot = world.rng.pick(freeAnchors(world, passenger.floorId, "wander"))?.at ?? {
+            x: car.x,
+            y: car.y + 5,
+          };
+          setSteps(passenger, [
+            { kind: "dwell", activity: "idle", facing: "s", until: null, ms: STEP_OUT_MS },
+            ...(passenger.steps.length > 0
+              ? passenger.steps
+              : walkSteps(world, passenger, passenger.floorId, spot)),
+          ]);
+        }
+      }
+      break;
+    }
+    case "open": {
+      if (!occupied) {
+        e.phase = "closing";
+      }
+      break;
+    }
+    case "closing": {
+      e.amount = Math.max(0, e.amount - dtMs / ELEVATOR_DOORS_MS);
+      if (e.amount === 0) {
+        e.phase = "closed";
+        e.nextAt = world.time + CAR_GAP_MS;
+      }
+      break;
+    }
   }
-  if (world.time < a.carAt) {
-    return;
-  }
-  a.queue.shift();
-  a.carAt = 0;
-  a.nextAt = world.time + ARRIVAL_GAP_MS;
-  world.held.delete("elevator-doors");
-  const actor = world.actors.get(next);
-  if (actor === undefined) {
-    return;
-  }
-  const spot = world.rng.pick(freeAnchors(world, actor.floorId, "wander"))?.at ?? {
-    x: actor.tile.x,
-    y: actor.tile.y + 2,
-  };
-  setSteps(actor, [
-    { kind: "dwell", activity: "idle", facing: "s", until: null, ms: STEP_OUT_MS },
-    ...(actor.steps.length > 0 ? actor.steps : walkSteps(world, actor, actor.floorId, spot)),
-  ]);
+  world.animations.set(DOORS_KEY, e.amount);
 }
 
 export function tick(
@@ -63,10 +99,10 @@ export function tick(
   onIdle: (world: World, actor: Actor) => void,
 ): void {
   world.time += dtMs;
-  arrive(world);
+  runElevator(world, dtMs);
   for (const actor of world.actors.values()) {
-    if (world.arrivals.queue.includes(actor.id)) {
-      // Waiting in the elevator car.
+    if (world.elevator.queue.includes(actor.id)) {
+      // Waiting in the elevator car (hidden, or standing behind the doors as they open).
       continue;
     }
     actor.animTime += dtMs;
