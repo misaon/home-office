@@ -2,6 +2,11 @@
 //
 //   bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--frames N] [--cells WxH]
 //                         [--no-key] [--no-align] [--tolerance 40] [--like <category>/<sprite>]
+//                         [--crop x,y,w,h]
+//
+// `--crop x,y,w,h` (source pixels) fixes the crop instead of trimming to the visible pixels — for art that carries
+// surroundings which the plan already draws (a wall around the elevator shaft). The crop is recorded, so layers
+// imported with `--like` share it.
 //
 // `--like furniture/elevator-cabin` imports a layer drawn on the same source canvas as another sprite: the crop
 // and output size recorded for that sprite (assets/src/<category>/<sprite>/import.json) are reused verbatim, so
@@ -56,6 +61,7 @@ const { values, positionals } = parseArgs({
     key: { type: "boolean", default: true },
     align: { type: "boolean", default: true },
     like: { type: "string" },
+    crop: { type: "string" },
     tolerance: { type: "string", default: "40" },
   },
 });
@@ -120,14 +126,35 @@ if (like !== null && (like.source.width !== first.width || like.source.height !=
     `--like ${values.like ?? ""}: that sprite came from a ${String(like.source.width)}×${String(like.source.height)} canvas, this file is ${String(first.width)}×${String(first.height)}`,
   );
 }
-// One crop for the whole animation: the union of every frame's visible pixels, so frames never jitter.
-let bounds: Box | null = like === null ? null : like.crop;
+function parseCrop(value: string | undefined): Box | null {
+  if (value === undefined) {
+    return null;
+  }
+  const parts = value.split(",").map(Number);
+  const [x, y, w, h] = parts;
+  if (
+    parts.length !== 4 ||
+    x === undefined ||
+    y === undefined ||
+    w === undefined ||
+    h === undefined ||
+    parts.some((n) => !Number.isFinite(n)) ||
+    w <= 0 ||
+    h <= 0
+  ) {
+    return fail(`--crop expects x,y,w,h in source pixels, got "${value}"`);
+  }
+  return { x, y, w, h };
+}
+// A fixed crop (another layer's, or --crop) applies to every frame; otherwise the union of the visible pixels.
+const fixedCrop: Box | null = like?.crop ?? parseCrop(values.crop);
+let bounds: Box | null = fixedCrop;
 for (const [index, raw] of rawFrames.entries()) {
   const b = opaqueBounds(raw);
   if (b === null) {
     fail(`frame ${String(index)} is fully transparent`);
   }
-  if (like !== null) {
+  if (fixedCrop !== null) {
     continue;
   }
   bounds =
@@ -157,8 +184,8 @@ const unionSize = {
 for (const [index, raw] of rawFrames.entries()) {
   let art = raw;
   let fitted: { frame: Rgba; scale: number };
-  if (like !== null) {
-    // A layer over another sprite: identical crop and canvas, whatever this layer's own silhouette is.
+  if (fixedCrop !== null) {
+    // A fixed crop: identical canvas for every frame and layer, whatever this frame's own silhouette is.
     fitted = {
       frame: place(
         resample(crop(raw, bounds), unionSize.w, unionSize.h),
@@ -191,9 +218,11 @@ for (const [index, raw] of rawFrames.entries()) {
     report.push(
       like !== null
         ? `  registered on ${values.like ?? ""}: same crop and ${String(unionSize.w)}×${String(unionSize.h)} px canvas`
-        : rawFrames.length > 1
-          ? `  frames trimmed individually and resampled to the common ${String(unionSize.w)}×${String(unionSize.h)} px (silhouette drift removed)`
-          : `  trimmed to the visible object (alpha ≥ ${String(ALPHA_MIN)}): ${String(bounds.w)}×${String(bounds.h)} px at (${String(bounds.x)}, ${String(bounds.y)})`,
+        : fixedCrop !== null
+          ? `  fixed crop ${String(fixedCrop.w)}×${String(fixedCrop.h)} px at (${String(fixedCrop.x)}, ${String(fixedCrop.y)}) → ${String(unionSize.w)}×${String(unionSize.h)} px`
+          : rawFrames.length > 1
+            ? `  frames trimmed individually and resampled to the common ${String(unionSize.w)}×${String(unionSize.h)} px (silhouette drift removed)`
+            : `  trimmed to the visible object (alpha ≥ ${String(ALPHA_MIN)}): ${String(bounds.w)}×${String(bounds.h)} px at (${String(bounds.x)}, ${String(bounds.y)})`,
     );
   }
   const overhang =

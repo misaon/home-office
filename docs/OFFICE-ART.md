@@ -90,9 +90,9 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | `dining-chair`           | 2 × 1             | 6     | kitchen                                                                             | walk-through                              |
 | `dining-table`           | 8 × 2             | 1     | kitchen                                                                             |                                           |
 | `dryer-bin`              | 1 × 4             | 1     | toilets                                                                             |                                           |
-| `elevator-cabin`         | 6 × 6             | 1     | corridor                                                                            | walk-through; floor layer                 |
-| `elevator-doors`         | 6 × 6             | 1     | corridor                                                                            | walk-through; animation `open`            |
-| `elevator-frame`         | 6 × 6             | 1     | corridor                                                                            | walk-through                              |
+| `elevator-cabin`         | 7 × 6             | 1     | corridor                                                                            | walk-through; floor layer                 |
+| `elevator-doors`         | 7 × 6             | 1     | corridor                                                                            | walk-through; animation `open`            |
+| `elevator-frame`         | 7 × 6             | 1     | corridor                                                                            | walk-through                              |
 | `floor-lamp`             | 1 × 1             | 1     | boss                                                                                | art 2 cells wide, centred                 |
 | `foosball`               | 4 × 6             | 1     | lounge                                                                              |                                           |
 | `fridge`                 | 3 × 3             | 1     | kitchen                                                                             |                                           |

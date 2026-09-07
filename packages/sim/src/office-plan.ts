@@ -123,17 +123,17 @@ function sharedSpaces(p: Plan): void {
     "elevator-cabin",
     "VÝTAH",
     "elevator-cabin",
-    { x: 3, y: 23, w: 6, h: 6 },
+    { x: 3, y: 23, w: 7, h: 6 },
     { blocks: false, layer: "floor" },
   );
   p.object(
     "elevator-doors",
     "",
     "elevator-doors",
-    { x: 3, y: 23, w: 6, h: 6 },
+    { x: 3, y: 23, w: 7, h: 6 },
     { blocks: false, animation: "open", playback: "sim" },
   );
-  p.object("elevator-frame", "", "elevator-frame", { x: 3, y: 23, w: 6, h: 6 }, { blocks: false });
+  p.object("elevator-frame", "", "elevator-frame", { x: 3, y: 23, w: 7, h: 6 }, { blocks: false });
   // The reception counter is drawn frontally (four cells tall); the receptionist stands behind it.
   p.object("reception", "název firmy", "desk-reception-rotated", { x: 14, y: 26, w: 8, h: 4 });
   p.anchor("reception", "reception", { x: 17, y: 30 });

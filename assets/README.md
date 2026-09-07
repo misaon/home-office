@@ -52,6 +52,8 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   `assets/src/<category>/<sprite>/import.json`, and `--like` reuses them verbatim, so a layer that is only door
   panels in the middle of the canvas lands exactly where it sits over the cabin. Layers must be drawn on the same
   canvas size. For a lone sequence whose outline really changes between frames, `--no-align` keeps the shared crop.
+  When the base layer carries surroundings the plan already draws (the wall around the shaft), fix its crop with
+  `--crop x,y,w,h` in source pixels; the layers imported with `--like` inherit it.
 
 **Floor tiles**
 
