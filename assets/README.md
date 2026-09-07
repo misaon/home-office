@@ -66,6 +66,25 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   `bun run assets:import assets/inbox/floor-wood.png tiles/floor-wood/static --cells 6x6` → 144 × 144 px, the
   pattern repeating every six cells. Surfaces without a delivered tile keep their flat palette colour.
 
+**Walls**
+
+Walls are one cell thick in the plan and assembled from four seamless tiles; deliver them at any size on a
+transparent or opaque background and import each with its size in cells (the pattern repeats along the run; a
+strip several cells long avoids visible repetition):
+
+| Key          | Where it is drawn                                                                        | Suggested delivery       |
+| ------------ | ---------------------------------------------------------------------------------------- | ------------------------ |
+| `wall-cap-h` | top of every horizontal wall (the dark cap seen from above), incl. the outer walls       | strip 4 × 1 cells        |
+| `wall-face`  | the light wall face one cell tall right under a horizontal wall (over the room's first   | strip 4 × 1 cells, with  |
+|              | row, across corners) and the bottom row of thick blocks — put the skirting on its bottom | the skirting in the tile |
+| `wall-block` | inner rows of thick blocks (the elevator shaft): plain face without skirting             | 4 × 4 cells              |
+| `wall-cap-v` | vertical walls: a band with its two edges                                                | strip 1 × 4 cells        |
+
+`bun run assets:import assets/inbox/wall-cap-h.png tiles/wall-cap-h/static --cells 4x1` and so on. Junctions and
+corners are composed by the renderer (caps overlap, the face runs across a corner and the vertical band starts one
+row lower), so no corner tiles are needed. Colours to match: cap #676768, face #f1be7b, skirting #977250 — the
+wall piece painted into the elevator sprite. Until a class is delivered it keeps its flat shape.
+
 **Characters**
 
 - Canvas 2 cells wide × 5 cells tall per frame (48 × 120 at `CELL_PX` 24), feet on the bottom row, centred

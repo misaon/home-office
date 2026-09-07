@@ -49,6 +49,8 @@ production geometry lives in code and every destination must be reachable.
   Art is drawn at its own pixel size (`CELL_PX` per cell, D20); a sprite delivered at the wrong width is scaled to
   its footprint and reported in the red banner. Room labels are part of the stand-in stage and go away with real
   art.
+- **Walls.** Every wall cell is classified (`cap-h`, `face`, `block`, `cap-v`) and drawn from the delivered
+  seamless tiles `tiles/wall-*` when present (`assets/README.md`, “Walls”), otherwise from flat palette shapes.
 - **Camera.** The floor always spans the pane's full width, uniformly scaled and never cropped; when it is taller
   than the pane, the pane scrolls. The canvas renders at the device's pixel ratio, so Retina displays sample the
   art once instead of upscaling a blurry canvas. A collapsible side panel is on the tuning list.

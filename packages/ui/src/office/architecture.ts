@@ -3,6 +3,67 @@ import { type PlanGlass, type PlanRect, type PlanRoom, roomFloorKey, SURFACE_TIL
 import { Container, Graphics, type Texture, TilingSprite } from "pixi.js";
 import { label, PALETTE, surfaceColor, TILE } from "./stand-ins.ts";
 
+type WallClass = "cap-h" | "cap-v" | "face" | "block";
+const WALL_CLASSES: readonly WallClass[] = ["block", "face", "cap-h", "cap-v"];
+/** Delivered wall tiles by class (assets/README.md, “Walls”); missing ones fall back to flat shapes. */
+const WALL_TILE: Record<WallClass, string> = {
+  "cap-h": "tiles/wall-cap-h",
+  "cap-v": "tiles/wall-cap-v",
+  face: "tiles/wall-face",
+  block: "tiles/wall-block",
+};
+
+/** One run of wall cells: the delivered tile repeated with a global phase, or the flat stand-in. */
+function drawWallRun(
+  layer: Container,
+  g: Graphics,
+  cls: WallClass,
+  texture: Texture | undefined,
+  r: { x: number; y: number; w: number; h: number },
+): void {
+  if (texture === undefined) {
+    fallbackWall(g, cls, r.x, r.y, r.w, r.h);
+    return;
+  }
+  const tiles = new TilingSprite({ texture, x: r.x, y: r.y, width: r.w, height: r.h });
+  // Keep the pattern phase global so neighbouring runs continue each other seamlessly.
+  tiles.tilePosition.set(-(r.x % texture.width), -(r.y % texture.height));
+  layer.addChild(tiles);
+}
+
+/** Flat-colour stand-in for a wall run of one class. */
+function fallbackWall(
+  g: Graphics,
+  cls: WallClass,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void {
+  switch (cls) {
+    case "cap-h":
+      g.rect(x, y, w, h).fill(PALETTE.wallCap);
+      break;
+    case "face":
+      g.rect(x, y, w, h)
+        .fill(PALETTE.wallFace)
+        .rect(x, y + h - 3, w, 3)
+        .fill(PALETTE.wallEdge);
+      break;
+    case "block":
+      g.rect(x, y, w, h).fill(PALETTE.wallFace);
+      break;
+    case "cap-v":
+      g.rect(x, y, w, h)
+        .fill(PALETTE.wallCap)
+        .rect(x, y, 2, h)
+        .fill(PALETTE.wallOuter)
+        .rect(x + w - 2, y, 2, h)
+        .fill(PALETTE.wallOuter);
+      break;
+  }
+}
+
 /**
  * Floors, walls and glass as one static layer. Floors are painted cell by cell from the template: every surface
  * gets one floor-spanning tile (the material `SURFACE_TILE` names for it, when delivered) masked to its cells, so
@@ -59,41 +120,61 @@ export function architecture(
     glass.some((p) => x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h);
   const isWall = (x: number, y: number): boolean =>
     x >= 0 && y >= 0 && x < width && y < height && walls[y * width + x] === 1;
-  // Walls as painted in the reference. A horizontal wall with floor above gets a grey cap and, unless a thick
-  // block continues below, a light face one cell tall over the next row with a shadow line — also across corners,
-  // where the vertical wall starts under the face instead of cutting it. Cells inside a thick block are the block's
-  // face. Vertical runs are grey bands with dark outlines. The bottom outer wall is a plain cap (nothing below).
+  // Walls as painted in the reference. Every wall cell is classified, then each class is drawn either from a
+  // delivered seamless tile (`tiles/wall-*`, repeated along the run) or from the flat palette fallback:
+  //   cap-h  — top of a horizontal wall (grey cap);
+  //   face   — the light wall face: the row under a horizontal wall (over the room's first row and across corners,
+  //            where the vertical wall starts one row lower) and the bottom row of a thick block;
+  //   block  — inner rows of a thick block (the elevator shaft);
+  //   cap-v  — a vertical wall band.
   const horizontalWall = (x: number, y: number): boolean =>
     isWall(x, y) && (isWall(x - 1, y) || isWall(x + 1, y));
+  const classes = new Map<number, WallClass>();
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       if (!isWall(x, y) || isGlass(x, y)) {
         continue;
       }
-      const px0 = x * TILE;
-      const py0 = y * TILE;
       const horizontal = horizontalWall(x, y);
       const underHorizontal = horizontalWall(x, y - 1) && !isGlass(x, y - 1);
+      const id = y * width + x;
       if (horizontal && underHorizontal) {
-        // Second and further rows of a thick block: its light face.
-        g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallFace);
+        classes.set(id, y + 1 < height && horizontalWall(x, y + 1) ? "block" : "face");
       } else if (horizontal) {
-        g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallCap);
-        if (y + 1 < height && !horizontalWall(x, y + 1)) {
-          g.rect(px0, py0 + TILE, TILE, TILE).fill(PALETTE.wallFace);
-          g.rect(px0, py0 + TILE * 2 - 3, TILE, 3).fill(PALETTE.wallEdge);
+        classes.set(id, "cap-h");
+        if (y + 1 < height && !isWall(x, y + 1)) {
+          classes.set(id + width, "face");
         }
       } else if (underHorizontal) {
-        // Corner: the face of the wall above runs across; the vertical band begins one row lower.
-        g.rect(px0, py0, TILE, TILE).fill(PALETTE.wallFace);
-        g.rect(px0, py0 + TILE - 3, TILE, 3).fill(PALETTE.wallEdge);
+        classes.set(id, "face");
       } else {
-        g.rect(px0, py0, TILE, TILE)
-          .fill(PALETTE.wallCap)
-          .rect(px0, py0, 2, TILE)
-          .fill(PALETTE.wallOuter)
-          .rect(px0 + TILE - 2, py0, 2, TILE)
-          .fill(PALETTE.wallOuter);
+        classes.set(id, "cap-v");
+      }
+    }
+  }
+  for (const cls of WALL_CLASSES) {
+    const texture = floorTexture(WALL_TILE[cls]);
+    const vertical = cls === "cap-v";
+    const outer = vertical ? width : height;
+    const inner = vertical ? height : width;
+    for (let o = 0; o < outer; o += 1) {
+      let run = -1;
+      for (let i = 0; i <= inner; i += 1) {
+        const x = vertical ? o : i;
+        const y = vertical ? i : o;
+        const here = i < inner && classes.get(y * width + x) === cls;
+        if (here && run < 0) {
+          run = i;
+        } else if (!here && run >= 0) {
+          const length = i - run;
+          drawWallRun(layer, g, cls, texture, {
+            x: (vertical ? o : run) * TILE,
+            y: (vertical ? run : o) * TILE,
+            w: (vertical ? 1 : length) * TILE,
+            h: (vertical ? length : 1) * TILE,
+          });
+          run = -1;
+        }
       }
     }
   }
