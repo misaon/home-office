@@ -45,8 +45,8 @@ const surfaceColor = (room: PlanRoom): number =>
 
 /** Floor fills per room and walls with a lit cap; glass cells are left to `glassWall`. Cached once per floor. */
 /**
- * Floors, walls and glass as one static layer. Each surface is a delivered seamless tile (`tiles/floor-<surface>`)
- * repeated over the room when the manifest has it, otherwise the flat palette colour.
+ * Floors, walls and glass as one static layer. Each surface is a delivered seamless tile (the key the plan's
+ * `SURFACE_TILE` names for it) repeated over the room when the manifest has it, otherwise the flat palette colour.
  */
 export function architecture(
   rooms: readonly PlanRoom[],

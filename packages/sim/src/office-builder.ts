@@ -16,11 +16,12 @@ export type OfficePlan = {
   glass: PlanRect[];
 };
 
-const SURFACE_TILE: Record<Surface, string> = {
-  office: "tiles/floor-office",
+/** Which delivered floor tile each surface uses (owner's choices): parquet in the corridors, decking outside. */
+export const SURFACE_TILE: Record<Surface, string> = {
+  office: "tiles/floor-wood",
   carpet: "tiles/floor-carpet",
   tile: "tiles/floor-tile",
-  wood: "tiles/floor-wood",
+  wood: "tiles/floor-deck",
 };
 
 export type ObjectOptions = {

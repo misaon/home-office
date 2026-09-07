@@ -55,11 +55,12 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
 
 **Floor tiles**
 
-- `tiles/floor-<surface>/static_f0.png` for the surfaces the plan uses: `office` (corridors, reception), `carpet`
-  (offices, meeting room, lounge), `tile` (kitchen, toilets), `wood` (terrace, spa). A **seamless** square texture
-  repeated over the room; import it with the tile size in cells, e.g.
-  `bun run assets:import assets/inbox/floor-wood.png tiles/floor-wood/static --cells 4x4` → 96 × 96 px, so the
-  pattern repeats every four cells. Rooms without a delivered tile keep their flat palette colour.
+- `tiles/<material>/static_f0.png`: a **seamless** square texture repeated over every room whose surface the plan
+  maps to that material (`SURFACE_TILE` in `packages/sim/src/office-builder.ts`): `floor-wood` → `office`
+  (corridors, reception), `floor-carpet` → offices, meeting room and lounge, `floor-tile` → kitchen and toilets,
+  `floor-deck` → terrace and spa. Import with the tile size in cells, e.g.
+  `bun run assets:import assets/inbox/floor-wood.png tiles/floor-wood/static --cells 6x6` → 144 × 144 px, the
+  pattern repeating every six cells. Surfaces without a delivered tile keep their flat palette colour.
 
 **Characters**
 

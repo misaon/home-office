@@ -1,5 +1,13 @@
 /* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
-import type { Actor, OfficePlan, PlanDoor, PlanObject, PlanRect, World } from "@ho/sim";
+import {
+  type Actor,
+  type OfficePlan,
+  type PlanDoor,
+  type PlanObject,
+  type PlanRect,
+  SURFACE_TILE,
+  type World,
+} from "@ho/sim";
 import { Container, Graphics, Sprite, type Texture } from "pixi.js";
 import type { FloorView } from "./scene.ts";
 import { fitScale, type SpriteLibrary } from "./sprites.ts";
@@ -62,7 +70,7 @@ export function createPlanView(
     template.walls,
     template.width,
     template.height,
-    (surface) => sprites.frames(`tiles/floor-${surface}`, "static")?.[0],
+    (surface) => sprites.frames(SURFACE_TILE[surface], "static")?.[0],
   );
   const objects = new Container({ sortableChildren: true });
   const views: ObjectView[] = [];
