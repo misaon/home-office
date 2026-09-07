@@ -143,7 +143,7 @@ export async function pushFromVolume(
     bridgeSpec(
       config,
       `${volume}-push`,
-      ["-C", REPO_IN_VOLUME, "push", "-q", "-f", "/src", `HEAD:refs/heads/${branch}`],
+      ["-C", REPO_IN_VOLUME, "push", "-q", "/src", `HEAD:refs/heads/${branch}`],
       volume,
       { path: sourcePath, readonly: false },
     ),

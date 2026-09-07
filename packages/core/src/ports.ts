@@ -11,6 +11,7 @@ import type {
 export type Cancellation = {
   readonly aborted: boolean;
   addEventListener: (type: "abort", listener: () => void) => void;
+  removeEventListener: (type: "abort", listener: () => void) => void;
 };
 
 /** Time and randomness are injected so the core stays deterministic and browser-safe. */

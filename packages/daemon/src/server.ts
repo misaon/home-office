@@ -59,6 +59,10 @@ export function startServer(options: ServerOptions): { port: number; stop: () =>
     port: options.port,
     fetch(req, srv) {
       const url = new URL(req.url);
+      const origin = req.headers.get("origin");
+      if (origin !== null && origin !== url.origin) {
+        return new Response("forbidden origin", { status: 403 });
+      }
       if (url.pathname === "/health") {
         return Response.json({ ok: true });
       }
@@ -96,6 +100,9 @@ export function startServer(options: ServerOptions): { port: number; stop: () =>
       return upgraded ? undefined : new Response("upgrade failed", { status: 500 });
     },
     websocket: {
+      maxPayloadLength: 2 * 1024 * 1024,
+      backpressureLimit: 4 * 1024 * 1024,
+      closeOnBackpressureLimit: true,
       open(ws) {
         if (ws.data.kind === "runner") {
           options.gateway.open(ws.data.token, ws);

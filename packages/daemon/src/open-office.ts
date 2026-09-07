@@ -1,8 +1,6 @@
 import type { Clock, IdFactory } from "@ho/core";
 import { createSqliteEventStore, openDatabase } from "@ho/store";
-import { rename } from "node:fs/promises";
 import { join } from "node:path";
-import { z } from "zod";
 import type { Logger } from "./logger.ts";
 import { Office } from "./office.ts";
 
@@ -14,11 +12,6 @@ export type Opened = {
   office: Office;
 };
 
-/**
- * Opens the event log and rebuilds the read model. A log written before D23 (projects without a repository,
- * agents with several projects) no longer parses; it is archived as `ho.db.bak-<timestamp>` and the office
- * starts over with an empty log (owner's decision, 2026-09-07).
- */
 export async function openOffice(
   home: string,
   migrationsDir: string | null,
@@ -27,30 +20,15 @@ export async function openOffice(
   log: Logger,
 ): Promise<Opened> {
   const path = join(home, DB_FILE);
-  const open = async (): Promise<Opened> => {
-    const database = openDatabase(path, { migrationsDir });
-    const store = createSqliteEventStore(database.db, { ids, clock });
-    try {
-      return { database, store, office: await Office.open(store, clock, log) };
-    } catch (error) {
-      database.close();
-      throw error;
-    }
-  };
+  const database = openDatabase(path, { migrationsDir });
+  const store = createSqliteEventStore(database.db, { ids, clock });
   try {
-    return await open();
+    return { database, store, office: await Office.open(store, clock, log) };
   } catch (error) {
-    if (!(error instanceof z.ZodError)) {
-      throw error;
-    }
-    const stamp = clock.now().toISOString().replaceAll(/[:.]/gu, "-");
-    for (const suffix of ["", "-wal", "-shm"]) {
-      await rename(`${path}${suffix}`, `${path}.bak-${stamp}${suffix}`).catch(() => null);
-    }
-    log.warn(
-      { archived: `${path}.bak-${stamp}` },
-      "event log predates D23; archived, starting fresh",
+    database.close();
+    throw new Error(
+      "Cannot replay the event log; database preserved. Restore or migrate it before starting.",
+      { cause: error },
     );
-    return open();
   }
 }

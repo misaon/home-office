@@ -4,7 +4,7 @@ import { createSecretStore } from "@ho/secrets";
 import { mkdir } from "node:fs/promises";
 import { startBossVoice } from "./boss-voice.ts";
 import { openOffice } from "./open-office.ts";
-import { type DaemonConfig, loadConfig, resolveHome } from "./config.ts";
+import { DaemonConfig, loadConfig, resolveHome } from "./config.ts";
 import { type DaemonInfo, removeDaemonInfo, writeDaemonInfo } from "./daemon-info.ts";
 import { resolveResources } from "./paths.ts";
 import { createLogger } from "./logger.ts";
@@ -45,7 +45,10 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   const home = options.home ?? resolveHome();
   await mkdir(home, { recursive: true, mode: 0o700 });
   const resources = resolveResources(options.resourcesRoot);
-  const config: DaemonConfig = { ...(await loadConfig(home, resources)), ...options.overrides };
+  const config = DaemonConfig.parse({
+    ...(await loadConfig(home, resources)),
+    ...options.overrides,
+  });
   const log = createLogger(config.logLevel, options.logFile);
   const clock = { now: () => new Date() };
   const ids = createIdFactory(clock, {

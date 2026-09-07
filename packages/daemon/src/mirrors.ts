@@ -13,6 +13,8 @@ const git = async (args: readonly string[], cwd?: string): Promise<string> => {
   const proc = Bun.spawn(["git", ...args], {
     stdout: "pipe",
     stderr: "pipe",
+    timeout: 120_000,
+    env: { ...Bun.env, GIT_TERMINAL_PROMPT: "0" },
     ...(cwd === undefined ? {} : { cwd }),
   });
   const [stdout, stderr, code] = await Promise.all([
@@ -64,7 +66,6 @@ export async function pushMirrorBranch(
     "remote.origin.mirror=false",
     "push",
     "--quiet",
-    "--force",
     "origin",
     refspec,
   ]);
@@ -80,7 +81,6 @@ export async function pushLocalBranch(project: Project, branch: string): Promise
     project.repo.path,
     "push",
     "--quiet",
-    "--force",
     "origin",
     `refs/heads/${branch}:refs/heads/${branch}`,
   ]);

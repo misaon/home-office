@@ -142,11 +142,16 @@ export type TaskArtifactsInput = z.infer<typeof TaskArtifactsInput>;
  * A message to a floor's boss (`projectId`), who triages it, or an answer to a question an agent asked about a
  * task (`taskId`), which resumes that task. Exactly one of the two.
  */
-export const ChatSendInput = z.object({
-  text: z.string().min(1).max(20000),
-  projectId: ProjectId.optional(),
-  taskId: TaskId.optional(),
-});
+export const ChatSendInput = z
+  .object({
+    text: z.string().trim().min(1).max(20000),
+    projectId: ProjectId.optional(),
+    taskId: TaskId.optional(),
+  })
+  .refine(
+    (input) => (input.projectId === undefined) !== (input.taskId === undefined),
+    "specify exactly one of projectId or taskId",
+  );
 export type ChatSendInput = z.infer<typeof ChatSendInput>;
 export const ChatHistoryInput = z.object({
   projectId: ProjectId.optional(),

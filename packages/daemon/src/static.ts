@@ -1,30 +1,52 @@
+import { realpath, stat } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 
-/** Serves files below `root` without ever leaving it; the SPA entry is served for unknown paths. */
+const HEADERS = {
+  "cache-control": "no-cache",
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "no-referrer",
+  "content-security-policy":
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+};
+
 export async function serveStatic(
   root: string,
   pathname: string,
   fallback: string | null,
 ): Promise<Response> {
-  const decoded = decodeURIComponent(pathname).replaceAll("\\", "/");
-  const base = resolve(root);
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(pathname).replaceAll("\\", "/");
+  } catch {
+    return new Response("bad path", { status: 400 });
+  }
+  if (decoded.includes("\0")) {
+    return new Response("bad path", { status: 400 });
+  }
+  const base = await realpath(root).catch(() => null);
+  if (base === null) {
+    return new Response("not found", { status: 404 });
+  }
+  const within = (path: string): boolean => path === base || path.startsWith(base + sep);
   const target = resolve(base, `.${decoded}`);
-  if (target !== base && !target.startsWith(base + sep)) {
+  if (!within(target)) {
     return new Response("forbidden", { status: 403 });
   }
-  const file = Bun.file(target);
-  if (await file.exists()) {
-    return new Response(file, {
-      headers: {
-        "cache-control": decoded.includes("-") ? "public, max-age=31536000, immutable" : "no-cache",
-      },
-    });
-  }
-  if (fallback !== null) {
-    const entry = Bun.file(resolve(base, fallback));
-    if (await entry.exists()) {
-      return new Response(entry, { headers: { "cache-control": "no-cache" } });
+  const fileResponse = async (path: string): Promise<Response | null> => {
+    const actual = await realpath(path).catch(() => null);
+    if (actual === null) {
+      return null;
     }
-  }
-  return new Response("not found", { status: 404 });
+    if (!within(actual)) {
+      return new Response("forbidden", { status: 403 });
+    }
+    return (await stat(actual)).isFile()
+      ? new Response(Bun.file(actual), { headers: HEADERS })
+      : null;
+  };
+  return (
+    (await fileResponse(target)) ??
+    (fallback === null ? null : await fileResponse(resolve(base, fallback))) ??
+    new Response("not found", { status: 404 })
+  );
 }

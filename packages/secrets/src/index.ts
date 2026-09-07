@@ -18,3 +18,5 @@ export const createSecretStore = (
     ? createKeychainSecretStore()
     : createFileSecretStore(join(home, "secrets.json"));
 };
+
+export { writePrivateFile } from "./private-file.ts";

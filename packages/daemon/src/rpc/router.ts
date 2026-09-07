@@ -263,13 +263,18 @@ export const router = base.router({
             resolve(false);
             return;
           }
-          const timer = setTimeout(() => {
-            resolve(true);
-          }, 15_000);
-          signal?.addEventListener("abort", () => {
+          const finish = (alive: boolean): void => {
             clearTimeout(timer);
-            resolve(false);
-          });
+            signal?.removeEventListener("abort", aborted);
+            resolve(alive);
+          };
+          const aborted = (): void => {
+            finish(false);
+          };
+          const timer = setTimeout(() => {
+            finish(true);
+          }, 15_000);
+          signal?.addEventListener("abort", aborted, { once: true });
         });
       try {
         yield { at: context.office.clock.now().toISOString() };

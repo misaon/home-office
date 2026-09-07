@@ -52,7 +52,9 @@ type Subscriber = { sessionId: SessionId | null; push: (event: LiveEvent) => voi
 export class SessionManager {
   readonly #deps: SessionDeps;
   readonly #subscribers = new Set<Subscriber>();
-  readonly #running = new Map<SessionId, AbortController>();
+  readonly #running = new Map<SessionId, { controller: AbortController; done: Promise<void> }>();
+  #stopping = false;
+  readonly #starting = new Set<Promise<Session>>();
 
   constructor(deps: SessionDeps) {
     this.#deps = deps;
@@ -65,16 +67,35 @@ export class SessionManager {
 
   /** Live runtime events for the UI and CLI. Not persisted. */
   stream(sessionId: SessionId | null, signal?: AbortSignal): AsyncIterable<LiveEvent> {
-    const channel = createChannel<LiveEvent>(signal);
-    const subscriber: Subscriber = { sessionId, push: channel.push };
-    this.#subscribers.add(subscriber);
-    signal?.addEventListener("abort", () => {
-      this.#subscribers.delete(subscriber);
+    const subscriber: Subscriber = {
+      sessionId,
+      push: (event) => {
+        channel.push(event);
+      },
+    };
+    const channel = createChannel<LiveEvent>(signal, {
+      onClose: () => {
+        this.#subscribers.delete(subscriber);
+      },
     });
+    if (!channel.closed) {
+      this.#subscribers.add(subscriber);
+    }
     return channel.iterate();
   }
 
-  async start(taskId: TaskId, agentId: Session["agentId"], mode: SessionMode): Promise<Session> {
+  start(taskId: TaskId, agentId: Session["agentId"], mode: SessionMode): Promise<Session> {
+    if (this.#stopping) {
+      return Promise.reject(new Error("daemon is stopping"));
+    }
+    const started = this.#start(taskId, agentId, mode).finally(() => {
+      this.#starting.delete(started);
+    });
+    this.#starting.add(started);
+    return started;
+  }
+
+  async #start(taskId: TaskId, agentId: Session["agentId"], mode: SessionMode): Promise<Session> {
     const { office } = this.#deps;
     const task = office.model.tasks.get(taskId);
     const agent = office.model.agents.get(agentId);
@@ -87,28 +108,36 @@ export class SessionManager {
       startSession(m, { taskId, agentId, mode }, ctx),
     );
     const controller = new AbortController();
-    this.#running.set(session.id, controller);
     const budget = setTimeout(() => {
       this.#deps.log.warn({ sessionId: session.id }, "wall-time budget exhausted");
       controller.abort();
     }, agent.budgets.maxWallMinutes * 60_000);
-    void this.#run({ session, task, agent, project, previous, signal: controller.signal }).finally(
-      () => {
-        clearTimeout(budget);
-        this.#running.delete(session.id);
-      },
-    );
+    if (this.#stopping) {
+      controller.abort();
+    }
+    const done = this.#run({
+      session,
+      task,
+      agent,
+      project,
+      previous,
+      signal: controller.signal,
+    }).finally(() => {
+      clearTimeout(budget);
+      this.#running.delete(session.id);
+    });
+    this.#running.set(session.id, { controller, done });
     return session;
   }
 
   async stopAll(): Promise<void> {
-    const ids = [...this.#running.keys()];
-    for (const controller of this.#running.values()) {
+    this.#stopping = true;
+    await Promise.allSettled(this.#starting);
+    const running = [...this.#running.values()];
+    for (const { controller } of running) {
       controller.abort();
     }
-    await Promise.all(
-      ids.map((id) => this.#end(id, "stopped", "daemon shutdown").catch(() => null)),
-    );
+    await Promise.allSettled(running.map(({ done }) => done));
   }
 
   #emit(sessionId: SessionId, event: RuntimeEvent): void {
@@ -194,6 +223,7 @@ export class SessionManager {
       await this.#end(sessionId, "failed", message).catch(() => null);
     } finally {
       if (provisioned !== null) {
+        provisioned.connection.close();
         mcp.unregister(provisioned.mcpToken);
         await provider.stop(provisioned.sandbox, 5).catch(() => null);
         await provider.remove(provisioned.sandbox).catch(() => null);

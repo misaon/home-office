@@ -14,6 +14,14 @@ const ws = new WebSocket(`${gateway}${RUNNER_PATH}`, {
   headers: { authorization: `Bearer ${token}` },
 });
 const send = (message: FromRunner): void => {
+  if (ws.readyState !== WebSocket.OPEN) {
+    return;
+  }
+  if (ws.bufferedAmount > 4 * 1024 * 1024) {
+    child?.kill("SIGKILL");
+    ws.close(1013, "daemon is not consuming output");
+    return;
+  }
   ws.send(JSON.stringify(message));
 };
 const reportError = (error: unknown): void => {
@@ -37,6 +45,10 @@ async function pumpLines(
   let buffer = "";
   for await (const chunk of stream) {
     buffer += decoder.decode(chunk, { stream: true });
+    if (buffer.length > 1024 * 1024) {
+      child?.kill("SIGKILL");
+      throw new Error("agent output line exceeds 1 MiB");
+    }
     let newline = buffer.indexOf("\n");
     while (newline >= 0) {
       onLine(buffer.slice(0, newline));
@@ -44,6 +56,7 @@ async function pumpLines(
       newline = buffer.indexOf("\n");
     }
   }
+  buffer += decoder.decode();
   if (buffer.length > 0) {
     onLine(buffer);
   }
@@ -57,10 +70,15 @@ async function pumpText(
   for await (const chunk of stream) {
     onText(decoder.decode(chunk, { stream: true }));
   }
+  const remaining = decoder.decode();
+  if (remaining !== "") {
+    onText(remaining);
+  }
 }
 
-async function relayExit(proc: Child): Promise<void> {
+async function relayExit(proc: Child, output: Promise<unknown>): Promise<void> {
   const code = await proc.exited;
+  await output;
   send({ type: "exit", code, signal: proc.signalCode });
   child = undefined;
 }
@@ -78,18 +96,18 @@ function spawnChild(
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...Bun.env, ...env },
+    env: { ...Bun.env, [RUNNER_ENV.token]: undefined, [RUNNER_ENV.gateway]: undefined, ...env },
     ...(cwd === undefined ? {} : { cwd }),
   });
   child = proc;
   send({ type: "spawned", pid: proc.pid });
-  pumpLines(proc.stdout, (line) => {
+  const stdout = pumpLines(proc.stdout, (line) => {
     send({ type: "stdout", line });
   }).catch(reportError);
-  pumpText(proc.stderr, (text) => {
+  const stderr = pumpText(proc.stderr, (text) => {
     send({ type: "stderr", text });
   }).catch(reportError);
-  relayExit(proc).catch(reportError);
+  relayExit(proc, Promise.allSettled([stdout, stderr])).catch(reportError);
 }
 
 function handle(message: ToRunner): void {
