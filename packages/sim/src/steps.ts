@@ -1,4 +1,4 @@
-import { facingTowards, findPath } from "./grid.ts";
+import { facingTowards, findPath, type Point, samePoint } from "./grid.ts";
 import {
   type Actor,
   anchorOf,
@@ -16,8 +16,21 @@ const finishStep = (actor: Actor): void => {
   actor.moving = null;
 };
 
-/** How long a walker waits for a taken cell before looking for a way around it. */
+/** How long a walker waits for a taken cell before looking for a way around it (plus a per-actor jitter). */
 const BLOCKED_WAIT_MS = 500;
+const jitterMs = (id: string): number => {
+  let h = 0;
+  for (const ch of id) {
+    h = (h * 31 + (ch.codePointAt(0) ?? 0)) % 400;
+  }
+  return h;
+};
+const NEIGHBOURS: readonly Point[] = [
+  { x: 1, y: 0 },
+  { x: -1, y: 0 },
+  { x: 0, y: 1 },
+  { x: 0, y: -1 },
+];
 
 function advanceWalk(
   world: World,
@@ -59,13 +72,22 @@ function advanceWalk(
     step.blockedMs = (step.blockedMs ?? 0) + dtMs;
     actor.activity = "idle";
     actor.facing = facingTowards(actor.tile, next);
-    if (step.blockedMs >= BLOCKED_WAIT_MS) {
+    if (step.blockedMs >= BLOCKED_WAIT_MS + jitterMs(actor.id)) {
       step.blockedMs = 0;
       const target = nearestWalkable(world, actor.floorId, step.to);
       const around = occupied(world, actor, true);
       const detour = findPath(floor.grid, actor.tile, target, around);
       if (detour.length > 0) {
         step.path = detour;
+        return;
+      }
+      // Boxed in head-on: step aside into any free neighbour, then plan again from there.
+      const aside = NEIGHBOURS.map((d) => ({ x: actor.tile.x + d.x, y: actor.tile.y + d.y })).find(
+        (p) => floor.grid.isWalkable(p) && !around(p) && !samePoint(p, next),
+      );
+      if (aside !== undefined) {
+        step.path = [aside];
+        step.replan = true;
       }
     }
     return;
@@ -83,7 +105,12 @@ function advanceWalk(
     actor.moving = null;
     step.path.shift();
     if (step.path.length === 0) {
-      finishStep(actor);
+      if (step.replan === true) {
+        step.replan = false;
+        step.path = null;
+      } else {
+        finishStep(actor);
+      }
     }
     return;
   }

@@ -70,7 +70,7 @@ function structure(p: Plan): void {
   p.glass({ x: 49, y: 33, w: 20, h: 1 });
   // The terrace is fenced by a low glass rail along its south and east edges instead of the outer wall.
   p.glass({ x: 49, y: 45, w: 30, h: 1 }, "rail");
-  p.glass({ x: 79, y: 34, w: 1, h: 12 }, "rail");
+  p.glass({ x: 79, y: 21, w: 1, h: 25 }, "rail");
   // Arrival: the elevator threshold is where everybody (and the postman) enters the office.
   p.anchor("elevator", "elevator", { x: 4, y: 30 });
   p.anchor("entrance", "entrance", { x: 5, y: 30 }, "s");
@@ -192,7 +192,8 @@ function sharedSpaces(p: Plan): void {
   }
   p.object("sinks", "UMYVADLA", "sinks", { x: 17, y: 38, w: 2, h: 4 }, { facing: "w" });
   p.anchor("sinks", "wander", { x: 16, y: 39 }, "e");
-  p.object("dryer-bin", "", "dryer-bin", { x: 11, y: 40, w: 1, h: 4 });
+  // Hand dryer and bin hang on the end of the stall wall (x 10), not in the open room.
+  p.object("dryer-bin", "", "dryer-bin", { x: 10, y: 39, w: 1, h: 3 });
   // Lounge: TV and console by the west wall, an L-shaped sofa around a coffee table, darts, foosball.
   p.object("tv", "TV", "tv", { x: 21, y: 36, w: 1, h: 6 }, { facing: "e", artWidth: 1.5 });
   p.object(
@@ -207,7 +208,7 @@ function sharedSpaces(p: Plan): void {
   p.object("lounge-table", "", "lounge-table", { x: 27, y: 39, w: 2, h: 3 });
   p.anchor("sofa", "relax", { x: 29, y: 39 }, "e");
   p.anchor("sofa-nap", "sleep", { x: 29, y: 41 }, "s");
-  p.object("dartboard", "", "dartboard", { x: 24, y: 35, w: 2, h: 2 }, { blocks: false });
+  p.object("dartboard", "", "dartboard", { x: 24, y: 34, w: 2, h: 2 }, { blocks: false });
   p.anchor("darts", "relax", { x: 25, y: 38 });
   p.object("foosball", "FOTBÁLEK", "foosball", { x: 39, y: 37, w: 4, h: 6 });
   p.anchor("foosball-left", "relax", { x: 38, y: 40 }, "e");

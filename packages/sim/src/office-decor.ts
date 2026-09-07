@@ -62,8 +62,7 @@ export function decor(p: Plan): void {
   wall("wall-screen", "wall-screen", 40, 21, 5, 2);
   p.object("projector", "", "projector", { x: 37, y: 22, w: 2, h: 2 });
   plant("meeting", 46, 24);
-  // Kitchen: tiled backsplash on the north wall, plant beside the fridge. Toilets: plant below the sinks.
-  wall("backsplash", "backsplash", 54, 21, 13, 2);
+  // Kitchen: plant beside the fridge. Toilets: plant below the sinks.
   plant("kitchen", 67, 24);
   p.object("plant-toilets", "", "plant", { x: 17, y: 44, w: 2, h: 1 });
   // Lounge: two pictures on the north wall, plant by the foosball table.

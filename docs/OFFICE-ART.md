@@ -70,7 +70,6 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | ------------------------ | ----------------- | ----- | ----------------------------------------------------------------------------------- | ----------------------------------------- |
 | `aquarium`               | 3 × 2             | 1     | dev                                                                                 | walk-through                              |
 | `ashtray`                | 1 × 1             | 1     | spa                                                                                 |                                           |
-| `backsplash`             | 13 × 2            | 1     | kitchen                                                                             | walk-through                              |
 | `bin`                    | 1 × 1             | 1     | corridor                                                                            |                                           |
 | `bookshelf`              | 4 × 3             | 2     | dev                                                                                 |                                           |
 | `boss-visitors`          | 7 × 3             | 1     | boss                                                                                |                                           |
@@ -93,7 +92,7 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | `desk-reception-rotated` | 8 × 4             | 1     | reception                                                                           |                                           |
 | `dining-chair`           | 2 × 1             | 6     | kitchen                                                                             | walk-through                              |
 | `dining-table`           | 8 × 2             | 1     | kitchen                                                                             |                                           |
-| `dryer-bin`              | 1 × 4             | 1     | toilets                                                                             |                                           |
+| `dryer-bin`              | 1 × 3             | 1     | toilets                                                                             |                                           |
 | `elevator-cabin`         | 7 × 6             | 1     | corridor                                                                            | walk-through; floor layer                 |
 | `elevator-doors`         | 7 × 6             | 1     | corridor                                                                            | walk-through; animation `open`            |
 | `elevator-frame`         | 7 × 6             | 1     | corridor                                                                            | walk-through                              |

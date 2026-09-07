@@ -14,10 +14,11 @@ export const PALETTE = {
   rugBeige: 0xbf8045,
   tile: 0xd06c20,
   wood: 0xc16019,
-  wallFace: 0xd39d6b,
-  wallCap: 0x504d48,
-  wallOuter: 0x2a2926,
-  wallEdge: 0xb38958,
+  // Wall colours match the wall piece painted into the elevator sprite, so the shaft blends into our walls.
+  wallFace: 0xf1be7b,
+  wallCap: 0x676768,
+  wallOuter: 0x676768,
+  wallEdge: 0x977250,
   teal: 0x246a61,
   wood2: 0x805d38,
   trim: 0xd9af70,
@@ -206,7 +207,7 @@ function furnitureStandIn(g: Graphics, kind: string, f: PlanObject, w: number, h
 }
 
 export function standIn(f: PlanObject): Container {
-  const root = new Container({ x: f.at.x * TILE, y: f.at.y * TILE });
+  const root = new Container({ x: f.at.x * TILE, y: (f.at.y + (f.artOffsetY ?? 0)) * TILE });
   root.zIndex = (f.at.y + f.h) * TILE - (f.blocks ? 1 : 3);
   const g = new Graphics();
   const w = f.w * TILE;

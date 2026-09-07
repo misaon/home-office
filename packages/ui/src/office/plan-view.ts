@@ -95,7 +95,7 @@ export function createPlanView(
     }
     // Art sits with its bottom-left corner on the footprint's bottom-left cell; art declared wider than the
     // footprint (chairs) is centred on it instead. A wrong width is scaled to the contract size and reported.
-    const bottom = (item.at.y + item.h) * TILE;
+    const bottom = (item.at.y + item.h + (item.artOffsetY ?? 0)) * TILE;
     const artWidth = (item.artWidth ?? item.w) * TILE;
     const sprite =
       item.artWidth === undefined
