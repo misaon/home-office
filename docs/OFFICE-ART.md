@@ -50,7 +50,8 @@ production geometry lives in code and every destination must be reachable.
   its footprint and reported in the red banner. Room labels are part of the stand-in stage and go away with real
   art.
 - **Walls.** Every wall cell is classified (`cap-h`, `face`, `block`, `cap-v`) and drawn from the delivered
-  seamless tiles `tiles/wall-*` when present (`assets/README.md`, “Walls”), otherwise from flat palette shapes.
+  seamless tiles `tiles/wall-*` (`assets/README.md`, “Walls”; all four are in), with flat palette shapes as the
+  fallback for a missing class.
 - **Camera.** The floor always spans the pane's full width, uniformly scaled and never cropped; when it is taller
   than the pane, the pane scrolls. The canvas renders at the device's pixel ratio, so Retina displays sample the
   art once instead of upscaling a blurry canvas. A collapsible side panel is on the tuning list.
@@ -151,5 +152,6 @@ simulation asks for are tabulated in `assets/README.md`; `idle_s` alone already 
 
 ## Later
 
-Wall tiles as art (floors take delivered seamless tiles per surface — `tiles/floor-wood` is in; the flat palette colour remains for surfaces without one), an elevator travel indicator, monitor
-and TV states, hot-tub water, a collapsible side panel, texture atlas packing once the scene is complete.
+Glass and door tiles (walls and floors already take delivered seamless tiles; the flat palette colour remains for
+rooms without a floor tile), an elevator travel indicator, monitor and TV states, hot-tub water, a collapsible side
+panel, texture atlas packing once the scene is complete.

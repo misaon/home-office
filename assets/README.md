@@ -81,10 +81,14 @@ strip several cells long avoids visible repetition):
 | `wall-block` | inner rows of thick blocks (the elevator shaft): plain face without skirting             | 4 × 4 cells              |
 | `wall-cap-v` | vertical walls: a band with its two edges                                                | strip 1 × 4 cells        |
 
-`bun run assets:import assets/inbox/wall-cap-h.png tiles/wall-cap-h/static --cells 4x1` and so on. Junctions and
-corners are composed by the renderer (caps overlap, the face runs across a corner and the vertical band starts one
-row lower), so no corner tiles are needed. Colours to match: cap #676768, face #f1be7b, skirting #977250 — the
-wall piece painted into the elevator sprite. Until a class is delivered it keeps its flat shape.
+`bun run assets:import assets/inbox/wall-cap-h.png tiles/wall-cap-h/static --cells 4x1` and so on. A delivered
+strip usually has closed, rounded ends: import only its interior with `--crop x,y,w,h`, a whole number of cells
+long (band thickness = one cell), so the run tiles without a seam — the delivered set was imported as
+`wall-cap-h` 11 × 1 (`--crop 146,267,1881,171`), `wall-face` 6 × 1 (`--crop 222,214,1728,288`), `wall-cap-v`
+1 × 12 (`--crop 286,174,152,1824`) and `wall-block` 4 × 4. Junctions and corners are composed by the renderer
+(caps overlap, the face runs across a corner and the vertical band starts one row lower), so no corner tiles are
+needed. Colours to match: cap #676768, face #f1be7b, skirting #977250 — the wall piece painted into the elevator
+sprite. Until a class is delivered it keeps its flat shape.
 
 **Characters**
 
