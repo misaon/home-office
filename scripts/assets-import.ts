@@ -98,7 +98,7 @@ for (const file of files) {
   if (keyed) {
     image = keyOut(image, tolerance);
   }
-  if (!hasTransparency(image)) {
+  if (target.requireAlpha && !hasTransparency(image)) {
     fail(
       `${file} has no transparent pixel: the background is baked in (a painted checkerboard?). Re-export with a real alpha channel, or on a flat #FF00FF background.`,
     );

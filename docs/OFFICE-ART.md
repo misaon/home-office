@@ -138,5 +138,5 @@ simulation asks for are tabulated in `assets/README.md`; `idle_s` alone already 
 
 ## Later
 
-Floor and wall tiles as art (today the floors are flat colours per room), an elevator travel indicator, monitor
+Wall tiles as art (floors take delivered seamless tiles per surface — `tiles/floor-wood` is in; the flat palette colour remains for surfaces without one), an elevator travel indicator, monitor
 and TV states, hot-tub water, a collapsible side panel, texture atlas packing once the scene is complete.

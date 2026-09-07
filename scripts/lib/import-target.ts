@@ -19,6 +19,8 @@ export type Target = {
   footprintCells: number;
   anchor: Anchor;
   trim: boolean;
+  /** Seamless floor tiles are fully opaque by design; everything else must carry alpha. */
+  requireAlpha: boolean;
 };
 
 // A function declaration, so TypeScript narrows after a call (a const arrow would not).
@@ -55,6 +57,22 @@ export function resolveTarget(key: string, cells: { w: number; h: number } | nul
       `animation "${animation}" must be lowercase letters with an optional _n/_s/_e suffix (west is mirrored)`,
     );
   }
+  if (category === "tiles") {
+    if (cells === null) {
+      return fail("tiles need --cells WxH (the size of the repeating tile in cells)");
+    }
+    return {
+      category,
+      sprite,
+      animation,
+      width: cells.w * CELL_PX,
+      height: cells.h * CELL_PX,
+      footprintCells: cells.h,
+      anchor: "bottom-left",
+      trim: false,
+      requireAlpha: false,
+    };
+  }
   if (category === "characters") {
     return {
       category,
@@ -65,6 +83,7 @@ export function resolveTarget(key: string, cells: { w: number; h: number } | nul
       footprintCells: cells?.h ?? CHARACTER_H,
       anchor: "bottom-centre",
       trim: false,
+      requireAlpha: true,
     };
   }
   if (category === "bubbles") {
@@ -77,6 +96,7 @@ export function resolveTarget(key: string, cells: { w: number; h: number } | nul
       footprintCells: cells?.h ?? 1,
       anchor: "bottom-centre",
       trim: true,
+      requireAlpha: true,
     };
   }
   const footprint: { w: number; h: number; artWidth?: number } | undefined =
@@ -96,6 +116,7 @@ export function resolveTarget(key: string, cells: { w: number; h: number } | nul
     footprintCells: footprint.h,
     anchor: "bottom-left",
     trim: true,
+    requireAlpha: true,
   };
 }
 

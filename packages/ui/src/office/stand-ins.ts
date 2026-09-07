@@ -1,6 +1,6 @@
 /* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
-import { CELL_PX, type PlanObject, type PlanRect, type PlanRoom } from "@ho/sim";
-import { Container, Graphics, Text } from "pixi.js";
+import { CELL_PX, type PlanObject, type PlanRect, type PlanRoom, type Surface } from "@ho/sim";
+import { Container, Graphics, Text, type Texture, TilingSprite } from "pixi.js";
 
 /** Pixels per cell on the stage: the art density every sprite is delivered at. */
 export const TILE = CELL_PX;
@@ -44,20 +44,46 @@ const surfaceColor = (room: PlanRoom): number =>
         : PALETTE.corridor;
 
 /** Floor fills per room and walls with a lit cap; glass cells are left to `glassWall`. Cached once per floor. */
+/**
+ * Floors, walls and glass as one static layer. Each surface is a delivered seamless tile (`tiles/floor-<surface>`)
+ * repeated over the room when the manifest has it, otherwise the flat palette colour.
+ */
 export function architecture(
   rooms: readonly PlanRoom[],
   glass: readonly PlanRect[],
   walls: Uint8Array,
   width: number,
   height: number,
+  floorTexture: (surface: Surface) => Texture | undefined,
 ): Container {
   const layer = new Container();
-  const g = new Graphics().rect(0, 0, width * TILE, height * TILE).fill(PALETTE.corridor);
+  const paint = (
+    surface: Surface,
+    color: number,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): void => {
+    const texture = floorTexture(surface);
+    if (texture === undefined) {
+      layer.addChild(new Graphics().rect(x, y, w, h).fill(color));
+    } else {
+      layer.addChild(new TilingSprite({ texture, x, y, width: w, height: h }));
+    }
+  };
+  paint("office", PALETTE.corridor, 0, 0, width * TILE, height * TILE);
   for (const r of rooms) {
-    g.rect((r.x + 1) * TILE, (r.y + 1) * TILE, (r.w - 2) * TILE, (r.h - 2) * TILE).fill(
+    paint(
+      r.surface,
       surfaceColor(r),
+      (r.x + 1) * TILE,
+      (r.y + 1) * TILE,
+      (r.w - 2) * TILE,
+      (r.h - 2) * TILE,
     );
   }
+  const g = new Graphics();
   const isGlass = (x: number, y: number): boolean =>
     glass.some((p) => x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h);
   const isWall = (x: number, y: number): boolean =>

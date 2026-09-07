@@ -17,7 +17,7 @@ otherwise a geometric stand-in. Nothing else changes when art arrives — no cod
 assets/src/<category>/<sprite>/<animation>[_<dir>]_f<frame>.png
 ```
 
-- `category`: `furniture`, `characters`, `bubbles`.
+- `category`: `furniture`, `characters`, `bubbles`, `tiles`.
 - `sprite`: the key from the plan (`desk-developer`, `chair-qa`, `elevator`, `spa`, …), a character set name or an
   emotion name.
 - `animation`: lowercase letters only. `static` for furniture without states; `empty`/`full` for the mailbox;
@@ -52,6 +52,14 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
   `assets/src/<category>/<sprite>/import.json`, and `--like` reuses them verbatim, so a layer that is only door
   panels in the middle of the canvas lands exactly where it sits over the cabin. Layers must be drawn on the same
   canvas size. For a lone sequence whose outline really changes between frames, `--no-align` keeps the shared crop.
+
+**Floor tiles**
+
+- `tiles/floor-<surface>/static_f0.png` for the surfaces the plan uses: `office` (corridors, reception), `carpet`
+  (offices, meeting room, lounge), `tile` (kitchen, toilets), `wood` (terrace, spa). A **seamless** square texture
+  repeated over the room; import it with the tile size in cells, e.g.
+  `bun run assets:import assets/inbox/floor-wood.png tiles/floor-wood/static --cells 4x4` → 96 × 96 px, so the
+  pattern repeats every four cells. Rooms without a delivered tile keep their flat palette colour.
 
 **Characters**
 

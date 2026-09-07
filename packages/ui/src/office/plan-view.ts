@@ -62,6 +62,7 @@ export function createPlanView(
     template.walls,
     template.width,
     template.height,
+    (surface) => sprites.frames(`tiles/floor-${surface}`, "static")?.[0],
   );
   const objects = new Container({ sortableChildren: true });
   const views: ObjectView[] = [];
