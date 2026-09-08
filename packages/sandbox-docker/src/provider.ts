@@ -104,7 +104,12 @@ export function createDockerProvider(options: DockerProviderOptions = {}): Sandb
     },
     ensureImage: async (spec, onProgress) => {
       if ((await imageHash(api, spec.ref)) !== spec.contentHash) {
-        await buildImage(spec, options.platform, onProgress);
+        await buildImage(
+          spec,
+          options.platform,
+          options.socket ?? "/var/run/docker.sock",
+          onProgress,
+        );
       }
     },
     ensureNetwork: async (name, labels) => {

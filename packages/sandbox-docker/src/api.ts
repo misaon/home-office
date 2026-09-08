@@ -2,7 +2,7 @@
 import { z } from "zod";
 
 const DEFAULT_SOCKET = "/var/run/docker.sock";
-const API = "v1.55";
+const API = "v1.44";
 
 type Method = "GET" | "POST" | "DELETE";
 

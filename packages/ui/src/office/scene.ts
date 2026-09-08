@@ -1,3 +1,4 @@
+import "pixi.js/unsafe-eval";
 import type { AgentId } from "@ho/protocol";
 import type { Actor, Floor, World } from "@ho/sim";
 import { Application, Container, Sprite, Text, type Texture } from "pixi.js";

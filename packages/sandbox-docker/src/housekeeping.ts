@@ -1,4 +1,5 @@
 import type { PruneReport, PruneScope, ResourceInventory, ResourceSnapshot } from "@ho/core";
+import type { z } from "zod";
 import {
   ContainerList,
   type DockerApi,
@@ -74,12 +75,20 @@ export async function snapshot(
   api: DockerApi,
   labels: Readonly<Record<string, string>>,
 ): Promise<ResourceSnapshot> {
-  const has = (candidate: Record<string, string> | null): boolean =>
-    Object.entries(labels).every(([k, v]) => candidate?.[k] === v);
   const [containers, df] = await Promise.all([
     api.json(ContainerList, "GET", `/containers/json?all=1&filters=${labelFilter(labels)}`),
     api.json(SystemDf, "GET", "/system/df"),
   ]);
+  return summarizeResources(containers, df, labels);
+}
+
+function summarizeResources(
+  containers: z.infer<typeof ContainerList>,
+  df: z.infer<typeof SystemDf>,
+  labels: Readonly<Record<string, string>>,
+): ResourceSnapshot {
+  const has = (candidate: Record<string, string> | null): boolean =>
+    Object.entries(labels).every(([k, v]) => candidate?.[k] === v);
   const volumes = (df.Volumes ?? []).filter((v) => has(v.Labels));
   return {
     containers: containers.length,
@@ -102,17 +111,16 @@ export async function inventory(
   api: DockerApi,
   labels: Readonly<Record<string, string>>,
 ): Promise<ResourceInventory> {
-  const [containers, volumes, df, snap] = await Promise.all([
+  const [containers, volumes, df] = await Promise.all([
     api.json(ContainerList, "GET", `/containers/json?all=1&filters=${labelFilter(labels)}`),
     api.json(VolumeList, "GET", `/volumes?filters=${labelFilter(labels)}`),
     api.json(SystemDf, "GET", "/system/df"),
-    snapshot(api, labels),
   ]);
   const sizes = new Map(
     (df.Volumes ?? []).map((v) => [v.Name, v.UsageData?.Size ?? null] as const),
   );
   return {
-    snapshot: snap,
+    snapshot: summarizeResources(containers, df, labels),
     containers: containers.map((c) => ({
       name: (c.Names[0] ?? c.Id).replace(/^\//u, ""),
       state: c.State,
