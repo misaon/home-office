@@ -1,6 +1,5 @@
 import { githubRepoFromUrl } from "@ho/core";
 import type { Project, Task, TaskArtifacts } from "@ho/protocol";
-import type { Logger } from "./logger.ts";
 import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
 
 const run = async (argv: readonly string[], cwd?: string): Promise<string> => {
@@ -25,7 +24,6 @@ const run = async (argv: readonly string[], cwd?: string): Promise<string> => {
 /**
  * Delivers a finished branch: git-URL projects always get the branch on their remote (through the host
  * mirror, with the owner's credentials); `pull-request` projects additionally get a PR via the host's `gh`.
- * Never fails the task: the branch in the source repository is the deliverable, the rest is convenience.
  */
 export async function deliver(
   home: string,
@@ -33,53 +31,67 @@ export async function deliver(
   task: Task,
   branch: string,
   report: string,
-  log: Logger,
 ): Promise<TaskArtifacts> {
   const artifacts: TaskArtifacts = { branch, report };
-  try {
-    if (project.repo.kind === "git") {
-      await pushMirrorBranch(home, project, branch);
+  if (project.repo.kind === "git") {
+    await pushMirrorBranch(home, project, branch);
+  }
+  if (project.publish.mode !== "pull-request") {
+    return artifacts;
+  }
+  if (project.repo.kind === "local") {
+    await pushLocalBranch(project, branch);
+  }
+  const args = [
+    "gh",
+    "pr",
+    "create",
+    "--head",
+    branch,
+    "--base",
+    project.defaultBranch,
+    "--title",
+    task.title,
+    "--body",
+    report === "" ? task.brief : report,
+  ];
+  if (project.publish.draft) {
+    args.push("--draft");
+  }
+  let cwd: string | undefined;
+  if (project.repo.kind === "local") {
+    cwd = project.repo.path;
+  } else {
+    const repo = githubRepoFromUrl(project.repo.url);
+    if (repo === null) {
+      throw new Error("pull requests need a GitHub URL");
     }
-    if (project.publish.mode !== "pull-request") {
-      return artifacts;
-    }
-    if (project.repo.kind === "local") {
-      await pushLocalBranch(project, branch);
-    }
-    const args = [
+    args.push("--repo", repo);
+  }
+  const target =
+    project.repo.kind === "local" ? [] : ["--repo", githubRepoFromUrl(project.repo.url) ?? ""];
+  const existing = await run(
+    [
       "gh",
       "pr",
-      "create",
+      "list",
+      ...target,
       "--head",
       branch,
       "--base",
       project.defaultBranch,
-      "--title",
-      task.title,
-      "--body",
-      report === "" ? task.brief : report,
-    ];
-    if (project.publish.draft) {
-      args.push("--draft");
-    }
-    let cwd: string | undefined;
-    if (project.repo.kind === "local") {
-      cwd = project.repo.path;
-    } else {
-      const repo = githubRepoFromUrl(project.repo.url);
-      if (repo === null) {
-        throw new Error("pull requests need a GitHub URL");
-      }
-      args.push("--repo", repo);
-    }
-    const url =
-      (await run(args, cwd)).split("\n").findLast((line) => line.startsWith("https://")) ?? "";
-    return url === "" ? artifacts : { ...artifacts, prUrl: url };
-  } catch (error) {
-    log.warn(
-      { taskId: task.id, err: error instanceof Error ? error.message : String(error) },
-      "delivery step failed; branch is still in the source repository",
-    );
-    return artifacts;
-  }
+      "--state",
+      "open",
+      "--json",
+      "url",
+      "--jq",
+      ".[0].url // empty",
+    ],
+    cwd,
+  );
+  const url =
+    existing !== ""
+      ? existing
+      : ((await run(args, cwd)).split("\n").findLast((line) => line.startsWith("https://")) ?? "");
+  return url === "" ? artifacts : { ...artifacts, prUrl: url };
 }

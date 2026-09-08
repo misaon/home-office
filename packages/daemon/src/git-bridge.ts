@@ -5,15 +5,7 @@ import { LABELS } from "./images.ts";
 
 export const REPO_IN_VOLUME = "/work/repo";
 
-const slug = (title: string): string =>
-  title
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/gu, "-")
-    .replaceAll(/^-+|-+$/gu, "")
-    .slice(0, 40) || "task";
-
-export const branchFor = (title: string, taskId: TaskId): string =>
-  `ho/${slug(title)}-${taskId.slice(-8)}`;
+export const branchFor = (taskId: TaskId): string => `ho/task-${taskId}`;
 
 const bridgeSpec = (
   config: DaemonConfig,
@@ -24,7 +16,7 @@ const bridgeSpec = (
 ): SandboxSpec => ({
   name,
   image: config.docker.bridgeImage,
-  cmd,
+  cmd: ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", ...cmd],
   env: {},
   user: "1000:1000",
   workdir: "/work",
@@ -98,7 +90,16 @@ export async function prepareRepo(
     bridgeSpec(
       config,
       `${volume}-clone`,
-      ["clone", "-q", "--branch", branch, "--single-branch", "/src", REPO_IN_VOLUME],
+      [
+        "clone",
+        "--no-hardlinks",
+        "-q",
+        "--branch",
+        branch,
+        "--single-branch",
+        "/src",
+        REPO_IN_VOLUME,
+      ],
       volume,
       source,
     ),
@@ -111,7 +112,16 @@ export async function prepareRepo(
     bridgeSpec(
       config,
       `${volume}-clone`,
-      ["clone", "-q", "--branch", defaultBranch, "--single-branch", "/src", REPO_IN_VOLUME],
+      [
+        "clone",
+        "--no-hardlinks",
+        "-q",
+        "--branch",
+        defaultBranch,
+        "--single-branch",
+        "/src",
+        REPO_IN_VOLUME,
+      ],
       volume,
       source,
     ),

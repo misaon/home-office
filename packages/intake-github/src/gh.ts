@@ -1,4 +1,4 @@
-import { githubRepoFromUrl } from "@ho/core";
+import { type Cancellation, githubRepoFromUrl } from "@ho/core";
 import type { Project } from "@ho/protocol";
 
 export type GhTarget = { args: string[]; cwd: string | undefined };
@@ -19,9 +19,14 @@ export function ghTarget(project: Project): GhTarget {
 export async function gh(
   args: readonly string[],
   cwd: string | undefined,
-  signal?: AbortSignal,
+  signal?: Cancellation,
 ): Promise<string> {
+  if (signal?.aborted === true) {
+    throw new Error("GitHub operation cancelled");
+  }
   const proc = Bun.spawn(["gh", ...args], {
+    timeout: 30_000,
+    env: { ...Bun.env, GH_PROMPT_DISABLED: "1", GIT_TERMINAL_PROMPT: "0" },
     stdout: "pipe",
     stderr: "pipe",
     ...(cwd === undefined ? {} : { cwd }),
@@ -29,7 +34,7 @@ export async function gh(
   const abort = (): void => {
     proc.kill();
   };
-  signal?.addEventListener("abort", abort, { once: true });
+  signal?.addEventListener("abort", abort);
   try {
     const [stdout, stderr, code] = await Promise.all([
       new Response(proc.stdout).text(),

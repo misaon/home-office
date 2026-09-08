@@ -9,34 +9,18 @@ import {
 import { z } from "zod";
 import { gh, ghTarget } from "./gh.ts";
 
-const LIMIT = 50;
 const COMMENT_MAX = 6000;
 
-/** The subset of `gh issue list --json` fields the office reads. */
 const IssueRow = z.object({
   number: z.int().positive(),
   title: z.string(),
   body: z.string().nullable(),
-  url: z.url(),
-  author: z.object({ login: z.string() }).nullable(),
+  html_url: z.url(),
+  user: z.object({ login: z.string() }).nullable(),
   labels: z.array(z.object({ name: z.string() })),
+  pull_request: z.unknown().optional(),
 });
-const IssueRows = z.array(IssueRow);
-
-const toSignal = (cancel: Cancellation | undefined): AbortSignal | undefined => {
-  if (cancel === undefined) {
-    return undefined;
-  }
-  const controller = new AbortController();
-  if (cancel.aborted) {
-    controller.abort();
-  } else {
-    cancel.addEventListener("abort", () => {
-      controller.abort();
-    });
-  }
-  return controller.signal;
-};
+const IssuePages = z.array(z.array(IssueRow));
 
 const CLOSING: Record<MailOutcome, (detail: string) => string> = {
   received: (detail) =>
@@ -57,27 +41,41 @@ export function createGithubIssuesConnector(): IntakeConnector {
     id: GITHUB_ISSUES_CONNECTOR,
     poll: async (project: Project, cancel?: Cancellation): Promise<IntakeItem[]> => {
       const target = ghTarget(project);
-      const args = [
-        "issue",
-        "list",
-        ...target.args,
-        "--state",
-        "open",
-        "--limit",
-        String(LIMIT),
-        "--json",
-        "number,title,body,url,author,labels",
-      ];
-      for (const label of project.intake.labels) {
-        args.push("--label", label);
+      const repo =
+        target.cwd === undefined
+          ? target.args[1]
+          : (
+              await gh(
+                ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+                target.cwd,
+                cancel,
+              )
+            ).trim();
+      if (repo === undefined || !/^[a-z0-9-]+\/[a-z0-9_.-]+$/iu.test(repo)) {
+        throw new Error("invalid GitHub repository identity");
       }
-      const rows = IssueRows.parse(JSON.parse(await gh(args, target.cwd, toSignal(cancel))));
+      const labels = encodeURIComponent(project.intake.labels.join(","));
+      const pages = IssuePages.parse(
+        JSON.parse(
+          await gh(
+            [
+              "api",
+              "--paginate",
+              "--slurp",
+              `repos/${repo}/issues?state=open&per_page=100&labels=${labels}`,
+            ],
+            target.cwd,
+            cancel,
+          ),
+        ),
+      );
+      const rows = pages.flat().filter((row) => row.pull_request === undefined);
       return rows.map((row) => ({
         externalId: String(row.number),
         title: row.title,
         body: row.body ?? "",
-        url: row.url,
-        author: row.author?.login ?? "",
+        url: row.html_url,
+        author: row.user?.login ?? "",
         labels: row.labels.map((l) => l.name),
       }));
     },
@@ -88,7 +86,7 @@ export function createGithubIssuesConnector(): IntakeConnector {
       cancel?: Cancellation,
     ): Promise<void> => {
       const target = ghTarget(project);
-      const signal = toSignal(cancel);
+      const signal = cancel;
       if (project.intake.comment) {
         await gh(
           [

@@ -95,7 +95,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
   ctx.signal.throwIfAborted();
   const volume = `ho-task-${ctx.task.id.slice(-12)}`;
   const configVolume = `${volume}-claude-${ctx.agent.id.slice(-8)}`;
-  const branch = branchFor(ctx.task.title, ctx.task.id);
+  const branch = ctx.task.artifacts.branch ?? branchFor(ctx.task.id);
   const labels = {
     [LABELS.managed]: "true",
     [LABELS.session]: ctx.session.id,
@@ -192,6 +192,7 @@ async function consume(
   onEvent: (event: RuntimeEvent) => Promise<void>,
 ): Promise<Outcome> {
   const outcome: Outcome = { report: "", failure: null, runtimeSessionId: null, sawInit: false };
+  let sawResult = false;
   for await (const event of runtimeSession.prompt({ text: message }, ctx.signal)) {
     await onEvent(event);
     switch (event.kind) {
@@ -201,6 +202,7 @@ async function consume(
         break;
       }
       case "result": {
+        sawResult = true;
         outcome.report = event.text.slice(0, REPORT_MAX);
         outcome.runtimeSessionId = event.runtimeSessionId ?? outcome.runtimeSessionId;
         if (!event.ok && outcome.failure === null) {
@@ -225,6 +227,9 @@ async function consume(
   if (ctx.signal.aborted && outcome.failure === null) {
     outcome.failure = "session aborted (time budget or shutdown)";
   }
+  if (!sawResult && outcome.failure === null) {
+    outcome.failure = "runtime ended without a result";
+  }
   return outcome;
 }
 
@@ -242,28 +247,31 @@ export async function runPrompt(
   const message = openingMessage(ctx.task, ctx.session.mode, ctx.previous);
   const resume = ctx.previous?.runtimeSessionId ?? null;
   let runtimeSession = await openRuntime(deps, ctx, provisioned, secrets, resume);
-  let outcome = await consume(runtimeSession, ctx, message, onEvent);
-  if (
-    resume !== null &&
-    !outcome.sawInit &&
-    outcome.failure?.startsWith("process_exit") === true &&
-    !ctx.signal.aborted
-  ) {
-    deps.log.warn(
-      { sessionId: ctx.session.id, resume },
-      "resume failed; starting a fresh conversation",
-    );
+  try {
+    let outcome = await consume(runtimeSession, ctx, message, onEvent);
+    if (
+      resume !== null &&
+      !outcome.sawInit &&
+      outcome.failure?.startsWith("process_exit") === true &&
+      !ctx.signal.aborted
+    ) {
+      deps.log.warn(
+        { sessionId: ctx.session.id, resume },
+        "resume failed; starting a fresh conversation",
+      );
+      await runtimeSession.close().catch(() => null);
+      runtimeSession = await openRuntime(deps, ctx, provisioned, secrets, null);
+      outcome = await consume(
+        runtimeSession,
+        ctx,
+        `${message}\n\n(Your earlier conversation could not be restored; the notes above are the full context.)`,
+        onEvent,
+      );
+    }
+    return outcome;
+  } finally {
     await runtimeSession.close().catch(() => null);
-    runtimeSession = await openRuntime(deps, ctx, provisioned, secrets, null);
-    outcome = await consume(
-      runtimeSession,
-      ctx,
-      `${message}\n\n(Your earlier conversation could not be restored; the notes above are the full context.)`,
-      onEvent,
-    );
   }
-  await runtimeSession.close().catch(() => null);
-  return outcome;
 }
 
 /** Pushes the branch back to the source repository, then (per project policy) opens a pull request. */
@@ -280,5 +288,5 @@ export async function publish(
     provisioned.volume,
     provisioned.branch,
   );
-  return deliver(deps.home, ctx.project, ctx.task, provisioned.branch, report, deps.log);
+  return deliver(deps.home, ctx.project, ctx.task, provisioned.branch, report);
 }

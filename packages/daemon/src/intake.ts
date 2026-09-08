@@ -55,6 +55,9 @@ export class IntakeService {
   readonly #state = new Map<ProjectId, ProjectState>();
   readonly #controller = new AbortController();
 
+  readonly #pending = new Set<Promise<unknown>>();
+  #listening: Promise<void> | null = null;
+
   constructor(office: Office, connectors: readonly IntakeConnector[], log: Logger) {
     this.#office = office;
     this.#connectors = new Map(connectors.map((c) => [c.id, c]));
@@ -63,7 +66,7 @@ export class IntakeService {
 
   start(): void {
     this.#reschedule();
-    void (async () => {
+    this.#listening = (async () => {
       const types: StoredEvent["type"][] = [
         "project.created",
         "project.updated",
@@ -81,16 +84,20 @@ export class IntakeService {
           await this.#tell(outcomeAck(this.#office.model, taskId, to, reason));
         }
       }
-    })();
+    })().catch((error: unknown) => {
+      this.#log.error({ err: String(error) }, "intake subscription failed");
+    });
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     this.#controller.abort();
     for (const state of this.#state.values()) {
       if (state.timer !== null) {
         clearTimeout(state.timer);
       }
     }
+    await this.#listening;
+    await Promise.allSettled(this.#pending);
   }
 
   status(): IntakeStatus[] {
@@ -175,7 +182,15 @@ export class IntakeService {
     }, delay);
   }
 
-  async #poll(project: Project): Promise<IntakePollResult> {
+  #poll(project: Project): Promise<IntakePollResult> {
+    const pending = this.#pollProject(project).finally(() => {
+      this.#pending.delete(pending);
+    });
+    this.#pending.add(pending);
+    return pending;
+  }
+
+  async #pollProject(project: Project): Promise<IntakePollResult> {
     const state = this.#stateFor(project.id);
     const result: IntakePollResult = {
       projectId: project.id,
@@ -184,18 +199,21 @@ export class IntakeService {
       dryRun: [],
     };
     const connector = this.#connectors.get(GITHUB_ISSUES_CONNECTOR);
-    if (state.polling || connector === undefined) {
+    if (this.#controller.signal.aborted || state.polling || connector === undefined) {
       return result;
     }
     state.polling = true;
     try {
       const items = await connector.poll(project, this.#controller.signal);
       state.lastPollAt = this.#office.clock.now().toISOString();
+      const known = new Set(
+        [...this.#office.model.mail.values()]
+          .filter((m) => m.projectId === project.id)
+          .map((m) => m.externalId),
+      );
       for (const item of items) {
-        const known = [...this.#office.model.mail.values()].some(
-          (m) => m.projectId === project.id && m.externalId === item.externalId,
-        );
-        if (known) {
+        this.#controller.signal.throwIfAborted();
+        if (known.has(item.externalId)) {
           result.duplicates += 1;
           continue;
         }
@@ -210,6 +228,7 @@ export class IntakeService {
           result.duplicates += 1;
           continue;
         }
+        known.add(item.externalId);
         result.received += 1;
         state.received += 1;
         this.#log.info(
@@ -235,7 +254,7 @@ export class IntakeService {
 
   /** Records the acknowledgement and tells the source; a failing `gh` never affects the task. */
   async #tell(source: SourceAck | null): Promise<void> {
-    if (source === null) {
+    if (source === null || this.#controller.signal.aborted) {
       return;
     }
     const { project, mail, ack } = source;

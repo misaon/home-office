@@ -213,7 +213,8 @@ export class SessionManager {
       const message = (error instanceof Error ? error.message : String(error)).slice(0, 2000);
       log.error({ sessionId, err: message }, "session failed");
       this.#emit(sessionId, { kind: "error", code: "unknown", message });
-      if (office.model.tasks.get(ctx.task.id)?.status === "in_progress") {
+      const status = office.model.tasks.get(ctx.task.id)?.status;
+      if (status === "in_progress" || status === "review" || status === "assigned") {
         await office
           .execute(SYSTEM, (m, c) =>
             transitionTask(m, { id: ctx.task.id, to: "blocked", reason: message }, c),

@@ -53,8 +53,21 @@ export function startSession(
   if (task === undefined) {
     return err(notFound("task", input.taskId));
   }
-  if (!model.agents.has(input.agentId)) {
+  const agent = model.agents.get(input.agentId);
+  if (agent === undefined) {
     return err(notFound("agent", input.agentId));
+  }
+  if (agent.projectId !== task.projectId) {
+    return err(conflict("agent belongs to another project"));
+  }
+  if ((input.mode === "triage") !== (task.kind === "triage")) {
+    return err(conflict("session mode does not match the task kind"));
+  }
+  if (
+    [...model.sessions.values()].filter((s) => s.agentId === agent.id && isSessionActive(s.state))
+      .length >= agent.budgets.maxConcurrentSessions
+  ) {
+    return err(conflict("agent session budget exhausted"));
   }
   if (input.mode === "review") {
     if (task.status !== "review" || task.reviewerId !== input.agentId) {
@@ -107,6 +120,9 @@ export function changeSessionState(
   if (session === undefined) {
     return err(notFound("session", input.sessionId));
   }
+  if (!isSessionActive(session.state)) {
+    return err(conflict("a finished session cannot change state"));
+  }
   const { sessionId, ...rest } = input;
   const next: Session = {
     ...session,
@@ -131,7 +147,16 @@ export function recordSessionUsage(
   }
   return ok({
     events: [{ type: "session.usage_recorded", actor: ctx.actor, payload: input }],
-    value: session,
+    value: {
+      ...session,
+      usage: {
+        inputTokens: session.usage.inputTokens + input.usage.inputTokens,
+        outputTokens: session.usage.outputTokens + input.usage.outputTokens,
+        cacheReadTokens: session.usage.cacheReadTokens + input.usage.cacheReadTokens,
+        cacheWriteTokens: session.usage.cacheWriteTokens + input.usage.cacheWriteTokens,
+        turns: session.usage.turns + input.usage.turns,
+      },
+    },
   });
 }
 
@@ -143,6 +168,9 @@ export function endSession(
   const session = model.sessions.get(input.sessionId);
   if (session === undefined) {
     return err(notFound("session", input.sessionId));
+  }
+  if (!isSessionActive(session.state)) {
+    return ok({ events: [], value: session });
   }
   const next: Session = { ...session, state: input.state, endedAt: ctx.now };
   return ok({

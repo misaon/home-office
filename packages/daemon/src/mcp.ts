@@ -6,6 +6,7 @@ import {
   isSessionActive,
   membersOf,
   postAgentMessage,
+  setTaskArtifacts,
   submitReview,
 } from "@ho/core";
 import {
@@ -35,7 +36,7 @@ export type McpSessionContext = {
   mode: SessionMode;
 };
 
-type Entry = { ctx: McpSessionContext; replied: boolean };
+type Entry = { ctx: McpSessionContext; replied: boolean; report: HoReportInput | null };
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: true };
 type Run = <T>(fn: () => Promise<T>) => Promise<ToolResult>;
 
@@ -57,9 +58,25 @@ function registerCommon(server: McpServer, office: Office, entry: Entry, run: Ru
     },
     (input) =>
       run(async () => {
-        const task = await office.execute(actor, (m, c) =>
-          fileReport(m, ctx.taskId, HoReportInput.parse(input), c),
-        );
+        const report = HoReportInput.parse(input);
+        if (ctx.mode === "work") {
+          if (entry.report !== null) {
+            throw new Error("a report was already submitted");
+          }
+          await office.execute(actor, (m, c) =>
+            setTaskArtifacts(
+              m,
+              {
+                id: ctx.taskId,
+                artifacts: { ...m.tasks.get(ctx.taskId)?.artifacts, report: report.summary },
+              },
+              c,
+            ),
+          );
+          entry.report = report;
+          return "report received; the daemon will publish your commits before completing the task. Stop working now.";
+        }
+        const task = await office.execute(actor, (m, c) => fileReport(m, ctx.taskId, report, c));
         return `report filed; task is now ${task.status}. Stop working now.`;
       }),
   );
@@ -214,7 +231,7 @@ export class McpGateway {
 
   register(ctx: McpSessionContext): string {
     const token = Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toString("base64url");
-    this.#entries.set(token, { ctx, replied: false });
+    this.#entries.set(token, { ctx, replied: false, report: null });
     return token;
   }
 
@@ -225,6 +242,10 @@ export class McpGateway {
   /** Whether the agent already spoke in chat during this session (avoids a duplicate final reply). */
   replied(token: string): boolean {
     return this.#entries.get(token)?.replied ?? false;
+  }
+
+  report(token: string): HoReportInput | null {
+    return this.#entries.get(token)?.report ?? null;
   }
 
   async handle(req: Request): Promise<Response> {

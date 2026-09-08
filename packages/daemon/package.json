@@ -18,6 +18,10 @@
     "@modelcontextprotocol/sdk": "catalog:",
     "@orpc/server": "catalog:",
     "pino": "catalog:",
+    "proper-lockfile": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/proper-lockfile": "catalog:"
   }
 }
