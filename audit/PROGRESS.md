@@ -3,7 +3,7 @@
 Restart-safe state of this audit. Updated at the end of every step.
 
 - **Branch:** `audit/deep-monorepo-audit-2026-09` (from `main` @ `ecd4aa5`)
-- **Phase:** 3 (implementation) — Waves 1, 2 and 3 of 7 complete and verified
+- **Phase:** 3 (implementation) — Waves 1–4 of 7 complete and verified
 
 ## Done
 
@@ -125,10 +125,33 @@ Two real Claude Code sessions ran in sandboxes against the changed core (17 and 
 chat, the usage summary aggregated them from the projection, and the office rendered it all — output in
 `audit/VERIFICATION.md`.
 
+## Wave 4 complete (2026-09-09) — verified
+
+**Simulation:** the occupancy set is built at most once per tick instead of once per query — measured in
+isolation at 2.7× (8 walkers), 9.8× (30) and 16× (60), and O(N) instead of O(N²). The five copies of the
+four-neighbour table are one, `adjacentFree` and `besides` are one function, the blocked-walker jitter is
+hashed at spawn, `nearestWalkable` returns the nearest cell instead of a square's top-left corner, and
+`removeActor` drops its own three anchors instead of sweeping every reservation on every floor.
+
+**Daemon:** the scheduler's 2 s heartbeat is gone (verified live: a session starts the moment the assign
+event arrives) and a single retry covers the case the heartbeat existed for; the office gate keeps a bounded
+tail of envelopes; the event store no longer filters twice.
+
+**Protocols:** ACP's `usage_update` is no longer dropped — a first-class `context` runtime event carries
+context fill and cumulative cost, deliberately not folded into the token counters, and the Usage panel says
+so; `PROTOCOL_VERSION` comes from the SDK; the replay-boundary event now reaches the simulation bridge.
+
+**UI:** the snapshot copies only the collection an event touched (verified live: a task event copied `tasks`
+and every other collection kept its identity) and panels select the collections they use.
+
+**Intake:** no empty `labels=` in the GitHub query, and the duplicate check uses the mail index.
+
+A real Claude Code session ran again end to end (6 turns) with no errors in the log — output in
+`audit/VERIFICATION.md`.
+
 ## Next step
 
-Wave 4 — runtime and protocols: B6.2 (per-collection UI slices), B10.1 (the scheduler's needless 2 s poll),
-B10.2 (the office gate keeps every envelope), B11.2 (the event store filters twice), B11.3 (per-frame
-allocation in the floor renderer), B18.1–B18.5 (O(N²) occupancy per frame, the jitter re-hash,
-`nearestWalkable`, the five neighbour tables, `adjacentFree`), B21.1, B30.1–B30.4 (ACP usage and cost,
-protocol details), B31.2, B31.3.
+Wave 5 — infrastructure: A1.6 (desktop strictness flags), A2.1 (CI builds the images), **A2.6** (a compiled
+`ho` cannot serve the UI or report images), B19.1, B20.1–B20.4 (security), B21.2 (the runner embeds a second
+Bun), B24.1, B24.2 (image size), B33.1–B33.6 (AI configuration, cost and reasoning — B33.4 changes effort
+defaults, which is a cost change to flag for the owner).

@@ -629,3 +629,87 @@ $ echo $?
 1
 $ (restore the Dockerfile) ; ho image build → images ready ; ho doctor → up to date
 ```
+
+## Wave 4 — runtime and protocols (2026-09-09)
+
+### Checks, audits, builds
+
+```
+$ bun install --frozen-lockfile   → Checked 230 installs across 382 packages (no changes)
+$ bun run check                   → 16 projects · oxlint --type-aware · oxfmt (312 files) · knip
+                                    9.45s user 2.11s system 556% cpu 2.078 total
+$ (escapes grep)                  → none
+$ bun audit                       → No vulnerabilities found (checked 361 packages)
+$ npm ls --package-lock-only + npm audit (4 sandbox dirs) → 0 vulnerabilities each
+$ bun run ui:build                → ui: 3 files, 1110 KiB
+$ bun build --compile apps/cli/src/main.ts            → compiled
+$ bun build --compile --minify --target=bun-linux-arm64-musl packages/runner/src/main.ts → compiled
+$ bun run spikes/s6-acp-mock/src/run.ts
+CHECKS {"init":true,"permission":true,"toolCall":true,"toolResultOk":true,"result":true,"exitCode":0}
+```
+
+### The occupancy index, measured in isolation (B18.1)
+
+The whole-tick timings were useless for this: a different occupancy view changes pathing
+decisions, so the two versions do different amounts of work. Measured instead with one query per walker
+per frame over 900 frames, both implementations in the same process on the same data:
+
+```
+ 8 walkers   legacy 0.0019 ms/frame   indexed 0.0007 ms/frame   (2.7x)
+30 walkers   legacy 0.0166 ms/frame   indexed 0.0017 ms/frame   (9.8x)
+60 walkers   legacy 0.0536 ms/frame   indexed 0.0033 ms/frame   (16x)
+```
+
+The shape is the point: the legacy cost grows with N² (one Set of every actor built per query), the
+indexed one with N (one index per tick, read O(1) per query).
+
+### The ACP usage mapping (B30.1)
+
+The spike's mock agent never sends `usage_update`, so the mapper was driven directly:
+
+```
+sdk PROTOCOL_VERSION: 1
+usage_update with cost:    [{"kind":"context","usedTokens":12345,"windowTokens":200000,
+                             "cost":{"amount":0.42,"currency":"USD"}}]
+usage_update without cost: [{"kind":"context","usedTokens":1,"windowTokens":2,"cost":null}]
+agent_thought_chunk:       []
+```
+
+`PROTOCOL_VERSION` now comes from the SDK (the value it exports is 1, which is what the local constant
+said). A live ACP session with a real provider was **not** run in this session — that needs OpenCode,
+Gemini CLI or Codex credentials — so the end-to-end path is verified only as far as the mapper.
+
+### Per-collection snapshots, verified in the live UI (B6.2)
+
+Reference identity read from the running app through the dev handle, before and after a task-only event:
+
+```
+> before = __ho.store.getState().snapshot
+$ ho task create --project "Wave 4" --title "slice probe" --brief b
+> after = __ho.store.getState().snapshot
+{"snapshotObjectChanged": true, "tasksCopied": true,
+ "projectsReused": true, "agentsReused": true, "sessionsReused": true,
+ "chatReused": true, "mailReused": true, "taskCount": 1}
+```
+
+Only `tasks` was copied; every other collection kept its identity, so the panels selecting them do not
+re-render.
+
+### The whole product again, with a real agent session
+
+```
+$ ho project add "Wave 4" --path <repo>      → floor
+$ ho agent add Ryan --role worker            → claude-code/sonnet@medium
+$ ho image build                             → images ready   (git-bridge hash 1ea8e546…, the fixed hash)
+$ ho task assign <task> Ryan                 → assigned
+   daemon.log: "scheduling session" appears immediately (0 s) — the 2 s heartbeat is gone (B10.1)
+$ ho session list
+01a08328-ac05…  stopped  task=15a06d9e agent=d2770b13 turns=6  12in/1200out/168526cache
+$ ho usage        → sessions: 1 · in=12 out=1,200 cache=168,526 write=13,235 turns=6
+$ grep '"msg"' daemon.log | sort | uniq -c
+   1 scheduling session · 1 runner connected · 1 read model rebuilt · 1 daemon started   (no errors)
+```
+
+The office rendered it: screenshot with the floor plan and the chat panel showing the boss's status line
+("Ryan is working on 'slice probe'") and the agent's question that moved the task to `blocked`. Live events
+seen by the UI for that session: `init, tool_call, tool_result, text_delta, usage, result` (19 events).
