@@ -141,7 +141,24 @@ Severita: medium
 Kde: `apps/desktop/tsconfig.json:9-13`
 Důkaz: `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature`, `noUncheckedIndexedAccess` and `noImplicitReturns` are all `false`, with the stated reason that the Electrobun devkit is typechecked as source through `paths` and does not satisfy them. The reason is real — `paths` maps `electrobun` to `./.hutch/devkit/api/sdks/main/index.ts`, i.e. third-party source inside the program — but the relaxation also applies to `apps/desktop/src/**`, which is 5 files of our own code (~350 lines) including the window and quit lifecycle.
 Dopad: Typová bezpečnost: the app that owns process lifetime and the single-instance lock is compiled with the weakest settings in the repository.
-Doporučení: Keep the devkit out of the strict program rather than weakening the program: point `paths` at generated `.d.ts` if the devkit ships them, or exclude `.hutch` and re-enable the four flags; if the devkit must be compiled as source, isolate it in its own loose project.
+Doporučení: Keep the devkit out of the strict program rather than weakening the program.
+**Measured in Wave 5, and two of the four were switched off for nothing.** Removing each flag on its own and
+counting errors (`tsc -p` on a copy of the config):
+
+```
+exactOptionalPropertyTypes          15 errors, 0 in apps/desktop/src
+noPropertyAccessFromIndexSignature   0 errors
+noUncheckedIndexedAccess             0 errors
+noImplicitReturns                    1 error,  0 in apps/desktop/src
+```
+
+So `noPropertyAccessFromIndexSignature` and `noUncheckedIndexedAccess` are **re-enabled**, and the app is
+now as strict as the rest of the repository except for two flags whose 16 violations are all inside
+`.hutch/devkit`. Keeping the devkit out of the program was attempted and does not work: the devkit ships no
+`.d.ts` for its SDK (only two `global.d.ts`), and declaration-only emit over its source fails with
+`error TS4094: Property 'partitionId' of exported anonymous class type may not be private or protected` —
+a defect in the vendored source, not something this repository can configure away. The remaining two flags
+stay off with that measurement recorded in the config, so the next reader knows exactly what they cost.
 Odhad: střední
 
 ### A1.7 – No `trustedDependencies` allowlist for install-time scripts
