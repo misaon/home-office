@@ -11,9 +11,8 @@ import type {
 import { conflict, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { err, ok } from "../result.ts";
-import { titleFromText } from "./chat.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
-import { bossOf, findAgentByRef, note } from "./shared.ts";
+import { bossOf, findAgentByRef, note, titleFromText } from "./shared.ts";
 
 /**
  * The boss creates work for his floor (source: delegation). Only a boss delegates, only within his own

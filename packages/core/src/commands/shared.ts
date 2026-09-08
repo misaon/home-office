@@ -47,6 +47,15 @@ export const floorNumber = (model: ReadModel, projectId: ProjectId): number =>
     .toSorted((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
     .findIndex((p) => p.id === projectId) + 1;
 
+const TITLE_MAX = 200;
+
+/** The first line of a brief makes a decent title until the boss rewrites it. */
+export const titleFromText = (text: string): string => {
+  const firstLine = text.split("\n").find((line) => line.trim() !== "") ?? text;
+  const trimmed = firstLine.trim();
+  return trimmed.length <= TITLE_MAX ? trimmed : `${trimmed.slice(0, TITLE_MAX - 1)}…`;
+};
+
 export const note = (ctx: CommandContext, kind: TaskNote["kind"], text: string): TaskNote => ({
   at: ctx.now,
   author: ctx.actor,
