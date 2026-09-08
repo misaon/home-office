@@ -3,7 +3,8 @@
   "compilerOptions": {
     "lib": ["esnext", "dom", "dom.iterable"],
     "types": [],
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "tsBuildInfoFile": "../../.tscache/packages-ui.tsbuildinfo"
   },
   "include": ["src"]
 }
