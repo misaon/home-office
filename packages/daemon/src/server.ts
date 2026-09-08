@@ -1,6 +1,7 @@
 import { ORPCError, onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/bun-ws";
 import { errorMessage } from "@ho/protocol";
+import { timingSafeEqual } from "node:crypto";
 import type { Logger } from "./logger.ts";
 import type { RpcContext } from "./rpc/context.ts";
 import { router } from "./rpc/router.ts";
@@ -37,6 +38,15 @@ const presentedToken = (req: Request): { token: string; viaProtocol: boolean } |
   return match === undefined
     ? null
     : { token: match.slice(PROTOCOL_PREFIX.length), viaProtocol: true };
+};
+
+const encoder = new TextEncoder();
+
+/** Constant-time comparison: the daemon token is the one credential that grants full RPC access. */
+const sameToken = (presented: string, expected: string): boolean => {
+  const a = encoder.encode(presented);
+  const b = encoder.encode(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 };
 
 const ASSETS_PREFIX = "/assets/";
@@ -95,7 +105,7 @@ export function startServer(options: ServerOptions): { port: number; stop: () =>
         return serveUi(options, url.pathname);
       }
       const presented = presentedToken(req);
-      if (presented === null || presented.token !== options.token) {
+      if (presented === null || !sameToken(presented.token, options.token)) {
         options.log.warn({ ip: srv.requestIP(req)?.address }, "rejected rpc connection");
         return new Response("unauthorized", { status: 401 });
       }

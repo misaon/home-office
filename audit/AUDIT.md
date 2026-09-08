@@ -892,7 +892,8 @@ Severita: medium
 Kde: `packages/daemon/src/server.ts:86`
 Důkaz: `if (presented === null || presented.token !== options.token)`. The token is 32 random bytes base64url (`packages/daemon/src/launch.ts:63`), so guessing is infeasible, but the comparison is not constant-time and the endpoint is reachable by anything that can open a loopback socket — including any local process and, via `host.docker.internal`, the agent containers. The runner and MCP gateways avoid the issue by using a `Map` lookup instead of a comparison.
 Dopad: Bezpečnost: a timing oracle on the one credential that grants full RPC access. Low exploitability, trivial fix.
-Doporučení: `Bun.timingSafeEqual` on equal-length buffers, with a length check first.
+Doporučení: a constant-time comparison on equal-length buffers, with a length check first.
+**Correction after Wave 5.** The recommendation named `Bun.timingSafeEqual`, which **does not exist** in Bun 1.4.2 — `bun -e 'console.log(typeof Bun.timingSafeEqual)'` prints `undefined`. `node:crypto`'s `timingSafeEqual` is available (`typeof … === "function"`) and is what shipped; it throws on unequal lengths, so the length check stays first. Verified live: the right token still authenticates and a wrong one gets 401.
 Odhad: triviální
 
 ### B20.2 – `ho.db` is world-readable

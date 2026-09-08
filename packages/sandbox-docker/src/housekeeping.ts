@@ -16,7 +16,7 @@ export async function removeContainer(api: DockerApi, id: string): Promise<void>
 
 const removeVolumeIfFree = async (api: DockerApi, name: string): Promise<boolean> => {
   try {
-    await api.raw("DELETE", `/volumes/${name}`);
+    await api.raw("DELETE", `/volumes/${encodeURIComponent(name)}`);
     return true;
   } catch (error) {
     // 404: already gone; 409: still in use by a container, leave it for the next sweep.

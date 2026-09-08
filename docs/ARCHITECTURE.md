@@ -157,6 +157,17 @@ those live-log limits. Source reload polling is only present in development UI b
   data; the application does not promise universal content redaction.
 - Both runtime adapters escalate termination to SIGKILL and stop waiting after 15 seconds. HTTP/git/gh
   operations have deadlines. CLI/UI connection attempts time out after 10 seconds.
+- **Accepted risk — outbound network access from agent sandboxes.** Agent containers join the `ho-agents`
+  bridge network with inter-container communication disabled and no host mounts, but a bridge network NATs
+  to the internet: an agent can reach any host, because the provider CLIs must reach their vendors' APIs.
+  Code the model writes therefore _can_ send the contents of its task volume anywhere. What limits the
+  damage is everything around it — no host paths in agent containers, a read-only rootfs, all capabilities
+  dropped, credentials only in the child process's environment, and the repository reaching the sandbox
+  only through a volume the network-less git-bridge populates. The git-bridge itself runs with
+  `network: "none"`. Tightening egress would mean an egress proxy on `ho-agents` with a per-provider host
+  allowlist; that is a project of its own and is not implemented.
+- The daemon token is compared in constant time, and `ho.db` (with its WAL and shm files) is written
+  mode 0600; the state directory's mode is re-asserted at every start, not only when it is created.
 - No automatic merge, provider failover, persistent acknowledgement outbox, sliding volume retention,
   reusable project cache volumes, OS-wide resource monitor or remote deployment backend is implemented.
 

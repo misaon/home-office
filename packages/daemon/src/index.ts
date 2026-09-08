@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { chmod, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { type DaemonConfig, resolveHome } from "./config.ts";
 import type { DaemonInfo } from "./daemon-info.ts";
@@ -32,6 +32,8 @@ export type DaemonOptions = {
 export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHandle> {
   const home = options.home ?? resolveHome();
   await mkdir(home, { recursive: true, mode: 0o700 });
+  // `mkdir` leaves the mode of an existing directory alone; a home from an older build may be readable.
+  await chmod(home, 0o700).catch(() => undefined);
   const release = await acquireSingleInstanceLock(join(home, "daemon.lock"));
   if (release === null) {
     throw new Error(`another daemon already holds ${home}`);

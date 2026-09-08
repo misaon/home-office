@@ -164,7 +164,7 @@ export function createDockerProvider(options: DockerProviderOptions = {}): Sandb
       return { name };
     },
     removeVolume: async (ref: VolumeRef) => {
-      await api.maybe("DELETE", `/volumes/${ref.name}?force=1`);
+      await api.maybe("DELETE", `/volumes/${encodeURIComponent(ref.name)}?force=1`);
     },
     start: async (spec) => {
       const id = await createContainer(api, spec);

@@ -2,11 +2,16 @@ import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { existsSync } from "node:fs";
+import { chmod } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { materializeMigrations } from "./migrations.ts";
 import * as schema from "./schema.ts";
 
 export type HoDatabase = Awaited<ReturnType<typeof openDatabase>>["db"];
+
+const restrict = async (path: string): Promise<void> => {
+  await chmod(path, 0o600).catch(() => undefined);
+};
 
 async function migrationsFolderFor(migrationsDir: string | null | undefined): Promise<string> {
   if (migrationsDir !== null && migrationsDir !== undefined) {
@@ -27,11 +32,13 @@ export async function openDatabase(
   const migrationsFolder = await migrationsFolderFor(options.migrationsDir);
   const client = new Database(path, { create: true, strict: true });
   client.run("PRAGMA journal_mode = WAL");
+  await restrict(path);
   client.run("PRAGMA synchronous = NORMAL");
   client.run("PRAGMA foreign_keys = ON");
   client.run("PRAGMA busy_timeout = 5000");
   const db = drizzle({ client, schema });
   migrate(db, { migrationsFolder });
+  await Promise.all([restrict(`${path}-wal`), restrict(`${path}-shm`)]);
   return {
     db,
     close: () => {
