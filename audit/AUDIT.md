@@ -261,7 +261,8 @@ Severita: nice-to-have
 Kde: `packages/protocol/src/runner.ts`, `packages/protocol/src/index.ts:9`
 Důkaz: `runner.ts` is re-exported from the barrel, so `@ho/ui` and `@ho/cli` pull the runner frame schemas into their type graph and — since Zod schemas are runtime values — into the UI bundle, even though nothing in a browser can spawn a process.
 Dopad: Výkon: dead schema objects in the 1 100 KiB UI bundle. Architektura: an internal daemon↔sandbox contract in the package that defines the _public_ vocabulary.
-Doporučení: Keep the file (it is genuinely a protocol) but expose it through a subpath export (`@ho/protocol/runner`) so only the daemon and runner pull it in.
+Doporučení: Keep the file (it is genuinely a protocol) but expose it through a subpath export (`@ho/protocol/runner`) so only the daemon and runner pull it in. Done in Wave 3.
+**Correction after Wave 3.** The claim was half right and is worth stating precisely: the schemas really were in the browser bundle (`grep -c stdin_close packages/ui/dist/index-*.js` → **1** before, **0** after), but they are small — the bundle stays **1099 KiB** either way. The reason to make the change is the architecture (an internal daemon↔sandbox contract sitting in the package that defines the public vocabulary), not the bytes.
 Odhad: střední
 
 ### B1.3 – The `@ho/sim` barrel is neither everything nor a deliberate surface
