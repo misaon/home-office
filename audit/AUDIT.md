@@ -745,6 +745,27 @@ Dopad: Udržovatelnost: ~80 lines of pixel loops that a dependency already in th
 Doporučení: Replace `crop`, `place` and `splitStrip` with `extract`/`extend` — exact pixel operations with no resampling, so output stays byte-identical — and `opaqueBounds` with `trim`'s reported offsets.
 **Explicitly keep `resample`** (`:95-133`): it is an area-averaging box filter operating in premultiplied alpha specifically so transparent neighbours cannot bleed dark fringes into sprite edges. I could not verify from sharp's documentation that its resize reproduces that byte-for-byte, and changing it would alter the 306 delivered sprite PNGs, which this audit must not do. Replacing it is only safe alongside a deliberate re-import of the art.
 Zdroj: https://sharp.pixelplumbing.com/api-resize and /api-operation, read 2026-09-08.
+
+**Correction after Wave 3 — measured, and the recommendation is withdrawn.** A probe ran both
+implementations over delivered sprites (16×16 bubbles, 150×172 characters, furniture) and compared bytes:
+
+- `sharp.extract` reproduces `crop` **byte for byte** (`true` on every sprite tried).
+- `sharp.extend` reproduces `place` **byte for byte**.
+- `sharp.trim` does **not** reproduce `opaqueBounds`. Ours is "the bounding box of pixels with alpha ≥ 16";
+  sharp's is "distance from a background colour ≤ threshold", and even with
+  `background: rgba(0,0,0,0), threshold: 0` it returned **85×118** and **85×116** where ours returns
+  **85×117**, and 14×13 where ours returns 14×14. Substituting it would move sprite content by a row — and
+  this audit must not change the 306 delivered PNGs.
+
+So only two of the four are equivalent, and for those the win does not survive contact with the call sites:
+`crop`, `place` and `resample` are chained synchronously inside array builders in
+`scripts/assets-import.ts:208-229` and `scripts/lib/import-target.ts:150-160`, while sharp's API is async.
+Replacing 32 lines of exact `subarray`/`set` copies with ~24 lines of raw↔sharp plumbing plus `await`
+propagation through the import pipeline is not an improvement, and `resample` — the one subtle function —
+stays ours either way (ADR 003).
+
+**Kept ours, deliberately**, with the equivalence measured rather than assumed. `sharp` remains the
+decoder/encoder, which is what it is genuinely better at.
 Odhad: střední
 
 ### B16.2 – Hand-written type guards where Zod is the house standard

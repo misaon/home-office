@@ -108,3 +108,15 @@ non-determinism in the generator or in a resize would silently change the office
    own, replacing 251 texture loads with a handful. Do it after the Wave 3/4 work and measure the
    draw-call change rather than asserting it.
 4. **Do not** re-import existing art in this audit. The 306 tracked PNGs stay byte-identical.
+
+## Revision after Wave 3 (2026-09-09)
+
+The decision to "move exact raster ops to `sharp`" is **withdrawn**, on evidence rather than taste. A probe
+compared both implementations byte for byte on delivered sprites: `extract` equals our `crop` and `extend`
+equals our `place` exactly, but `trim` does not equal `opaqueBounds` — sharp trims by colour distance from a
+background, ours by `alpha ≥ 16`, and on real sprites the two disagree by a row (85×118 or 85×116 versus
+85×117; 14×13 versus 14×14). Since the two equivalent ops are chained synchronously with `resample`, which
+stays hand-written, adopting sharp there would only trade exact `subarray` copies for async plumbing.
+
+`sharp` keeps the job it is better at — decoding and encoding PNG — and the atlas recommendation is
+unaffected. Details and the numbers are under B16.1 in `AUDIT.md`.
