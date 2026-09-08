@@ -1,3 +1,4 @@
+import type { DistributedOmit } from "type-fest";
 import { z } from "zod";
 import {
   Actor,
@@ -105,7 +106,5 @@ export type DomainEventOf<T extends DomainEventType> = Extract<DomainEvent, { ty
 export const StoredEvent = z.intersection(DomainEvent, z.object({ seq: z.int().nonnegative() }));
 export type StoredEvent = DomainEvent & { seq: number };
 
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
-
 /** What a producer hands to the store: everything but `id`, `at` and `seq`, which the store assigns. */
-export type NewEvent = DistributiveOmit<DomainEvent, "id" | "at">;
+export type NewEvent = DistributedOmit<DomainEvent, "id" | "at">;

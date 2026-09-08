@@ -9,5 +9,8 @@
   "dependencies": {
     "@orpc/contract": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "type-fest": "catalog:"
   }
 }
