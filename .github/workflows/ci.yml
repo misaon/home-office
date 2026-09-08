@@ -30,9 +30,22 @@ jobs:
       - name: Audit sandbox dependencies
         run: |
           for directory in images/agent/mcp images/agent/providers/*; do
+            npm ls --prefix "$directory" >/dev/null
             npm audit --omit=dev --prefix "$directory"
           done
       - run: bun run ui:build
       - run: bun run assets:manifest
       - run: bun build --compile apps/cli/src/main.ts --outfile /tmp/ho
       - run: bun build --compile --minify --target=bun-linux-arm64-musl packages/runner/src/main.ts --outfile /tmp/ho-runner
+      - name: Smoke test the daemon
+        run: |
+          export HO_HOME="$(mktemp -d)"
+          /tmp/ho daemon >"$HO_HOME/daemon.log" 2>&1 &
+          for _ in $(seq 1 50); do
+            if curl -fsS "http://127.0.0.1:47800/health" >/dev/null 2>&1; then break; fi
+            sleep 0.2
+          done
+          curl -fsS "http://127.0.0.1:47800/health" | tee /dev/stderr | grep -q '"ok":true'
+          test "$(stat -c '%a' "$HO_HOME/daemon.json")" = 600
+          pkill -TERM -f 'ho daemon'
+          cat "$HO_HOME/daemon.log"
