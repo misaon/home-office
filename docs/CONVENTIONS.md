@@ -1,66 +1,67 @@
-# Home Office — Engineering Conventions
+# Engineering conventions
 
-These rules are enforced by tooling wherever possible (TypeScript 7, oxlint type-aware, oxfmt, knip, CI). Read them before writing code. `AGENTS.md` at the repo root points here.
+The compiler, linter, formatter and package manifests are authoritative for enforced rules. This guide
+explains intent; an explicitly authorized task can change the conventions and their implementation.
 
-## 1. Language and compiler
+## Types and boundaries
 
-- TypeScript 7.x, executed directly by Bun (`noEmit`). No build step for the daemon/CLI except `bun build --compile` for release binaries.
-- `tsconfig.base.json` (inherited by every package):
-  - `strict` (TS 7 default) plus `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `noImplicitOverride`, `noPropertyAccessFromIndexSignature`, `noFallthroughCasesInSwitch`, `noImplicitReturns`, `useUnknownInCatchVariables`.
-  - `verbatimModuleSyntax`, `erasableSyntaxOnly` (no enums, no namespaces, no parameter properties), `isolatedDeclarations` for library packages.
-  - `module: "esnext"`, `moduleResolution: "bundler"`, `target: "esnext"`, `allowImportingTsExtensions`, `types: ["bun"]` (TS 7 no longer auto-includes `@types/*`).
-  - Webview packages add `lib: ["esnext", "dom", "dom.iterable"]` and `jsx: "react-jsx"`.
-- No `any`, no non-null assertions (`!`), no `as` casts except at validated boundaries (after Zod parse). Prefer `satisfies`.
-- Model domain data as discriminated unions and `as const` objects instead of enums. Branded IDs (`type TaskId = Brand<string, "TaskId">`).
-- Exhaustive `switch` on unions (`switch-exhaustiveness-check` is an error).
+Use the pinned TypeScript/Bun toolchain. `tsconfig.base.json` enables strict checking, exact optional
+properties, unchecked indexed access, explicit overrides, index-signature access, exhaustive control
+flow, erasable syntax and isolated modules. These are explicit options, not assumptions about defaults.
+UI targets add DOM libraries and automatic React JSX. Pure packages exclude Bun/DOM globals.
 
-## 2. Lint and format
+Prefer discriminated unions, schema-derived types and `satisfies`. Parse external inputs before treating
+them as domain types. Avoid `any`, non-null assertions and casts that hide unresolved validation errors.
+Expected domain errors use the existing `Result` contract; adapter failures can throw with useful causes.
 
-- `oxlint --type-aware` with plugins `typescript`, `unicorn`, `import`, `promise`, `react`, `react-perf`; categories `correctness`, `suspicious`, `pedantic`, `perf` as **errors**; `style` as warnings. Type-aware rules that must stay on: `no-floating-promises`, `no-misused-promises`, `await-thenable`, `no-unnecessary-condition`, `switch-exhaustiveness-check`, `strict-boolean-expressions`, `consistent-type-imports`, `no-unsafe-*`.
-- `oxfmt` is the only formatter. No Prettier config files.
-- `knip` must report zero unused files, exports and dependencies (`bun run knip`).
-- CI fails on any warning (`--deny-warnings`).
+## Structure and state
 
-## 3. Architecture rules
+Keep domain decisions and simulation pure. I/O belongs to adapters behind the existing core ports.
+Persist state changes as events; projections are rebuilt from the event log. Serialized command
+execution belongs to the daemon's Office, not ad hoc locks scattered among callers.
 
-- **Ports and adapters.** `packages/core` and `packages/sim` are pure TypeScript: no I/O, no Bun/DOM globals, no timers. Everything with side effects lives in an adapter package behind an interface defined in `packages/core` (`SandboxProvider`, `AgentRuntime`, `IntakeConnector`, `EventStore`, `SecretStore`, `Clock`).
-- **Event-sourced.** The append-only `events` table is the source of truth. Read models are projections rebuilt from events. Never mutate a projection without an event.
-- **Schemas at the edges.** Every boundary (RPC, MCP tools, stream-json from agents, Docker API responses, config files) is parsed with Zod. Inside the core, types are trusted.
-- **One transport for clients.** UI, CLI and remote clients talk to the daemon through the oRPC contract in `packages/protocol`. Electrobun RPC is used only for native shell concerns (window, menu, dialogs, external links).
-- **No duplication.** Shared types live in `packages/protocol`; shared helpers in `packages/core/src/shared`. Before adding a utility, search for an existing one.
-- **Small files, feature folders.** Group by feature (`tasks/`, `agents/`, `handoff/`), not by kind (`utils/`, `types/`). A file over ~300 lines is a smell.
-- **Functions over classes.** Classes only where an object owns a lifecycle (a container handle, a runtime session, a WebSocket).
+Prefer focused modules and maintained small dependencies over generic utility layers. Shared helpers
+belong with the behavior they implement; there is no required `core/src/shared` directory. Lifecycle
+owners can be classes. Published React state is immutable; owned internal simulation state may mutate.
 
-## 4. Errors and logging
+Use the existing oRPC contract for clients and MCP schemas for agent tools. Keep repository, task,
+agent and session ownership checks at command/tool boundaries. Source text is never a daemon shell
+command. Prefer structured arguments and preserve external process exit codes.
 
-- Domain failures are values: `Result<T, DomainError>` (a tiny local type, not a library) for expected failures; `throw` only for programmer errors and at process boundaries.
-- Error classes carry a stable `code` (`"sandbox.image_missing"`, `"runtime.rate_limited"`) that the UI maps to messages and the office to emotions.
-- Logging via `pino` child loggers with `{ component, sessionId, taskId }` bindings. Never log secrets, prompts of other users, or full tool outputs at `info`; use `debug` for payloads with size caps.
-- Every long-running operation is cancellable (`AbortSignal`), has a timeout, and emits progress events.
+## Checks
 
-## 5. Security
+`bun run devkit` prepares the desktop's native type declarations. `bun run check` runs all 16 compiler
+targets, type-aware oxlint with warnings denied, oxfmt and Knip. Missing desktop declarations fail.
 
-- Secrets live in the `SecretStore` (macOS Keychain via `security`, `0600` file on Linux). They are passed to agents only through the runner's authenticated WebSocket, never via image layers, container `Env`, labels or logs.
-- Agent containers: non-root user, `CapDrop: ["ALL"]`, `no-new-privileges`, read-only rootfs with tmpfs for `/tmp` and the Claude config dir, CPU/memory/pids limits, no host mounts, dedicated bridge network with ICC disabled.
-- The daemon binds `127.0.0.1` by default. Every RPC connection presents a per-launch bearer token. Remote mode requires TLS and is opt-in.
-- Treat all agent output and repository content as untrusted data. Never let an agent's text become a shell command in the daemon.
+Oxlint enables correctness, suspicious, pedantic and performance categories. Style is off except for
+explicit rules. React hooks and JSX accessibility checks are enabled; automatic JSX does not require a
+React namespace import. The separate experimental exhaustive-effect-dependencies rule is disabled;
+standard exhaustive-deps remains enabled. CSS is covered by Knip in the UI workspace.
 
-## 6. Git and delivery
+Use `bun run fmt` to format. Validate affected builds and actual runtime behavior when a static check
+cannot establish correctness. Do not invent passing checks, coverage or benchmark numbers. No new tests
+or code comments are added in the current audit, per the owner. Existing verification spikes can run.
 
-- Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`), imperative, ≤72 chars subject.
-- `main` is always releasable; work on short-lived branches, squash-merge.
-- Every PR/commit that closes a plan task updates the **Log** section in `docs/PLAN.md` (date, task id, outcome, follow-ups).
-- Dependency versions are pinned through the root `catalog`. Bump deliberately, one PR per major bump, with the changelog link.
+## Resources and secrets
 
-## 7. Testing (deferred by decision)
+Every owned process, stream, listener, timer and subscription needs a cleanup path, including partial
+startup failure. External operations need appropriate deadlines; queues and caches need explicit bounds.
+Cancellation must propagate to the underlying work, not only stop its presentation.
 
-- No tests until Phase 8, except throwaway spike scripts under `spikes/` that are deleted or promoted. Design for testability anyway: pure core, injected `Clock`, interfaces for all I/O.
-- When tests arrive: `bun test`, colocated `*.test.ts`, integration tests behind `HO_TEST_DOCKER=1`.
+Use `SecretStore` for provider credentials: native Bun secret storage or atomic owner-only files.
+Never put secrets in subprocess arguments, Docker configuration/labels, event payloads or logs.
+Untrusted tool/model output still requires care; generic logging is not universal content redaction.
 
-## 8. Working on this repo as an AI agent
+The daemon only accepts loopback bindings. Remote TLS operation is future work. Container policies live
+in the sandbox specs and Docker provider: non-root, restricted mounts, read-only rootfs, resource limits
+and dropped capabilities. Provider-state volumes are persistent; temporary caches/config are distinct.
 
-1. Read `docs/PLAN.md` (current phase, open tasks, Log), then `docs/ARCHITECTURE.md` for the part you touch.
-2. Pick one task, state assumptions, implement, run `bun run check` (tsc + oxlint + oxfmt --check + knip).
-3. Keep diffs focused. Do not add dependencies outside `docs/STACK.md` without recording the decision there.
-4. Append a Log entry to `docs/PLAN.md`. Do not rewrite history in the Log.
-5. Verify facts about external tools online when in doubt; do not guess flags or APIs.
+## Git and documentation
+
+Use descriptive Conventional Commits and reviewable branches. Run relevant checks before committing.
+Keep root dependencies in catalogs and lockfiles; sandbox npm manifests use their own committed locks.
+Record material dependency/architecture choices in STACK and the audit or plan.
+
+Current operational facts belong in ARCHITECTURE and README. Keep historical decisions in
+`docs/history` with their dates. Do not turn an unverified plan checkbox into a claim of implementation.
+Verify changing external facts against current primary documentation and report material limitations.

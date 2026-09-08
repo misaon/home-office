@@ -1,17 +1,23 @@
-# Vendored skills
+# Role skill provenance
 
-The role packs under `plugins/<role>/skills/*` are copied from **Everything Claude Code (ECC)** by Affaan Mustafa,
-MIT license (see `LICENSE-ECC`), repository https://github.com/affaan-m/ecc, commit
-`e04ea0b9cc8248686edf5ac751cadff550e162b8` (ECC 2.2.1, 2026-09-03).
+These packs were originally selected from Everything Claude Code by Affaan Mustafa, MIT license,
+[commit e04ea0b9cc8248686edf5ac751cadff550e162b8](https://github.com/affaan-m/ecc/tree/e04ea0b9cc8248686edf5ac751cadff550e162b8).
+The original copyright and license remain in [LICENSE-ECC](LICENSE-ECC).
 
-Why a subset: the full plugin ships 286 skills, 68 agents and 94 commands; loading it into every sandbox session
-would cost context on every turn. Each role gets at most five self-contained skills, loaded on demand by Claude Code
-through `--plugin-dir /opt/ho/plugins/<role>`.
+On 2026-09-08 the selected guidance was shortened and adapted for Home Office's task protocol. It is
+no longer an unmodified vendor copy. Examples for unrelated frameworks, nonexistent tool references,
+fixed token estimates, publication instructions and automatic model-fixer setup were removed. Plankton
+and the cloud-infrastructure companion are not installed or shipped.
 
-| Pack       | Skills                                                                         |
-| ---------- | ------------------------------------------------------------------------------ |
-| `worker`   | coding-standards, verification-loop, git-workflow, error-handling, bun-runtime |
-| `reviewer` | coding-standards, security-review, plankton-code-quality, verification-loop    |
-| `boss`     | agentic-engineering, context-budget, search-first                              |
+| Pack     | Skills                                                                         |
+| -------- | ------------------------------------------------------------------------------ |
+| worker   | coding-standards, verification-loop, git-workflow, error-handling, bun-runtime |
+| reviewer | coding-standards, security-review, verification-loop                           |
+| boss     | agentic-engineering, context-budget, search-first                              |
 
-To refresh: update the commit above, re-copy the `SKILL.md` files (and companion `*.md` files) and review the diff.
+Each pack is independently loadable with Claude Code's `--plugin-dir`. The two shared short guides are
+copied into both worker and reviewer packs so a pack has no external path dependency. Keep those copies
+identical when updating. ACP providers do not automatically load Claude plugin directories.
+
+Refresh by reviewing upstream changes against the local adaptations, not by overwriting the packs.
+Rebuild provider images after changes; the image freshness hash includes these files and plugin metadata.

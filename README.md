@@ -1,24 +1,48 @@
 # Home Office
 
-A local multi-agent harness with a pixel-art office. AI agents (your "employees") work in isolated Docker containers on your repositories; a boss agent takes work from a chat panel or a mailbox and hands it out; you watch the team walk around, hand each other folders, drink coffee and ship branches.
+A local multi-agent coding harness with a pixel-art office. Each repository gets a floor, its boss
+Andrew and receptionist Lola. Agents work in isolated Docker task volumes, exchange work visibly, and
+produce branches or pull requests through the daemon.
 
-- Runtime: **Bun** · Language: **TypeScript 7** · Desktop: **Electrobun** · Rendering: **PixiJS 8** · Agents: **Claude Code** (subscription) first, provider-agnostic by design · Sandboxes: **Docker** (Alpine), cloud later.
-- Status: **Phases 0–7 complete**: the boss triages chat messages and delegates over MCP tools, workers and reviewers run in sandboxes with a review loop, handoffs, human questions and resumed conversations; branches or pull requests are delivered to local and git-URL projects; the pixel-art office (the owner-approved single-floor plan, sprites wired in by key as they are delivered) shows agents walking, working, handing over and idling, with chat, board, inspector, usage, resources and settings panels; the **desktop app** (Electrobun, unsigned macOS build from GitHub Releases) runs the daemon in-process and opens with a first-run checklist; **GitHub issues** of a project become mail the postman brings to the boss, with comments back on the issue; agents can run on **Claude Code, OpenCode, Gemini CLI or Codex** (ACP), with subscription or API-key auth and per-provider sandbox images. Next: Phase 8 (hardening, observability, tests). See the Log in docs/PLAN.md.
+The application uses Bun, TypeScript 7, React, PixiJS and Electrobun. Providers include Claude Code,
+OpenCode, Gemini CLI and Codex. The supported desktop target is macOS Apple Silicon with Docker Desktop.
 
-## Run it
+## Run the desktop
 
-- Desktop (development): `bun install`, install Hutch (`curl -fsSL https://hutch.blackboard.sh/hutch/install.sh | sh`), then `bun run desktop:dev`. `bun run desktop:build` produces the unsigned `.dmg` in `apps/desktop/artifacts/`.
-- Headless / browser: `bun run ui:build`, `ho daemon --ui`, then `ho ui` opens the office in a browser (same UI, same daemon).
-- Tuning the office live: `bun run ui:watch` (rebuilds on every change and the open page reloads itself) next to `ho daemon --ui`; drop sprites into `assets/src` and run `bun run assets:manifest` (contract in `assets/README.md`, object keys in `docs/OFFICE-ART.md`).
-- First launch: the setup checklist checks Docker, builds the agent image, takes your `claude setup-token`, hires the default team and says hello to the boss.
+```sh
+bun install --frozen-lockfile
+bun run desktop:dev
+```
 
-## Documents
+The desktop command prepares the UI, sprites and runner, installs a checksum-pinned Hutch toolchain in
+`.tools`, and starts the app. Create a project/floor, then use Setup to check Docker, build required
+images and configure provider credentials. Each new floor has a boss; hire more staff in Settings.
+Claude subscription users obtain a token with `claude setup-token`. Other providers use their API keys
+or supported local model servers. GitHub intake/PR delivery uses the host's `gh auth login`.
 
-| File                                         | What it answers                                                                                  |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| [docs/PLAN.md](docs/PLAN.md)                 | What we build, in which order, with acceptance criteria and a running log                        |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it works: processes, interfaces, protocols, simulation, security, resource and token hygiene |
-| [docs/STACK.md](docs/STACK.md)               | Which technologies and versions, why, what was rejected, sources                                 |
-| [docs/CONVENTIONS.md](docs/CONVENTIONS.md)   | Coding, typing, linting, security and workflow rules                                             |
+`bun run desktop:build` creates an unsigned application and DMG under `apps/desktop/artifacts/`.
+Release tags are stable `vX.Y.Z` tags on commits reachable from `main`.
 
-AI agents: start with `AGENTS.md`, then `docs/PLAN.md`.
+## CLI and development
+
+```sh
+bun run devkit
+bun run check
+bun run ui:build
+bun run assets:manifest
+bun run apps/cli/src/main.ts daemon --ui
+```
+
+In another terminal, `bun run apps/cli/src/main.ts ui` opens the browser UI. For a standalone CLI,
+run `bun build --compile --minify apps/cli/src/main.ts --outfile apps/cli/dist/ho` and use that binary.
+`bun run ui:watch` rebuilds and reloads an open development UI. `bun run setup` installs the local git hook.
+State defaults to `~/.config/home-office`; `HO_HOME` selects a separate state directory.
+
+## Documentation
+
+- [Current architecture and limitations](docs/ARCHITECTURE.md)
+- [Stack choices and framework assessment](docs/STACK.md)
+- [Current plan and remaining work](docs/PLAN.md)
+- [Independent September 2026 audit](docs/audit/2026-09.md)
+- [Engineering conventions](docs/CONVENTIONS.md)
+- [Sprite import contract](assets/README.md) and [office art](docs/OFFICE-ART.md)
