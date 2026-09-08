@@ -11,7 +11,7 @@ import {
 } from "./api.ts";
 
 export async function removeContainer(api: DockerApi, id: string): Promise<void> {
-  await api.maybe("DELETE", `/containers/${id}?v=1&force=1`);
+  await api.maybe("DELETE", `/containers/${encodeURIComponent(id)}?v=1&force=1`);
 }
 
 const removeVolumeIfFree = async (api: DockerApi, name: string): Promise<boolean> => {

@@ -1,5 +1,5 @@
 import { bossOf } from "@ho/core";
-import type { AgentId, MailItem, ProjectId, TaskId } from "@ho/protocol";
+import type { AgentId, MailItem, MailItemId, ProjectId, TaskId } from "@ho/protocol";
 import {
   deliverMail,
   fetchMail,
@@ -12,7 +12,7 @@ import { model } from "../store.ts";
 
 /** Mail on its way: dropped at the reception by the postman, then carried to the boss by Lola. */
 type PendingMail = {
-  mailId: string;
+  mailId: MailItemId;
   taskId: TaskId;
   floorId: ProjectId;
   stage: "postman" | "counter" | "courier";

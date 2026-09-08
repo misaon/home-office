@@ -56,7 +56,7 @@ export type { ProviderHealth, ResourceInventory, ResourceSnapshot } from "@ho/pr
 export type BuildProgress = { line: string };
 
 export type SandboxProvider = {
-  readonly id: "docker" | (string & {});
+  readonly id: "docker";
   health: () => Promise<ProviderHealth>;
   ensureImage: (spec: ImageSpec, onProgress?: (p: BuildProgress) => void) => Promise<void>;
   ensureNetwork: (name: string, labels: Readonly<Record<string, string>>) => Promise<void>;
