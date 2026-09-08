@@ -1,3 +1,4 @@
+import { type Command, subcommand } from "../command.ts";
 import { resolve } from "node:path";
 import {
   compact,
@@ -8,9 +9,8 @@ import {
 } from "@ho/protocol";
 import { list, parse, str } from "../args.ts";
 import { type HoClient, withClient } from "../client.ts";
-import { line, print } from "../output.ts";
+import { colour, line, result } from "../output.ts";
 import { findAgent, findProject } from "./lookup.ts";
-import { subcommand } from "./help.ts";
 
 const repoFrom = (path: string | undefined, url: string | undefined): RepoSource => {
   if (path !== undefined && url !== undefined) {
@@ -106,19 +106,25 @@ async function add(client: HoClient, argv: readonly string[]): Promise<void> {
   const importAgentIds = await Promise.all(
     list(parsed, "import").map(async (ref) => (await findAgent(client, ref)).id),
   );
-  print(
-    await client.projects.create({
-      name: parsed.positionals[0] ?? inspection.name,
-      repo: inspection.repo,
-      defaultBranch: branch ?? inspection.defaultBranch,
-      ...compact({ publish }),
-      importAgentIds,
-    }),
+  const created = await client.projects.create({
+    name: parsed.positionals[0] ?? inspection.name,
+    repo: inspection.repo,
+    defaultBranch: branch ?? inspection.defaultBranch,
+    ...compact({ publish }),
+    importAgentIds,
+  });
+  result(
+    `added floor ${colour.bold(created.name)} ${colour.dim(created.id)} on ${created.defaultBranch}${
+      importAgentIds.length === 0
+        ? ""
+        : ` with ${String(importAgentIds.length)} imported character(s)`
+    }`,
+    created,
   );
 }
 
-export async function project(args: readonly string[]): Promise<void> {
-  const { sub, rest } = subcommand(args, "project");
+async function project(args: readonly string[]): Promise<void> {
+  const { sub, rest } = subcommand(args, projectCommand);
   await withClient(async (client) => {
     switch (sub) {
       case "list": {
@@ -135,10 +141,14 @@ export async function project(args: readonly string[]): Promise<void> {
       }
       case "inspect": {
         const parsed = parse(rest, ["path", "url"]);
-        print(
-          await client.projects.inspect({
-            repo: repoFrom(str(parsed, "path"), str(parsed, "url")),
-          }),
+        const seen = await client.projects.inspect({
+          repo: repoFrom(str(parsed, "path"), str(parsed, "url")),
+        });
+        result(
+          seen.ok
+            ? `${colour.ok("git repository")} ${colour.bold(seen.name)} on ${seen.defaultBranch}`
+            : `${colour.bad("not usable")}: ${seen.message}`,
+          seen,
         );
         return;
       }
@@ -176,11 +186,13 @@ export async function project(args: readonly string[]): Promise<void> {
           },
           current.intake,
         );
-        print(
-          await client.projects.update({
-            id: current.id,
-            patch: compact({ defaultBranch: branch, publish, intake }),
-          }),
+        const updated = await client.projects.update({
+          id: current.id,
+          patch: compact({ defaultBranch: branch, publish, intake }),
+        });
+        result(
+          `floor ${colour.bold(updated.name)}: branch ${updated.defaultBranch}, delivery ${updated.publish.mode}, intake ${updated.intake.enabled ? "on" : "off"}`,
+          updated,
         );
         return;
       }
@@ -189,7 +201,11 @@ export async function project(args: readonly string[]): Promise<void> {
         if (ref === undefined) {
           throw new Error("project reference is required");
         }
-        print(await client.projects.remove({ id: (await findProject(client, ref)).id }));
+        const floor = await findProject(client, ref);
+        result(
+          `removed floor ${colour.bold(floor.name)} with its team`,
+          await client.projects.remove({ id: floor.id }),
+        );
         return;
       }
       default: {
@@ -198,3 +214,19 @@ export async function project(args: readonly string[]): Promise<void> {
     }
   });
 }
+
+export const projectCommand: Command = {
+  name: "project",
+  summary:
+    "floors in creation order; add takes a path or a git URL, --import copies characters from other floors, set changes the branch, delivery and GitHub intake",
+  usage: [
+    "  ho project list",
+    "  ho project inspect (--path <dir> | --url <git-url>)",
+    "  ho project add [name] (--path <dir> | --url <git-url>) [--branch main] [--pr on] [--draft off]",
+    "               [--import <agent>]...",
+    "  ho project set <floor> [--branch <name>] [--pr on|off] [--draft on|off]",
+    "               [--intake on|off] [--labels a,b] [--interval <seconds>] [--dry-run on|off]",
+    "  ho project rm <floor>",
+  ],
+  run: project,
+};

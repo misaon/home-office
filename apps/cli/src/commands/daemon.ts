@@ -1,9 +1,10 @@
+import type { Command } from "../command.ts";
 import { startDaemon } from "@ho/daemon";
 import { parse } from "../args.ts";
 import { line } from "../output.ts";
 
 /** Runs the daemon in the foreground; `--ui` also prints where the office UI is served (token stays in daemon.json). */
-export async function daemon(args: readonly string[]): Promise<void> {
+async function daemon(args: readonly string[]): Promise<void> {
   const parsed = parse(args, [], ["ui"]);
   const handle = await startDaemon();
   const { host, port, version } = handle.info;
@@ -24,3 +25,10 @@ export async function daemon(args: readonly string[]): Promise<void> {
     // Keep the process alive until a signal arrives.
   });
 }
+
+export const daemonCommand: Command = {
+  name: "daemon",
+  summary: "run the daemon in the foreground (--ui also prints the office URL)",
+  usage: ["  ho daemon [--ui]"],
+  run: daemon,
+};

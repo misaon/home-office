@@ -1,3 +1,4 @@
+import { type Command, subcommand } from "../command.ts";
 import { defaultChoice } from "@ho/core";
 import {
   AgentRole,
@@ -10,9 +11,8 @@ import {
 } from "@ho/protocol";
 import { parse, required, str } from "../args.ts";
 import { type HoClient, withClient } from "../client.ts";
-import { subcommand } from "./help.ts";
 import { findAgent, findProject, onlyProject } from "./lookup.ts";
-import { line, print } from "../output.ts";
+import { colour, line, result } from "../output.ts";
 
 /** `--project` narrows an agent lookup to one floor (names repeat across floors: every floor has an Andrew). */
 const floorOf = async (
@@ -62,21 +62,23 @@ async function addAgent(client: HoClient, argv: readonly string[]): Promise<void
   const provider = ProviderId.parse(str(parsed, "provider") ?? "claude-code");
   const defaults = defaultChoice(provider, role);
   const auth = str(parsed, "auth");
-  print(
-    await client.agents.create({
-      name,
-      role,
-      projectId: project.id,
-      appearance: {
-        spriteSet: str(parsed, "sprite") ?? "agent-a",
-        gender: Gender.parse(str(parsed, "gender") ?? "neutral"),
-      },
-      provider,
-      model: str(parsed, "model") ?? defaults.model,
-      effort: EffortLevel.optional().parse(str(parsed, "effort")) ?? defaults.effort,
-      skillPack,
-      ...compact({ auth: AuthKind.optional().parse(auth), basePrompt: prompt }),
-    }),
+  const created = await client.agents.create({
+    name,
+    role,
+    projectId: project.id,
+    appearance: {
+      spriteSet: str(parsed, "sprite") ?? "agent-a",
+      gender: Gender.parse(str(parsed, "gender") ?? "neutral"),
+    },
+    provider,
+    model: str(parsed, "model") ?? defaults.model,
+    effort: EffortLevel.optional().parse(str(parsed, "effort")) ?? defaults.effort,
+    skillPack,
+    ...compact({ auth: AuthKind.optional().parse(auth), basePrompt: prompt }),
+  });
+  result(
+    `hired ${colour.bold(created.name)} (${created.role}) on ${project.name}: ${created.provider}/${created.model}@${created.effort}`,
+    created,
   );
 }
 
@@ -105,20 +107,22 @@ async function setAgent(client: HoClient, argv: readonly string[]): Promise<void
   const provider = str(parsed, "provider");
   const auth = str(parsed, "auth");
   const name = str(parsed, "name");
-  print(
-    await client.agents.update({
-      id: current.id,
-      patch: compact({
-        name,
-        provider: ProviderId.optional().parse(provider),
-        auth: AuthKind.optional().parse(auth),
-        model,
-        effort: EffortLevel.optional().parse(effort),
-        appearance: sprite === undefined ? undefined : { ...current.appearance, spriteSet: sprite },
-        basePrompt: prompt,
-        skillPack: skills,
-      }),
+  const updated = await client.agents.update({
+    id: current.id,
+    patch: compact({
+      name,
+      provider: ProviderId.optional().parse(provider),
+      auth: AuthKind.optional().parse(auth),
+      model,
+      effort: EffortLevel.optional().parse(effort),
+      appearance: sprite === undefined ? undefined : { ...current.appearance, spriteSet: sprite },
+      basePrompt: prompt,
+      skillPack: skills,
     }),
+  });
+  result(
+    `${colour.bold(updated.name)}: ${updated.provider}/${updated.model}@${updated.effort}, skills ${updated.skillPack}`,
+    updated,
   );
 }
 
@@ -132,13 +136,12 @@ async function copyAgent(client: HoClient, argv: readonly string[]): Promise<voi
   const source = await findAgent(client, ref, await floorOf(client, str(parsed, "from")));
   const target = await findProject(client, required(parsed, "project"));
   const name = str(parsed, "name");
-  print(
-    await client.agents.copy({
-      id: source.id,
-      projectId: target.id,
-      ...compact({ name }),
-    }),
-  );
+  const copy = await client.agents.copy({
+    id: source.id,
+    projectId: target.id,
+    ...compact({ name }),
+  });
+  result(`copied ${colour.bold(copy.name)} to ${target.name}`, copy);
 }
 
 async function removeAgent(client: HoClient, argv: readonly string[]): Promise<void> {
@@ -148,11 +151,11 @@ async function removeAgent(client: HoClient, argv: readonly string[]): Promise<v
     throw new Error("agent reference is required");
   }
   const found = await findAgent(client, ref, await floorOf(client, str(parsed, "project")));
-  print(await client.agents.remove({ id: found.id }));
+  result(`dismissed ${colour.bold(found.name)}`, await client.agents.remove({ id: found.id }));
 }
 
-export async function agent(args: readonly string[]): Promise<void> {
-  const { sub, rest } = subcommand(args, "agent");
+async function agent(args: readonly string[]): Promise<void> {
+  const { sub, rest } = subcommand(args, agentCommand);
   await withClient(async (client) => {
     switch (sub) {
       case "list": {
@@ -181,3 +184,21 @@ export async function agent(args: readonly string[]): Promise<void> {
     }
   });
 }
+
+export const agentCommand: Command = {
+  name: "agent",
+  summary:
+    "the staff of a floor; defaults are the only floor, the provider's model and auth, and the role's skill pack",
+  usage: [
+    "  ho agent list [--project <floor>]",
+    "  ho agent add <name> --role worker|reviewer|clerk [--project <floor>]",
+    "               [--provider claude-code|opencode|gemini-cli|codex] [--auth subscription|api-key|none]",
+    "               [--model <id>] [--effort medium] [--gender neutral] [--sprite agent-a]",
+    "               [--prompt <text>] [--skills worker|reviewer|none]",
+    "  ho agent set <agent> [--project <floor>] [--name n] [--provider p] [--auth a] [--model m] [--effort e]",
+    "               [--sprite s] [--prompt t] [--skills p]",
+    "  ho agent copy <agent> --project <floor> [--from <floor>] [--name <name>]",
+    "  ho agent rm <agent> [--project <floor>]",
+  ],
+  run: agent,
+};

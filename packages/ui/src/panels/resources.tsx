@@ -1,11 +1,8 @@
-import { errorMessage } from "@ho/protocol";
+import { errorMessage, formatBytes } from "@ho/protocol";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { resourcesQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
-
-const mb = (bytes: number | null): string =>
-  bytes === null ? "–" : `${(bytes / 1_000_000).toFixed(bytes < 10_000_000 ? 1 : 0)} MB`;
 
 export function ResourcesPanel(): React.JSX.Element {
   const connection = useUi((s) => s.connection);
@@ -56,8 +53,9 @@ export function ResourcesPanel(): React.JSX.Element {
         <>
           <div className="text-gray-300">
             {String(inventory.snapshot.containers)} containers ·{" "}
-            {String(inventory.snapshot.volumes)} volumes ({mb(inventory.snapshot.volumesBytes)}) ·
-            images {mb(inventory.snapshot.imagesBytes)}
+            {String(inventory.snapshot.volumes)} volumes (
+            {formatBytes(inventory.snapshot.volumesBytes)}) · images{" "}
+            {formatBytes(inventory.snapshot.imagesBytes)}
           </div>
           <section>
             <h3 className="mb-1 text-[11px] tracking-wide text-gray-400 uppercase">Containers</h3>
@@ -78,7 +76,7 @@ export function ResourcesPanel(): React.JSX.Element {
               <div key={v.name} className="flex justify-between border-t border-line py-0.5">
                 <span className="truncate font-mono">{v.name}</span>
                 <span className="text-gray-400">
-                  {v.kind} · {mb(v.sizeBytes)}
+                  {v.kind} · {formatBytes(v.sizeBytes)}
                 </span>
               </div>
             ))}

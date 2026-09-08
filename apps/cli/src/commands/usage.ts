@@ -1,3 +1,4 @@
+import type { Command } from "../command.ts";
 import { compact, type Usage } from "@ho/protocol";
 import { parse, str } from "../args.ts";
 import { withClient } from "../client.ts";
@@ -7,7 +8,7 @@ const fmt = (n: number): string => n.toLocaleString("en-US");
 const row = (label: string, u: Usage, sessions?: number): string =>
   `${label.padEnd(24)} in=${fmt(u.inputTokens).padStart(10)} out=${fmt(u.outputTokens).padStart(9)} cache=${fmt(u.cacheReadTokens).padStart(10)} write=${fmt(u.cacheWriteTokens).padStart(9)} turns=${String(u.turns).padStart(5)}${sessions === undefined ? "" : ` sessions=${String(sessions)}`}`;
 
-export async function usage(args: readonly string[]): Promise<void> {
+async function usage(args: readonly string[]): Promise<void> {
   const parsed = parse(args, ["since"]);
   const since = str(parsed, "since");
   const sinceHours =
@@ -34,3 +35,10 @@ export async function usage(args: readonly string[]): Promise<void> {
     }
   });
 }
+
+export const usageCommand: Command = {
+  name: "usage",
+  summary: "tokens per agent, project and day",
+  usage: ["  ho usage [--since 24h|7d]"],
+  run: usage,
+};

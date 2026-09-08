@@ -15,6 +15,7 @@
     "@ho/protocol": "workspace:*",
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
+    "yoctocolors": "catalog:",
     "zod": "catalog:"
   }
 }

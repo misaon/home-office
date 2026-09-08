@@ -1,8 +1,8 @@
+import { type Command, subcommand } from "../command.ts";
 import { SecretKeyName } from "@ho/protocol";
 import { $ } from "bun";
 import { withClient } from "../client.ts";
 import { line } from "../output.ts";
-import { subcommand } from "./help.ts";
 
 /** Reads the secret from a pipe, or from the terminal with echo disabled. Never from argv. */
 async function readSecret(): Promise<string> {
@@ -22,8 +22,8 @@ async function readSecret(): Promise<string> {
   }
 }
 
-export async function secret(args: readonly string[]): Promise<void> {
-  const { sub, rest } = subcommand(args, "secret");
+async function secret(args: readonly string[]): Promise<void> {
+  const { sub, rest } = subcommand(args, secretCommand);
   await withClient(async (client) => {
     switch (sub) {
       case "status": {
@@ -55,3 +55,11 @@ export async function secret(args: readonly string[]): Promise<void> {
     }
   });
 }
+
+export const secretCommand: Command = {
+  name: "secret",
+  summary:
+    "keys: anthropic-oauth-token, anthropic-api-key, openai-api-key, gemini-api-key, github-token; the value arrives on stdin or through a hidden prompt, never in argv",
+  usage: ["  ho secret status | set <key> | rm <key>"],
+  run: secret,
+};

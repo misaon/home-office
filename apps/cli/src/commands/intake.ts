@@ -1,13 +1,13 @@
+import { type Command, subcommand } from "../command.ts";
 import { compact } from "@ho/protocol";
 import { withClient } from "../client.ts";
 import { parse, str } from "../args.ts";
 import { line } from "../output.ts";
 import { findProject } from "./lookup.ts";
-import { subcommand } from "./help.ts";
 
 /** `ho intake poll [--project <ref>]` and `ho intake status`: GitHub Issues intake on demand and its health. */
-export async function intake(args: readonly string[]): Promise<void> {
-  const { sub, rest } = subcommand(args, "intake");
+async function intake(args: readonly string[]): Promise<void> {
+  const { sub, rest } = subcommand(args, intakeCommand);
   const parsed = parse(rest, ["project"]);
   await withClient(async (client) => {
     switch (sub) {
@@ -44,8 +44,8 @@ export async function intake(args: readonly string[]): Promise<void> {
 }
 
 /** `ho mail list [--project <ref>]`: what the postman brought in and what the office told the source. */
-export async function mail(args: readonly string[]): Promise<void> {
-  const { sub, rest } = subcommand(args, "mail");
+async function mail(args: readonly string[]): Promise<void> {
+  const { sub, rest } = subcommand(args, mailCommand);
   if (sub !== "list") {
     throw new Error(`unknown mail command "${sub}"`);
   }
@@ -61,3 +61,17 @@ export async function mail(args: readonly string[]): Promise<void> {
     }
   });
 }
+
+export const intakeCommand: Command = {
+  name: "intake",
+  summary: "poll a floor's GitHub issues now, or show intake health per floor",
+  usage: ["  ho intake poll [--project <project>] | status"],
+  run: intake,
+};
+
+export const mailCommand: Command = {
+  name: "mail",
+  summary: "issues the postman brought in, and their acknowledgements",
+  usage: ["  ho mail list [--project <project>]"],
+  run: mail,
+};

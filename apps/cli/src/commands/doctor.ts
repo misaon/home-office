@@ -1,11 +1,24 @@
+import type { Command } from "../command.ts";
+import { formatBytes } from "@ho/protocol";
 import { withClient } from "../client.ts";
-import { line } from "../output.ts";
+import { jsonOutput, line, print } from "../output.ts";
 
-const gb = (bytes: number): string => `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+const unhealthy = (report: {
+  provider: { ok: boolean };
+  images: readonly { present: boolean; upToDate: boolean }[];
+}): boolean =>
+  !report.provider.ok || report.images.some((image) => !image.present || !image.upToDate);
 
-export async function doctor(): Promise<void> {
+async function doctor(): Promise<void> {
   await withClient(async (client) => {
     const report = await client.system.doctor();
+    if (unhealthy(report)) {
+      process.exitCode = 1;
+    }
+    if (jsonOutput()) {
+      print(report);
+      return;
+    }
     line(
       report.provider.ok
         ? `docker: ok ${report.provider.version} (api ${report.provider.apiVersion}, ${report.provider.os}/${report.provider.arch})`
@@ -23,14 +36,18 @@ export async function doctor(): Promise<void> {
     line(
       `secret anthropic-oauth-token: ${report.secrets.anthropicOauthToken ? "present" : "MISSING (claude setup-token → Keychain)"}`,
     );
-    if (!report.provider.ok || report.images.some((image) => !image.present || !image.upToDate)) {
-      process.exitCode = 1;
-    }
     line(`sessions: ${String(report.sessions.active)} active / ${String(report.sessions.max)} max`);
     if (report.resources !== null) {
       line(
-        `resources: ${String(report.resources.containers)} containers, ${String(report.resources.volumes)} volumes (${gb(report.resources.volumesBytes)}), images ${gb(report.resources.imagesBytes)}`,
+        `resources: ${String(report.resources.containers)} containers, ${String(report.resources.volumes)} volumes (${formatBytes(report.resources.volumesBytes)}), images ${formatBytes(report.resources.imagesBytes)}`,
       );
     }
   });
 }
+
+export const doctorCommand: Command = {
+  name: "doctor",
+  summary: "docker, images, secrets, sessions and disk in one report",
+  usage: ["  ho doctor"],
+  run: doctor,
+};

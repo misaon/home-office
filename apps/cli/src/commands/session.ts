@@ -1,10 +1,10 @@
+import { type Command, subcommand } from "../command.ts";
 import { compact, SessionId } from "@ho/protocol";
 import { withClient } from "../client.ts";
 import { line, print } from "../output.ts";
-import { subcommand } from "./help.ts";
 
-export async function session(args: readonly string[]): Promise<void> {
-  const { sub, rest } = subcommand(args, "session");
+async function session(args: readonly string[]): Promise<void> {
+  const { sub, rest } = subcommand(args, sessionCommand);
   await withClient(async (client) => {
     switch (sub) {
       case "list": {
@@ -99,3 +99,10 @@ export async function session(args: readonly string[]): Promise<void> {
     }
   });
 }
+
+export const sessionCommand: Command = {
+  name: "session",
+  summary: "agent sessions; watch streams live runtime events",
+  usage: ["  ho session list | show <id> | watch [<session-id>|all]"],
+  run: session,
+};
