@@ -1,4 +1,6 @@
+import { ORPCError, onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/bun-ws";
+import { errorMessage } from "@ho/protocol";
 import type { Logger } from "./logger.ts";
 import type { RpcContext } from "./rpc/context.ts";
 import { router } from "./rpc/router.ts";
@@ -53,7 +55,17 @@ function serveUi(options: ServerOptions, pathname: string): Promise<Response> | 
 }
 
 export function startServer(options: ServerOptions): { port: number; stop: () => Promise<void> } {
-  const handler = new RPCHandler(router);
+  const handler = new RPCHandler(router, {
+    interceptors: [
+      onError((error) => {
+        if (error instanceof ORPCError) {
+          options.log.debug({ code: error.code, err: error.message }, "rpc call rejected");
+          return;
+        }
+        options.log.error({ err: errorMessage(error) }, "rpc call failed");
+      }),
+    ],
+  });
   const server = Bun.serve<SocketData>({
     hostname: options.host,
     port: options.port,

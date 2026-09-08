@@ -137,6 +137,16 @@ export const useUi = create<UiState>()((set) => ({
   },
 }));
 
+const HIDDEN_BUMP_MS = 200;
+
+const nextBump = (run: () => void): void => {
+  if (document.hidden) {
+    setTimeout(run, HIDDEN_BUMP_MS);
+    return;
+  }
+  requestAnimationFrame(run);
+};
+
 let modelBumpScheduled = false;
 /**
  * Coalesces model changes into one React update per frame (the replay can be thousands of events) and keeps the
@@ -145,7 +155,7 @@ let modelBumpScheduled = false;
 export function scheduleModelBump(): void {
   if (!modelBumpScheduled) {
     modelBumpScheduled = true;
-    requestAnimationFrame(() => {
+    nextBump(() => {
       modelBumpScheduled = false;
       const snapshot = takeSnapshot();
       const { floorId } = useUi.getState();
@@ -161,7 +171,7 @@ let liveBumpScheduled = false;
 export function scheduleLiveBump(): void {
   if (!liveBumpScheduled) {
     liveBumpScheduled = true;
-    requestAnimationFrame(() => {
+    nextBump(() => {
       liveBumpScheduled = false;
       useUi.setState((s) => {
         const live = new Map(s.live);
