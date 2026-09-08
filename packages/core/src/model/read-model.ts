@@ -32,7 +32,11 @@ export type ReadModel = {
   /** Times of the most recent rate-limit incidents, oldest first, bounded by `RATE_LIMIT_TAIL`. */
   rateLimits: string[];
   rateLimitsSeen: number;
+  /** Bumped by `applyEvent` for the collection an event touched, so readers can copy only what changed. */
+  revisions: Record<Collection, number>;
 };
+
+export type Collection = "projects" | "agents" | "tasks" | "sessions" | "chat" | "mail";
 
 export const createReadModel = (): ReadModel => ({
   projects: new Map(),
@@ -50,6 +54,7 @@ export const createReadModel = (): ReadModel => ({
   mailBySource: new Map(),
   rateLimits: [],
   rateLimitsSeen: 0,
+  revisions: { projects: 0, agents: 0, tasks: 0, sessions: 0, chat: 0, mail: 0 },
 });
 
 export const RATE_LIMIT_TAIL = 1000;

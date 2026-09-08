@@ -2,6 +2,7 @@ import { compact, type Session, type StoredEvent, type Task } from "@ho/protocol
 import { isSessionActive, RATE_LIMITED } from "../commands/sessions.ts";
 import {
   CHAT_TAIL,
+  type Collection,
   dropFrom,
   indexInto,
   mailSourceKey,
@@ -148,9 +149,38 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
 }
 
 /** Folds one stored event into the model. Unknown ids are ignored so a partial log never throws. */
+const TOUCHES: Readonly<Record<StoredEvent["type"], Collection | null>> = {
+  "project.created": "projects",
+  "project.updated": "projects",
+  "project.removed": "projects",
+  "agent.created": "agents",
+  "agent.updated": "agents",
+  "agent.removed": "agents",
+  "task.created": "tasks",
+  "task.edited": "tasks",
+  "task.assigned": "tasks",
+  "task.reviewer_assigned": "tasks",
+  "task.status_changed": "tasks",
+  "task.artifacts_changed": "tasks",
+  "task.note_added": "tasks",
+  "task.review_recorded": "tasks",
+  "handoff.requested": null,
+  "chat.message_posted": "chat",
+  "mail.received": "mail",
+  "mail.acknowledged": "mail",
+  "session.started": "sessions",
+  "session.state_changed": "sessions",
+  "session.usage_recorded": "sessions",
+  "session.ended": "sessions",
+};
+
 export function applyEvent(model: ReadModel, event: StoredEvent): void {
   if (event.seq <= model.lastSeq) {
     return;
+  }
+  const touched = TOUCHES[event.type];
+  if (touched !== null) {
+    model.revisions[touched] += 1;
   }
   switch (event.type) {
     case "project.created":

@@ -21,13 +21,11 @@ const repoOf = (source: string): RepoSource =>
 type Group = { floor: string; agents: Agent[] };
 
 /** Staff of the other floors, grouped by floor, for the import checkboxes (bosses stay with their floor). */
-const importable = (snapshot: Snapshot): Group[] =>
-  sortedFloors(snapshot)
+const importable = (projects: Snapshot["projects"], agents: Snapshot["agents"]): Group[] =>
+  sortedFloors(projects)
     .map((p, i) => ({
       floor: `${String(i + 1)} · ${p.name}`,
-      agents: [...snapshot.agents.values()].filter(
-        (a) => a.projectId === p.id && a.role !== "boss",
-      ),
+      agents: [...agents.values()].filter((a) => a.projectId === p.id && a.role !== "boss"),
     }))
     .filter((g) => g.agents.length > 0);
 
@@ -178,7 +176,8 @@ export function AddProjectModal(): React.JSX.Element | null {
   const open = useUi((s) => s.addProjectOpen);
   const setOpen = useUi((s) => s.setAddProjectOpen);
   const selectFloor = useUi((s) => s.selectFloor);
-  const snapshot = useUi((s) => s.snapshot);
+  const projects = useUi((s) => s.snapshot.projects);
+  const agents = useUi((s) => s.snapshot.agents);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const create = useMutation({
     mutationFn: (input: Parameters<Client["projects"]["create"]>[0]) =>
@@ -255,7 +254,11 @@ export function AddProjectModal(): React.JSX.Element | null {
           </span>
         </label>
         <NameBranchFields draft={draft} setDraft={setDraft} />
-        <ImportPicker groups={importable(snapshot)} imports={draft.imports} toggle={toggle} />
+        <ImportPicker
+          groups={importable(projects, agents)}
+          imports={draft.imports}
+          toggle={toggle}
+        />
         {create.error === null ? null : (
           <p className="rounded bg-red-950/70 px-2 py-1 text-red-200">
             {errorMessage(create.error)}

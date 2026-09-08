@@ -1,4 +1,10 @@
-import { acknowledgeMail, type IntakeConnector, receiveMail, type ReceivedMail } from "@ho/core";
+import {
+  acknowledgeMail,
+  findMail,
+  type IntakeConnector,
+  receiveMail,
+  type ReceivedMail,
+} from "@ho/core";
 import {
   errorMessage,
   GITHUB_ISSUES_CONNECTOR,
@@ -211,14 +217,9 @@ export class IntakeService {
     try {
       const items = await connector.poll(project, this.#controller.signal);
       state.lastPollAt = this.#office.clock.now().toISOString();
-      const known = new Set(
-        [...this.#office.model.mail.values()]
-          .filter((m) => m.projectId === project.id)
-          .map((m) => m.externalId),
-      );
       for (const item of items) {
         this.#controller.signal.throwIfAborted();
-        if (known.has(item.externalId)) {
+        if (findMail(this.#office.model, project.id, connector.id, item.externalId) !== undefined) {
           result.duplicates += 1;
           continue;
         }
@@ -233,7 +234,6 @@ export class IntakeService {
           result.duplicates += 1;
           continue;
         }
-        known.add(item.externalId);
         result.received += 1;
         state.received += 1;
         this.#log.info(

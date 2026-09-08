@@ -1,9 +1,16 @@
-import { type Agent, type AgentUpdateInput, errorMessage, Gender, ProjectId } from "@ho/protocol";
-
-const GENDERS = Gender.options;
+import {
+  type Agent,
+  type AgentUpdateInput,
+  errorMessage,
+  Gender,
+  type Project,
+  ProjectId,
+} from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { requireClient } from "../rpc.ts";
-import { type Snapshot, sortedFloors, useUi } from "../store.ts";
+import { sortedFloors, useUi } from "../store.ts";
+
+const GENDERS = Gender.options;
 import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
 import { NewAgent } from "./agent-new.tsx";
 
@@ -14,11 +21,11 @@ const choiceOf = (agent: Agent): Choice => ({
   effort: agent.effort,
 });
 
-type RowProps = { agent: Agent; snapshot: Snapshot };
+type RowProps = { agent: Agent; projects: ReadonlyMap<ProjectId, Project> };
 
-function AgentRow({ agent, snapshot }: RowProps): React.JSX.Element {
+function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
   const spriteSets = useUi((s) => s.spriteSets);
-  const otherFloors = sortedFloors(snapshot).filter((p) => p.id !== agent.projectId);
+  const otherFloors = sortedFloors(projects).filter((p) => p.id !== agent.projectId);
   const save = useMutation({
     mutationFn: (patch: AgentUpdateInput["patch"]) =>
       requireClient().agents.update({ id: agent.id, patch }),
@@ -129,12 +136,13 @@ function AgentRow({ agent, snapshot }: RowProps): React.JSX.Element {
 
 /** The staff of the selected floor: the boss first, then everybody else by name. */
 export function AgentsSettings(): React.JSX.Element {
-  const snapshot = useUi((s) => s.snapshot);
+  const projects = useUi((s) => s.snapshot.projects);
+  const staff = useUi((s) => s.snapshot.agents);
   const floorId = useUi((s) => s.floorId);
   if (floorId === null) {
     return <p className="text-gray-400">Add a project (floor) first.</p>;
   }
-  const agents = [...snapshot.agents.values()]
+  const agents = [...staff.values()]
     .filter((a) => a.projectId === floorId)
     .toSorted(
       (a, b) =>
@@ -143,10 +151,10 @@ export function AgentsSettings(): React.JSX.Element {
   return (
     <section className="space-y-2">
       <h3 className="text-[11px] tracking-wide text-gray-400 uppercase">
-        Team of floor {snapshot.projects.get(floorId)?.name ?? ""}
+        Team of floor {projects.get(floorId)?.name ?? ""}
       </h3>
       {agents.map((a) => (
-        <AgentRow key={a.id} agent={a} snapshot={snapshot} />
+        <AgentRow key={a.id} agent={a} projects={projects} />
       ))}
       <NewAgent floorId={floorId} />
     </section>

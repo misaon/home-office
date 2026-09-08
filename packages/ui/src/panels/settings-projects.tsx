@@ -8,7 +8,7 @@ const describeRepo = (p: Project): string => (p.repo.kind === "local" ? p.repo.p
 
 /** The floors: one per project, numbered by creation. Adding one goes through the add-project dialog. */
 export function ProjectsSettings(): React.JSX.Element {
-  const snapshot = useUi((s) => s.snapshot);
+  const projects = useUi((s) => s.snapshot.projects);
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
   const togglePr = useMutation({
     mutationFn: (p: Project) =>
@@ -36,7 +36,7 @@ export function ProjectsSettings(): React.JSX.Element {
   return (
     <section className="space-y-2">
       <h3 className="text-[11px] tracking-wide text-gray-400 uppercase">Floors (projects)</h3>
-      {sortedFloors(snapshot).map((p, i) => (
+      {sortedFloors(projects).map((p, i) => (
         <div key={p.id} className="rounded border border-line bg-panel p-2">
           <div className="flex items-center justify-between">
             <span className="font-medium">

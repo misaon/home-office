@@ -1,4 +1,4 @@
-import { createReadModel, type ReadModel } from "@ho/core";
+import { type Collection, createReadModel, type ReadModel } from "@ho/core";
 import type {
   Agent,
   AgentId,
@@ -18,7 +18,7 @@ import { create } from "zustand";
 export type Panel = "chat" | "board" | "inspector" | "usage" | "resources" | "settings";
 type Connection = "connecting" | "online" | "offline" | "unauthorized";
 
-/** Immutable view of the read model for React: fresh Map instances on every change. */
+/** Immutable view of the read model for React: a collection keeps its identity until an event touches it. */
 export type Snapshot = {
   projects: ReadonlyMap<ProjectId, Project>;
   agents: ReadonlyMap<AgentId, Agent>;
@@ -33,19 +33,34 @@ export type Snapshot = {
 /** The event-sourced read model, mutated in place by `applyEvent`; the simulation bridge reads it directly. */
 export const model: ReadModel = createReadModel();
 
-const takeSnapshot = (): Snapshot => ({
-  projects: new Map(model.projects),
-  agents: new Map(model.agents),
-  tasks: new Map(model.tasks),
-  sessions: new Map(model.sessions),
-  chat: new Map(model.chat),
-  mail: new Map(model.mail),
+const copied: Record<Collection, number> = {
+  projects: -1,
+  agents: -1,
+  tasks: -1,
+  sessions: -1,
+  chat: -1,
+  mail: -1,
+};
+
+const changed = (name: Collection): boolean => {
+  const moved = copied[name] !== model.revisions[name];
+  copied[name] = model.revisions[name];
+  return moved;
+};
+
+const takeSnapshot = (previous: Snapshot | null): Snapshot => ({
+  projects: changed("projects") || previous === null ? new Map(model.projects) : previous.projects,
+  agents: changed("agents") || previous === null ? new Map(model.agents) : previous.agents,
+  tasks: changed("tasks") || previous === null ? new Map(model.tasks) : previous.tasks,
+  sessions: changed("sessions") || previous === null ? new Map(model.sessions) : previous.sessions,
+  chat: changed("chat") || previous === null ? new Map(model.chat) : previous.chat,
+  mail: changed("mail") || previous === null ? new Map(model.mail) : previous.mail,
   agentsByProject: model.agentsByProject,
 });
 
 /** Floors in the order they were built: the first project is floor 1. */
-export const sortedFloors = (snapshot: Pick<Snapshot, "projects">): Project[] =>
-  [...snapshot.projects.values()].toSorted(
+export const sortedFloors = (projects: ReadonlyMap<ProjectId, Project>): Project[] =>
+  [...projects.values()].toSorted(
     (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
   );
 
@@ -102,7 +117,7 @@ type UiState = {
 export const useUi = create<UiState>()((set) => ({
   connection: "connecting",
   replayed: false,
-  snapshot: takeSnapshot(),
+  snapshot: takeSnapshot(null),
   live: new Map(),
   lastError: null,
   panel: "chat",
@@ -160,11 +175,14 @@ export function scheduleModelBump(): void {
     modelBumpScheduled = true;
     nextBump(() => {
       modelBumpScheduled = false;
-      const snapshot = takeSnapshot();
-      const { floorId } = useUi.getState();
+      const state = useUi.getState();
+      const snapshot = takeSnapshot(state.snapshot);
+      const { floorId } = state;
       const valid = floorId !== null && snapshot.projects.has(floorId);
       useUi.setState(
-        valid ? { snapshot } : { snapshot, floorId: sortedFloors(snapshot)[0]?.id ?? null },
+        valid
+          ? { snapshot }
+          : { snapshot, floorId: sortedFloors(snapshot.projects)[0]?.id ?? null },
       );
     });
   }
