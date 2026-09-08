@@ -23,7 +23,6 @@ export function createAcpRuntime(preset: AcpPreset, options: AcpRuntimeOptions =
     capabilities: () => ({
       resume: preset.resume,
       structuredOutput: false,
-      images: false,
       effortLevels: PROVIDERS[preset.id].effortLevels,
     }),
     open: async (spec, channel, secrets): Promise<RuntimeSession> => {
