@@ -86,7 +86,6 @@ export function createGithubIssuesConnector(): IntakeConnector {
       cancel?: Cancellation,
     ): Promise<void> => {
       const target = ghTarget(project);
-      const signal = cancel;
       if (project.intake.comment) {
         await gh(
           [
@@ -98,7 +97,7 @@ export function createGithubIssuesConnector(): IntakeConnector {
             closing(ack).slice(0, COMMENT_MAX),
           ],
           target.cwd,
-          signal,
+          cancel,
         );
       }
       if (ack.outcome === "received" && project.intake.ackLabel !== "") {
@@ -112,7 +111,7 @@ export function createGithubIssuesConnector(): IntakeConnector {
             project.intake.ackLabel,
           ],
           target.cwd,
-          signal,
+          cancel,
         );
       }
     },

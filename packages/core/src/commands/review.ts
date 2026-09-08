@@ -1,12 +1,4 @@
-import type {
-  Agent,
-  HoReportInput,
-  HoReviewInput,
-  NewEvent,
-  Task,
-  TaskId,
-  TaskStatus,
-} from "@ho/protocol";
+import type { Agent, HoReportInput, HoReviewInput, NewEvent, Task, TaskId } from "@ho/protocol";
 import { conflict } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { err, ok } from "../result.ts";
@@ -81,18 +73,17 @@ export function fileReport(
     });
   }
   // Without a reviewer in the project the branch is the deliverable: the human reviews it on GitHub.
-  const to: TaskStatus = "done";
   events.push(
     statusChange(
       ctx,
       task,
-      to,
+      "done",
       input.status === "review" && task.kind === "work"
         ? "reported; no reviewer in this project"
         : "reported",
     ),
   );
-  return ok({ events, value: { ...next, status: to } });
+  return ok({ events, value: { ...next, status: "done" } });
 }
 
 /** Reviewer verdict: approve closes the task; request_changes sends it back to the worker or blocks it after the budget. */

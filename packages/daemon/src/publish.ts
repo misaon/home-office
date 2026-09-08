@@ -59,6 +59,7 @@ export async function deliver(
     args.push("--draft");
   }
   let cwd: string | undefined;
+  let target: string[] = [];
   if (project.repo.kind === "local") {
     cwd = project.repo.path;
   } else {
@@ -66,10 +67,9 @@ export async function deliver(
     if (repo === null) {
       throw new Error("pull requests need a GitHub URL");
     }
-    args.push("--repo", repo);
+    target = ["--repo", repo];
+    args.push(...target);
   }
-  const target =
-    project.repo.kind === "local" ? [] : ["--repo", githubRepoFromUrl(project.repo.url) ?? ""];
   const existing = await run(
     [
       "gh",
