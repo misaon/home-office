@@ -69,9 +69,7 @@ function runElevator(world: World, floorId: string, floor: Floor, dtMs: number):
             ?.at ?? { x: car.x, y: car.y + 5 };
           setSteps(passenger, [
             { kind: "dwell", activity: "idle", facing: "s", until: null, ms: STEP_OUT_MS },
-            ...(passenger.steps.length > 0
-              ? passenger.steps
-              : walkSteps(world, passenger, floorId, spot)),
+            ...(passenger.steps.length > 0 ? passenger.steps : walkSteps(floorId, spot)),
           ]);
         }
       }

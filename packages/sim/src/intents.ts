@@ -74,7 +74,7 @@ export function assignWork(
   actor.work = { floorId, anchorId: anchor.id };
   setSteps(actor, [
     ...pendingDeliveries(actor),
-    ...walkSteps(world, actor, floorId, anchor.at),
+    ...walkSteps(floorId, anchor.at),
     { kind: "hold", activity: "type", facing: anchor.facing },
   ]);
   return true;
@@ -149,7 +149,7 @@ export function handoff(world: World, from: AgentId, to: AgentId): boolean {
   setEmotion(world, from, "envelope", null);
   setSteps(source, [
     ...pendingDeliveries(source),
-    ...walkSteps(world, source, target.floorId, meet),
+    ...walkSteps(target.floorId, meet),
     { kind: "dwell", activity: "handover", facing: face, until: null, ms: HANDOVER_MS },
     { kind: "emit", event: { kind: "handoff_delivered", from, to } },
     ...resumeSteps(world, source),
@@ -198,7 +198,7 @@ export function sleep(world: World, agentId: AgentId): void {
   reserve(world, actor, actor.floorId, spot.id);
   setSteps(actor, [
     ...pendingDeliveries(actor),
-    ...walkSteps(world, actor, actor.floorId, spot.at),
+    ...walkSteps(actor.floorId, spot.at),
     { kind: "hold", activity: "sleep", facing: spot.facing },
   ]);
 }

@@ -150,7 +150,7 @@ export function nearestWalkable(world: World, floorId: string, target: Point): P
 }
 
 /** A walk to a point on the actor's floor. */
-export const walkSteps = (_world: World, _actor: Actor, floorId: string, to: Point): Step[] => [
+export const walkSteps = (floorId: string, to: Point): Step[] => [
   { kind: "walk", floorId, to, path: null },
 ];
 
@@ -176,7 +176,7 @@ export function resumeSteps(world: World, actor: Actor): Step[] {
 export function homeSteps(world: World, actor: Actor): Step[] {
   if (actor.home === null) {
     const spot = world.rng.pick(freeAnchors(world, actor.floorId, "wander", actor.kind));
-    return spot === undefined ? [] : walkSteps(world, actor, actor.floorId, spot.at);
+    return spot === undefined ? [] : walkSteps(actor.floorId, spot.at);
   }
   const anchor = anchorOf(world, actor.home.floorId, actor.home.anchorId);
   if (anchor === undefined) {

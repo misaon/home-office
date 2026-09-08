@@ -50,7 +50,7 @@ function satisfy(world: World, actor: Actor, need: NeedKind): boolean {
   }
   actor.needs[need] = 0;
   setSteps(actor, [
-    ...walkSteps(world, actor, actor.floorId, anchor.at),
+    ...walkSteps(actor.floorId, anchor.at),
     { kind: "dwell", activity: plan.activity, facing: anchor.facing, until: null, ms: plan.ms },
     { kind: "emit", event: { kind: "arrived", agentId: actor.id, anchorId: anchor.id } },
     { kind: "release" },
@@ -67,7 +67,7 @@ export function leaveFloor(world: World, actor: Actor, ms: number): boolean {
     return false;
   }
   release(world, actor);
-  setSteps(actor, [...walkSteps(world, actor, actor.floorId, car.at), { kind: "away", ms }]);
+  setSteps(actor, [...walkSteps(actor.floorId, car.at), { kind: "away", ms }]);
   return true;
 }
 
@@ -104,7 +104,7 @@ function staffIdle(world: World, actor: Actor): void {
   }
   const spot = world.rng.pick(freeAnchors(world, actor.floorId, "wander", actor.kind));
   if (spot !== undefined) {
-    setSteps(actor, walkSteps(world, actor, actor.floorId, spot.at));
+    setSteps(actor, walkSteps(actor.floorId, spot.at));
   }
   actor.idleUntil = world.time + 3000;
 }

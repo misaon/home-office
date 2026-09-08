@@ -35,10 +35,10 @@ export function deliverMail(
   // The postman rides the elevator like everybody else (no explicit place → arrival queue).
   const postman = spawnActor(world, visitorId, sprite, floorId, { kind: "visitor" });
   setSteps(postman, [
-    ...walkSteps(world, postman, floorId, mailbox.at),
+    ...walkSteps(floorId, mailbox.at),
     { kind: "dwell", activity: "drop", facing: mailbox.facing, until: null, ms: DROP_MS },
     { kind: "emit", event: { kind: "mail_dropped", ref } },
-    ...walkSteps(world, postman, floorId, car),
+    ...walkSteps(floorId, car),
     { kind: "emit", event: { kind: "visitor_left", actorId: visitorId } },
   ]);
   return true;
@@ -72,7 +72,7 @@ const handToBoss = (
   setSteps(courier, [
     ...pendingDeliveries(courier),
     ...before,
-    ...walkSteps(world, courier, boss.floorId, meet),
+    ...walkSteps(boss.floorId, meet),
     {
       kind: "dwell",
       activity: "handover",
@@ -103,7 +103,7 @@ export function fetchMail(
     return false;
   }
   const pickup: Step[] = [
-    ...walkSteps(world, courier, floorId, mailbox.at),
+    ...walkSteps(floorId, mailbox.at),
     { kind: "dwell", activity: "receive", facing: mailbox.facing, until: null, ms: PICKUP_MS },
   ];
   if (courierId === bossId) {
