@@ -7,7 +7,7 @@
     "./pump": "./src/pump.ts"
   },
   "scripts": {
-    "build": "bun build --compile --minify --target=bun-linux-arm64-musl ./src/main.ts --outfile ./dist/ho-runner"
+    "build": "bun build --target=bun --minify ./src/main.ts --outfile ./dist/ho-runner.js"
   },
   "dependencies": {
     "@ho/protocol": "workspace:*"

@@ -54,7 +54,7 @@ const sandboxSpec = (
 ): SandboxSpec => ({
   name: `ho-session-${ctx.session.id.slice(-12)}`,
   image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
-  cmd: ["/usr/local/bin/ho-runner"],
+  cmd: ["bun", "/usr/local/bin/ho-runner.js"],
   env: { HO_GATEWAY: gatewayUrl, HO_SESSION_TOKEN: token, HOME: "/home/agent", TERM: "dumb" },
   user: "1000:1000",
   workdir: REPO_IN_VOLUME,

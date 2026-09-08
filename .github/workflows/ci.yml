@@ -24,6 +24,11 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
+      - name: Cache the pinned Hutch toolchain
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .tools
+          key: hutch-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/devkit.ts') }}
       - run: bun run devkit
       - run: bun run check
       - run: bun audit
@@ -36,7 +41,7 @@ jobs:
       - run: bun run ui:build
       - run: bun run assets:manifest
       - run: bun build --compile apps/cli/src/main.ts --outfile /tmp/ho
-      - run: bun build --compile --minify --target=bun-linux-arm64-musl packages/runner/src/main.ts --outfile /tmp/ho-runner
+      - run: bun build --target=bun --minify packages/runner/src/main.ts --outfile /tmp/ho-runner.js
       - name: Smoke test the daemon
         run: |
           export HO_HOME="$(mktemp -d)"
@@ -67,8 +72,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Assemble the agent build context
         run: |
-          bun build --compile --minify --target=bun-linux-arm64-musl \
-            packages/runner/src/main.ts --outfile images/agent/bin/ho-runner
+          bun build --target=bun --minify \
+            packages/runner/src/main.ts --outfile images/agent/bin/ho-runner.js
           rm -rf images/agent/plugins
           cp -R packages/agent-kit/plugins images/agent/plugins
       - name: Build the git-bridge image
@@ -85,7 +90,7 @@ jobs:
             --cache-from type=gha,scope=agent images/agent
       - name: Smoke test the images
         run: |
-          docker run --rm --entrypoint /usr/local/bin/ho-runner ho/agent:ci 2>&1 \
+          docker run --rm ho/agent:ci 2>&1 \
             | grep -q "HO_GATEWAY and HO_SESSION_TOKEN are required"
           docker run --rm --entrypoint sh ho/agent:ci -c \
             'claude --version && rtk --version && test -s /home/agent/.claude/settings.json'

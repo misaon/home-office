@@ -12,7 +12,7 @@ export type Resources = {
   root: string;
   /** Docker build context of an image; null when this build carries no contexts (a compiled CLI). */
   imageContext: (name: ImageName) => string | null;
-  /** ho-runner sources, compiled into the agent image context; null when the context ships the binary. */
+  /** ho-runner sources, bundled into the agent image context; null when the context ships the bundle. */
   runnerEntry: string | null;
   /** Role skill packs synced into the agent image context; null when the context already carries them. */
   pluginsSource: string | null;

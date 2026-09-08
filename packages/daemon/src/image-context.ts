@@ -29,7 +29,7 @@ const contextPatterns = (resources: Resources, name: "agent" | "git-bridge"): st
     "mcp/package-lock.json",
     "providers/*/package.json",
     "providers/*/package-lock.json",
-    ...(resources.runnerEntry === null ? ["bin/ho-runner"] : []),
+    ...(resources.runnerEntry === null ? ["bin/ho-runner.js"] : []),
     ...(resources.pluginsSource === null ? ["plugins/**/*"] : []),
   ];
 };

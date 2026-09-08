@@ -30,6 +30,11 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
+      - name: Cache the pinned Hutch toolchain
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .tools
+          key: hutch-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/devkit.ts') }}
       - run: bun run devkit
       - run: bun run check
       - run: bun audit

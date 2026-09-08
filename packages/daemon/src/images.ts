@@ -16,12 +16,12 @@ export const LABELS = {
   project: "ho.project",
 } as const;
 const IMAGE_LABELS = { [LABELS.managed]: "true", [LABELS.kind]: "image" };
-const RUNNER_IN_CONTEXT = "bin/ho-runner";
+const RUNNER_IN_CONTEXT = "bin/ho-runner.js";
 const PLUGINS_IN_CONTEXT = "plugins";
 
 /**
- * Compiles ho-runner for the Alpine arm64 sandbox into the agent image build context. Packaged builds ship
- * the binary inside the context (no sources, no `bun` on PATH), so the step only checks that it is there.
+ * Bundles ho-runner into the agent image build context; the image's own Bun runs it. Packaged builds ship
+ * the bundle inside the context (no sources, no `bun` on PATH), so the step only checks that it is there.
  */
 async function ensureRunner(
   context: string,
@@ -31,12 +31,12 @@ async function ensureRunner(
   const target = join(context, RUNNER_IN_CONTEXT);
   if (resources.runnerEntry === null) {
     if (!existsSync(target)) {
-      throw new Error(`ho-runner binary missing from the bundled image context (${target})`);
+      throw new Error(`ho-runner bundle missing from the bundled image context (${target})`);
     }
     return;
   }
   const result =
-    await $`bun build --compile --minify --target=bun-linux-arm64-musl ${resources.runnerEntry} --outfile ${target}`
+    await $`bun build --target=bun --minify ${resources.runnerEntry} --outfile ${target}`
       .quiet()
       .nothrow();
   onLine?.(result.stdout.toString().trim());

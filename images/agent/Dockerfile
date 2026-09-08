@@ -26,7 +26,7 @@ RUN cd /opt/ho/mcp \
  && test -f node_modules/@playwright/mcp/cli.js \
  && test -f node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js
 COPY --from=rtk /out/bin/rtk /usr/local/bin/rtk
-COPY --chmod=0755 bin/ho-runner /usr/local/bin/ho-runner
+COPY --chmod=0644 bin/ho-runner.js /usr/local/bin/ho-runner.js
 COPY plugins/ /opt/ho/plugins/
 COPY --chown=agent:agent rtk-config.toml /home/agent/.config/rtk/config.toml
 ENV HOME=/home/agent \
@@ -36,7 +36,7 @@ ENV HOME=/home/agent \
     DO_NOT_TRACK=1 \
     PATH=/opt/ho/provider/node_modules/.bin:$PATH
 WORKDIR /work
-CMD ["/usr/local/bin/ho-runner"]
+CMD ["bun", "/usr/local/bin/ho-runner.js"]
 
 FROM base AS claude-code
 ARG CLAUDE_CODE_VERSION=2.1.263-r1
