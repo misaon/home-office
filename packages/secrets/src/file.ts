@@ -7,7 +7,7 @@ import { writePrivateFile } from "./private-file.ts";
 
 const Contents = z.record(z.string(), z.string());
 
-/** Plain JSON file with mode 0600. Used where no OS keychain is available (Linux servers). */
+/** Plain JSON file with mode 0600. Used where the host has no credential store (headless servers). */
 export const createFileSecretStore = (path: string): SecretStore => {
   const load = async (): Promise<Record<string, string>> => {
     const file = Bun.file(path);

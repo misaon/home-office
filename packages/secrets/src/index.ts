@@ -1,22 +1,63 @@
 import type { SecretStore } from "@ho/core";
+import { errorMessage, type SecretKeyName } from "@ho/protocol";
 import { join } from "node:path";
 import { createFileSecretStore } from "./file.ts";
-import { createKeychainSecretStore } from "./keychain.ts";
+import { createOsSecretStore, SecretStoreTimeout } from "./os-credential-store.ts";
 
-export { createFileSecretStore, createKeychainSecretStore };
+export { createFileSecretStore, createOsSecretStore };
 
-export type SecretStoreKind = "auto" | "keychain" | "file";
+export type SecretStoreKind = "auto" | "os" | "file";
 
-/** Keychain on macOS, a 0600 file elsewhere; `kind` overrides the platform default (tests, servers). */
+type Operation<T> = (store: SecretStore) => Promise<T>;
+
+/**
+ * `auto` uses the OS credential store and falls back to the file store when the host has none — which
+ * platform this is does not decide it, whether the store answers does. A timeout is not an absent store:
+ * it means the store is there and waiting for the user, so it propagates instead of downgrading silently.
+ */
+const withFileFallback = (
+  os: SecretStore,
+  file: SecretStore,
+  onFallback: (reason: string) => void,
+): SecretStore => {
+  let chosen: SecretStore | null = null;
+  const run = async <T>(operation: Operation<T>): Promise<T> => {
+    if (chosen !== null) {
+      return operation(chosen);
+    }
+    try {
+      const value = await operation(os);
+      chosen = os;
+      return value;
+    } catch (error) {
+      if (error instanceof SecretStoreTimeout) {
+        throw error;
+      }
+      chosen = file;
+      onFallback(errorMessage(error));
+      return operation(file);
+    }
+  };
+  return {
+    get: (key: SecretKeyName) => run((store) => store.get(key)),
+    set: (key: SecretKeyName, value: string) => run((store) => store.set(key, value)),
+    delete: (key: SecretKeyName) => run((store) => store.delete(key)),
+  };
+};
+
 export const createSecretStore = (
   home: string,
   kind: SecretStoreKind = "auto",
-  platform: NodeJS.Platform = process.platform,
+  onFallback: (reason: string) => void = () => undefined,
 ): SecretStore => {
-  const useKeychain = kind === "keychain" || (kind === "auto" && platform === "darwin");
-  return useKeychain
-    ? createKeychainSecretStore()
-    : createFileSecretStore(join(home, "secrets.json"));
+  const file = (): SecretStore => createFileSecretStore(join(home, "secrets.json"));
+  if (kind === "file") {
+    return file();
+  }
+  if (kind === "os") {
+    return createOsSecretStore();
+  }
+  return withFileFallback(createOsSecretStore(), file(), onFallback);
 };
 
 export { writePrivateFile } from "./private-file.ts";

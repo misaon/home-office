@@ -131,9 +131,9 @@ export function TokenStep({ doctor, refresh }: EnvProps): React.JSX.Element {
         <p className="text-gray-300">
           Agents sign in with your Claude subscription. In a terminal run{" "}
           <code className="rounded bg-ink px-1 font-mono">claude setup-token</code>, finish the
-          browser login it opens and paste the token it prints. It is stored in the macOS Keychain
-          and only ever handed to the <code className="font-mono">claude</code> process inside a
-          sandbox.
+          browser login it opens and paste the token it prints. It is stored in this machine&rsquo;s
+          credential store (Keychain, libsecret or Credential Manager) and only ever handed to the{" "}
+          <code className="font-mono">claude</code> process inside a sandbox.
         </p>
         <div className="flex gap-1">
           <input

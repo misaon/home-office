@@ -1,3 +1,4 @@
+import type { SecretStoreKind } from "@ho/secrets";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
@@ -31,8 +32,11 @@ export const DaemonConfig = z.object({
     .prefault({}),
   secrets: z
     .object({
-      /** `auto` picks the Keychain on macOS and a 0600 file elsewhere. */
-      store: z.enum(["auto", "keychain", "file"]).default("auto"),
+      /** `auto` uses the OS credential store and falls back to a 0600 file where the host has none. */
+      store: z
+        .enum(["auto", "os", "file", "keychain"])
+        .default("auto")
+        .transform((value): SecretStoreKind => (value === "keychain" ? "os" : value)),
     })
     .prefault({}),
   ui: z

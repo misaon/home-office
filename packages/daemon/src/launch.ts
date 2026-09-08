@@ -42,7 +42,9 @@ export async function launchDaemon(
   cleanup.defer(() => {
     database.close();
   });
-  const secrets = createSecretStore(home, config.secrets.store);
+  const secrets = createSecretStore(home, config.secrets.store, (reason) => {
+    log.warn({ reason }, "no OS credential store; using the file secret store");
+  });
   const provider = createDockerProvider({
     socket: config.docker.socket,
     platform: config.docker.platform,

@@ -34,7 +34,7 @@ async function doctor(): Promise<void> {
       line("images: not inspectable — this build carries no image build contexts");
     }
     line(
-      `secret anthropic-oauth-token: ${report.secrets.anthropicOauthToken ? "present" : "MISSING (claude setup-token → Keychain)"}`,
+      `secret anthropic-oauth-token: ${report.secrets.anthropicOauthToken ? "present" : "MISSING (run: claude setup-token, then ho secret set anthropic-oauth-token)"}`,
     );
     line(`sessions: ${String(report.sessions.active)} active / ${String(report.sessions.max)} max`);
     if (report.resources !== null) {
