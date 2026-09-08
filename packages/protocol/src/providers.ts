@@ -47,6 +47,7 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     authKinds: ["subscription", "api-key"],
     defaultAuth: "subscription",
     models: [
+      { id: "fable", label: "Fable (latest)" },
       { id: "opus", label: "Opus (latest)" },
       { id: "sonnet", label: "Sonnet (latest)" },
       { id: "haiku", label: "Haiku (latest)" },

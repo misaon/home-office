@@ -60,7 +60,7 @@ async function addAgent(client: HoClient, argv: readonly string[]): Promise<void
   const skillPack = str(parsed, "skills") ?? (role === "clerk" ? "none" : role);
   const prompt = str(parsed, "prompt");
   const provider = ProviderId.parse(str(parsed, "provider") ?? "claude-code");
-  const defaults = defaultChoice(provider);
+  const defaults = defaultChoice(provider, role);
   const auth = str(parsed, "auth");
   print(
     await client.agents.create({

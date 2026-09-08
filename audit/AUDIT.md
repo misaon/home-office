@@ -1256,8 +1256,20 @@ Severita: medium
 Kde: `packages/core/src/commands/office-defaults.ts:14` (boss `high`), `packages/core/src/providers.ts:25` (everyone else `medium`), `packages/ui/src/panels/settings-agents.tsx:20-25`
 Důkaz: The boss is created at `effort: "high"`; every other agent defaults to `medium` through `defaultChoice`. Two vendor statements bear on this: the CLI reference lists `--effort low|medium|high|xhigh|max|ultracode` and notes that available levels depend on the model; and the current Claude guidance (bundled `claude-api` skill, cached 2026-06-24) states that `xhigh` "is the best setting for most coding and agentic use cases … and the default in Claude Code", that "effort matters more on those models than on any prior model in their tier", to "run long-horizon/agentic tasks at `high`/`xhigh` with the full task spec given up front", and to use "a minimum of `high` for intelligence-sensitive work … and `low` for subagents or simple tasks". It also notes that lower effort produces "fewer and more-consolidated tool calls, less preamble".
 Dopad: Kvalita vs. náklady: workers — the agents that actually change the repository — run at `medium`, below the stated minimum for intelligence-sensitive work, while the boss, whose job is triage and delegation (a shorter, cheaper task), runs higher.
-Doporučení: Default workers and reviewers to `high` and the boss's triage to `medium`, leaving `xhigh` as a deliberate opt-in for hard tasks. Effort is per agent and editable in Settings, so this only moves the defaults; state the reasoning in the agent editor's help text.
-Zdroj: https://code.claude.com/docs/en/cli-reference, read 2026-09-08; bundled `claude-api` skill effort guidance.
+Doporučení: Default workers and reviewers to `high` and the boss's triage to `medium`, leaving `xhigh` as a
+deliberate opt-in for hard tasks. Effort is per agent and editable in Settings, so this only moves the
+defaults.
+**Done in Wave 5, and it removed a divergence at the same time.** `defaultChoice(provider, role)` now
+answers both questions — effort _and_ model — for every client, so `ho agent add --role clerk` and the UI's
+new-agent form finally agree (the role→model map used to live only in the UI, which is why the CLI gave a
+clerk `sonnet`). Verified live: boss `opus@medium`, worker `sonnet@high`, reviewer `sonnet@high`, clerk
+`haiku@low`; `codex` (which offers low…xhigh) gives a worker `high`; `opencode` and `gemini-cli` declare no
+effort levels, so they keep `medium` through the existing fallback.
+**For the owner:** this is a cost change. Workers and reviewers — the agents that actually change the
+repository — now think harder per session than before, and the boss's triage costs less. Both are per-agent
+settings, so any floor can be tuned in Settings without touching code.
+Zdroj: https://code.claude.com/docs/en/cli-reference (`--effort low|medium|high|xhigh|max|ultracode`), read
+2026-09-09; bundled `claude-api` skill effort guidance.
 Odhad: střední (a defaults change with a cost implication — worth the owner's eye)
 
 ### B33.5 – `BASH_MAX_OUTPUT_LENGTH` is the one unused token lever worth setting
@@ -1266,8 +1278,18 @@ Severita: medium
 Kde: `packages/runtime-claude-code/src/command.ts:11-18`, `images/agent/rtk-config.toml`
 Důkaz: The env-var reference documents (each confirmed present by grep over the fetched page) `BASH_MAX_OUTPUT_LENGTH` — "Maximum characters of bash output read (default: 30000; max: 150000)" — as well as `MAX_THINKING_TOKENS`, `CLAUDE_CODE_MAX_OUTPUT_TOKENS`, `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` and `DISABLE_COST_WARNINGS`. `CLAUDE_SETTINGS.env` sets six variables, none of them these. The image already installs RTK with `tee.mode = "failures"` specifically to cut command-output tokens, so the intent exists — but RTK compresses _known_ commands (its exclude list is `curl` and `claude`), while `BASH_MAX_OUTPUT_LENGTH` bounds everything else.
 Dopad: Náklady: a single `bun run check` or `docker build` inside a sandbox can pour 30 000 characters into the context on top of what RTK does not cover.
-Doporučení: Set `BASH_MAX_OUTPUT_LENGTH` lower (10 000 is ample for a pass/fail signal, and RTK's tee keeps the full output on tmpfs for deliberate inspection — exactly the pattern `rtk-config.toml` sets up). Leave `MAX_THINKING_TOKENS` unset: with adaptive thinking, `--effort` is the documented lever and a hard thinking cap fights it. Leave `CLAUDE_CODE_MAX_OUTPUT_TOKENS` unset: the report is already capped at 1 500 characters by `HoReportInput`.
-Zdroj: https://code.claude.com/docs/en/env-vars.md, read 2026-09-08.
+Doporučení: Bound the inline bash output at 10 000 characters — ample for a pass/fail signal, and the full
+output stays on tmpfs through RTK's tee, exactly the pattern `rtk-config.toml` sets up. Leave
+`MAX_THINKING_TOKENS` unset: with adaptive thinking, `--effort` is the documented lever and a hard thinking
+cap fights it. Leave `CLAUDE_CODE_MAX_OUTPUT_TOKENS` unset: the report is already capped at 1 500 characters
+by `HoReportInput`.
+**Correction after Wave 5.** Re-reading the reference today turned up a better lever than the environment
+variable this finding named: the **`bashOutputMaxChars` setting** (Claude Code v2.1.261+, clamped to
+4 000–128 000) does the same job, and "when you set this key, Claude Code ignores the
+`BASH_MAX_OUTPUT_LENGTH` environment variable". Home Office passes its settings inline with `--settings`, so
+the setting is the right place; it is what shipped, at 10 000.
+Zdroj: https://code.claude.com/docs/en/env-vars.md and /settings-reference.md §`bashOutputMaxChars`, read
+2026-09-09.
 Odhad: triviální
 
 ### B33.6 – The model catalogue omits the `fable` alias the CLI accepts

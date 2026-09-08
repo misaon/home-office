@@ -72,6 +72,7 @@ function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
       <div className="mt-1 grid grid-cols-2 gap-1 text-[11px]">
         <ProviderModelFields
           dense
+          role={agent.role}
           value={choiceOf(agent)}
           onChange={(next) => {
             update(next);

@@ -7,6 +7,7 @@ import {
   type ProviderId,
   PROVIDERS,
 } from "@ho/protocol";
+import { defaultChoice } from "@ho/core";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { requireClient } from "../rpc.ts";
@@ -16,14 +17,6 @@ import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
 /** Roles a floor hires; the boss comes with the floor. */
 const ROLES = AgentRole.options.filter((r) => r !== "boss");
 const GENDERS = Gender.options;
-/** Claude Code aliases per role (D12); other providers start from their catalog default. */
-const DEFAULT_MODEL: Record<AgentRole, string> = {
-  boss: "opus",
-  worker: "sonnet",
-  reviewer: "sonnet",
-  clerk: "haiku",
-};
-
 type Draft = Choice & {
   name: string;
   role: AgentRole;
@@ -36,9 +29,7 @@ const emptyDraft = (spriteSet: string): Draft => ({
   name: "",
   role: "worker",
   provider: "claude-code",
-  auth: "subscription",
-  model: "sonnet",
-  effort: "medium",
+  ...defaultChoice("claude-code", "worker"),
   spriteSet,
   gender: "neutral",
   basePrompt: "",
@@ -94,7 +85,7 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
           setDraft({
             ...draft,
             role,
-            ...(draft.provider === "claude-code" ? { model: DEFAULT_MODEL[role] } : {}),
+            ...defaultChoice(draft.provider, role),
           });
         }}
       >
@@ -104,6 +95,7 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
       </select>
       <ProviderModelFields
         value={draft}
+        role={draft.role}
         onChange={(next) => {
           setDraft({ ...draft, ...next, effort: effortFor(next.provider, next.effort) });
         }}
