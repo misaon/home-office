@@ -1,4 +1,4 @@
-import { findPath, key, samePoint, type Point } from "./grid.ts";
+import { key, type Point } from "./grid.ts";
 import type { OfficePlan } from "./office-builder.ts";
 import { gridFor } from "./templates.ts";
 
@@ -58,10 +58,7 @@ export function auditOffice(plan: OfficePlan): OfficeAudit {
       result.issues.push(`Duplicate anchor: ${a.id}`);
     }
     ids.add(a.id);
-    if (
-      grid.isWalkable(a.at) &&
-      (samePoint(start, a.at) || findPath(grid, start, a.at).length > 0)
-    ) {
+    if (reachable.has(key(a.at))) {
       result.reachableAnchors += 1;
     } else {
       result.issues.push(`Unreachable anchor: ${a.id}`);

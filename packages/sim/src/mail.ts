@@ -1,7 +1,7 @@
 import type { AgentId } from "@ho/protocol";
 import { facingTowards, type Point } from "./grid.ts";
 import { setEmotion } from "./intents.ts";
-import { resumeSteps, setSteps, spawnActor, walkSteps } from "./actors.ts";
+import { pendingDeliveries, resumeSteps, setSteps, spawnActor, walkSteps } from "./actors.ts";
 import { type Actor, anchorOf, type Step, type World } from "./world.ts";
 
 const DROP_MS = 900;
@@ -70,6 +70,7 @@ const handToBoss = (
   const meet = besides(world, boss);
   setEmotion(world, courier.id, "envelope", null);
   setSteps(courier, [
+    ...pendingDeliveries(courier),
     ...before,
     ...walkSteps(world, courier, boss.floorId, meet),
     {
@@ -107,6 +108,7 @@ export function fetchMail(
   ];
   if (courierId === bossId) {
     setSteps(courier, [
+      ...pendingDeliveries(courier),
       ...pickup,
       { kind: "emit", event: { kind: "envelope_delivered", ref, by: courierId, to: bossId } },
       ...resumeSteps(world, courier),

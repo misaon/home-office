@@ -53,7 +53,7 @@ await rm(iconset, { recursive: true, force: true });
 await mkdir(iconset, { recursive: true });
 const base = drawIcon();
 for (const { name, size } of ICONSET_FILES) {
-  await Bun.write(resolve(iconset, name), encodePng(scaleNearest(base, size / base.width)));
+  await Bun.write(resolve(iconset, name), await encodePng(scaleNearest(base, size / base.width)));
 }
 say(`icon.iconset written (${String(ICONSET_FILES.length)} sizes)`);
 say(`resources ready at ${out}`);

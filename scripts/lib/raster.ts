@@ -1,5 +1,4 @@
 // Raster helpers for the asset converter: chroma key, trimming, area-averaging resample and placement.
-// Everything is 8-bit RGBA in memory (`Rgba` from png.ts); no native dependencies.
 import { blank, type Rgba } from "./png.ts";
 
 const px = (img: Rgba, x: number, y: number): number => (y * img.width + x) * 4;
@@ -157,6 +156,9 @@ export function place(img: Rgba, width: number, height: number, anchor: Anchor):
 
 /** Splits a horizontal strip into `count` equal frames (the way generators deliver walk cycles). */
 export function splitStrip(img: Rgba, count: number): Rgba[] {
-  const w = Math.floor(img.width / count);
+  if (count > img.width || img.width % count !== 0) {
+    throw new Error("sprite strip width must be divisible by the frame count");
+  }
+  const w = img.width / count;
   return Array.from({ length: count }, (_, i) => crop(img, { x: i * w, y: 0, w, h: img.height }));
 }

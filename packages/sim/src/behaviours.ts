@@ -53,6 +53,7 @@ function satisfy(world: World, actor: Actor, need: NeedKind): boolean {
     ...walkSteps(world, actor, actor.floorId, anchor.at),
     { kind: "dwell", activity: plan.activity, facing: anchor.facing, until: null, ms: plan.ms },
     { kind: "emit", event: { kind: "arrived", agentId: actor.id, anchorId: anchor.id } },
+    { kind: "release" },
     ...homeSteps(world, actor),
   ]);
   actor.idleUntil = world.time + plan.ms;

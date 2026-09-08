@@ -28,7 +28,17 @@ export class SpriteLibrary {
   readonly #clips = new Map<string, Texture[]>();
   readonly #animations = new Map<string, string[]>();
 
-  async load(): Promise<void> {
+  #loading: Promise<void> | null = null;
+
+  load(): Promise<void> {
+    this.#loading ??= this.#load().catch((error: unknown) => {
+      this.#loading = null;
+      throw error;
+    });
+    return this.#loading;
+  }
+
+  async #load(): Promise<void> {
     // The stage is drawn at a fractional scale (fit to the pane, D20 density); linear sampling keeps the
     // painterly art smooth where nearest would drop rows and shimmer.
     TextureSource.defaultOptions.scaleMode = "linear";

@@ -80,6 +80,8 @@ export class OfficeScene {
 
   destroy(): void {
     this.#observer?.disconnect();
+    this.#actors.clear();
+    this.#floors.clear();
     this.app.destroy(true, { children: true });
   }
 
@@ -87,23 +89,45 @@ export class OfficeScene {
   syncFloors(world: World): void {
     for (const [id, view] of this.#floors) {
       if (!world.floors.has(id)) {
-        view.root.destroy({ children: true });
-        this.#floors.delete(id);
+        this.#dropFloor(id, view);
       }
     }
   }
 
-  /** Shows one floor, rendering it on first sight (every floor is a full cached texture, so only shown ones exist). */
+  #dropFloor(id: string, view: FloorView): void {
+    for (const [agentId, actor] of this.#actors) {
+      if (actor.floorId === id) {
+        this.#actors.delete(agentId);
+      }
+    }
+    view.root.destroy({ children: true });
+    this.#floors.delete(id);
+    if (this.#current === id) {
+      this.#current = null;
+    }
+  }
+
   showFloor(world: World, id: string | null): void {
+    if (this.#current === id) {
+      return;
+    }
     this.#current = id;
     const floor = id === null ? undefined : world.floors.get(id);
-    if (id !== null && floor !== undefined && !this.#floors.has(id)) {
-      const view = this.#render(id, floor);
+    if (id !== null && floor !== undefined) {
+      const view = this.#floors.get(id) ?? this.#render(id, floor);
+      this.#floors.delete(id);
       this.#floors.set(id, view);
       this.#stage.addChild(view.root);
+      this.#fit(view);
     }
     for (const [floorId, view] of this.#floors) {
       view.root.visible = floorId === id;
+    }
+    while (this.#floors.size > 2) {
+      const oldest = this.#floors.entries().next();
+      if (oldest.done !== true) {
+        this.#dropFloor(...oldest.value);
+      }
     }
   }
 
@@ -207,10 +231,16 @@ export class OfficeScene {
   ): void {
     const current = this.#current === null ? undefined : this.#floors.get(this.#current);
     if (current !== undefined) {
-      this.#fit(current);
       current.update?.(world, dtMs);
     }
     for (const actor of world.actors.values()) {
+      if (actor.floorId !== this.#current || actor.hidden) {
+        const view = this.#actors.get(actor.id);
+        if (view !== undefined) {
+          view.root.visible = false;
+        }
+        continue;
+      }
       this.#placeActor(actor, this.#ensureActor(actor, names(actor.id)), actor.id === selected);
     }
     for (const [id, view] of this.#actors) {

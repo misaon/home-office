@@ -39,7 +39,12 @@ export function parseCells(value: string | undefined): { w: number; h: number } 
   if (match === null) {
     return fail(`--cells expects WxH in cells, got "${value}"`);
   }
-  return { w: Number(match[1]), h: Number(match[2]) };
+  const w = Number(match[1]);
+  const h = Number(match[2]);
+  if (w < 1 || h < 1 || w * CELL_PX > 4096 || h * CELL_PX > 4096) {
+    return fail("--cells must produce dimensions between 1 and 4096 pixels");
+  }
+  return { w, h };
 }
 
 /** Where the art goes and how big it must be, from the manifest key and the office plan. */
@@ -53,6 +58,12 @@ export function resolveTarget(key: string, cells: { w: number; h: number } | nul
     animation === undefined
   ) {
     return fail(`expected <category>/<sprite>/<animation>[_<dir>], got "${key}"`);
+  }
+  if (
+    !["tiles", "characters", "bubbles", "furniture"].includes(category) ||
+    !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(sprite)
+  ) {
+    return fail("invalid sprite category or name");
   }
   if (!/^[a-z]+(?:_[nse])?$/u.test(animation)) {
     return fail(
@@ -150,7 +161,12 @@ export function fit(art: Rgba, target: Target): { frame: Rgba; scale: number } {
 
 type Size = { width: number; height: number };
 export type Sidecar = { source: Size; crop: Box; output: Size };
-export const sidecarOf = (spriteKey: string): string => `assets/src/${spriteKey}/import.json`;
+export const sidecarOf = (spriteKey: string): string => {
+  if (!/^(?:tiles|characters|bubbles|furniture)\/[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(spriteKey)) {
+    return fail("invalid sprite key");
+  }
+  return `assets/src/${spriteKey}/import.json`;
+};
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 const isSize = (v: unknown): v is Size =>
   isRecord(v) && typeof v["width"] === "number" && typeof v["height"] === "number";

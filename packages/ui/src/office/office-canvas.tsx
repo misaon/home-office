@@ -8,7 +8,6 @@ import { OfficeScene } from "./scene.ts";
 
 const nameOf = (id: AgentId): string => bridge.nameOf(id);
 
-/** Mounts the PixiJS office once, ticks the simulation at the render rate and pauses when hidden. */
 export function OfficeCanvas(): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null);
   const connection = useUi((s) => s.connection);
@@ -22,11 +21,9 @@ export function OfficeCanvas(): React.JSX.Element {
     const state: {
       scene: OfficeScene | null;
       disposed: boolean;
-      unsubscribe: (() => void) | null;
     } = {
       scene: null,
       disposed: false,
-      unsubscribe: null,
     };
     const onVisibility = (): void => {
       if (state.scene === null) {
@@ -39,8 +36,12 @@ export function OfficeCanvas(): React.JSX.Element {
         state.scene.app.ticker.start();
       }
     };
+    const isDisposed = (): boolean => state.disposed;
     void (async () => {
       await sprites.load();
+      if (isDisposed()) {
+        return;
+      }
       useUi.getState().setSpriteSets(sprites.characterSets());
       if (bridge.layoutIssues.length > 0) {
         useUi.getState().setError(`office layout: ${bridge.layoutIssues.join("; ")}`);
@@ -51,7 +52,7 @@ export function OfficeCanvas(): React.JSX.Element {
         }),
       );
       await created.init(element);
-      if (state.disposed) {
+      if (isDisposed()) {
         created.destroy();
         return;
       }
@@ -60,7 +61,9 @@ export function OfficeCanvas(): React.JSX.Element {
         useUi.getState().selectAgent(agentId);
       };
       // Dev console handle: the bridge, the sprite library, the scene and the simulation's intents.
-      Object.assign(window, { __ho: { bridge, sprites, scene: created, sim } });
+      if (process.env.NODE_ENV === "development") {
+        Object.assign(window, { __ho: { bridge, sprites, scene: created, sim } });
+      }
       created.app.ticker.add((ticker) => {
         try {
           bridge.tick(ticker.deltaMS);
@@ -78,6 +81,7 @@ export function OfficeCanvas(): React.JSX.Element {
     });
     return () => {
       state.disposed = true;
+      bridge.setWatching(false);
       document.removeEventListener("visibilitychange", onVisibility);
       state.scene?.destroy();
     };

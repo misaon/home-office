@@ -1,3 +1,5 @@
+import TinyQueue from "tinyqueue";
+
 export type Point = { x: number; y: number };
 export type Facing = "n" | "s" | "e" | "w";
 
@@ -100,7 +102,7 @@ const NEIGHBOURS: readonly Point[] = [
 
 // A turn costs six clear-floor steps: avoid staircases for small clearance gains.
 const TURN_COST = 6;
-type RouteNode = { p: Point; direction: number; id: number; g: number; f: number };
+type RouteNode = { order: number; p: Point; direction: number; id: number; g: number; f: number };
 
 /** Clearance/turn-weighted A*: excludes `from`, includes `to`; empty when unreachable or trivial. */
 export function findPath(
@@ -116,27 +118,21 @@ export function findPath(
     return [];
   }
   // Arrival direction is part of the state: it determines the cost of the next turn.
+  let order = 0;
   const start: RouteNode = {
+    order: order++,
     p: from,
     direction: -1,
     id: key(from) * 5 + 4,
     g: 0,
     f: manhattan(from, to),
   };
-  const open: RouteNode[] = [start];
+  const open = new TinyQueue<RouteNode>([start], (a, b) => a.f - b.f || a.order - b.order);
   const gScore = new Map<number, number>([[start.id, 0]]);
   const cameFrom = new Map<number, RouteNode>();
   const closed = new Set<number>();
   while (open.length > 0) {
-    let bestIndex = 0;
-    for (let i = 1; i < open.length; i += 1) {
-      if (
-        (open[i]?.f ?? Number.POSITIVE_INFINITY) < (open[bestIndex]?.f ?? Number.POSITIVE_INFINITY)
-      ) {
-        bestIndex = i;
-      }
-    }
-    const current = open.splice(bestIndex, 1)[0];
+    const current = open.pop();
     if (current === undefined) {
       break;
     }
@@ -165,7 +161,7 @@ export function findPath(
       if (g < (gScore.get(id) ?? Number.POSITIVE_INFINITY)) {
         gScore.set(id, g);
         cameFrom.set(id, current);
-        open.push({ p: next, direction, id, g, f: g + manhattan(next, to) });
+        open.push({ order: order++, p: next, direction, id, g, f: g + manhattan(next, to) });
       }
     }
   }

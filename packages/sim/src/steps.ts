@@ -140,6 +140,11 @@ export function advanceStep(world: World, actor: Actor, dtMs: number): void {
       finishStep(actor);
       return;
     }
+    case "release": {
+      release(world, actor);
+      finishStep(actor);
+      return;
+    }
     case "emit": {
       world.outbox.push(step.event);
       finishStep(actor);

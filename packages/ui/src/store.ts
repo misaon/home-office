@@ -50,6 +50,7 @@ export const sortedFloors = (snapshot: Pick<Snapshot, "projects">): Project[] =>
 const liveLog = new Map<SessionId, LiveEvent[]>();
 const dirtyLive = new Set<SessionId>();
 const LIVE_LIMIT = 300;
+const LIVE_SESSION_LIMIT = 20;
 
 export function pushLive(event: LiveEvent): void {
   const list = liveLog.get(event.sessionId) ?? [];
@@ -57,7 +58,15 @@ export function pushLive(event: LiveEvent): void {
   if (list.length > LIVE_LIMIT) {
     list.splice(0, list.length - LIVE_LIMIT);
   }
+  liveLog.delete(event.sessionId);
   liveLog.set(event.sessionId, list);
+  if (liveLog.size > LIVE_SESSION_LIMIT) {
+    const oldest = liveLog.keys().next();
+    if (oldest.done !== true) {
+      liveLog.delete(oldest.value);
+      dirtyLive.add(oldest.value);
+    }
+  }
   dirtyLive.add(event.sessionId);
 }
 
@@ -157,7 +166,12 @@ export function scheduleLiveBump(): void {
       useUi.setState((s) => {
         const live = new Map(s.live);
         for (const id of dirtyLive) {
-          live.set(id, [...(liveLog.get(id) ?? [])]);
+          const events = liveLog.get(id);
+          if (events === undefined) {
+            live.delete(id);
+          } else {
+            live.set(id, [...events]);
+          }
         }
         dirtyLive.clear();
         return { live };

@@ -47,7 +47,13 @@ const anyoneHeading = (people: readonly Actor[], rect: PlanRect): boolean =>
     }
     const step = a.steps[0];
     const path = step?.kind === "walk" ? (step.path ?? []) : [];
-    return path.slice(0, LOOKAHEAD_CELLS).some((p) => inRect(p, rect));
+    for (let index = 0; index < Math.min(path.length, LOOKAHEAD_CELLS); index += 1) {
+      const point = path[index];
+      if (point !== undefined && inRect(point, rect)) {
+        return true;
+      }
+    }
+    return false;
   });
 
 /** Moves `amount` toward `target` at a fixed speed; returns the new value. */
@@ -168,8 +174,11 @@ export function createPlanView(
     for (const door of doors) {
       const { spec } = door;
       const target = anyoneHeading(people, spec) ? 1 : 0;
-      door.amount = approach(door.amount, target, dtMs, DOOR_MS);
-      drawDoor(door);
+      const amount = approach(door.amount, target, dtMs, DOOR_MS);
+      if (door.amount !== amount) {
+        door.amount = amount;
+        drawDoor(door);
+      }
     }
   };
   for (const door of doors) {

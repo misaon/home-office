@@ -67,6 +67,13 @@ export function removeActor(world: World, id: AgentId): void {
     return;
   }
   release(world, actor);
+  for (const floor of world.floors.values()) {
+    for (const [anchorId, owner] of floor.reservations) {
+      if (owner === id) {
+        floor.reservations.delete(anchorId);
+      }
+    }
+  }
   world.actors.delete(id);
   const elevator = world.floors.get(actor.floorId)?.elevator;
   if (elevator !== undefined) {
@@ -188,3 +195,12 @@ export const setSteps = (actor: Actor, steps: Step[]): void => {
 
 export const isAt = (actor: Actor, p: Point): boolean =>
   samePoint(actor.tile, p) && actor.steps.length === 0;
+
+export const pendingDeliveries = (actor: Actor): Step[] => {
+  const index = actor.steps.findLastIndex(
+    (step) =>
+      step.kind === "emit" &&
+      (step.event.kind === "handoff_delivered" || step.event.kind === "envelope_delivered"),
+  );
+  return index < 0 ? [] : actor.steps.slice(0, index + 1);
+};
