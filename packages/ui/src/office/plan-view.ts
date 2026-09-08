@@ -186,7 +186,6 @@ export function createPlanView(
   return { root, objects, width: template.width * TILE, height: template.height * TILE, update };
 }
 
-/** Sliding leaves retract toward the jambs; the threshold stays walkable regardless (visual only). */
 /**
  * Art sits with its bottom-left corner on the footprint's bottom-left cell; art declared by its own width (chairs)
  * or height (plants) is centred on the footprint instead. A wrong size is scaled to the contract size and reported.
@@ -215,6 +214,7 @@ function artSprite(item: PlanObject, texture: Texture, report: (issue: string) =
   return sprite;
 }
 
+/** Sliding leaves retract toward the jambs; the threshold stays walkable regardless (visual only). */
 function drawDoor({ graphic: g, spec: d, amount }: DoorView): void {
   const w = d.w * TILE;
   const h = d.h * TILE;

@@ -8,11 +8,6 @@ import * as schema from "./schema.ts";
 
 export type HoDatabase = Awaited<ReturnType<typeof openDatabase>>["db"];
 
-/**
- * Where the migrator reads from: the folder a bundled build passes, the one next to this package during
- * development, or — in a compiled binary, where neither is on disk — the migrations embedded in the
- * executable.
- */
 async function migrationsFolderFor(migrationsDir: string | null | undefined): Promise<string> {
   if (migrationsDir !== null && migrationsDir !== undefined) {
     return migrationsDir;

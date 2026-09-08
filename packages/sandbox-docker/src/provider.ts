@@ -23,7 +23,6 @@ const CPU_NANOS = 1_000_000_000;
 
 export type DockerProviderOptions = { socket?: string; platform?: string };
 
-/** The subset of Docker's `POST /containers/create` body this provider sends. */
 type ContainerCreateBody = {
   Image: string;
   Cmd: string[];

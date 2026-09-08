@@ -7,13 +7,6 @@ import { join } from "node:path";
 
 const EMBEDDED: Readonly<Record<string, string>> = { "0000_boring_clint_barton": first };
 
-/**
- * A folder the Drizzle migrator can read. A compiled binary (`bun build --compile`) has no real
- * `packages/store/drizzle` on disk, so the migrations travel inside the executable as import attributes and
- * are materialised once into a content-addressed temporary folder, byte for byte as Drizzle wrote them —
- * which keeps its hashes and `__drizzle_migrations` bookkeeping identical. Source runs and the packaged
- * desktop app pass their own folder and never reach this.
- */
 export async function materializeMigrations(): Promise<string> {
   const missing = journal.entries.filter((entry) => EMBEDDED[entry.tag] === undefined);
   if (missing.length > 0) {
