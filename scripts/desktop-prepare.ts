@@ -32,7 +32,9 @@ say("ui bundle and sprites copied");
 await cp(at("images/git-bridge"), resolve(out, "images/git-bridge"), { recursive: true });
 await cp(at("images/agent"), resolve(out, "images/agent"), {
   recursive: true,
-  filter: (source) => !/\/images\/agent\/(?:bin|plugins)(?:\/|$)/u.test(source),
+  filter: (source) =>
+    !source.split("/").includes("node_modules") &&
+    !/\/images\/agent\/(?:bin|plugins)(?:\/|$)/u.test(source),
 });
 await cp(at("packages/agent-kit/plugins"), resolve(out, "images/agent/plugins"), {
   recursive: true,

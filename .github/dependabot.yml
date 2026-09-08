@@ -18,3 +18,14 @@ updates:
     directories: ["/images/agent", "/images/git-bridge"]
     schedule:
       interval: weekly
+  - package-ecosystem: npm
+    directories:
+      - /images/agent/mcp
+      - /images/agent/providers/opencode
+      - /images/agent/providers/gemini-cli
+      - /images/agent/providers/codex
+    schedule:
+      interval: weekly
+    groups:
+      sandbox-dependencies:
+        patterns: ["*"]

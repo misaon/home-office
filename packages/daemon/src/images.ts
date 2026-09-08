@@ -1,12 +1,13 @@
 import type { ImageSpec, ReadModel, SandboxProvider } from "@ho/core";
 import { imageRefFor, type ProviderId } from "@ho/protocol";
 import { createDockerApi } from "@ho/sandbox-docker";
-import { $, CryptoHasher, Glob } from "bun";
+import { $ } from "bun";
 import { existsSync } from "node:fs";
 import { cp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { DaemonConfig } from "./config.ts";
 import { imageHash } from "./images-hash.ts";
+import { contextHash } from "./image-context.ts";
 import type { Resources } from "./paths.ts";
 
 export const LABELS = {
@@ -18,19 +19,6 @@ export const LABELS = {
 const IMAGE_LABELS = { [LABELS.managed]: "true", [LABELS.kind]: "image" };
 const RUNNER_IN_CONTEXT = "bin/ho-runner";
 const PLUGINS_IN_CONTEXT = "plugins";
-
-/** Hash of every file in a build context (sorted paths + contents): the image is rebuilt only when this changes. */
-async function hashTree(dir: string): Promise<string> {
-  const hasher = new CryptoHasher("sha256");
-  const files = [
-    ...new Glob("**/*").scanSync({ cwd: dir, onlyFiles: true, dot: false }),
-  ].toSorted();
-  for (const relative of files) {
-    hasher.update(relative);
-    hasher.update(new Uint8Array(await Bun.file(join(dir, relative)).arrayBuffer()));
-  }
-  return hasher.digest("hex").slice(0, 32);
-}
 
 /**
  * Compiles ho-runner for the Alpine arm64 sandbox into the agent image build context. Packaged builds ship
@@ -79,7 +67,7 @@ async function agentImageSpecs(
   variants: readonly ProviderId[],
 ): Promise<ImageSpec[]> {
   const context = resources.imageContext("agent");
-  const contentHash = await hashTree(context);
+  const contentHash = await contextHash(resources, "agent");
   return variants.map((variant) => ({
     ref: imageRefFor(config.docker.agentImage, variant),
     contextDir: context,
@@ -97,7 +85,7 @@ async function bridgeImageSpec(config: DaemonConfig, resources: Resources): Prom
     contextDir: context,
     platform: config.docker.platform,
     labels: IMAGE_LABELS,
-    contentHash: await hashTree(context),
+    contentHash: await contextHash(resources, "git-bridge"),
   };
 }
 

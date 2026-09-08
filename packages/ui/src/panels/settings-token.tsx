@@ -12,7 +12,7 @@ const KEYS: { key: SecretKeyName; label: string; hint: string }[] = [
   {
     key: "anthropic-api-key",
     label: "Anthropic API key",
-    hint: "For Claude Code agents set to api-key auth (pay per use, optional USD budget per task) and for OpenCode with anthropic/… models.",
+    hint: "For Claude Code agents set to api-key auth (pay per use, optional USD budget per Claude session) and for OpenCode with anthropic/… models.",
   },
   {
     key: "openai-api-key",
@@ -27,7 +27,7 @@ const KEYS: { key: SecretKeyName; label: string; hint: string }[] = [
   {
     key: "github-token",
     label: "GitHub token",
-    hint: "Optional; used by `gh pr create` for pull requests.",
+    hint: "Reserved for future use. GitHub intake and pull requests currently use your host gh login.",
   },
 ];
 

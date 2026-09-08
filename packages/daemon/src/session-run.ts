@@ -176,7 +176,7 @@ const openRuntime = (
           headers: { Authorization: `Bearer ${provisioned.mcpToken}` },
         },
         ...(deps.config.browser.enabled && ctx.session.mode !== "triage"
-          ? browserMcpServers()
+          ? browserMcpServers(deps.config.browser.devtools)
           : {}),
       },
     },

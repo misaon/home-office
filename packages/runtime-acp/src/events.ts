@@ -25,17 +25,21 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
     if (update.content.type !== "text") {
       return [];
     }
-    turn.text += update.content.text;
+    turn.text = (turn.text + update.content.text).slice(-64_000);
     return [{ kind: "text_delta", text: update.content.text }];
   }
   if (update.sessionUpdate === "tool_call") {
     const name = update.name ?? update.kind ?? "tool";
+    if (turn.tools.size >= 1024) {
+      throw new Error("ACP exceeded 1024 outstanding tool calls");
+    }
     turn.tools.set(update.toolCallId, update.title);
     turn.toolCalls += 1;
     const events: RuntimeEvent[] = [
       { kind: "tool_call", id: update.toolCallId, name, input: update.rawInput ?? update.title },
     ];
     if (update.status === "completed" || update.status === "failed") {
+      turn.tools.delete(update.toolCallId);
       events.push(finished(update.toolCallId, update.status, update.title, update.content));
     }
     return events;

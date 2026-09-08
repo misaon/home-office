@@ -1,15 +1,10 @@
-import {
-  type AgentRuntime,
-  type Cancellation,
-  createChannel,
-  type RuntimeEvent,
-  type RuntimeSession,
-} from "@ho/core";
+import type { AgentRuntime, RuntimeSession } from "@ho/core";
+import { PROVIDERS } from "@ho/protocol";
 import { openConnection } from "./connection.ts";
-import { newTurn, stopToEvent, updateToEvents } from "./events.ts";
-import { describe, isAuthRequired, negotiate } from "./negotiate.ts";
+import { negotiate } from "./negotiate.ts";
 import type { AcpPreset } from "./presets.ts";
 import { channelStream } from "./stream.ts";
+import { createPrompt } from "./prompt.ts";
 
 const CLOSE_GRACE_MS = 5000;
 const STDERR_TAIL = 6;
@@ -29,7 +24,7 @@ export function createAcpRuntime(preset: AcpPreset, options: AcpRuntimeOptions =
       resume: preset.resume,
       structuredOutput: false,
       images: false,
-      effortLevels: [],
+      effortLevels: PROVIDERS[preset.id].effortLevels,
     }),
     open: async (spec, channel, secrets): Promise<RuntimeSession> => {
       // The CLI's last complaints travel with exit errors so a failed start explains itself in the task.
@@ -46,96 +41,38 @@ export function createAcpRuntime(preset: AcpPreset, options: AcpRuntimeOptions =
       await channel.spawn(preset.argv(spec), { ...preset.env(spec), ...secrets }, spec.cwd);
       const { stream, exited } = channelStream(channel, stderr);
       const office = openConnection(stream);
-      const { sessionId, resumed, servers } = await negotiate(
-        office.conn,
-        preset,
-        spec,
-        exited,
-        stderr,
-        lastStderr,
-      );
-      let first = true;
+      const negotiated = await negotiate(office.conn, preset, spec, exited, stderr, lastStderr);
 
-      async function* prompt(
-        input: { text: string },
-        signal?: Cancellation,
-      ): AsyncIterable<RuntimeEvent> {
-        const events = createChannel<RuntimeEvent>(signal);
-        const turn = newTurn();
-        if (first) {
-          first = false;
-          events.push({
-            kind: "init",
-            runtimeSessionId: sessionId,
-            model: spec.model,
-            plugins: [],
-            pluginErrors: [],
-            tools: 0,
-            mcpServers: servers.map((s) => s.name),
-          });
-        }
-        const flush = (): void => {
-          for (const event of office.drain()) {
-            events.push(event);
-          }
-        };
-        office.listen((update) => {
-          flush();
-          for (const event of updateToEvents(update, turn)) {
-            events.push(event);
-          }
-        });
-        // ACP has no system prompt: the office's instructions open a fresh conversation.
-        const appendix = spec.systemPromptAppendix.trim();
-        const text =
-          resumed || appendix === "" ? input.text : `${appendix}\n\n---\n\n${input.text}`;
-        signal?.addEventListener("abort", () => {
-          void office.conn.agent.notify("session/cancel", { sessionId }).catch(() => null);
-        });
-        void Promise.race([
-          office.conn.agent.request("session/prompt", {
-            sessionId,
-            prompt: [{ type: "text", text }],
-          }),
-          exited.then((code) => {
-            throw new Error(
-              `${preset.name} exited (code ${String(code)}) during the prompt${lastStderr()}`,
-            );
-          }),
-        ])
-          .then(
-            (response) => {
-              flush();
-              events.push(stopToEvent(response.stopReason, turn, sessionId));
-            },
-            (error: unknown) => {
-              events.push({
-                kind: "error",
-                code: isAuthRequired(error) ? "authentication_failed" : "process_exit",
-                message: describe(error),
-              });
-            },
-          )
-          .finally(() => {
-            office.listen(null);
-            events.close();
-          });
-        yield* events.iterate();
-      }
-
+      const { sessionId } = negotiated;
       return {
-        prompt,
+        prompt: createPrompt(office, spec, preset, negotiated, exited, lastStderr),
         interrupt: async () => {
           await office.conn.agent.notify("session/cancel", { sessionId }).catch(() => null);
         },
         close: async () => {
-          office.conn.close();
           channel.closeStdin();
-          const deadline = setTimeout(() => {
+          const terminate = setTimeout(() => {
             channel.signal("SIGTERM");
           }, CLOSE_GRACE_MS);
-          await exited;
-          clearTimeout(deadline);
+          const kill = setTimeout(() => {
+            channel.signal("SIGKILL");
+          }, CLOSE_GRACE_MS * 2);
+          let deadline: ReturnType<typeof setTimeout> | undefined;
+          try {
+            await Promise.race([
+              exited,
+              new Promise<never>((_resolve, reject) => {
+                deadline = setTimeout(() => {
+                  reject(new Error(`${preset.name} did not exit`));
+                }, CLOSE_GRACE_MS * 3);
+              }),
+            ]);
+          } finally {
+            clearTimeout(terminate);
+            clearTimeout(kill);
+            clearTimeout(deadline);
+            office.conn.close();
+          }
         },
         resumeToken: () => sessionId,
       };

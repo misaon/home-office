@@ -5,7 +5,7 @@ import { REPO_IN_VOLUME } from "./git-bridge.ts";
 
 const browserGuide = (enabled: boolean): string =>
   enabled
-    ? `Browser: this sandbox has headless Chromium with the Playwright MCP server (browser_* tools: navigate, click, type, snapshot, take_screenshot) and the Chrome DevTools MCP server (performance traces, network, console). Bun, Node and npm are installed. Start dev servers on 127.0.0.1 inside the sandbox and open them at http://127.0.0.1:<port>; there is no display and no access to the host. Screenshots are written to ${BROWSER_OUTPUT_DIR}; copy the ones that belong in the repository into it before committing. Close pages you no longer need.`
+    ? `Browser: this sandbox has headless Chromium with the Playwright MCP server (browser_* tools: navigate, click, type, snapshot, take_screenshot) and may expose Chrome DevTools MCP when enabled in daemon settings; only use tools actually available in this session. Bun, Node and npm are installed. Start dev servers on 127.0.0.1 inside the sandbox and open them at http://127.0.0.1:<port>; there is no display and no access to the host. Screenshots are written to ${BROWSER_OUTPUT_DIR}; copy the ones that belong in the repository into it before committing. Close pages you no longer need.`
     : "";
 
 type Model = Pick<ReadModel, "agents" | "projects" | "tasks" | "sessions">;

@@ -27,6 +27,11 @@ jobs:
       - run: bun run devkit
       - run: bun run check
       - run: bun audit
+      - name: Audit sandbox dependencies
+        run: |
+          for directory in images/agent/mcp images/agent/providers/*; do
+            npm audit --omit=dev --prefix "$directory"
+          done
       - run: bun run ui:build
       - run: bun run assets:manifest
       - run: bun build --compile apps/cli/src/main.ts --outfile /tmp/ho

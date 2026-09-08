@@ -21,7 +21,7 @@ export const DaemonConfig = z.object({
   docker: z
     .object({
       socket: z.string().min(1).default("/var/run/docker.sock"),
-      platform: z.string().min(1).default("linux/arm64"),
+      platform: z.literal("linux/arm64").default("linux/arm64"),
       network: z.string().min(1).default("ho-agents"),
       agentImage: z.string().min(1).default("ho/agent:dev"),
       bridgeImage: z.string().min(1).default("ho/git-bridge:dev"),
@@ -47,6 +47,7 @@ export const DaemonConfig = z.object({
   browser: z
     .object({
       enabled: z.boolean().default(true),
+      devtools: z.boolean().default(false),
     })
     .prefault({}),
   /** Chromium needs headroom: several processes and hundreds of threads count against the pids limit. */
