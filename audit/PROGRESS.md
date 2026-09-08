@@ -42,3 +42,22 @@ Restart-safe state of this audit. Updated at the end of every step.
   `assets/src/characters/*`. Never run it in this audit.
 - `bunx tsc` resolves a stale global TypeScript 5.9.3 on this machine; the repo's own tsc is 7.0.2
   (`./node_modules/.bin/tsc`). Do not report that as a repo defect.
+
+## Phase 2 complete (2026-09-08)
+
+Six ADRs written under `audit/adr/`: 001 framework migration (no), 002 render engine (keep PixiJS 8),
+003 sprite pipeline (keep, move exact ops to sharp, add atlas), 004 stack review, 005 library candidates,
+006 CLI framework (declarative table, no framework). `audit/COVERAGE.md` written with all 42 rows at
+ROZHODNUTO (A3 at AUDITOVÁNO) and no N/A rows. **No source code changed yet.**
+
+Nothing in the recommendations is irreversible or rewrites >15 % of the code, so under §5 no approval is
+required before Wave 1. Two items are flagged for the owner's attention when implemented rather than
+blocked on: the effort defaults (B33.4, a cost change) and the optional browser/chromium image split
+(B24.1b, ~900 MB off the agent image but a build-graph change).
+
+## Next step
+
+Wave 1 — foundation: A1.1 (oxlint overrides), A1.2 (node plugin), A1.3 (nine rules), A1.4 (incremental),
+A1.5 (knip apps/cli), A1.7 (trustedDependencies), A1.8 (delete the 62 MB artefact), A4.2/A4.3 (bumps +
+root zod), B22.3 (type-fest), A2.2/A2.3 (CI daemon smoke + lockfile drift). Then `bun run check`, builds,
+daemon start, UI render — all recorded in `audit/VERIFICATION.md`.
