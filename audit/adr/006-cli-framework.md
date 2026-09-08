@@ -67,8 +67,9 @@ argument-parsing dependency at all.
 
 **Gain:** the drift is eliminated structurally, the 84-line switch becomes ~15 lines, `help.ts` becomes a
 generator rather than a literal, and no dependency is added. Combined with B5.2 (a human summary plus a
-global `--json`) and B5.4 (`@clack/prompts` for the hidden password prompt), the CLI gets what a framework
-would have given it.
+global `--json`) and B5.6 (readable messages for bad arguments), the CLI gets what a framework would have
+given it. B5.4 is no longer part of that list: it was withdrawn in Wave 6 and `@clack/prompts` with it (see
+the correction in ADR 005).
 **Lose:** we own ~40 lines of table-walking and help formatting that commander would own instead. That is
 the honest cost, and it is why confidence is medium-high rather than high — a reasonable person would pick
 commander here.

@@ -21,7 +21,7 @@ exactly that.
 | 2   | `DistributiveOmit` (`protocol/src/events.ts:108`)                                | 1         | `type-fest`'s `DistributedOmit`                                                   | **ADOPT** — same dependency                                                                                                                                                                                                        |
 | 3   | `crop`/`place`/`opaqueBounds`/`splitStrip` (`scripts/lib/raster.ts`)             | ~80       | `sharp@0.35.4` — **already a dependency**                                         | **ADOPT** — see ADR 003                                                                                                                                                                                                            |
 | 4   | `isRecord`/`isSize`/`isBox`/`isSidecar` (`scripts/lib/import-target.ts:170-181`) | 12        | `zod@4.5.4` — **already in the lockfile**, just not a root devDependency          | **ADOPT**                                                                                                                                                                                                                          |
-| 5   | `stty -echo` hidden prompt (`apps/cli/src/commands/secret.ts:8-23`)              | 16        | `@clack/prompts@1.8.0` (2026-09-07, 20.4 M weekly, 4 deps)                        | **ADOPT** — also fixes the Ctrl-C TTY bug (B5.4)                                                                                                                                                                                   |
+| 5   | `stty -echo` hidden prompt (`apps/cli/src/commands/secret.ts:8-23`)              | 16        | `@clack/prompts@1.8.0` (2026-09-07, 20.4 M weekly, 4 deps)                        | **KEEP OURS** — withdrawn in Wave 6; the Ctrl-C bug it was to fix does not exist (see below)                                                                                                                                       |
 | 6   | No colour anywhere in the CLI                                                    | —         | `yoctocolors@2.2.0` (2026-07-26, 34.5 M weekly, 0 deps)                           | **ADOPT** — chosen over `picocolors` (202 M weekly but 23 months without a release) purely on the activity criterion                                                                                                               |
 | 7   | `proper-lockfile` usage, 3 sites                                                 | ~20       | none that meets the criteria                                                      | **REPLACE with our own** — see below                                                                                                                                                                                               |
 | 8   | `Result<T,E>` (`core/src/result.ts`)                                             | 5         | `neverthrow@8.2.0`, last release **2025-02-21**                                   | **KEEP OURS** — 19 months quiet, and it would trade 5 lines for a class hierarchy                                                                                                                                                  |
@@ -68,12 +68,27 @@ Net: 2 direct and 3 transitive dependencies removed.
 
 ## Recommendation
 
-**Adopt** in eight places (1-6, 16, 19), of which **four need no new dependency at all** — `sharp`, `zod`,
-`useMutation` and `parseArgs` are already present and simply unused for the job. **Add** three small
-dependencies: `type-fest` (types only, erased at build), `yoctocolors`, `@clack/prompts`. **Remove**
-`proper-lockfile` and `@types/proper-lockfile`. **Keep our own** in the twelve remaining cases, each for a
+**Adopt** in seven places (1-4, 6, 16, 19), of which **four need no new dependency at all** — `sharp`,
+`zod`, `useMutation` and `parseArgs` are already present and simply unused for the job. **Add** two small
+dependencies: `type-fest` (types only, erased at build) and `yoctocolors`. **Remove** `proper-lockfile` and
+`@types/proper-lockfile`. **Keep our own** in the twelve remaining cases, each for a
 stated reason — nine because no candidate meets the maintenance criteria, three because the native language
 or an existing dependency already does it better.
 
 The pattern worth naming: the biggest wins here are not new libraries. They are **dependencies the
 repository already pays for and does not use**.
+
+## Correction after Wave 6 — candidate 5 (`@clack/prompts`) is withdrawn
+
+The verdict rested on the premise of finding B5.4: that Ctrl-C at the hidden prompt leaves the user's shell
+with echo off. Measured under a pty in Wave 6, that premise is false — Bun snapshots the terminal's termios
+at startup and restores it from both `atexit` and its own `SIGINT` handler, so a `bun` process cannot leak
+`stty -echo` to the shell however it dies (evidence and Bun source references in the B5.4 correction in
+`audit/AUDIT.md`).
+
+What remains of the case for `@clack/prompts` is one 16-line function that already works: a hidden prompt
+used by exactly one subcommand (`ho secret set`). Against that, the library brings four transitive
+dependencies into a CLI that is compiled with `bun build --compile` and started once per invocation, and
+this audit's own rule for candidate 8 — do not trade a few working lines for a dependency — applies
+unchanged here. So `readSecret()` stays as it is, and the net dependency change of this audit is one
+package smaller than first recorded.

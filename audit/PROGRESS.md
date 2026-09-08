@@ -183,11 +183,50 @@ the plan.
 
 **For the owner:** the effort defaults are a cost change (B33.4), and B24.1(b) is waiting on a decision.
 
+## Wave 6 complete (2026-09-09) — verified
+
+**The CLI stopped drifting from itself.** `apps/cli/src/command.ts` defines one `Command` descriptor,
+`commands/table.ts` holds all 17 of them, `help.ts` walks that table instead of restating it, and `run.ts`
+is 19 lines instead of an 84-line switch. Mutating commands print a human sentence and take a global
+`--json`; `doctor` and `resources` print their whole report under the same flag. One `formatBytes` in
+`@ho/protocol` replaced three formatters with three different units, so the CLI and the panel finally agree
+(`1.2 GiB`).
+
+**Two of my own findings did not survive measurement, and both are recorded as withdrawn.** B5.4 claimed
+Ctrl-C at the hidden secret prompt leaves the shell with echo off; under a pty, Bun restores the terminal's
+termios from both `atexit` and its own `SIGINT` handler (its source says so, and a plain `sh` control does
+leak), so the handler I had written was deleted before it was committed and `@clack/prompts` is not
+adopted — one dependency fewer than ADR 005 first concluded. B6.3 claimed the build config declares a
+`chunk` pattern nothing produces; removing it renames the bundle to `chunk-<hash>.js`, so it is exactly
+what names an HTML entrypoint's output. Splitting PixiJS out was measured too: the office canvas is the
+first view, so a `React.lazy` boundary would delay the primary view, not the panels.
+
+**Three findings the wave itself produced.** B5.6: every bad argument printed the JSON issue array a Zod 4
+`ZodError` carries as its message, and an oRPC rejection printed only "Input validation failed" — both now
+render from their issues. B6.7: a tab whose token the daemon rejects reconnected every two seconds forever,
+because a browser cannot see the status of a failed websocket handshake; it now asks `GET /health` once,
+says "No daemon token" and waits for a fresh launch URL. B21.4: that loop wrote 393 warn lines into the
+daemon log during this wave's own checks, which exposed a log file with no size bound at all — it now keeps
+one previous file and rotates at 8 MiB, without a dependency (`pino-roll` was rejected: 11 months quiet,
+and it pulls in `date-fns`).
+
+**Naming that lied.** Provider state volumes were `…-claude-…` with `ho.kind: claude-config` for every
+provider, including the ones whose state directory is `.gemini` or `.codex`; they are now `…-state-…` with
+`ho.kind: provider-state`, and the collector still prunes the old label so nothing leaks on the owner's
+Docker. `keychain.ts` is `os-credential-store.ts`: `Bun.secrets` is Keychain, libsecret and Credential
+Manager, so `auto` no longer downgrades Linux and Windows by platform — it uses the OS store if it answers
+and the 0600 file if there is none (proved both ways: macOS host, and `oven/bun:1.4.2-alpine` reporting
+"libsecret not available"). A timeout is deliberately _not_ a fallback: that is the Keychain waiting for
+the user, and answering it with a different store would be worse. And ACP sessions reported tool calls as
+"turns" — one prompt is one turn now, which is the protocol's own definition.
+
+**For the owner:** nothing new to decide in this wave. Still open from Wave 5: the effort defaults are a
+cost change (B33.4), and B24.1(b) (the ~900 MB browser image split) waits on a decision.
+
 ## Next step
 
-Wave 6 — DX and UI: B5.1 (the hand-maintained usage string and the 18-arm dispatch, per `adr/006`), B5.2
-(raw JSON from every mutating command; `--json` plus a human line, colour through `yoctocolors`), B5.3
-(three byte formatters), B5.4 (`stty -echo` left off on Ctrl-C; `@clack/prompts`), B6.3 (bundle splitting or
-delete the unused chunk naming), B6.5 (`repoOf` accepts URL schemes the protocol rejects), B13.1 (the
-provider state volume called "claude" for every provider), B13.2 (`keychain.ts` names the platform, not the
-port).
+Wave 7 — documentation: A3.1 and A3.3, the rewrite of every markdown file to match the code this audit
+leaves behind (including B25.3's note in `docs/STACK.md` about `reactCompiler` and why there is no
+`useCallback`, and the `secrets.store` values in the config documentation). It also has to close the
+coverage matrix: 13 rows are still `ROZHODNUTO` — A2, A3, B7, B24, B26, B28, B29, B32 and C1–C5 — and the
+brief requires every row to read `OVĚŘENO` or `N/A` in the last commit of the pull request.
