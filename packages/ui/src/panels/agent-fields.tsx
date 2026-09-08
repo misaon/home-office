@@ -1,3 +1,4 @@
+import { defaultChoice } from "@ho/core";
 import { AuthKind, EffortLevel, PROVIDERS, ProviderId } from "@ho/protocol";
 import { useState } from "react";
 
@@ -23,14 +24,8 @@ export function ProviderModelFields({ value, onChange, dense = false }: Props): 
   const [custom, setCustom] = useState(!listed && catalog.freeFormModels);
   const input = dense ? "rounded bg-ink px-1" : "rounded bg-panel px-1 py-1";
   const switchProvider = (provider: ProviderId): void => {
-    const next = PROVIDERS[provider];
     setCustom(false);
-    onChange({
-      provider,
-      auth: next.defaultAuth,
-      model: next.defaultModel,
-      effort: next.effortLevels.includes("medium") ? "medium" : (next.effortLevels[0] ?? "medium"),
-    });
+    onChange({ provider, ...defaultChoice(provider) });
   };
   return (
     <>

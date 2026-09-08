@@ -1,3 +1,4 @@
+import { defaultChoice } from "@ho/core";
 import {
   AgentRole,
   AuthKind,
@@ -6,7 +7,6 @@ import {
   Gender,
   type ProjectId,
   ProviderId,
-  PROVIDERS,
 } from "@ho/protocol";
 import { parse, required, str } from "../args.ts";
 import { type HoClient, withClient } from "../client.ts";
@@ -60,7 +60,7 @@ async function addAgent(client: HoClient, argv: readonly string[]): Promise<void
   const skillPack = str(parsed, "skills") ?? (role === "clerk" ? "none" : role);
   const prompt = str(parsed, "prompt");
   const provider = ProviderId.parse(str(parsed, "provider") ?? "claude-code");
-  const catalog = PROVIDERS[provider];
+  const defaults = defaultChoice(provider);
   const auth = str(parsed, "auth");
   print(
     await client.agents.create({
@@ -72,10 +72,8 @@ async function addAgent(client: HoClient, argv: readonly string[]): Promise<void
         gender: Gender.parse(str(parsed, "gender") ?? "neutral"),
       },
       provider,
-      model: str(parsed, "model") ?? catalog.defaultModel,
-      effort: EffortLevel.parse(
-        str(parsed, "effort") ?? (catalog.effortLevels.includes("medium") ? "medium" : "low"),
-      ),
+      model: str(parsed, "model") ?? defaults.model,
+      effort: EffortLevel.optional().parse(str(parsed, "effort")) ?? defaults.effort,
       skillPack,
       ...compact({ auth: AuthKind.optional().parse(auth), basePrompt: prompt }),
     }),
