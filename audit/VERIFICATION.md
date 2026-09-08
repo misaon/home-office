@@ -485,3 +485,147 @@ CHECKS {"init":true,"permission":true,"toolCall":true,"toolResultOk":true,"resul
 never arrives: read it from `daemon.json` and put it in **sessionStorage** under `ho.token` (not
 localStorage — `packages/ui/src/rpc.ts` uses sessionStorage), then reload. A real Chrome window driven
 through the extension is no better for visibility: an occluded window also reports `document.hidden`.
+
+## Wave 3 — architecture (2026-09-09)
+
+### `bun install --frozen-lockfile`, `bun run check`, escapes, audits
+
+```
+$ bun install --frozen-lockfile
+Checked 230 installs across 382 packages (no changes) [6.00ms]     # 5 packages fewer: proper-lockfile is gone
+
+$ bun run check
+✔ (16 projects) · oxlint --type-aware --deny-warnings · oxfmt --check (312 files) · knip
+bun run check 2>&1  9.54s user 2.22s system 589% cpu 1.994 total
+
+$ git ls-files '*.ts' '*.tsx' | xargs grep -n ': any\|<any>\|@ts-ignore\|@ts-expect-error\|@ts-nocheck\|eslint-disable'
+none
+
+$ bun audit                        → No vulnerabilities found (checked 361 packages)
+$ npm ls --package-lock-only + npm audit --omit=dev (4 sandbox dirs) → 0 vulnerabilities each
+```
+
+### Builds and the spike
+
+```
+$ bun run ui:build          → ui: 3 files, 1107 KiB
+$ bun run assets:manifest   → 43 sprites
+$ bun build --compile apps/cli/src/main.ts        → 542 modules, compiled
+$ bun build --compile --minify --target=bun-linux-arm64-musl packages/runner/src/main.ts → 124 modules, compiled
+$ bun run spikes/s6-acp-mock/src/run.ts
+CHECKS {"init":true,"permission":true,"toolCall":true,"toolResultOk":true,"result":true,"exitCode":0}
+```
+
+### The projection indexes, checked against brute-force scans (B4.1)
+
+A probe drove real commands through `Office.execute` — project, two agents, a task,
+assign, session start → running → idle (rate limited) → usage → end, a transition back to
+`assigned`, a second session, mail received and acknowledged, an agent removed — then compared every index
+with a scan of the same maps:
+
+```
+ok   agentsByProject 6ff1f7      ok   tasksByProject 6ff1f7
+ok   sessionsByTask cd798e       ok   sessionsByTask bf0d3d
+ok   sessionsByAgent 1565d7      ok   sessionsByAgent 5be463
+ok   activeSessions              ok   mailBySource
+ok   removed agent left no index entry
+ok   rate limits counted         ok   second session is the only active one
+entities: 1 projects, 2 agents, 2 tasks, 2 sessions, 1 mail; lastSeq 20
+every index matches a brute-force scan
+```
+
+### The single-instance lock (B16.3)
+
+```
+first holder: acquired
+second while held: refused (correct)
+holder file: {"pid":<pid>,"at":1788904563769}
+after release: acquired (correct)
+stale (dead pid) takeover: acquired (correct)
+fresh corrupt holder: refused (correct: younger than the stale window)
+```
+
+and against the real CLI:
+
+```
+$ ho daemon           (first)   → {"ok":true}
+$ ho daemon           (second)  → ho: another daemon already holds <home>
+$ pkill -TERM …                 → the lock directory is gone
+$ ho daemon           (restart) → {"ok":true}
+$ kill -9 <pid>; ho daemon      → {"ok":true}    # stale lock taken over
+```
+
+### One MCP server per session, not per call (B4.3)
+
+Verified against the installed SDK 1.30.0 (`Protocol.connect` throws when a transport is attached;
+`_onclose` clears it) and then by driving three `initialize` round-trips through one cached server:
+
+```
+round 1: 200 {"result":{"protocolVersion":"2025-06-18",…
+round 2: 200 …
+round 3: 200 …
+three sequential transports on one cached McpServer: ok
+```
+
+### The whole product, run for real
+
+Two Claude Code sessions actually ran in sandboxes on this machine against the changed core:
+
+```
+$ ho project add "Wave 3" --path <repo>      → floor 1
+$ ho agent add Kelly --role reviewer         → claude-code/sonnet@medium
+$ ho task create … ; ho task assign … Kelly  → assigned
+$ ho task move <id> blocked --reason probe    → blocked
+$ ho chat "hello from wave 3" --project "Wave 3"
+$ ho session list
+01a0830f-d38f…  stopped  task=ced7a451 agent=3eb25bac turns=17  34in/4220out/528624cache
+01a0830f-d444…  stopped  task=cf3ce09b agent=06e3cc2f turns=4    8in/453out/51130cache
+$ ho usage
+window: all time  sessions: 2  rate-limit incidents: 0
+TOTAL  in=42  out=4,673  cache=579,754  write=55,582  turns=21
+-- by agent   Kelly … sessions=1     Andrew … sessions=1
+$ ho task list --project "Wave 3"
+… blocked  normal  index check      → Kelly
+… done     normal  hello from wave 3 → Andrew
+$ ho doctor
+docker: ok 29.7.2 (api 1.55, linux/arm64) · images present · sessions: 2 active / 2 max
+$ grep '"msg"' daemon.log | sort | uniq -c
+2 scheduling session · 2 runner connected · 1 read model rebuilt · 1 daemon started   (0 errors, 0 "rpc call failed")
+```
+
+The office rendered with that data — screenshot captured: both the plan and the chat panel, which shows the
+boss's own reply ("Hello! Andrew here, Wave 3 floor. Team right now: Kelly (reviewer)…") and the two status
+lines the deduplicated `statusLine` produced ("Kelly is working on 'index check'", "'index check' is
+blocked: probe"). Store reading, in the always-hidden pane, after a plain reload:
+
+```
+{"connection":"online","replayed":true,"projects":1,"agents":2,"tasks":2,
+ "chatFloors":1,"chatMessages":[4],"innerKids":[1],"worldActors":3,"ticking":false,"error":null}
+```
+
+`chatFloors: 1, chatMessages: [4]` is the bounded per-floor chat (B4.2) seen from the UI.
+
+### Docker images, and the two findings that came out of building them
+
+```
+$ docker buildx build --load -t ho/git-bridge:audit-w3 images/git-bridge   → DONE
+$ ho image build                                                          → images ready
+$ ho doctor → image ho/agent:dev: present, up to date · image ho/git-bridge:dev: present, up to date
+```
+
+The first `ho image build` of this wave failed on a transient fetch from `downloads.claude.ai` inside the
+`claude-code` apk step; a retry succeeded, and running the same step standalone on `alpine:3.24.1` installs
+`claude-code=2.1.263-r1` cleanly (the pinned version is still in the repository — 120 versions are). Chasing
+that failure is what uncovered **B24.3** (the content hash matched no context files) and **B5.5** (a failed
+build reached the CLI as "Internal server error"), both fixed and verified in this wave:
+
+```
+$ (append `RUN false` to images/git-bridge/Dockerfile)
+$ ho image build
+ 12 | >>> RUN echo "deliberate audit failure" >&2 && false
+ERROR: failed to build: failed to solve: process "/bin/sh -c echo …" did not complete successfully: exit code: 1
+ho: image build failed (1): #0 building with "default" instance using docker driver
+$ echo $?
+1
+$ (restore the Dockerfile) ; ho image build → images ready ; ho doctor → up to date
+```

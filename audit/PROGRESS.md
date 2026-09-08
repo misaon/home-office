@@ -3,7 +3,7 @@
 Restart-safe state of this audit. Updated at the end of every step.
 
 - **Branch:** `audit/deep-monorepo-audit-2026-09` (from `main` @ `ecd4aa5`)
-- **Phase:** 3 (implementation) — Waves 1 and 2 of 7 complete and verified
+- **Phase:** 3 (implementation) — Waves 1, 2 and 3 of 7 complete and verified
 
 ## Done
 
@@ -96,9 +96,39 @@ Full §7 pass, including the Docker image build deferred from Wave 1: `bun insta
 inside the image, the CLI exercised command by command, and the office rendered in the always-hidden
 browser pane **without console hacks** — output in `audit/VERIFICATION.md`.
 
+## Wave 3 complete (2026-09-09) — verified
+
+**Projection:** `applyEvent` maintains six indexes (agents and tasks by floor, sessions by task and by
+agent, active sessions, mail by its source triple) and the helpers callers already used read them; eleven
+scan sites became lookups. `usage.summary` no longer reads the whole `session.state_changed` history from
+SQLite — the projection keeps the rate-limit times — so the RPC context does not take the event store at
+all. Chat is a bounded per-floor tail instead of one unbounded array copied every frame.
+
+**Boundaries:** URL encoding moved inside the Docker adapter, `SecretStore` is typed over the real
+`SecretKeyName` enumeration, the mailbox animation goes through the floor's animation channel instead of
+writing into layout data, the runner wire protocol lives behind `@ho/protocol/runner`, and the `@ho/sim`
+barrel lists only what consumers use.
+
+**Dependencies:** `proper-lockfile` is gone (5 packages) — a `mkdir` directory lock with a pid liveness
+check for the two single-instance cases, an in-process promise chain for mirror refresh.
+
+**UI:** every write goes through `useMutation`, the two hand-rolled refresh loops became real queries, and
+the ten components no longer each re-implement pending/error state.
+
+**Found while verifying:** **B24.3** — the image content hash matched _no_ files from the build context
+(Bun's `Glob` returns nothing for a brace group crossing a path separator), so editing a Dockerfile never
+rebuilt the image and `doctor` said "up to date"; fixed and verified in both directions. **B5.5** — a failed
+build reached the CLI as "Internal server error"; now it reports the build's own message and exits 1.
+**B16.1 withdrawn** after measuring sharp against our raster ops byte for byte.
+
+Two real Claude Code sessions ran in sandboxes against the changed core (17 and 4 turns), the boss replied in
+chat, the usage summary aggregated them from the projection, and the office rendered it all — output in
+`audit/VERIFICATION.md`.
+
 ## Next step
 
-Wave 3 — architecture: B1.2 (`@ho/protocol/runner` subpath), B1.3 (`@ho/sim` barrel), B4.1 (projection
-indexes), B4.2 (bounded chat), B4.3 (MCP server per call), B9.1, B9.2 (port boundary leaks), B16.1 (`sharp`
-for exact raster ops), B16.3 (drop `proper-lockfile`), B22.1, B22.2, B29.1 (`useMutation`), B29.2 (one
-socket handshake), B29.3 (intake blocks its own subscription).
+Wave 4 — runtime and protocols: B6.2 (per-collection UI slices), B10.1 (the scheduler's needless 2 s poll),
+B10.2 (the office gate keeps every envelope), B11.2 (the event store filters twice), B11.3 (per-frame
+allocation in the floor renderer), B18.1–B18.5 (O(N²) occupancy per frame, the jitter re-hash,
+`nearestWalkable`, the five neighbour tables, `adjacentFree`), B21.1, B30.1–B30.4 (ACP usage and cost,
+protocol details), B31.2, B31.3.
