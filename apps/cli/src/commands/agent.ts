@@ -1,11 +1,12 @@
 import {
   AgentRole,
   AuthKind,
+  compact,
   EffortLevel,
   Gender,
   type ProjectId,
-  PROVIDERS,
   ProviderId,
+  PROVIDERS,
 } from "@ho/protocol";
 import { parse, required, str } from "../args.ts";
 import { type HoClient, withClient } from "../client.ts";
@@ -24,7 +25,7 @@ async function listAgents(client: HoClient, argv: readonly string[]): Promise<vo
   const parsed = parse(argv, ["project"]);
   const projectId = await floorOf(client, str(parsed, "project"));
   const projects = new Map((await client.projects.list()).map((p) => [p.id, p.name]));
-  for (const a of await client.agents.list(projectId === undefined ? {} : { projectId })) {
+  for (const a of await client.agents.list(compact({ projectId }))) {
     line(
       `${a.id}  ${a.name}  ${a.role}  ${a.provider}/${a.model}@${a.effort} (${a.auth})  skills=${a.skillPack}  floor=${projects.get(a.projectId) ?? a.projectId}`,
     );
@@ -71,13 +72,12 @@ async function addAgent(client: HoClient, argv: readonly string[]): Promise<void
         gender: Gender.parse(str(parsed, "gender") ?? "neutral"),
       },
       provider,
-      ...(auth === undefined ? {} : { auth: AuthKind.parse(auth) }),
       model: str(parsed, "model") ?? catalog.defaultModel,
       effort: EffortLevel.parse(
         str(parsed, "effort") ?? (catalog.effortLevels.includes("medium") ? "medium" : "low"),
       ),
-      ...(prompt === undefined ? {} : { basePrompt: prompt }),
       skillPack,
+      ...compact({ auth: AuthKind.optional().parse(auth), basePrompt: prompt }),
     }),
   );
 }
@@ -110,18 +110,16 @@ async function setAgent(client: HoClient, argv: readonly string[]): Promise<void
   print(
     await client.agents.update({
       id: current.id,
-      patch: {
-        ...(name === undefined ? {} : { name }),
-        ...(provider === undefined ? {} : { provider: ProviderId.parse(provider) }),
-        ...(auth === undefined ? {} : { auth: AuthKind.parse(auth) }),
-        ...(model === undefined ? {} : { model }),
-        ...(effort === undefined ? {} : { effort: EffortLevel.parse(effort) }),
-        ...(sprite === undefined
-          ? {}
-          : { appearance: { ...current.appearance, spriteSet: sprite } }),
-        ...(prompt === undefined ? {} : { basePrompt: prompt }),
-        ...(skills === undefined ? {} : { skillPack: skills }),
-      },
+      patch: compact({
+        name,
+        provider: ProviderId.optional().parse(provider),
+        auth: AuthKind.optional().parse(auth),
+        model,
+        effort: EffortLevel.optional().parse(effort),
+        appearance: sprite === undefined ? undefined : { ...current.appearance, spriteSet: sprite },
+        basePrompt: prompt,
+        skillPack: skills,
+      }),
     }),
   );
 }
@@ -140,7 +138,7 @@ async function copyAgent(client: HoClient, argv: readonly string[]): Promise<voi
     await client.agents.copy({
       id: source.id,
       projectId: target.id,
-      ...(name === undefined ? {} : { name }),
+      ...compact({ name }),
     }),
   );
 }

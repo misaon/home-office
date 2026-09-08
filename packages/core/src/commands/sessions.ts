@@ -1,12 +1,13 @@
-import type {
-  AgentId,
-  NewEvent,
-  Session,
-  SessionId,
-  SessionMode,
-  SessionState,
-  TaskId,
-  Usage,
+import {
+  type AgentId,
+  compact,
+  type NewEvent,
+  type Session,
+  type SessionId,
+  type SessionMode,
+  type SessionState,
+  type TaskId,
+  type Usage,
 } from "@ho/protocol";
 import { conflict, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
@@ -90,7 +91,7 @@ export function startSession(
     agentId: input.agentId,
     mode: input.mode,
     state: "starting",
-    ...(previous === undefined ? {} : { resumedFrom: previous.id }),
+    ...compact({ resumedFrom: previous?.id }),
     usage: ZERO_USAGE,
     startedAt: ctx.now,
   };
@@ -126,9 +127,7 @@ export function changeSessionState(
   const { sessionId, ...rest } = input;
   const next: Session = {
     ...session,
-    state: rest.state,
-    ...(rest.runtimeSessionId === undefined ? {} : { runtimeSessionId: rest.runtimeSessionId }),
-    ...(rest.sandboxId === undefined ? {} : { sandboxId: rest.sandboxId }),
+    ...compact(rest),
   };
   return ok({
     events: [{ type: "session.state_changed", actor: ctx.actor, payload: { sessionId, ...rest } }],

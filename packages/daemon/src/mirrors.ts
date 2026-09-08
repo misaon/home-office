@@ -1,4 +1,4 @@
-import type { Project } from "@ho/protocol";
+import { compact, type Project } from "@ho/protocol";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { lock } from "proper-lockfile";
@@ -16,7 +16,7 @@ const git = async (args: readonly string[], cwd?: string): Promise<string> => {
     stderr: "pipe",
     timeout: 120_000,
     env: { ...Bun.env, GIT_TERMINAL_PROMPT: "0" },
-    ...(cwd === undefined ? {} : { cwd }),
+    ...compact({ cwd }),
   });
   const [stdout, stderr, code] = await Promise.all([
     new Response(proc.stdout).text(),

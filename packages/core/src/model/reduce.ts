@@ -1,4 +1,4 @@
-import type { StoredEvent, Task } from "@ho/protocol";
+import { compact, type StoredEvent, type Task } from "@ho/protocol";
 import type { ReadModel } from "./read-model.ts";
 
 const touch = (model: ReadModel, task: Task, at: string): void => {
@@ -24,9 +24,7 @@ function applyTaskEvent(model: ReadModel, event: TaskEvent): void {
         model,
         {
           ...task,
-          ...(title === undefined ? {} : { title }),
-          ...(brief === undefined ? {} : { brief }),
-          ...(priority === undefined ? {} : { priority }),
+          ...compact({ title, brief, priority }),
         },
         event.at,
       );
@@ -86,8 +84,8 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
       model.sessions.set(session.id, {
         ...session,
         state: event.payload.state,
-        ...(runtimeSessionId === undefined ? {} : { runtimeSessionId }),
-        ...(sandboxId === undefined ? {} : { sandboxId }),
+        ...compact({ runtimeSessionId }),
+        ...compact({ sandboxId }),
       });
       break;
     }

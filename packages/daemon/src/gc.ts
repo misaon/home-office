@@ -1,3 +1,4 @@
+import { errorMessage } from "@ho/protocol";
 import type { PruneReport, SandboxProvider } from "@ho/core";
 import type { DaemonConfig } from "./config.ts";
 import { LABELS } from "./images.ts";
@@ -64,11 +65,11 @@ export function startGc(
     return pending;
   };
   void runOnce().catch((error: unknown) => {
-    log.warn({ err: error instanceof Error ? error.message : String(error) }, "initial gc failed");
+    log.warn({ err: errorMessage(error) }, "initial gc failed");
   });
   const timer = setInterval(() => {
     void runOnce().catch((error: unknown) => {
-      log.warn({ err: error instanceof Error ? error.message : String(error) }, "gc failed");
+      log.warn({ err: errorMessage(error) }, "gc failed");
     });
   }, INTERVAL_MS);
   return {

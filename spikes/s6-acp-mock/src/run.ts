@@ -2,7 +2,7 @@
 // RunnerChannel contract the daemon uses, but the child is a Bun subprocess on this machine instead of a
 // process inside a sandbox. Prints every runtime event and checks the ones that matter.
 import { createChannel, type RunnerChannel, type RunnerLine, type RuntimeEvent } from "@ho/core";
-import { AgentId, SessionId, TaskId } from "@ho/protocol";
+import { AgentId, compact, SessionId, TaskId } from "@ho/protocol";
 import { createAcpRuntime } from "@ho/runtime-acp";
 
 const here = import.meta.dir;
@@ -50,7 +50,7 @@ function localChannel(): RunnerChannel & { exited: Promise<number | null> } {
         stdout: "pipe",
         stderr: "pipe",
         env: { ...Bun.env, ...env },
-        ...(cwd === undefined ? {} : { cwd }),
+        ...compact({ cwd }),
       });
       child = proc;
       void pumpLines(proc.stdout, (text) => {

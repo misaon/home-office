@@ -1,7 +1,14 @@
 // ho-runner: PID 1 inside an agent sandbox. Dials the daemon's runner gateway over WebSocket with a
 // one-time token, then relays exactly one child process (stdin/stdout lines/stderr/exit). The agent's
 // credentials arrive over this channel and only ever live in the child's environment.
-import { type FromRunner, RUNNER_ENV, RUNNER_PATH, ToRunner } from "@ho/protocol";
+import {
+  compact,
+  errorMessage,
+  type FromRunner,
+  RUNNER_ENV,
+  RUNNER_PATH,
+  ToRunner,
+} from "@ho/protocol";
 
 const gateway = Bun.env[RUNNER_ENV.gateway];
 const token = Bun.env[RUNNER_ENV.token];
@@ -25,7 +32,7 @@ const send = (message: FromRunner): void => {
   ws.send(JSON.stringify(message));
 };
 const reportError = (error: unknown): void => {
-  send({ type: "error", message: error instanceof Error ? error.message : String(error) });
+  send({ type: "error", message: errorMessage(error) });
 };
 // FileSink operations may return a promise when the pipe is backed up; never leave it floating.
 const settle = (result: number | Promise<number>): void => {
@@ -97,7 +104,7 @@ function spawnChild(
     stdout: "pipe",
     stderr: "pipe",
     env: { ...Bun.env, [RUNNER_ENV.token]: undefined, [RUNNER_ENV.gateway]: undefined, ...env },
-    ...(cwd === undefined ? {} : { cwd }),
+    ...compact({ cwd }),
   });
   child = proc;
   send({ type: "spawned", pid: proc.pid });

@@ -1,3 +1,4 @@
+import { compact } from "@ho/protocol";
 import type { Facing, Point } from "./grid.ts";
 import type { Anchor, AnchorKind, FloorTemplate, Furniture } from "./templates.ts";
 
@@ -164,16 +165,18 @@ export class Plan {
       h: rect.h,
       blocks: options.blocks ?? true,
       facing: options.facing ?? "s",
-      ...(options.artWidth === undefined ? {} : { artWidth: options.artWidth }),
-      ...(options.artHeight === undefined ? {} : { artHeight: options.artHeight }),
-      ...(options.playback === undefined ? {} : { playback: options.playback }),
-      ...(options.layer === undefined ? {} : { layer: options.layer }),
-      ...(options.artOffsetY === undefined ? {} : { artOffsetY: options.artOffsetY }),
+      ...compact({
+        artWidth: options.artWidth,
+        artHeight: options.artHeight,
+        playback: options.playback,
+        layer: options.layer,
+        artOffsetY: options.artOffsetY,
+      }),
     });
   }
 
   anchor(id: string, kind: AnchorKind, at: Point, facing: Facing = "n", group?: string): void {
-    const anchor: Anchor = { id, kind, at, facing, ...(group === undefined ? {} : { group }) };
+    const anchor: Anchor = { id, kind, at, facing, ...compact({ group }) };
     this.plan.template.anchors.push(anchor);
   }
 

@@ -1,3 +1,4 @@
+import { errorMessage } from "@ho/protocol";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { getClient, requireClient } from "../rpc.ts";
@@ -32,7 +33,7 @@ export function ResourcesPanel(): React.JSX.Element {
         void query.refetch();
       },
       (error: unknown) => {
-        setNote(error instanceof Error ? error.message : String(error));
+        setNote(errorMessage(error));
         setBusy(false);
       },
     );

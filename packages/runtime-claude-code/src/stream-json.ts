@@ -1,4 +1,5 @@
 // Claude Code `--output-format stream-json` events, validated loosely: only the fields we consume.
+import { compact } from "@ho/protocol";
 import type { RuntimeErrorCode, RuntimeEvent } from "@ho/core";
 import { z } from "zod";
 
@@ -192,7 +193,7 @@ export function normalizeLine(raw: string, now: () => Date): RuntimeEvent[] {
         kind: "result",
         ok: !line.is_error,
         text: line.result ?? "",
-        ...(line.structured_output === undefined ? {} : { structured: line.structured_output }),
+        ...compact({ structured: line.structured_output }),
         turns: line.num_turns,
         runtimeSessionId: line.session_id,
       });

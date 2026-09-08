@@ -1,4 +1,4 @@
-import { TaskId, TaskPriority, TaskStatus } from "@ho/protocol";
+import { compact, TaskId, TaskPriority, TaskStatus } from "@ho/protocol";
 import { z } from "zod";
 import { parse, required, str } from "../args.ts";
 import { withClient } from "../client.ts";
@@ -33,10 +33,7 @@ export async function task(args: readonly string[]): Promise<void> {
         const statusRaw = str(parsed, "status");
         const status =
           statusRaw === undefined ? undefined : z.array(TaskStatus).parse(statusRaw.split(","));
-        const tasks = await client.tasks.list({
-          ...(projectId === undefined ? {} : { projectId }),
-          ...(status === undefined ? {} : { status }),
-        });
+        const tasks = await client.tasks.list(compact({ projectId, status }));
         for (const t of tasks) {
           const assignee = t.assigneeId === undefined ? "" : `  → ${t.assigneeId}`;
           line(`${t.id}  ${t.status.padEnd(11)}  ${t.priority.padEnd(6)}  ${t.title}${assignee}`);
@@ -56,9 +53,11 @@ export async function task(args: readonly string[]): Promise<void> {
           await client.tasks.create({
             projectId,
             title: required(parsed, "title"),
-            ...(brief === undefined ? {} : { brief }),
-            ...(assigneeId === undefined ? {} : { assigneeId }),
-            ...(priority === undefined ? {} : { priority: TaskPriority.parse(priority) }),
+            ...compact({
+              brief,
+              assigneeId,
+              priority: TaskPriority.optional().parse(priority),
+            }),
           }),
         );
         return;
@@ -85,7 +84,7 @@ export async function task(args: readonly string[]): Promise<void> {
           await client.tasks.transition({
             id: taskId(idRef),
             to: TaskStatus.parse(status),
-            ...(reason === undefined ? {} : { reason }),
+            ...compact({ reason }),
           }),
         );
         return;

@@ -5,6 +5,7 @@
     "": {
       "name": "home-office",
       "devDependencies": {
+        "@ho/protocol": "workspace:*",
         "@ho/sim": "workspace:*",
         "@types/bun": "catalog:",
         "bun-plugin-tailwind": "catalog:",
@@ -36,6 +37,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@ho/daemon": "workspace:*",
+        "@ho/protocol": "workspace:*",
         "electrobun": "catalog:",
         "proper-lockfile": "catalog:",
       },
@@ -125,6 +127,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ho/core": "workspace:*",
+        "@ho/protocol": "workspace:*",
         "zod": "catalog:",
       },
     },

@@ -11,6 +11,7 @@ import {
 } from "@ho/core";
 import {
   type AgentId,
+  errorMessage,
   HoAskHumanInput,
   HoDelegateInput,
   HoHandoffInput,
@@ -271,7 +272,7 @@ export class McpGateway {
       try {
         return text(await fn());
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = errorMessage(error);
         this.#log.warn({ sessionId: entry.ctx.sessionId, err: message }, "mcp tool rejected");
         return { content: [{ type: "text", text: message }], isError: true };
       }

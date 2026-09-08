@@ -1,4 +1,10 @@
-import type { Agent, AgentId, RepoInspection, RepoSource } from "@ho/protocol";
+import {
+  type Agent,
+  type AgentId,
+  errorMessage,
+  type RepoInspection,
+  type RepoSource,
+} from "@ho/protocol";
 import { useEffect, useEffectEvent, useState } from "react";
 import { getClient } from "../rpc.ts";
 import { type Snapshot, sortedFloors, useUi } from "../store.ts";
@@ -10,8 +16,6 @@ const repoOf = (source: string): RepoSource =>
   /^(?:https?:|git@|ssh:|git:|file:)/u.test(source)
     ? { kind: "git", url: source }
     : { kind: "local", path: source };
-
-const describeError = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 type Group = { floor: string; agents: Agent[] };
 
@@ -61,7 +65,7 @@ function useRepoInspection(
         },
         (e: unknown) => {
           if (!cancelled) {
-            setState({ source, result: { ok: false, message: describeError(e) }, busy: false });
+            setState({ source, result: { ok: false, message: errorMessage(e) }, busy: false });
           }
         },
       );
@@ -217,7 +221,7 @@ export function AddProjectModal(): React.JSX.Element | null {
       selectFloor(project.id);
       close();
     } catch (e) {
-      setError(describeError(e));
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }

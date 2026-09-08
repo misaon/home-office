@@ -1,3 +1,4 @@
+import { errorMessage } from "@ho/protocol";
 import { planSessionStarts } from "@ho/core";
 import type { DaemonConfig } from "./config.ts";
 import type { OfficeGate } from "./office-gate.ts";
@@ -35,10 +36,7 @@ export function startScheduler(
         await sessions.start(start.taskId, start.agentId, start.mode);
       }
     } catch (error) {
-      log.error(
-        { err: error instanceof Error ? error.message : String(error) },
-        "scheduler tick failed",
-      );
+      log.error({ err: errorMessage(error) }, "scheduler tick failed");
     }
   };
   const tick = (): Promise<void> => {

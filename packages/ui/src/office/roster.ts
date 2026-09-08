@@ -1,5 +1,5 @@
 import { RECEPTIONIST } from "@ho/core";
-import type { AgentId, ProjectId } from "@ho/protocol";
+import { type AgentId, compact, type ProjectId } from "@ho/protocol";
 import {
   addFloor,
   type OfficePlan,
@@ -57,7 +57,7 @@ function spawnAgent(
   const desk = host.planFor(floorId).template.anchors.find((a) => a.kind === "boss-desk");
   const actor = spawnActor(host.world, id, sprite, floorId, {
     kind: "boss",
-    ...(desk === undefined ? {} : { at: desk.at }),
+    ...compact({ at: desk?.at }),
   });
   if (desk !== undefined) {
     actor.facing = desk.facing;

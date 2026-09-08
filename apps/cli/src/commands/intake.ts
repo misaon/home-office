@@ -1,3 +1,4 @@
+import { compact } from "@ho/protocol";
 import { withClient } from "../client.ts";
 import { parse, str } from "../args.ts";
 import { line } from "../output.ts";
@@ -13,7 +14,7 @@ export async function intake(args: readonly string[]): Promise<void> {
       case "poll": {
         const ref = str(parsed, "project");
         const projectId = ref === undefined ? undefined : (await findProject(client, ref)).id;
-        const results = await client.intake.poll(projectId === undefined ? {} : { projectId });
+        const results = await client.intake.poll(compact({ projectId }));
         const projects = new Map((await client.projects.list()).map((p) => [p.id, p.name]));
         for (const r of results) {
           line(
@@ -52,7 +53,7 @@ export async function mail(args: readonly string[]): Promise<void> {
   await withClient(async (client) => {
     const ref = str(parsed, "project");
     const projectId = ref === undefined ? undefined : (await findProject(client, ref)).id;
-    for (const m of await client.mail.list(projectId === undefined ? {} : { projectId })) {
+    for (const m of await client.mail.list(compact({ projectId }))) {
       const last = m.acks.at(-1);
       line(
         `${m.id}  #${m.externalId}  ${m.title}  by ${m.author || "?"}  task=${m.taskId ?? "-"}  ${last === undefined ? "unacknowledged" : `${last.outcome} @ ${last.at}`}`,

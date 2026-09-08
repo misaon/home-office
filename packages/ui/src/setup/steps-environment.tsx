@@ -1,8 +1,8 @@
-import type { Doctor } from "@ho/protocol";
+import { type Doctor, errorMessage } from "@ho/protocol";
 import { useEffect, useRef, useState } from "react";
 import { getClient } from "../rpc.ts";
 import { dockerStatus, imagesStatus, tokenStatus } from "./status.ts";
-import { describeError, Step } from "./step.tsx";
+import { Step } from "./step.tsx";
 
 type EnvProps = { doctor: Doctor | null; refresh: () => void };
 
@@ -72,7 +72,7 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
       }
     } catch (e) {
       if (!aborter.signal.aborted) {
-        setError(describeError(e));
+        setError(errorMessage(e));
       }
     } finally {
       setBuilding(false);
@@ -130,7 +130,7 @@ export function TokenStep({ doctor, refresh }: EnvProps): React.JSX.Element {
         refresh();
       },
       (e: unknown) => {
-        setError(describeError(e));
+        setError(errorMessage(e));
       },
     );
   };

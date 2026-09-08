@@ -33,6 +33,3 @@ export function Step({ index, title, status, children }: Props): React.JSX.Eleme
     </section>
   );
 }
-
-export const describeError = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);

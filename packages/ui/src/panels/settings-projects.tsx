@@ -1,4 +1,4 @@
-import type { Project } from "@ho/protocol";
+import { errorMessage, type Project } from "@ho/protocol";
 import { useState } from "react";
 import { getClient } from "../rpc.ts";
 import { sortedFloors, useUi } from "../store.ts";
@@ -12,7 +12,7 @@ export function ProjectsSettings(): React.JSX.Element {
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
   const [error, setError] = useState<string | null>(null);
   const fail = (e: unknown): void => {
-    setError(e instanceof Error ? e.message : String(e));
+    setError(errorMessage(e));
   };
 
   const togglePr = (p: Project): void => {

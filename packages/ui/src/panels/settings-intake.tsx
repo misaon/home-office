@@ -1,9 +1,8 @@
-import type { IntakePolicy, IntakeStatus, Project } from "@ho/protocol";
+import { errorMessage, type IntakePolicy, type IntakeStatus, type Project } from "@ho/protocol";
 import { useEffect, useState } from "react";
 import { getClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
 
-const describe = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 const when = (iso: string | null): string =>
   iso === null ? "never" : new Date(iso).toLocaleTimeString();
 
@@ -145,7 +144,7 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
           setError(null);
         },
         (e: unknown) => {
-          setError(describe(e));
+          setError(errorMessage(e));
         },
       );
   };
@@ -178,7 +177,7 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
       },
       (e: unknown) => {
         setBusy(false);
-        setError(describe(e));
+        setError(errorMessage(e));
       },
     );
   };

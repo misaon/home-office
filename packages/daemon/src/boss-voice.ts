@@ -1,5 +1,11 @@
 import { bossOf, postAgentMessage } from "@ho/core";
-import type { Agent, StoredEvent, Task, TaskStatus } from "@ho/protocol";
+import {
+  type Agent,
+  errorMessage,
+  type StoredEvent,
+  type Task,
+  type TaskStatus,
+} from "@ho/protocol";
 import type { Logger } from "./logger.ts";
 import type { Office } from "./office.ts";
 import type { OfficeGate } from "./office-gate.ts";
@@ -87,10 +93,7 @@ export function startBossVoice(
     await office
       .execute(SYSTEM, (m, ctx) => postAgentMessage(m, boss.id, text, taskId, ctx))
       .catch((error: unknown) => {
-        log.warn(
-          { err: error instanceof Error ? error.message : String(error) },
-          "boss status message failed",
-        );
+        log.warn({ err: errorMessage(error) }, "boss status message failed");
       });
   };
   const onCreated = async (task: Task): Promise<void> => {

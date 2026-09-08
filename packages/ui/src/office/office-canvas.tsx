@@ -1,4 +1,4 @@
-import type { AgentId } from "@ho/protocol";
+import { type AgentId, errorMessage } from "@ho/protocol";
 import * as sim from "@ho/sim";
 import { useEffect, useRef } from "react";
 import { useUi } from "../store.ts";
@@ -71,14 +71,14 @@ export function OfficeCanvas(): React.JSX.Element {
           created.showFloor(bridge.world, useUi.getState().floorId);
           created.update(bridge.world, ticker.deltaMS, nameOf, useUi.getState().selectedAgentId);
         } catch (error) {
-          useUi.getState().setError(error instanceof Error ? error.message : String(error));
+          useUi.getState().setError(errorMessage(error));
         }
       });
       document.addEventListener("visibilitychange", onVisibility);
       onVisibility();
     })().catch((error: unknown) => {
       if (!isDisposed()) {
-        useUi.getState().setError(error instanceof Error ? error.message : String(error));
+        useUi.getState().setError(errorMessage(error));
       }
       reportError(error);
     });

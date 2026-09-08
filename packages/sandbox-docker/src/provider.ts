@@ -1,3 +1,4 @@
+import { errorMessage } from "@ho/protocol";
 import type {
   SandboxHandle,
   SandboxProvider,
@@ -125,7 +126,7 @@ export function createDockerProvider(options: DockerProviderOptions = {}): Sandb
         const v = await api.json(Version, "GET", "/version");
         return { ok: true, version: v.Version, apiVersion: v.ApiVersion, os: v.Os, arch: v.Arch };
       } catch (error) {
-        return { ok: false, message: error instanceof Error ? error.message : String(error) };
+        return { ok: false, message: errorMessage(error) };
       }
     },
     ensureImage: async (spec, onProgress) => {

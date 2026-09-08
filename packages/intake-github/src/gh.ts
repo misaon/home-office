@@ -1,5 +1,5 @@
 import { type Cancellation, githubRepoFromUrl } from "@ho/core";
-import type { Project } from "@ho/protocol";
+import { compact, type Project } from "@ho/protocol";
 
 export type GhTarget = { args: string[]; cwd: string | undefined };
 
@@ -29,7 +29,7 @@ export async function gh(
     env: { ...Bun.env, GH_PROMPT_DISABLED: "1", GIT_TERMINAL_PROMPT: "0" },
     stdout: "pipe",
     stderr: "pipe",
-    ...(cwd === undefined ? {} : { cwd }),
+    ...compact({ cwd }),
   });
   const abort = (): void => {
     proc.kill();

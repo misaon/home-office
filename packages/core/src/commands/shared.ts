@@ -1,13 +1,14 @@
-import type {
-  Agent,
-  AgentId,
-  NewEvent,
-  Project,
-  ProjectId,
-  Task,
-  TaskId,
-  TaskNote,
-  TaskStatus,
+import {
+  type Agent,
+  type AgentId,
+  compact,
+  type NewEvent,
+  type Project,
+  type ProjectId,
+  type Task,
+  type TaskId,
+  type TaskNote,
+  type TaskStatus,
 } from "@ho/protocol";
 import { type DomainError, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
@@ -77,7 +78,7 @@ export const statusChange = (
 ): NewEvent => ({
   type: "task.status_changed",
   actor: ctx.actor,
-  payload: { taskId: task.id, from: task.status, to, ...(reason === undefined ? {} : { reason }) },
+  payload: { taskId: task.id, from: task.status, to, ...compact({ reason }) },
 });
 
 export const requireTask = (model: ReadModel, taskId: TaskId): Result<Task, DomainError> => {

@@ -1,12 +1,13 @@
 import {
   type Agent,
-  type AgentUpdateInput,
   AgentRole,
+  type AgentUpdateInput,
   type EffortLevel,
+  errorMessage,
   Gender,
   ProjectId,
-  PROVIDERS,
   type ProviderId,
+  PROVIDERS,
 } from "@ho/protocol";
 import { useState } from "react";
 import { getClient } from "../rpc.ts";
@@ -261,7 +262,7 @@ export function AgentsSettings(): React.JSX.Element {
   const floorId = useUi((s) => s.floorId);
   const [error, setError] = useState<string | null>(null);
   const onError = (e: unknown): void => {
-    setError(e instanceof Error ? e.message : String(e));
+    setError(errorMessage(e));
   };
   if (floorId === null) {
     return <p className="text-gray-400">Add a project (floor) first.</p>;

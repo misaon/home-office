@@ -1,14 +1,15 @@
-import type {
-  Agent,
-  NewEvent,
-  ProjectId,
-  Task,
-  TaskArtifactsInput,
-  TaskAssignInput,
-  TaskCreateInput,
-  TaskEditInput,
-  TaskStatus,
-  TaskTransitionInput,
+import {
+  type Agent,
+  compact,
+  type NewEvent,
+  type ProjectId,
+  type Task,
+  type TaskArtifactsInput,
+  type TaskAssignInput,
+  type TaskCreateInput,
+  type TaskEditInput,
+  type TaskStatus,
+  type TaskTransitionInput,
 } from "@ho/protocol";
 import { conflict, type DomainError, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
@@ -66,20 +67,20 @@ export function createTask(
   const task: Task = {
     id: ctx.ids.task(),
     projectId: input.projectId,
-    ...(input.parentId === undefined ? {} : { parentId: input.parentId }),
+    ...compact({ parentId: input.parentId }),
     title: input.title,
     brief: input.brief,
     kind: "work",
     status: input.assigneeId === undefined ? "inbox" : "assigned",
     reviewRounds: 0,
     notes: [],
-    ...(input.assigneeId === undefined ? {} : { assigneeId: input.assigneeId }),
+    ...compact({ assigneeId: input.assigneeId }),
     source:
       ctx.actor.kind === "agent"
         ? {
             kind: "delegation",
             byAgentId: ctx.actor.agentId,
-            ...(input.parentId === undefined ? {} : { parentTaskId: input.parentId }),
+            ...compact({ parentTaskId: input.parentId }),
           }
         : { kind: "manual" },
     artifacts: {},
@@ -105,9 +106,7 @@ export function editTask(
   const { id, ...changes } = input;
   const next: Task = {
     ...task,
-    ...(changes.title === undefined ? {} : { title: changes.title }),
-    ...(changes.brief === undefined ? {} : { brief: changes.brief }),
-    ...(changes.priority === undefined ? {} : { priority: changes.priority }),
+    ...compact(changes),
     updatedAt: ctx.now,
   };
   return ok({
@@ -194,7 +193,7 @@ export function transitionTask(
           taskId: task.id,
           from: task.status,
           to: input.to,
-          ...(input.reason === undefined ? {} : { reason: input.reason }),
+          ...compact({ reason: input.reason }),
         },
       },
     ],

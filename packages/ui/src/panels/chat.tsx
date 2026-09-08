@@ -1,5 +1,5 @@
 import { bossOf } from "@ho/core";
-import type { ChatMessage, ProjectId, TaskId } from "@ho/protocol";
+import { type ChatMessage, errorMessage, type ProjectId, type TaskId } from "@ho/protocol";
 import { useEffect, useRef, useState } from "react";
 import { getClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
@@ -101,7 +101,7 @@ export function ChatPanel(): React.JSX.Element {
       },
       (failure: unknown) => {
         setSending(false);
-        setError(failure instanceof Error ? failure.message : String(failure));
+        setError(errorMessage(failure));
       },
     );
   };

@@ -1,4 +1,4 @@
-import type { SecretKeyName } from "@ho/protocol";
+import { errorMessage, type SecretKeyName } from "@ho/protocol";
 import { useEffect, useState } from "react";
 import { getClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
@@ -61,7 +61,7 @@ export function TokenSettings(): React.JSX.Element {
         refresh();
       },
       (e: unknown) => {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(errorMessage(e));
       },
     );
   };

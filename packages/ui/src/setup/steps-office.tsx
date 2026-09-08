@@ -1,9 +1,9 @@
-import type { ChatMessageId, ProjectId, TaskId } from "@ho/protocol";
+import { type ChatMessageId, errorMessage, type ProjectId, type TaskId } from "@ho/protocol";
 import { useState } from "react";
 import { getClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
 import type { StepStatus } from "./status.ts";
-import { describeError, Step } from "./step.tsx";
+import { Step } from "./step.tsx";
 
 const HELLO =
   "Hello! This is the first-run check of Home Office. Reply with one short sentence confirming you are online; do not delegate anything.";
@@ -89,7 +89,7 @@ export function SmokeStep({
       },
       (e: unknown) => {
         setSending(false);
-        setError(describeError(e));
+        setError(errorMessage(e));
       },
     );
   };

@@ -1,5 +1,11 @@
 import { resolve } from "node:path";
-import type { IntakePolicy, PublishPolicy, RepoInspection, RepoSource } from "@ho/protocol";
+import {
+  compact,
+  type IntakePolicy,
+  type PublishPolicy,
+  type RepoInspection,
+  type RepoSource,
+} from "@ho/protocol";
 import { parse, str } from "../args.ts";
 import { type HoClient, withClient } from "../client.ts";
 import { line, print } from "../output.ts";
@@ -123,7 +129,7 @@ async function add(client: HoClient, argv: readonly string[]): Promise<void> {
       name: parsed.positionals[0] ?? inspection.name,
       repo: inspection.repo,
       defaultBranch: branch ?? inspection.defaultBranch,
-      ...(publish === undefined ? {} : { publish }),
+      ...compact({ publish }),
       importAgentIds,
     }),
   );
@@ -191,11 +197,7 @@ export async function project(args: readonly string[]): Promise<void> {
         print(
           await client.projects.update({
             id: current.id,
-            patch: {
-              ...(branch === undefined ? {} : { defaultBranch: branch }),
-              ...(publish === undefined ? {} : { publish }),
-              ...(intake === undefined ? {} : { intake }),
-            },
+            patch: compact({ defaultBranch: branch, publish, intake }),
           }),
         );
         return;

@@ -1,4 +1,4 @@
-import type { Usage } from "@ho/protocol";
+import { compact, type Usage } from "@ho/protocol";
 import { parse, str } from "../args.ts";
 import { withClient } from "../client.ts";
 import { line } from "../output.ts";
@@ -15,7 +15,7 @@ export async function usage(args: readonly string[]): Promise<void> {
       ? undefined
       : Number(since.endsWith("d") ? Number(since.slice(0, -1)) * 24 : since.replace(/h$/u, ""));
   await withClient(async (client) => {
-    const summary = await client.usage.summary(sinceHours === undefined ? {} : { sinceHours });
+    const summary = await client.usage.summary(compact({ sinceHours }));
     line(
       `window: ${summary.since ?? "all time"}  sessions: ${String(summary.sessions)}  rate-limit incidents: ${String(summary.rateLimitIncidents)}`,
     );

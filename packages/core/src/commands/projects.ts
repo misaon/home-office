@@ -1,10 +1,11 @@
-import type {
-  Agent,
-  NewEvent,
-  Project,
-  ProjectCreateInput,
-  ProjectId,
-  ProjectUpdateInput,
+import {
+  type Agent,
+  compact,
+  type NewEvent,
+  type Project,
+  type ProjectCreateInput,
+  type ProjectId,
+  type ProjectUpdateInput,
 } from "@ho/protocol";
 import { conflict, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
@@ -91,7 +92,7 @@ export function updateProject(
   if (input.patch.repo !== undefined && !sameRepo(current.repo, input.patch.repo)) {
     return err(conflict("a floor's repository cannot change; create a new floor"));
   }
-  const project: Project = { ...current, ...definedOnly(input.patch), updatedAt: ctx.now };
+  const project: Project = { ...current, ...compact(input.patch), updatedAt: ctx.now };
   return ok({
     events: [{ type: "project.updated", actor: ctx.actor, payload: { project } }],
     value: project,
@@ -131,12 +132,3 @@ export function removeProject(
   ];
   return ok({ events, value: id });
 }
-
-/** Drops `undefined` values so a partial patch never erases fields under exactOptionalPropertyTypes. */
-export const definedOnly = <T extends object>(
-  patch: T,
-): { [K in keyof T]: Exclude<T[K], undefined> } => {
-  const entries = Object.entries(patch).filter(([, v]) => v !== undefined);
-  /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.fromEntries cannot express the mapped type */
-  return Object.fromEntries(entries) as { [K in keyof T]: Exclude<T[K], undefined> };
-};

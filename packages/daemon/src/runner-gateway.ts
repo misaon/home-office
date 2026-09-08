@@ -6,6 +6,7 @@ import {
   type RunnerLine,
 } from "@ho/core";
 import {
+  compact,
   FromRunner,
   RUNNER_PATH,
   type RunnerHello,
@@ -144,7 +145,7 @@ export class RunnerGateway {
               type: "spawn",
               argv: [...argv],
               env: { ...env },
-              ...(cwd === undefined ? {} : { cwd }),
+              ...compact({ cwd }),
             });
             return spawned.promise.finally(() => {
               clearTimeout(timer);

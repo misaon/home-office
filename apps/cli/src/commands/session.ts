@@ -1,4 +1,4 @@
-import { SessionId } from "@ho/protocol";
+import { compact, SessionId } from "@ho/protocol";
 import { withClient } from "../client.ts";
 import { line, print } from "../output.ts";
 import { subcommand } from "./help.ts";
@@ -19,7 +19,7 @@ export async function session(args: readonly string[]): Promise<void> {
       case "watch": {
         const ref = rest[0];
         const sessionId = ref === undefined || ref === "all" ? undefined : SessionId.parse(ref);
-        const stream = await client.sessions.stream(sessionId === undefined ? {} : { sessionId });
+        const stream = await client.sessions.stream(compact({ sessionId }));
         for await (const live of stream) {
           const e = live.event;
           switch (e.kind) {

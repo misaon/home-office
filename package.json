@@ -61,6 +61,7 @@
     "devkit": "bun run scripts/devkit.ts"
   },
   "devDependencies": {
+    "@ho/protocol": "workspace:*",
     "@ho/sim": "workspace:*",
     "@types/bun": "catalog:",
     "bun-plugin-tailwind": "catalog:",

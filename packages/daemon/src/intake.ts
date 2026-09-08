@@ -1,5 +1,6 @@
 import { acknowledgeMail, type IntakeConnector, receiveMail, type ReceivedMail } from "@ho/core";
 import {
+  errorMessage,
   GITHUB_ISSUES_CONNECTOR,
   type IntakePollResult,
   type IntakeStatus,
@@ -244,7 +245,7 @@ export class IntakeService {
       state.lastDryRun = result.dryRun;
       state.lastError = null;
     } catch (error) {
-      state.lastError = error instanceof Error ? error.message : String(error);
+      state.lastError = errorMessage(error);
       this.#log.warn({ projectId: project.id, err: state.lastError }, "intake poll failed");
     } finally {
       state.polling = false;
@@ -269,10 +270,7 @@ export class IntakeService {
       }
       await connector.acknowledge(project, mail, last, this.#controller.signal);
     } catch (error) {
-      this.#log.warn(
-        { err: error instanceof Error ? error.message : String(error) },
-        `${ack.outcome} acknowledgement failed`,
-      );
+      this.#log.warn({ err: errorMessage(error) }, `${ack.outcome} acknowledgement failed`);
     }
   }
 }
