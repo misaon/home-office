@@ -33,7 +33,9 @@ const Envelope = z.object({
 const event = <TType extends string, TPayload extends z.ZodRawShape>(
   type: TType,
   payload: TPayload,
-) => Envelope.extend({ type: z.literal(type), payload: z.object(payload) });
+): ReturnType<
+  typeof Envelope.extend<{ type: z.ZodLiteral<TType>; payload: z.ZodObject<TPayload> }>
+> => Envelope.extend({ type: z.literal(type), payload: z.object(payload) });
 
 /** Persisted domain events. Keep these coarse: live agent chatter is streamed, not stored. */
 export const DomainEvent = z.discriminatedUnion("type", [

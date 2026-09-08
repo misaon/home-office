@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
 import { CELL_PX, type PlanObject, type Surface } from "@ho/sim";
 import { Container, Graphics, Text } from "pixi.js";
 

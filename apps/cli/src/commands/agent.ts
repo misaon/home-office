@@ -1,4 +1,12 @@
-import { AgentRole, AuthKind, EffortLevel, Gender, PROVIDERS, ProviderId } from "@ho/protocol";
+import {
+  AgentRole,
+  AuthKind,
+  EffortLevel,
+  Gender,
+  type ProjectId,
+  PROVIDERS,
+  ProviderId,
+} from "@ho/protocol";
 import { parse, required, str } from "../args.ts";
 import { type HoClient, withClient } from "../client.ts";
 import { subcommand } from "./help.ts";
@@ -6,7 +14,10 @@ import { findAgent, findProject, onlyProject } from "./lookup.ts";
 import { line, print } from "../output.ts";
 
 /** `--project` narrows an agent lookup to one floor (names repeat across floors: every floor has an Andrew). */
-const floorOf = async (client: HoClient, ref: string | undefined) =>
+const floorOf = async (
+  client: HoClient,
+  ref: string | undefined,
+): Promise<ProjectId | undefined> =>
   ref === undefined ? undefined : (await findProject(client, ref)).id;
 
 async function listAgents(client: HoClient, argv: readonly string[]): Promise<void> {

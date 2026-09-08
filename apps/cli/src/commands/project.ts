@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import type { IntakePolicy, PublishPolicy, RepoSource } from "@ho/protocol";
+import type { IntakePolicy, PublishPolicy, RepoInspection, RepoSource } from "@ho/protocol";
 import { parse, str } from "../args.ts";
 import { type HoClient, withClient } from "../client.ts";
 import { line, print } from "../output.ts";
@@ -98,7 +98,10 @@ const splitImports = (argv: readonly string[]): { imports: string[]; remaining: 
 };
 
 /** Asks the daemon what the repository is (git, name, default branch) before it becomes a floor. */
-const inspect = async (client: HoClient, repo: RepoSource) => {
+const inspect = async (
+  client: HoClient,
+  repo: RepoSource,
+): Promise<Extract<RepoInspection, { ok: true }>> => {
   const inspection = await client.projects.inspect({ repo });
   if (!inspection.ok) {
     throw new Error(inspection.message);

@@ -22,7 +22,33 @@ const CPU_NANOS = 1_000_000_000;
 
 export type DockerProviderOptions = { socket?: string; platform?: string };
 
-const containerConfig = (spec: SandboxSpec) => ({
+/** The subset of Docker's `POST /containers/create` body this provider sends. */
+type ContainerCreateBody = {
+  Image: string;
+  Cmd: string[];
+  User: string;
+  WorkingDir: string;
+  Env: string[];
+  Labels: Record<string, string>;
+  HostConfig: {
+    NetworkMode: string;
+    ExtraHosts: string[];
+    Binds: string[];
+    Mounts: { Type: string; Source: string; Target: string; ReadOnly: boolean }[];
+    Tmpfs: Record<string, string>;
+    CapDrop: string[];
+    SecurityOpt: string[];
+    ReadonlyRootfs: boolean;
+    Memory: number;
+    MemorySwap: number;
+    LogConfig: { Type: string; Config: Record<string, string> };
+    NanoCpus: number;
+    PidsLimit: number;
+    Init: boolean;
+  };
+};
+
+const containerConfig = (spec: SandboxSpec): ContainerCreateBody => ({
   Image: spec.image,
   Cmd: [...spec.cmd],
   User: spec.user,
