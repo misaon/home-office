@@ -79,10 +79,10 @@ export class IntakeService {
         if (event.type.startsWith("project.")) {
           this.#reschedule();
         } else if (event.type === "task.created") {
-          await this.#tell(delegationAck(this.#office.model, event.payload.task));
+          void this.#track(this.#tell(delegationAck(this.#office.model, event.payload.task)));
         } else if (event.type === "task.status_changed") {
           const { taskId, to, reason } = event.payload;
-          await this.#tell(outcomeAck(this.#office.model, taskId, to, reason));
+          void this.#track(this.#tell(outcomeAck(this.#office.model, taskId, to, reason)));
         }
       }
     })().catch((error: unknown) => {
@@ -184,7 +184,11 @@ export class IntakeService {
   }
 
   #poll(project: Project): Promise<IntakePollResult> {
-    const pending = this.#pollProject(project).finally(() => {
+    return this.#track(this.#pollProject(project));
+  }
+
+  #track<T>(work: Promise<T>): Promise<T> {
+    const pending = work.finally(() => {
       this.#pending.delete(pending);
     });
     this.#pending.add(pending);

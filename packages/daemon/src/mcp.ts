@@ -38,7 +38,12 @@ export type McpSessionContext = {
   mode: SessionMode;
 };
 
-type Entry = { ctx: McpSessionContext; replied: boolean; report: HoReportInput | null };
+type Entry = {
+  ctx: McpSessionContext;
+  replied: boolean;
+  report: HoReportInput | null;
+  server: McpServer | null;
+};
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: true };
 type Run = <T>(fn: () => Promise<T>) => Promise<ToolResult>;
 
@@ -233,7 +238,7 @@ export class McpGateway {
 
   register(ctx: McpSessionContext): string {
     const token = Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toString("base64url");
-    this.#entries.set(token, { ctx, replied: false, report: null });
+    this.#entries.set(token, { ctx, replied: false, report: null, server: null });
     return token;
   }
 
@@ -257,9 +262,9 @@ export class McpGateway {
     if (entry === undefined) {
       return new Response("unauthorized", { status: 401 });
     }
-    const server = this.#build(entry);
+    entry.server ??= this.#build(entry);
     const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
-    await server.connect(transport);
+    await entry.server.connect(transport);
     try {
       return await transport.handleRequest(req);
     } finally {
