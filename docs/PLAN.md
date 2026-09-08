@@ -16,7 +16,7 @@ not evidence that every original acceptance target was achieved.
   shutdown; credential/storage/HTTP hardening; task publication ordering; restart reconciliation;
   bounded renderer caches and fixed-step simulation; Sharp image pipeline; shared UI query management;
   pinned desktop/Docker dependencies; stronger lint and CI checks. Details and evidence are maintained in
-  [the September audit](audit/2026-09.md).
+  [the September audit](history/AUDIT-2026-09.md).
 
 ## Work remaining
 

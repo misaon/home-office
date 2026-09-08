@@ -1,7 +1,7 @@
 # Home Office architecture
 
 Implementation reference, reviewed 2026-09-08. Historical decisions and work logs live in
-[PLAN.md](PLAN.md); audit findings and research are in [audit/2026-09.md](audit/2026-09.md).
+[PLAN.md](PLAN.md); audit findings and research are in [history/AUDIT-2026-09.md](history/AUDIT-2026-09.md).
 This document distinguishes implemented behavior from future work.
 
 ## Processes and boundaries
@@ -162,4 +162,4 @@ those live-log limits. Source reload polling is only present in development UI b
 
 The unsigned desktop build is assembled with a revision/checksum-pinned Hutch toolchain. Release builds
 validate the tag and its ancestry on `main`; a separate job holds GitHub publication permissions. See
-[STACK.md](STACK.md) for dependencies and [audit/2026-09.md](audit/2026-09.md) for tradeoffs and follow-ups.
+[STACK.md](STACK.md) for dependencies and [history/AUDIT-2026-09.md](history/AUDIT-2026-09.md) for tradeoffs and follow-ups.

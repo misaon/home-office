@@ -43,6 +43,6 @@ State defaults to `~/.config/home-office`; `HO_HOME` selects a separate state di
 - [Current architecture and limitations](docs/ARCHITECTURE.md)
 - [Stack choices and framework assessment](docs/STACK.md)
 - [Current plan and remaining work](docs/PLAN.md)
-- [Independent September 2026 audit](docs/audit/2026-09.md)
+- [Independent September 2026 audit](docs/history/AUDIT-2026-09.md)
 - [Engineering conventions](docs/CONVENTIONS.md)
 - [Sprite import contract](assets/README.md) and [office art](docs/OFFICE-ART.md)

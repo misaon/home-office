@@ -3,7 +3,7 @@
 Reviewed 2026-09-08. Exact application dependency pins live in the root `package.json` catalog and
 `bun.lock`. Sandbox npm trees have their own `package-lock.json` files. Version numbers below record
 what this repository uses, not a promise that a release remains the newest. Recheck vendor sources and
-compatibility before updating. [The audit report](audit/2026-09.md) records validation and tradeoffs.
+compatibility before updating. [The audit report](history/AUDIT-2026-09.md) records validation and tradeoffs.
 
 ## Implemented stack
 
