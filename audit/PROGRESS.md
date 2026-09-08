@@ -3,7 +3,7 @@
 Restart-safe state of this audit. Updated at the end of every step.
 
 - **Branch:** `audit/deep-monorepo-audit-2026-09` (from `main` @ `ecd4aa5`)
-- **Phase:** 3 (implementation) — Wave 1 of 7 complete and verified
+- **Phase:** 3 (implementation) — Waves 1 and 2 of 7 complete and verified
 
 ## Done
 
@@ -67,8 +67,38 @@ lockfile-drift guard before each sandbox `npm audit`.
 `audit/VERIFICATION.md`. Two audit claims were corrected in `audit/AUDIT.md`: A1.3 ("already satisfied" —
 wrong, three rules had 36 hits) and the Phase 1 miss of B1.4 and A2.5.
 
+## Wave 2 complete (2026-09-08) — verified
+
+**Deduplication:** `compact()` and `errorMessage()` now live in `@ho/protocol`, the one package every
+workspace already imports; they replace **63** `exactOptionalPropertyTypes` spread guards (AUDIT.md said 62;
+one was written across three lines) and **24** copies of the unknown-error idiom under five names.
+`definedOnly` is gone with them (B1.1). Four CLI flag parses became `Schema.optional().parse(flag)`, because
+`compact` evaluates eagerly and the old guards were hiding `AuthKind.parse(undefined)` and `Number(undefined)`.
+
+**Naming and dead surface:** one version from `HO_RELEASE_VERSION` for the daemon, the MCP server and the
+ACP `clientInfo` (B13.5, verified end to end); `ChatHistoryInput`/`UsageBucket` export their types;
+`McpAgentSummary`, the `"daemon-token"` secret key and the unread `images` capability deleted; the previous
+audit's report moved to `docs/history/` with a provenance banner and its five links repointed.
+
+**Simplification:** `parseArgs` `multiple: true` replaced the hand-written `--import` scanner (verified: two
+`--import` flags both land), `walkSteps` lost two unused parameters at twelve call sites, three dead lines
+gone, the boss's "done" line is built in one place, and the runner's stream pumps are shared with the ACP
+spike (which had dropped the 1 MiB guard).
+
+**Found while verifying, all recorded in `AUDIT.md`:** **A2.6** (a self-compiled `ho` serves 404 for the UI
+and 500 for `doctor` — resources resolve to `/`; scheduled for Wave 5), **B6.6** (a hidden document silences
+every UI update because the rAF-coalesced bump never fires and its flag stays set — fixed), **B29.5**
+(unexpected RPC failures were logged nowhere — fixed, and it immediately exposed A2.6's cause), plus the
+Wave-1 CI guard that would have failed every run (A2.3, fixed here).
+
+Full §7 pass, including the Docker image build deferred from Wave 1: `bun install --frozen-lockfile`,
+`bun run check`, both audits, all four builds, `ho image build` through the daemon, the runner binary run
+inside the image, the CLI exercised command by command, and the office rendered in the always-hidden
+browser pane **without console hacks** — output in `audit/VERIFICATION.md`.
+
 ## Next step
 
-Wave 2 — hygiene: A3.2 (move `docs/audit/2026-09.md` under `docs/history/`), B12.1 (four misplaced doc
-comments), B13.4, B13.5 (version unification), B14.1 (24 error idioms → one `errorMessage` in `@ho/core`),
-B14.2–B14.4, **B15.1 (62 spread guards → one typed `compact()`)**, B15.2–B15.4, B28.1, B28.2.
+Wave 3 — architecture: B1.2 (`@ho/protocol/runner` subpath), B1.3 (`@ho/sim` barrel), B4.1 (projection
+indexes), B4.2 (bounded chat), B4.3 (MCP server per call), B9.1, B9.2 (port boundary leaks), B16.1 (`sharp`
+for exact raster ops), B16.3 (drop `proper-lockfile`), B22.1, B22.2, B29.1 (`useMutation`), B29.2 (one
+socket handshake), B29.3 (intake blocks its own subscription).

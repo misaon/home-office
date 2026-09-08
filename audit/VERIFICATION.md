@@ -291,3 +291,197 @@ name one process while the socket answers from the other, which shows up as `rej
 Still deferred to the Wave 5 record. Note that Wave 1 changed `packages/protocol/src/**`, which feeds
 `contextHash`, so `ho doctor` now correctly reports both images as `present, STALE` — the content-hash
 mechanism working as designed (observed in the setup checklist: "out of date: ho/agent:dev, ho/git-bridge:dev").
+
+## Wave 2 — hygiene (2026-09-08)
+
+Every block below is copied from the terminal, not retyped.
+
+### `bun install --frozen-lockfile`
+
+```
+bun install v1.4.2 (744846f84)
+Checked 236 installs across 388 packages (no changes) [13.00ms]
+```
+
+### `bun run check`
+
+```
+$ bun run typecheck && bun run lint && bun run fmt:check && bun run knip
+$ bun run scripts/typecheck.ts
+✔ apps/cli/tsconfig.json … ✔ tsconfig.json          (16 projects, all green)
+$ oxlint --type-aware --deny-warnings
+$ oxfmt --check
+Checking formatting...
+All matched files use the correct format.
+Finished in 319ms on 309 files using 12 threads.
+$ knip
+bun run check 2>&1  9.46s user 2.22s system 507% cpu 2.301 total
+```
+
+### No escapes anywhere
+
+```
+$ git ls-files '*.ts' '*.tsx' | xargs grep -n ': any\|<any>\|@ts-ignore\|@ts-expect-error\|@ts-nocheck\|eslint-disable'
+none
+```
+
+### Vulnerability audits
+
+```
+$ bun audit
+No vulnerabilities found (checked 367 packages) [320.00ms]
+
+$ for d in images/agent/mcp images/agent/providers/*; do npm ls --prefix "$d" --package-lock-only >/dev/null && npm audit --omit=dev --prefix "$d"; done
+-- images/agent/mcp                 found 0 vulnerabilities
+-- images/agent/providers/codex      found 0 vulnerabilities
+-- images/agent/providers/gemini-cli found 0 vulnerabilities
+-- images/agent/providers/opencode   found 0 vulnerabilities
+```
+
+The drift guard added in Wave 1 was wrong and is fixed here (A2.3). Proof in both directions:
+
+```
+$ npm ls --prefix images/agent/mcp >/dev/null 2>&1; echo $?
+1                        # no node_modules there, and nothing installs them in CI either
+$ python3 - <<'PY' … adds "left-pad": "^1.3.0" to images/agent/mcp/package.json … PY
+$ npm ls --prefix images/agent/mcp --package-lock-only >/dev/null 2>&1; echo $?
+1                        # drift detected
+$ (revert package.json)
+$ npm ls --prefix images/agent/mcp --package-lock-only >/dev/null 2>&1; echo $?
+0
+```
+
+### Builds
+
+```
+$ bun run ui:build
+ui: 3 files, 1099 KiB → /Users/.../packages/ui/dist
+$ bun run assets:manifest
+  furniture/string-lights 20 × 1 cells = 480 × 24 px ×1 … (43 sprites)
+$ bun build --compile apps/cli/src/main.ts --outfile <scratch>/ho
+  [28ms]  bundle  552 modules
+  [66ms] compile  <scratch>/ho
+$ bun build --compile --minify --target=bun-linux-arm64-musl packages/runner/src/main.ts --outfile <scratch>/ho-runner
+   [5ms]  minify  -0.84 MB (estimate)
+   [2ms]  bundle  124 modules
+  [74ms] compile  <scratch>/ho-runner bun-linux-aarch64-musl-v1.4.2
+```
+
+### Docker images — the item deferred from Wave 1
+
+```
+$ docker version --format '{{.Server.Version}}'
+29.7.2
+$ docker buildx build --load -t ho/git-bridge:audit-w2 images/git-bridge
+#7 naming to docker.io/ho/git-bridge:audit-w2 done
+#7 unpacking to docker.io/ho/git-bridge:audit-w2 0.1s done
+#7 DONE 0.1s
+$ ho image build              (through the daemon: context assembly + runner compile + buildx)
+ensuring ho/agent:dev (c295feaca199dec4288d155ce4280183)
+…
+images ready
+$ docker images | grep '^ho/'
+ho/agent:dev            1.8GB
+ho/agent-opencode:dev   2GB
+ho/agent-codex:dev      1.89GB
+ho/agent-gemini-cli:dev 1.58GB
+ho/git-bridge:dev       41.4MB
+```
+
+The runner extracted into `@ho/runner/pump` (B14.4) is compiled into the image by that build, and the
+binary in the image runs:
+
+```
+$ docker run --rm --entrypoint /usr/local/bin/ho-runner ho/agent:dev
+HO_GATEWAY and HO_SESSION_TOKEN are required
+```
+
+### The compiled binary starts the daemon (A2.5 still fixed), and A2.6 found
+
+```
+$ <scratch>/ho daemon
+{"level":30,…,"events":0,"lastSeq":-1,"msg":"read model rebuilt"}
+{"level":30,…,"host":"127.0.0.1","port":47800,"msg":"rpc server listening"}
+{"level":30,…,"resources":"/","msg":"daemon started"}
+daemon 0.0.0-dev listening on 127.0.0.1:47800 (pid 22817)
+$ curl -fsS http://127.0.0.1:47800/health   →  {"ok":true}
+$ stat -f '%Lp' "$HO_HOME/daemon.json"      →  600
+$ curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:47800/   →  404
+$ <scratch>/ho doctor
+ho: Internal server error
+{"level":50,…,"err":"ENOENT: no such file or directory, open '/images/agent'","msg":"rpc call failed"}
+```
+
+That last log line exists only because of B29.5, fixed in this wave; the 404 and the 500 are the new
+finding **A2.6**, scheduled for Wave 5.
+
+### The CLI, run for real (source daemon, `resources` = the repository)
+
+```
+$ ho project add "Audit Repo" --path <repo>        → floor 1
+$ ho agent add Pam --role worker --provider opencode
+  {'provider': 'opencode', 'auth': 'api-key', 'model': 'anthropic/claude-sonnet-5', 'effort': 'medium'}   # B14.3: was "low"
+$ ho agent add Jim --role worker --provider claude-code --effort high
+  {'provider': 'claude-code', 'model': 'sonnet', 'effort': 'high'}                                        # explicit flag still wins
+$ ho project add "Second Floor" --path <tmp>/repo2 --import Pam --import Jim                              # B15.3: repeats collected
+$ ho agent list
+  … Andrew boss … floor=Audit Repo
+  … Pam worker opencode/anthropic/claude-sonnet-5@medium … floor=Audit Repo
+  … Jim worker claude-code/sonnet@high … floor=Audit Repo
+  … Andrew, Pam, Jim … floor=Second Floor                                                                  # both imports landed
+$ ho agent set Pam --project "Audit Repo" --model anthropic/claude-opus-5 --effort low
+  {'model': 'anthropic/claude-opus-5', 'effort': 'low', 'auth': 'api-key', 'skillPack': 'worker',
+   'appearance': {'spriteSet': 'agent-a', 'gender': 'neutral'}}                                            # B15.1: partial patch, nothing erased
+$ ho task create --project "Audit Repo" --title "Verify wave 2" --brief "check the office" --priority high
+  {'status': 'inbox', 'priority': 'high', 'assigneeId': None, 'source': {'kind': 'manual'}}
+$ ho task list --project "Audit Repo" --status inbox   → the task
+$ ho usage                                             → window: all time  sessions: 0  rate-limit incidents: 0
+$ ho tail --after 0                                    → 10 stored events replayed, seq 1…10
+```
+
+### One version everywhere (B13.5)
+
+```
+$ HO_RELEASE_VERSION=1.4.0 ho daemon
+daemon 1.4.0 listening on 127.0.0.1:47800 (pid 31068)
+$ python3 -c "…json.load(open(daemon.json))['version']"   → 1.4.0
+$ ho health                                               → "version": "1.4.0"
+```
+
+### The office renders — with no console hacks this time
+
+The Browser pane always reports `document.hidden === true`, which is what exposed B6.1 and B6.6. After
+those fixes, a plain reload is enough:
+
+```
+> ({hidden: document.hidden, ticking: __ho.scene.app.ticker.started,
+   projects: __ho.store.getState().snapshot.projects.size,
+   innerKids: __ho.scene.app.stage.children.map(c => c.children.length),
+   floorViewChildren: …, worldActors: __ho.bridge.world.actors.size, error: …})
+{"hidden": true, "ticking": false, "projects": 2, "innerKids": [1],
+ "floorViewChildren": 2, "worldActors": 8, "error": null}
+```
+
+Screenshot captured: both floor tabs, the plan with rooms, desks, kitchen, spa and elevator, six agents at
+their desks, the chat panel with Andrew. `ticking: false` in that same reading is the point — the office is
+correct **and** idle while hidden.
+
+Two measurements behind the fixes:
+
+```
+> await new Promise(r => { setTimeout(() => r("no rAF"), 1500); requestAnimationFrame(() => r("rAF fired")); })
+"no rAF"                     # browser pane, and a background Chrome window too
+> probe after one store change while hidden: {"storeChanges": 1, "updates": 1}, stage 0 → 1 child
+```
+
+### The ACP spike (B14.4)
+
+```
+$ bun run spikes/s6-acp-mock/src/run.ts
+CHECKS {"init":true,"permission":true,"toolCall":true,"toolResultOk":true,"result":true,"exitCode":0}
+```
+
+**Procedure notes for later waves.** The Browser pane strips the URL fragment, so `ho ui --print`'s token
+never arrives: read it from `daemon.json` and put it in **sessionStorage** under `ho.token` (not
+localStorage — `packages/ui/src/rpc.ts` uses sessionStorage), then reload. A real Chrome window driven
+through the extension is no better for visibility: an occluded window also reports `document.hidden`.

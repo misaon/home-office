@@ -75,8 +75,18 @@ Odhad: triviální
 Severita: **blocker**
 Kde: `packages/store/src/database.ts:24-26` and `packages/daemon/src/paths.ts:27-28` at the audited baseline
 Důkaz: `bun build --compile apps/cli/src/main.ts` produced a binary that died immediately with `ho: Can't find meta/_journal.json file`. Reproduced against the **baseline** commit's own binary, so it predates this audit. Cause: `defaultResourcesRoot()` is `resolve(import.meta.dir, "../../..")`, which inside a compiled executable resolves to a virtual path, so `resolveResources` reported `migrationsDir: null`; `openDatabase` then fell back to `fileURLToPath(new URL("../drizzle", import.meta.url))`, also virtual, and Drizzle's file-based migrator threw. Running from source and the packaged desktop app were both fine — the desktop passes `resourcesRoot` explicitly and `scripts/desktop-prepare.ts` copies the migrations — so only the shipped CLI binary was affected. Phase 1 missed this because it verified the daemon from source and the compiled binary only through `--help` and `doctor`; the CI smoke step added for A2.2 is what surfaced it.
-Dopad: Anyone running the compiled `ho` — the artefact `ci.yml` builds and the one a user would install — could not start a daemon.
+Dopad: Anyone running the compiled `ho` — the artefact `ci.yml` builds — could not start a daemon.
+**Correction (Wave 2):** the first version of this line also called it "the one a user would install". That is wrong: `release.yml` publishes only the macOS desktop app, and the desktop passes its own `resourcesRoot`. The compiled CLI is a CI build check and whatever a developer compiles locally, which is still worth fixing but is not the installed artefact.
 Doporučení: Carry the migrations inside the executable. Done in Wave 1: `packages/store/src/migrations.ts` imports the journal and each `.sql` with import attributes (`with { type: "text" }`, verified to survive `--compile`) and materialises them into a content-addressed temporary folder only when no folder is on disk. Byte-identical to Drizzle's own layout, so bookkeeping is unchanged — verified: a database migrated from the embedded copy records hash `38f97c41…686d52f` and `created_at 1788653253561`, exactly matching one migrated from the on-disk folder, so no existing database re-migrates.
+Odhad: střední
+
+### A2.6 – The compiled `ho` binary cannot serve the UI and its `doctor` returns 500
+
+Severita: high
+Kde: `packages/daemon/src/paths.ts:26-28`, reached from `packages/daemon/src/images.ts:112-127` and `packages/daemon/src/server.ts#serveUi`
+Důkaz: Found in Wave 2, after A2.5 made the compiled daemon start at all. Against a binary built from this branch (`bun build --compile apps/cli/src/main.ts`): the daemon starts and `/health` answers `{"ok":true}`, but `GET /` returns **404 `not found`** and `ho doctor` prints `ho: Internal server error`. The daemon's own start line says `"resources":"/"` — `defaultResourcesRoot()` is `resolve(import.meta.dir, "../../..")`, which in a compiled executable walks a virtual path up to `/`. So `uiDir` and `assetsDir` resolve to nothing (`whenPresent` correctly returns null, hence the 404), and `imageContext("agent")` returns `/images/agent`, which does not exist: with the error interceptor added in B29.5 the daemon now logs the cause, `ENOENT: no such file or directory, open '/images/agent'`. Pre-existing, and the same root cause as A2.5: only the migrations layer was fixed there.
+Dopad: A self-compiled `ho` runs projects, agents and tasks fine but cannot show the office and cannot report or build images. The shipped desktop app is unaffected (it passes `resourcesRoot`), and so is running from source.
+Doporučení: Make `Resources.imageContext` nullable like every other field in that type, and have `imageStatus`/`ensureImages` report "no image context in this build" instead of throwing; then `doctor` degrades to a truthful report instead of a 500. Deferred to **Wave 5**, where the image/Docker work lives, and the CI smoke test gains a `doctor` call there.
 Odhad: střední
 
 ### A1.4 – No `incremental`, so every typecheck is a cold start
@@ -162,7 +172,8 @@ Severita: low
 Kde: `.github/workflows/ci.yml:22-27`
 Důkaz: `npm audit --omit=dev --prefix "$directory"` runs for `images/agent/mcp` and each `images/agent/providers/*` — genuinely more than most repositories do. `--prefix` makes npm read that directory's `package-lock.json`; if a lockfile drifts from its `package.json`, npm audits the lockfile and says nothing about the drift.
 Dopad: Bezpečnost: a `package.json` bump without `npm install` is audited as the old tree.
-Doporučení: Add `npm ls --prefix "$directory" >/dev/null` (fails on drift) or `npm ci --ignore-scripts --prefix "$directory"` before the audit.
+Doporučení: Add `npm ls --prefix "$directory" --package-lock-only >/dev/null` before the audit.
+**Correction after Wave 1.** Wave 1 added it without `--package-lock-only`, which reads `node_modules`. Nothing installs those four directories in CI — `npm audit --prefix` works from `package-lock.json` alone, which is exactly why the original step needed no install — so the guard as first written would have failed every CI run. Caught in Wave 2 by running the step locally. Verified in both directions with `--package-lock-only`: exit 1 with a dependency added to `package.json` only, exit 0 once reverted.
 Odhad: triviální
 
 ### A2.4 – Verified good: action pinning, permissions, concurrency, release-tag ancestry
@@ -284,11 +295,11 @@ Odhad: střední
 
 ## B2, B3, B12, B15 — Refactoring, simplification, readability
 
-### B15.1 – The `exactOptionalPropertyTypes` spread guard appears **62 times**
+### B15.1 – The `exactOptionalPropertyTypes` spread guard appears **63 times**
 
 Severita: high
 Kde: 62 occurrences across 23 files; densest: `apps/cli/src/commands/agent.ts` (11), `packages/core/src/commands/tasks.ts` (7), `packages/sim/src/office-builder.ts` (6), `apps/cli/src/commands/task.ts` (6), `packages/core/src/model/reduce.ts` (5)
-Důkaz: `git ls-files '*.ts' '*.tsx' | xargs grep -o '=== undefined ? {}' | wc -l` → **62**. Every one is `...(x === undefined ? {} : { key: x })`, needed because `exactOptionalPropertyTypes: true` forbids assigning `undefined` to an optional property. `packages/core/src/commands/agents.ts:99-115` is 13 consecutive lines of it.
+Důkaz: `git ls-files '*.ts' '*.tsx' | xargs grep -o '=== undefined ? {}' | wc -l` → **62**. **Correction (Wave 2):** the real count is **63** — that grep is line-based and one occurrence in `apps/cli/src/commands/agent.ts` was written across three lines. All 63 are now `compact(...)`. Every one is `...(x === undefined ? {} : { key: x })`, needed because `exactOptionalPropertyTypes: true` forbids assigning `undefined` to an optional property. `packages/core/src/commands/agents.ts:99-115` is 13 consecutive lines of it.
 Dopad: Čitelnost: the single largest readability tax in the codebase; the intent ("build a patch from the flags that were given") is buried in ceremony. A typed helper already exists (`definedOnly`) and is used in **two** places.
 Doporučení: One exported `compact(obj)` returning `{ [K in keyof T]: Exclude<T[K], undefined> }` — `definedOnly` promoted and typed with `type-fest` so no assertion is needed — applied at all 62 sites. Expected: ~120 fewer lines and a large legibility gain.
 Odhad: střední
@@ -389,6 +400,16 @@ Dopad: A burst of task events during a slow `gh` call permanently stops issue ac
 Doporučení: Use the same `track()` pattern: dispatch `#tell` without awaiting inside the loop, keep the promise in the pending set the class already has, and drain it in `stop()`.
 Odhad: střední
 
+### B29.5 – Unexpected RPC failures reached the client as "Internal server error" and were never logged
+
+Severita: medium
+Kde: `packages/daemon/src/server.ts:56` at the audited baseline
+Důkaz: `new RPCHandler(router)` was constructed with no options, so oRPC's default behaviour applied: it hides the detail of an unexpected throw from the client (correct) and the daemon wrote nothing about it (not correct). Reproduced in Wave 2: `ho doctor` against a compiled binary printed `ho: Internal server error` while `daemon.log` contained only unrelated lines. Found by needing it, not by reading.
+Dopad: Diagnostika: a 500 with no trace anywhere in the product. Every unexpected server-side error was invisible.
+Doporučení: Pass oRPC's own `interceptors: [onError(...)]`; log a defined `ORPCError` at debug (those are the protocol's typed rejections, not faults) and anything else at error. Done in Wave 2 — the very first run logged `ENOENT: no such file or directory, open '/images/agent'`, which is A2.6.
+Zdroj: `interceptors` on `StandardRPCHandlerOptions` and `onError` re-exported from `@orpc/server`, read in the installed `@orpc/server@1.15.0` typings (`dist/shared/server.BqadksTP.d.mts:52`, `dist/index.d.ts:6`); pattern confirmed in the oRPC docs (https://orpc.dev/docs/adapters/websocket) 2026-09-08.
+Odhad: triviální
+
 ### B29.4 – Verified good: event sourcing, command purity, port boundaries
 
 Severita: —
@@ -448,6 +469,16 @@ Kde: `packages/ui/src/office/office-canvas.tsx:28-38`, `:78`
 Důkaz: `onVisibility()` stops the Pixi ticker whenever `document.hidden`, and it is called once at the end of the mount effect. If the document is hidden at mount the ticker never starts, so `showFloor`/`update` never run and the canvas shows only the clear colour. Reproduced in this session: the Claude Browser pane reports `document.hidden === true`, and instrumentation showed a fully populated world (one floor, two actors, `layoutIssues: []`) with `ticking: false` and **0** children on the stage container. Starting the ticker by hand rendered the office correctly.
 Dopad: DX: opening the office in a background tab, or in an embedded webview that reports itself hidden, shows a black pane with no indication that anything is waiting. Stopping the ticker while hidden is right; skipping the _first_ frame is not.
 Doporučení: Render one frame at mount regardless of visibility, then apply the visibility policy.
+**Correction after Wave 2.** That recommendation was measured and is not sufficient, twice over. At mount there is nothing to draw yet — the floors arrive with the event replay, which finishes later — and Pixi's ticker skips an `update()` issued that soon after the previous one, so the extra frame was a no-op both times (observed: `stage.children[0].children.length === 0` after a plain reload). What works, and is what shipped in Wave 2: draw the frame explicitly (the same four calls the ticker callback makes, with `dt = 0`, followed by `app.render()`), once after mount and again on every store change while the document is hidden. The ticker stays stopped, so a hidden office still costs no frames. Verified: after a plain reload in the always-hidden browser pane the floor view is on the stage, both floors and eight actors are in the world, `ticker.started` is false, and the office renders — with no console intervention, which Wave 1 needed.
+Odhad: triviální
+
+### B6.6 – While the document is hidden the UI never publishes a snapshot again
+
+Severita: high
+Kde: `packages/ui/src/store.ts:140-157` (`scheduleModelBump`), `:159-…` (`scheduleLiveBump`) at the audited baseline
+Důkaz: Both bumps guard themselves with a boolean and coalesce through `requestAnimationFrame`. A hidden document never runs a rAF callback — proved in this session: `await new Promise(r => { setTimeout(() => r("no rAF"), 1500); requestAnimationFrame(() => r("rAF fired")); })` returned **"no rAF"** in the browser pane and in a background Chrome window. The flag therefore stays `true` after the first stalled bump and **every later change is dropped**, not merely delayed. Observed end to end: the daemon had two floors and ten events, the UI reported `connection: "online"`, `replayed: true`, and `snapshot.projects.size: 0`, rendering the "Add a project (floor)" empty state. Recovery depends on the browser eventually running the pending callback when the tab is shown; a webview that reports itself hidden for its lifetime never recovers.
+Dopad: The office and every panel silently stop reflecting the daemon. This is also what made Wave 1's UI verification need console hacks — the audit blamed the ticker (B6.1) and missed the store.
+Doporučení: Fall back to a timeout while `document.hidden` — the frame alignment rAF buys is pointless in a document that is not painting. Done in Wave 2 with a 200 ms hidden-document interval; verified by reloading the pane and seeing both floors, the roster and the office appear on their own.
 Odhad: triviální
 
 ### B6.2 – The whole projection snapshot is rebuilt and nine panels re-render per model bump
@@ -688,6 +719,7 @@ Kde: `packages/core/src/providers.ts:20-27` (`defaultChoice`), `packages/ui/src/
 Důkaz: All four express "use `medium` if the provider offers it, otherwise the first level it offers" — but the CLI's copy falls back to `"low"` where the others fall back to `"medium"`. So `ho agent add --provider opencode` picks `low` and the UI picks `medium` for the same provider.
 Dopad: Duplikace plus a genuine divergence between two clients of the same domain rule.
 Doporučení: Use `defaultChoice` from `@ho/core` (it already exists) in all three clients.
+**Correction after Wave 2.** Only **three** of the four are the same rule. `settings-agents.tsx`'s `effortFor` expresses a different one — _keep_ the current effort when the new provider offers it, otherwise fall back — which is a migration rule, not a default, and it has a single caller. It stays where it is. `agent-fields.tsx` and the CLI's `add` now call `defaultChoice`, and the CLI's `low`/`medium` divergence is gone: verified live, `ho agent add --provider opencode` records `effort: medium`, and `--effort high` is still honoured.
 Odhad: triviální
 
 ### B14.4 – `pumpLines` / `pumpText` exist twice

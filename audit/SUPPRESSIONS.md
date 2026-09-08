@@ -43,3 +43,17 @@ The six inherited suppressions are now **five**, and their character changed:
 | `.oxlintrc.json` `rules`        | `node/no-process-env`, `node/no-sync`, `node/no-top-level-await`: `off`            | Enabling the `node` plugin (A1.2) brings these three. All three describe deliberate choices here: `Bun.env`/`process.env` is how configuration arrives, `existsSync` is used in resource resolution where async would infect a synchronous path, and top-level `await` is the module format this repository targets. |
 
 No `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck` or non-null assertion was added.
+
+## After Wave 2
+
+The count is unchanged at five, and one of them moved:
+
+| #   | Where                                  | Suppression                                                          | Status                                                                                                                                                                                                                 |
+| --- | -------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `packages/protocol/src/patch.ts`       | `oxlint-disable-next-line typescript/no-unsafe-type-assertion`       | **moved** from `core/src/commands/projects.ts` with the function it guards. `compact` builds its result with `Object.fromEntries`, whose type TypeScript cannot express; nothing else in the tree asserts.             |
+| 2   | `packages/store/src/event-store.ts:77` | `oxlint-disable-next-line typescript/require-await`                  | unchanged; `bun:sqlite` is synchronous while the port is async for remote backends. Wave 3 reviews it.                                                                                                                 |
+| 3-4 | `.oxlintrc.json` `overrides`           | the two scoped rule disables from Wave 1                             | unchanged.                                                                                                                                                                                                             |
+| 5   | `.oxlintrc.json` `rules`               | `node/no-process-env`, `node/no-sync`, `node/no-top-level-await` off | unchanged, and `packages/daemon/src/version.ts` is a new deliberate `Bun.env` read: the version must come from the environment, and `@ho/protocol`/`@ho/core` compile with `types: []` precisely so they cannot do it. |
+
+Nothing was added: no `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`, non-null assertion or
+whole-file disable appears anywhere in the tree (grep in `VERIFICATION.md` § "No escapes anywhere").
