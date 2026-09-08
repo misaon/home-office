@@ -1,69 +1,87 @@
 name: release
 
-# Tag a commit on main as vX.Y.Z and push the tag: the desktop app is built on an Apple Silicon runner and
-# attached to a GitHub Release together with SHA-256 checksums. Builds are unsigned (no Apple developer
-# account, decision in docs/STACK.md); the release notes explain the one-time `xattr -cr`.
 on:
   push:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   desktop-macos:
     runs-on: macos-26
     timeout-minutes: 40
-    env:
-      HUTCH_VERSION: "0.25.0"
     steps:
-      - uses: actions/checkout@v7
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Validate release tag
+        shell: bash
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          git merge-base --is-ancestor HEAD origin/main
+          echo "HO_RELEASE_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
-      - name: Install Hutch and project the Electrobun devkit
-        run: |
-          curl -fsSL https://hutch.blackboard.sh/hutch/install.sh | sh -s -- --version "$HUTCH_VERSION" --no-modify-path
-          echo "$HOME/.hutch/bin" >> "$GITHUB_PATH"
-          cd apps/desktop && "$HOME/.hutch/bin/hutch" electrobun sync
+      - run: bun run devkit
       - run: bun run check
-      - name: Stamp the app version from the tag
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          sed -i '' "s/^    version: \".*\",/    version: \"${VERSION}\",/" apps/desktop/electrobun.config.ts
-          grep -n "version:" apps/desktop/electrobun.config.ts
-      - name: Build the desktop app
-        run: bun run desktop:build
+      - run: bun audit
+      - run: bun run desktop:build
       - name: Collect artifacts and checksums
+        shell: bash
         run: |
           mkdir -p dist
-          for f in apps/desktop/artifacts/*; do
-            cp "$f" "dist/$(basename "$f" | tr ' ' '-')"
+          for artifact in apps/desktop/artifacts/*; do
+            cp "$artifact" "dist/$(basename "$artifact" | tr ' ' '-')"
           done
-          cd dist && shasum -a 256 * > SHA256SUMS.txt && cat SHA256SUMS.txt
-      - name: Write release notes
+          cd dist
+          shasum -a 256 * > SHA256SUMS.txt
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: desktop-macos
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: desktop-macos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: desktop-macos
+          path: dist
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
         run: |
           cat > notes.md <<'NOTES'
           ## Home Office for macOS (Apple Silicon)
 
-          Unsigned build. After downloading, clear the quarantine flag once, then open the app normally:
+          Requirements: macOS 14+, Docker Desktop, and credentials for the chosen AI provider.
+          Claude Code is the default provider; other provider images can be built in Settings.
+          The setup checklist builds the required images, stores provider credentials in the
+          system secret store, and can run a task to verify the office.
+
+          This build is unsigned. After verifying SHA256SUMS.txt, clear the quarantine flag
+          on the installed application if macOS blocks it:
 
           ```bash
           xattr -cr "/Applications/Home Office.app"
           ```
-
-          Requirements: macOS 14+, Docker Desktop running, a Claude subscription (`claude setup-token`).
-          The first launch opens a setup checklist that builds the agent image, stores the token in the
-          Keychain, hires the default team and runs a smoke test.
-
-          Files: the `.dmg` installs the app; the `.app.tar.zst` and `update.json` serve Electrobun's
-          updater; `SHA256SUMS.txt` lists the checksums.
           NOTES
-      - name: Publish the GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "Home Office $GITHUB_REF_NAME" \
             --notes-file notes.md \

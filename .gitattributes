@@ -4,4 +4,3 @@
 *.gif binary
 *.icns binary
 *.ico binary
-bun.lock -diff

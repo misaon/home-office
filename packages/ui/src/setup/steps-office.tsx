@@ -12,7 +12,11 @@ type Sent = { messageId: ChatMessageId; taskId: TaskId | null; at: string };
 
 const replyTo = (snapshot: Snapshot, sent: Sent, floorId: ProjectId): boolean | string => {
   const reply = snapshot.chat.find(
-    (m) => m.projectId === floorId && m.author.kind === "agent" && m.at > sent.at,
+    (m) =>
+      m.projectId === floorId &&
+      m.author.kind === "agent" &&
+      m.taskId === sent.taskId &&
+      m.at >= sent.at,
   );
   return reply === undefined ? false : reply.text;
 };
@@ -64,6 +68,7 @@ export function SmokeStep({
   ready: boolean;
 }): React.JSX.Element {
   const floorId = useUi((s) => s.floorId);
+  const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<Sent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const status = smokeStatus(snapshot, sent, ready, floorId);
@@ -72,15 +77,18 @@ export function SmokeStep({
   );
   const send = (): void => {
     const client = getClient();
-    if (client === null || floorId === null) {
+    if (client === null || floorId === null || sending) {
       return;
     }
+    setSending(true);
     client.chat.send({ text: HELLO, projectId: floorId }).then(
       ({ message, task }) => {
+        setSending(false);
         setSent({ messageId: message.id, taskId: task?.id ?? null, at: message.at });
         setError(null);
       },
       (e: unknown) => {
+        setSending(false);
         setError(describeError(e));
       },
     );
@@ -100,7 +108,9 @@ export function SmokeStep({
           <button
             type="button"
             className="rounded bg-accent px-2 py-1 text-black disabled:opacity-50"
-            disabled={!ready || floorId === null || (sent !== null && status.state === "unknown")}
+            disabled={
+              sending || !ready || floorId === null || (sent !== null && status.state === "unknown")
+            }
             onClick={send}
           >
             {sent === null ? "Say hello" : "Try again"}

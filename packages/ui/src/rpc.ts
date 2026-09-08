@@ -28,6 +28,13 @@ let current: Client | null = null;
 /** The client of the live connection, or null while offline. Panels call RPCs through this. */
 export const getClient = (): Client | null => current;
 
+export function requireClient(): Client {
+  if (current === null) {
+    throw new Error("daemon is offline");
+  }
+  return current;
+}
+
 export function connect(token: string): Promise<{ client: Client; socket: WebSocket }> {
   return new Promise((resolve, reject) => {
     const scheme = window.location.protocol === "https:" ? "wss" : "ws";

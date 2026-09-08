@@ -47,7 +47,7 @@ export const tokenStatus = (doctor: Doctor | null): StepStatus =>
   doctor === null
     ? { state: "unknown", text: "checking…" }
     : doctor.secrets.anthropicOauthToken
-      ? { state: "ok", text: "stored in the Keychain" }
+      ? { state: "ok", text: "stored in the configured secret store" }
       : { state: "todo", text: "no Claude subscription token yet" };
 
 /** True while any step a working office depends on is still open (floors and their teams are separate). */

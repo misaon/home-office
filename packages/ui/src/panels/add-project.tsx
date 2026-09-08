@@ -1,5 +1,5 @@
 import type { Agent, AgentId, RepoInspection, RepoSource } from "@ho/protocol";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { getClient } from "../rpc.ts";
 import { type Snapshot, sortedFloors, useUi } from "../store.ts";
 
@@ -33,10 +33,14 @@ function useRepoInspection(
   source: string,
   onFound: (result: Extract<RepoInspection, { ok: true }>) => void,
 ): Inspecting {
-  const [state, setState] = useState<Inspecting>({ result: null, busy: false });
+  const [state, setState] = useState<Inspecting & { source: string }>({
+    source: "",
+    result: null,
+    busy: false,
+  });
+  const found = useEffectEvent(onFound);
   useEffect(() => {
     if (source === "") {
-      setState({ result: null, busy: false });
       return undefined;
     }
     let cancelled = false;
@@ -45,19 +49,19 @@ function useRepoInspection(
       if (client === null) {
         return;
       }
-      setState({ result: null, busy: true });
+      setState({ source, result: null, busy: true });
       client.projects.inspect({ repo: repoOf(source) }).then(
         (result) => {
           if (!cancelled) {
-            setState({ result, busy: false });
+            setState({ source, result, busy: false });
             if (result.ok) {
-              onFound(result);
+              found(result);
             }
           }
         },
         (e: unknown) => {
           if (!cancelled) {
-            setState({ result: { ok: false, message: describeError(e) }, busy: false });
+            setState({ source, result: { ok: false, message: describeError(e) }, busy: false });
           }
         },
       );
@@ -66,10 +70,8 @@ function useRepoInspection(
       cancelled = true;
       clearTimeout(timer);
     };
-    // The callback only fills empty fields; re-running on its identity would re-inspect on every keystroke.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source]);
-  return state;
+  return state.source === source ? state : { result: null, busy: source !== "" };
 }
 
 const inspectionText = (source: string, { result, busy }: Inspecting): string => {
@@ -240,7 +242,6 @@ export function AddProjectModal(): React.JSX.Element | null {
         <label className="block">
           <span className="text-gray-400">Repository path or URL</span>
           <input
-            autoFocus
             className="mt-1 w-full rounded bg-ink px-2 py-1 font-mono"
             placeholder="/Users/you/projects/app or https://github.com/org/repo.git"
             value={draft.source}

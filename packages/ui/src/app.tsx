@@ -31,7 +31,8 @@ const VIEWS: Record<Panel, () => React.JSX.Element> = {
 
 function PanelBody({ panel }: { panel: Panel }): React.JSX.Element {
   const View = VIEWS[panel];
-  return <View />;
+  const floorId = useUi((s) => s.floorId);
+  return <View key={panel === "chat" || panel === "settings" ? floorId : panel} />;
 }
 
 const CONNECTION_TEXT = {
