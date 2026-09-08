@@ -25,6 +25,7 @@ import { syncRoster } from "./roster.ts";
 
 type PendingHandoff = { from: AgentId; to: AgentId; taskId: TaskId };
 const MAX_DT_MS = 250;
+const STEP_MS = 1000 / 30;
 const POSTMAN_NAME = "Postman";
 const QUESTION_PREFIX = "question:";
 
@@ -57,6 +58,7 @@ export class Bridge {
     },
   );
   #watching = true;
+  #accumulator = 0;
 
   constructor() {
     this.layoutIssues = auditOffice(officePlan()).issues;
@@ -255,7 +257,11 @@ export class Bridge {
 
   /** Advances the simulation and reports delivered envelopes. */
   tick(dtMs: number): void {
-    tick(this.world, Math.min(dtMs, MAX_DT_MS), idleBehaviour);
+    this.#accumulator += Math.max(0, Math.min(dtMs, MAX_DT_MS));
+    while (this.#accumulator >= STEP_MS) {
+      tick(this.world, STEP_MS, idleBehaviour);
+      this.#accumulator -= STEP_MS;
+    }
     for (const event of this.world.outbox.splice(0)) {
       if (event.kind === "handoff_delivered") {
         const index = this.#pending.findIndex((p) => p.from === event.from && p.to === event.to);

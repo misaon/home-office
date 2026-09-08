@@ -233,7 +233,7 @@ for (const [set, palette] of Object.entries(SETS)) {
   }
   for (const [name, frames] of Object.entries(animations(palette, set === "postman"))) {
     for (const [index, frame] of frames.entries()) {
-      await Bun.write(`${dir}/${name}_f${String(index)}.png`, encodePng(frame));
+      await Bun.write(`${dir}/${name}_f${String(index)}.png`, await encodePng(frame));
       files += 1;
     }
   }

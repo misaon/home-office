@@ -1,7 +1,14 @@
 import type { AgentId, AgentRole } from "@ho/protocol";
 import { facingTowards, type Point } from "./grid.ts";
 import type { Anchor } from "./templates.ts";
-import { homeSteps, resumeSteps, setSteps, summon, walkSteps } from "./actors.ts";
+import {
+  homeSteps,
+  pendingDeliveries,
+  resumeSteps,
+  setSteps,
+  summon,
+  walkSteps,
+} from "./actors.ts";
 import {
   type Actor,
   anchorOf,
@@ -9,19 +16,12 @@ import {
   freeAnchors,
   release,
   reserve,
-  type Step,
   type World,
 } from "./world.ts";
 
 const HANDOVER_MS = 1200;
 const CELEBRATE_MS = 1800;
 const RECEIVED_BUBBLE_MS = 3000;
-
-/** Steps of an in-progress handoff (up to and including its `emit`): a change of work never cancels a delivery. */
-const pendingHandoff = (actor: Actor): Step[] => {
-  const index = actor.steps.findIndex((s) => s.kind === "emit");
-  return index < 0 ? [] : actor.steps.slice(0, index + 1);
-};
 
 /** Seat zones per role: the boss has an office, reviewers sit in QA, clerks with the analysts, workers in dev. */
 const SEAT_GROUP: Partial<Record<AgentRole, string>> = {
@@ -73,7 +73,7 @@ export function assignWork(
   }
   actor.work = { floorId, anchorId: anchor.id };
   setSteps(actor, [
-    ...pendingHandoff(actor),
+    ...pendingDeliveries(actor),
     ...walkSteps(world, actor, floorId, anchor.at),
     { kind: "hold", activity: "type", facing: anchor.facing },
   ]);
@@ -89,7 +89,7 @@ export function releaseWork(world: World, agentId: AgentId, ok: boolean): void {
   actor.work = null;
   release(world, actor);
   setSteps(actor, [
-    ...pendingHandoff(actor),
+    ...pendingDeliveries(actor),
     ...(ok
       ? [
           {
@@ -148,6 +148,7 @@ export function handoff(world: World, from: AgentId, to: AgentId): boolean {
   const face = facingTowards(meet, target.hidden ? meet : target.tile);
   setEmotion(world, from, "envelope", null);
   setSteps(source, [
+    ...pendingDeliveries(source),
     ...walkSteps(world, source, target.floorId, meet),
     { kind: "dwell", activity: "handover", facing: face, until: null, ms: HANDOVER_MS },
     { kind: "emit", event: { kind: "handoff_delivered", from, to } },
@@ -166,6 +167,7 @@ export function receive(world: World, agentId: AgentId, from: AgentId): void {
   }
   setEmotion(world, agentId, "envelope", RECEIVED_BUBBLE_MS);
   setSteps(actor, [
+    ...pendingDeliveries(actor),
     {
       kind: "dwell",
       activity: "receive",
@@ -187,12 +189,15 @@ export function sleep(world: World, agentId: AgentId): void {
   actor.work = null;
   release(world, actor);
   if (spot === undefined) {
-    setSteps(actor, [...pendingHandoff(actor), { kind: "hold", activity: "sleep", facing: "s" }]);
+    setSteps(actor, [
+      ...pendingDeliveries(actor),
+      { kind: "hold", activity: "sleep", facing: "s" },
+    ]);
     return;
   }
   reserve(world, actor, actor.floorId, spot.id);
   setSteps(actor, [
-    ...pendingHandoff(actor),
+    ...pendingDeliveries(actor),
     ...walkSteps(world, actor, actor.floorId, spot.at),
     { kind: "hold", activity: "sleep", facing: spot.facing },
   ]);

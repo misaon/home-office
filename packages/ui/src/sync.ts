@@ -62,6 +62,7 @@ export async function startSync(bridge: Bridge): Promise<void> {
   }
   for (;;) {
     useUi.getState().setConnection("connecting");
+    useUi.getState().setReplayed(false);
     // A fresh launch URL (`ho ui` after a daemon restart) supersedes the remembered token.
     token = resolveToken() ?? token;
     try {
@@ -81,6 +82,7 @@ export async function startSync(bridge: Bridge): Promise<void> {
       const swallow = (error: unknown): void => {
         if (!controller.signal.aborted) {
           reportError(error);
+          socket.close();
         }
       };
       runEvents(client, bridge, controller.signal).catch(swallow);

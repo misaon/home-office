@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@ho/protocol": "workspace:*"
+    "@ho/protocol": "workspace:*",
+    "tinyqueue": "catalog:"
   }
 }

@@ -42,7 +42,8 @@ export type Step =
   | { kind: "hold"; activity: Activity; facing: Facing | null }
   /** Leaves the floor by the elevator (the actor must stand in the car) and comes back after `ms`. */
   | { kind: "away"; ms: number }
-  | { kind: "emit"; event: SimEvent };
+  | { kind: "emit"; event: SimEvent }
+  | { kind: "release" };
 
 export type SimEvent =
   /** A carrier handed an envelope (a task) to a colleague: delegation, handoff, review, work walking back. */
@@ -179,12 +180,12 @@ export const freeAnchors = (
 /** Claims an anchor for the actor; an anchor the actor already holds (its home) counts as claimed. */
 export function reserve(world: World, actor: Actor, floorId: string, anchorId: string): boolean {
   const floor = world.floors.get(floorId);
-  if (floor === undefined) {
+  if (floor === undefined || anchorById(floor, anchorId) === undefined) {
     return false;
   }
   const holder = floor.reservations.get(anchorId);
-  if (holder !== undefined) {
-    return holder === actor.id;
+  if (holder !== undefined && holder !== actor.id) {
+    return false;
   }
   release(world, actor);
   floor.reservations.set(anchorId, actor.id);

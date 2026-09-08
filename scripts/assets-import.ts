@@ -36,8 +36,7 @@ import {
   sidecarOf,
 } from "./lib/import-target.ts";
 import { describeManifest, writeManifest } from "./lib/manifest.ts";
-import { encodePng, type Rgba } from "./lib/png.ts";
-import { decodePng } from "./lib/png-decode.ts";
+import { decodePng, encodePng, type Rgba } from "./lib/png.ts";
 import {
   ALPHA_MIN,
   type Box,
@@ -55,6 +54,7 @@ import {
 const { values, positionals } = parseArgs({
   args: Bun.argv.slice(2),
   allowPositionals: true,
+  allowNegative: true,
   options: {
     frames: { type: "string", default: "1" },
     cells: { type: "string" },
@@ -76,6 +76,9 @@ if (!Number.isInteger(frameCount) || frameCount < 1) {
   fail(`--frames expects a positive integer, got "${values.frames}"`);
 }
 const tolerance = Number(values.tolerance);
+if (!Number.isInteger(tolerance) || tolerance < 0 || tolerance > 255) {
+  fail("--tolerance must be an integer between 0 and 255");
+}
 const target = resolveTarget(key, parseCells(values.cells));
 
 const numberOf = (path: string): number => Number(/(\d+)\.png$/u.exec(path)?.[1] ?? 0);
@@ -99,7 +102,7 @@ if (files.length > 1 && frameCount > 1) {
 const rawFrames: Rgba[] = [];
 let keyed = false;
 for (const file of files) {
-  let image = decodePng(new Uint8Array(await Bun.file(file).arrayBuffer()));
+  let image = await decodePng(new Uint8Array(await Bun.file(file).arrayBuffer()));
   keyed = values.key && hasKeyBackground(image, tolerance);
   if (keyed) {
     image = keyOut(image, tolerance);
@@ -138,7 +141,9 @@ function parseCrop(value: string | undefined): Box | null {
     y === undefined ||
     w === undefined ||
     h === undefined ||
-    parts.some((n) => !Number.isFinite(n)) ||
+    parts.some((n) => !Number.isSafeInteger(n)) ||
+    x < 0 ||
+    y < 0 ||
     w <= 0 ||
     h <= 0
   ) {
@@ -155,6 +160,9 @@ for (const [index, raw] of rawFrames.entries()) {
     fail(`frame ${String(index)} is fully transparent`);
   }
   if (fixedCrop !== null) {
+    if (fixedCrop.x + fixedCrop.w > raw.width || fixedCrop.y + fixedCrop.h > raw.height) {
+      fail("crop must fit inside every source frame");
+    }
     continue;
   }
   bounds =
@@ -223,7 +231,7 @@ for (const [index, raw] of rawFrames.entries()) {
   }
   const { frame, scale } = fitted;
   const file = `${dir}/${target.animation}_f${String(index)}.png`;
-  await Bun.write(file, encodePng(frame));
+  await Bun.write(file, await encodePng(frame));
   if (target.trim && index === 0) {
     report.push(
       like !== null
@@ -250,7 +258,7 @@ const sidecar: Sidecar = {
 };
 if (sidecar.output.height === 0) {
   // A single frame keeps its own height: read it back from the written file's dimensions.
-  const written = decodePng(
+  const written = await decodePng(
     new Uint8Array(await Bun.file(`${dir}/${target.animation}_f0.png`).arrayBuffer()),
   );
   sidecar.output.height = written.height;
