@@ -7,7 +7,7 @@ import { type Actor, anchorOf, type Step, type World } from "./world.ts";
 const DROP_MS = 900;
 const PICKUP_MS = 800;
 const HANDOVER_MS = 1200;
-const MAILBOX_SPRITE = "furniture/mailbox";
+const MAILBOX_KEY = "mailbox";
 
 const mailboxAnchor = (
   world: World,
@@ -143,13 +143,5 @@ export function carryEnvelope(
 
 /** Mail counter art follows the pile: `full` while envelopes wait, `empty` otherwise. */
 export function setMailboxState(world: World, floorId: string, state: "empty" | "full"): void {
-  const floor = world.floors.get(floorId);
-  if (floor === undefined) {
-    return;
-  }
-  for (const item of floor.template.furniture) {
-    if (item.sprite === MAILBOX_SPRITE) {
-      item.animation = state;
-    }
-  }
+  world.floors.get(floorId)?.animationStates.set(MAILBOX_KEY, state);
 }

@@ -59,9 +59,15 @@ const anyoneHeading = (people: readonly Actor[], rect: PlanRect): boolean =>
 const approach = (amount: number, target: number, dtMs: number, travelMs: number): number =>
   amount + Math.sign(target - amount) * Math.min(Math.abs(target - amount), dtMs / travelMs);
 
+const FURNITURE_PREFIX = "furniture/";
+
 /** Frames of the object's current animation, falling back to its single `static` frame. */
-const framesOf = (sprites: SpriteLibrary, item: PlanObject): Texture[] | undefined =>
-  sprites.frames(item.sprite, item.animation) ?? sprites.frames(item.sprite, "static");
+const framesOf = (
+  sprites: SpriteLibrary,
+  item: PlanObject,
+  animation = item.animation,
+): Texture[] | undefined =>
+  sprites.frames(item.sprite, animation) ?? sprites.frames(item.sprite, "static");
 
 const DOOR_MS = 220;
 const LOOKAHEAD_CELLS = 4;
@@ -130,27 +136,27 @@ export function createPlanView(
 
   const update = (world: World, dtMs: number): void => {
     const people = [...world.actors.values()].filter((a) => a.floorId === template.id && !a.hidden);
+    const floorState = world.floors.get(template.id);
     for (const view of views) {
-      if (view.animation !== view.item.animation) {
+      const key = view.item.sprite.slice(FURNITURE_PREFIX.length);
+      const animation = floorState?.animationStates.get(key) ?? view.item.animation;
+      if (view.animation !== animation) {
         // State change (mailbox empty → full): swap to the new animation's frames, restart its clock.
-        const frames = framesOf(sprites, view.item);
+        const frames = framesOf(sprites, view.item, animation);
         const texture = frames?.[0];
         if (frames !== undefined && texture !== undefined) {
           view.frames = frames;
           view.frame = 0;
           view.timeMs = 0;
           view.sprite.texture = texture;
-          view.animation = view.item.animation;
+          view.animation = animation;
         }
       }
       if (view.frames.length > 1) {
         let frame = view.frame;
         if (view.item.playback === "sim") {
           // The simulation owns this animation (elevator doors): 0 closed … 1 open.
-          const amount =
-            world.floors
-              .get(template.id)
-              ?.animations.get(view.item.sprite.slice("furniture/".length)) ?? 0;
+          const amount = floorState?.animations.get(key) ?? 0;
           frame = Math.round(amount * (view.frames.length - 1));
         } else if (view.item.playback === "near") {
           const target = anyoneHeading(people, { ...view.item.at, w: view.item.w, h: view.item.h })
