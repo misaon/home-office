@@ -3,7 +3,8 @@ import {
   type AgentId,
   errorMessage,
   type RepoInspection,
-  type RepoSource,
+  REPO_URL_FORMS,
+  repoSourceOf,
 } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useState } from "react";
@@ -11,12 +12,6 @@ import { type Client, getClient, requireClient } from "../rpc.ts";
 import { type Snapshot, sortedFloors, useUi } from "../store.ts";
 
 const INSPECT_DEBOUNCE_MS = 600;
-
-/** A git URL when it looks like one (scheme or scp-style), else a path on this machine. */
-const repoOf = (source: string): RepoSource =>
-  /^(?:https?:|git@|ssh:|git:|file:)/u.test(source)
-    ? { kind: "git", url: source }
-    : { kind: "local", path: source };
 
 type Group = { floor: string; agents: Agent[] };
 
@@ -53,7 +48,7 @@ function useRepoInspection(
         return;
       }
       setState({ source, result: null, busy: true });
-      client.projects.inspect({ repo: repoOf(source) }).then(
+      client.projects.inspect({ repo: repoSourceOf(source) }).then(
         (result) => {
           if (!cancelled) {
             setState({ source, result, busy: false });
@@ -78,7 +73,10 @@ function useRepoInspection(
 }
 
 const inspectionText = (source: string, { result, busy }: Inspecting): string => {
-  if (source === "" || (result === null && !busy)) {
+  if (source === "") {
+    return `a directory on this machine, or ${REPO_URL_FORMS}`;
+  }
+  if (result === null && !busy) {
     return " ";
   }
   if (busy) {
@@ -243,7 +241,7 @@ export function AddProjectModal(): React.JSX.Element | null {
           <span className="text-gray-400">Repository path or URL</span>
           <input
             className="mt-1 w-full rounded bg-ink px-2 py-1 font-mono"
-            placeholder="/Users/you/projects/app or https://github.com/org/repo.git"
+            placeholder="/Users/you/projects/app or git@github.com:org/repo.git"
             value={draft.source}
             onChange={(e) => {
               setDraft({ ...draft, source: e.target.value, name: "", branch: "" });

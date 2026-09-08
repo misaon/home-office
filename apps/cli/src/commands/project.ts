@@ -6,6 +6,7 @@ import {
   type PublishPolicy,
   type RepoInspection,
   type RepoSource,
+  repoUrl,
 } from "@ho/protocol";
 import { list, parse, str } from "../args.ts";
 import { type HoClient, withClient } from "../client.ts";
@@ -20,7 +21,7 @@ const repoFrom = (path: string | undefined, url: string | undefined): RepoSource
     return { kind: "local", path: resolve(path) };
   }
   if (url !== undefined) {
-    return { kind: "git", url };
+    return { kind: "git", url: repoUrl(url) };
   }
   throw new Error("--path or --url is required");
 };

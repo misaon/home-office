@@ -82,6 +82,23 @@ export const RepoSource = z.discriminatedUnion("kind", [
 ]);
 export type RepoSource = z.infer<typeof RepoSource>;
 
+const SCP_LIKE = /^([^\s/@:]+)@([^\s/@:]+):(?!\/)(\S+)$/u;
+
+/** Git's scp-style shorthand — what GitHub's "SSH" button copies — is not a URL; `ssh://` is. */
+export const repoUrl = (source: string): string => {
+  const trimmed = source.trim();
+  const scp = SCP_LIKE.exec(trimmed);
+  return scp === null ? trimmed : `ssh://${scp[1]}@${scp[2]}/${scp[3]}`;
+};
+
+export const REPO_URL_FORMS = "https://host/org/repo, ssh://git@host/org/repo or git@host:org/repo";
+
+/** Anything carrying a URL scheme or the scp shorthand is a repository URL; the rest is a local path. */
+export const repoSourceOf = (source: string): RepoSource => {
+  const url = repoUrl(source);
+  return /^[a-z][a-z\d+.-]*:\/\//iu.test(url) ? { kind: "git", url } : { kind: "local", path: url };
+};
+
 /** How finished work leaves the sandbox: a branch in the repository, or additionally a GitHub pull request via `gh`. */
 export const PublishPolicy = z.object({
   mode: z.enum(["branch", "pull-request"]).default("branch"),
