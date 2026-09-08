@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./pump": "./src/pump.ts"
+  },
   "scripts": {
     "build": "bun build --compile --minify --target=bun-linux-arm64-musl ./src/main.ts --outfile ./dist/ho-runner"
   },
