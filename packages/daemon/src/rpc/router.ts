@@ -77,7 +77,7 @@ async function* linesFrom(
     });
   yield* channel.iterate();
   if (state.failure !== null) {
-    throw state.failure;
+    throw new ORPCError("INTERNAL_SERVER_ERROR", { message: state.failure.message });
   }
 }
 

@@ -463,6 +463,20 @@ Odhad: triviální
 
 ## B6 — UI environment
 
+### B5.5 – A failed image build reached the CLI as "Internal server error"
+
+Severita: medium
+Kde: `packages/daemon/src/rpc/router.ts:63-82` (`linesFrom`) at the audited baseline
+Důkaz: The build streams its output and then rethrows the underlying `Error`, which oRPC masks as an
+unexpected server error. Observed while reproducing B24.3: the user saw the buildx `ERROR: failed to
+build …` line from the stream and then `ho: Internal server error`, with nothing about the build.
+Dopad: DX/diagnostika: the one line a user reads last says nothing, and the daemon logged nothing either
+(B29.5).
+Doporučení: Rethrow as an `ORPCError`, which oRPC passes to the client verbatim, like the domain failures
+the router already maps. Done in Wave 3; verified with a deliberate `RUN false`:
+`ho: image build failed (1): #0 building with "default" instance using docker driver`, exit code 1.
+Odhad: triviální
+
 ### B6.1 – The office never paints a first frame if the document starts hidden
 
 Severita: medium
@@ -797,6 +811,42 @@ Doporučení: No change. Recorded because B16 asks where a library could take ov
 ---
 
 ## B19, B24 — Build and Docker
+
+### B24.3 – The image content hash matched **no** files from the build context
+
+Severita: high
+Kde: `packages/daemon/src/image-context.ts:15-45` at the audited baseline
+Důkaz: Found in Wave 3 while trying to force a build failure. `contextHash` globbed the context with one
+brace alternation — `{Dockerfile,.dockerignore,rtk-config.toml,mcp/package*.json,providers/*/package*.json,bin/ho-runner,plugins/**/*}`
+— and **Bun 1.4.2's `Glob` silently returns zero matches for a brace group whose members cross a path
+separator**. Measured directly:
+
+```
+{Dockerfile,rtk-config.toml}                 → 2 files
+{Dockerfile,bin/ho-runner}                   → 0 files
+{Dockerfile,mcp/package*.json}               → 0 files
+{Dockerfile,providers/*/package*.json}       → 0 files
+{Dockerfile,plugins/**/*}                    → 0 files
+packages/{runner,protocol}/src/**/*.ts       → 15 files   (braces inside one segment are fine)
+```
+
+So the hash hashed an empty file list for the context. `contextHash(resources, "git-bridge")` was a
+**constant**: appending a line to `images/git-bridge/Dockerfile` left it at
+`cd372fb85148700fa88095e3492d3f9f`, `ensureImage` therefore skipped the build, and `ho doctor` reported the
+image "up to date". The agent image was equally blind to its own Dockerfile, `rtk-config.toml` and the MCP
+and provider `package.json`/`package-lock.json` files; it only ever rebuilt because the _sources_ hash
+(`packages/{runner,protocol}/src/**/*.ts`, `bun.lock`, `package.json`, `Bun.version`) happens to use a
+pattern Bun handles.
+Dopad: The staleness mechanism the product advertises did not work for the thing it exists for. Editing a
+Dockerfile, bumping a pinned CLI in `providers/*/package.json` or changing `rtk-config.toml` produced no
+rebuild and no warning — agents kept running the old image while `doctor` said everything was current.
+Doporučení: One glob per pattern, never a brace group spanning a separator, and choose the patterns per
+image instead of globbing everything and filtering. Done in Wave 3 and verified in both directions: a
+Dockerfile edit now moves the hash (`1ea8e546… → a63070fd… → 1ea8e546…` for git-bridge, and the same for
+the agent's Dockerfile and `rtk-config.toml`), `ho image build` rebuilds, a deliberate `RUN false` fails the
+build, and the images report "up to date" again afterwards. Note for the owner: because the hash changes,
+every existing image is stale exactly once and rebuilds on the next `ho image build`.
+Odhad: střední
 
 ### B24.1 – The agent image is 1.76 GB, dominated by one 837 MB apk layer
 
