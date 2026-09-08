@@ -1,7 +1,7 @@
 import { errorMessage } from "@ho/protocol";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { getClient, requireClient } from "../rpc.ts";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { resourcesQuery } from "../queries.ts";
+import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
 
 const mb = (bytes: number | null): string =>
@@ -10,44 +10,33 @@ const mb = (bytes: number | null): string =>
 export function ResourcesPanel(): React.JSX.Element {
   const connection = useUi((s) => s.connection);
   const query = useQuery({
-    queryKey: ["resources"],
-    queryFn: ({ signal }) => requireClient().resources.inventory(undefined, { signal }),
+    ...resourcesQuery,
     enabled: connection === "online",
     refetchInterval: 30_000,
   });
   const inventory = query.data ?? null;
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
-  const prune = (): void => {
-    const client = getClient();
-    if (client === null) {
-      return;
-    }
-    setBusy(true);
-    client.system.gc().then(
-      (result) => {
-        setNote(
-          `removed ${String(result.containers.length)} containers, ${String(result.volumes.length)} volumes, ${String(result.images.length)} images`,
-        );
-        setBusy(false);
-        void query.refetch();
-      },
-      (error: unknown) => {
-        setNote(errorMessage(error));
-        setBusy(false);
-      },
-    );
-  };
+  const prune = useMutation({
+    mutationFn: () => requireClient().system.gc(),
+    onSuccess: () => query.refetch(),
+  });
+  const note =
+    prune.error !== null
+      ? errorMessage(prune.error)
+      : prune.data === undefined
+        ? null
+        : `removed ${String(prune.data.containers.length)} containers, ${String(prune.data.volumes.length)} volumes, ${String(prune.data.images.length)} images`;
   return (
     <div className="space-y-3 overflow-y-auto p-3 text-xs">
       <div className="flex items-center gap-2">
         <button
           type="button"
           className="rounded bg-panel px-2 py-1 hover:bg-line disabled:opacity-50"
-          disabled={busy}
-          onClick={prune}
+          disabled={prune.isPending}
+          onClick={() => {
+            prune.mutate();
+          }}
         >
-          {busy ? "Pruning…" : "Prune now"}
+          {prune.isPending ? "Pruning…" : "Prune now"}
         </button>
         <button
           type="button"

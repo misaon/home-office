@@ -1,6 +1,8 @@
 import { errorMessage, type SecretKeyName } from "@ho/protocol";
-import { useEffect, useState } from "react";
-import { getClient } from "../rpc.ts";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { secretsStatusQuery } from "../queries.ts";
+import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
 
 const KEYS: { key: SecretKeyName; label: string; hint: string }[] = [
@@ -33,42 +35,30 @@ const KEYS: { key: SecretKeyName; label: string; hint: string }[] = [
 
 export function TokenSettings(): React.JSX.Element {
   const connection = useUi((s) => s.connection);
-  const [present, setPresent] = useState<SecretKeyName[]>([]);
+  const queries = useQueryClient();
+  const status = useQuery({ ...secretsStatusQuery, enabled: connection === "online" });
+  const present = status.data?.present ?? [];
   const [values, setValues] = useState<Partial<Record<SecretKeyName, string>>>({});
-  const [error, setError] = useState<string | null>(null);
-  const refresh = (): void => {
-    getClient()
-      ?.secrets.status()
-      .then(
-        (s) => {
-          setPresent(s.present);
-        },
-        () => null,
-      );
-  };
-  useEffect(refresh, [connection]);
+  const invalidate = (): Promise<void> =>
+    queries.invalidateQueries({ queryKey: secretsStatusQuery.queryKey });
+  const store = useMutation({
+    mutationFn: ({ key, value }: { key: SecretKeyName; value: string }) =>
+      requireClient().secrets.set({ key, value }),
+    onSuccess: (_result, { key, value }) => {
+      setValues((current) => ({ ...current, [key]: current[key] === value ? "" : current[key] }));
+      return invalidate();
+    },
+  });
+  const forget = useMutation({
+    mutationFn: (key: SecretKeyName) => requireClient().secrets.delete({ key }),
+    onSuccess: invalidate,
+  });
+  const failure = store.error ?? forget.error;
   const save = (key: SecretKeyName): void => {
-    const raw = values[key];
-    const value = raw?.trim() ?? "";
-    const client = getClient();
-    if (client === null || value === "") {
-      return;
+    const value = values[key]?.trim() ?? "";
+    if (value !== "") {
+      store.mutate({ key, value });
     }
-    client.secrets.set({ key, value }).then(
-      () => {
-        setValues((current) => ({ ...current, [key]: current[key] === raw ? "" : current[key] }));
-        setError(null);
-        refresh();
-      },
-      (e: unknown) => {
-        setError(errorMessage(e));
-      },
-    );
-  };
-  const forget = (key: SecretKeyName): void => {
-    getClient()
-      ?.secrets.delete({ key })
-      .then(refresh, () => null);
   };
   return (
     <section className="space-y-2">
@@ -108,7 +98,7 @@ export function TokenSettings(): React.JSX.Element {
                 type="button"
                 className="rounded bg-line px-2"
                 onClick={() => {
-                  forget(key);
+                  forget.mutate(key);
                 }}
               >
                 Forget
@@ -117,7 +107,7 @@ export function TokenSettings(): React.JSX.Element {
           </div>
         </div>
       ))}
-      {error !== null ? <p className="text-red-400">{error}</p> : null}
+      {failure === null ? null : <p className="text-red-400">{errorMessage(failure)}</p>}
     </section>
   );
 }

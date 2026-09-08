@@ -1,7 +1,8 @@
 import { chatOf } from "@ho/core";
 import { type ChatMessageId, errorMessage, type ProjectId, type TaskId } from "@ho/protocol";
+import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { getClient } from "../rpc.ts";
+import { requireClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
 import type { StepStatus } from "./status.ts";
 import { Step } from "./step.tsx";
@@ -63,30 +64,21 @@ export function SmokeStep({
   ready: boolean;
 }): React.JSX.Element {
   const floorId = useUi((s) => s.floorId);
-  const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<Sent | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const status = smokeStatus(snapshot, sent, ready, floorId);
   const boss = [...snapshot.agents.values()].find(
     (a) => a.role === "boss" && a.projectId === floorId,
   );
+  const hello = useMutation({
+    mutationFn: (projectId: ProjectId) => requireClient().chat.send({ text: HELLO, projectId }),
+    onSuccess: ({ message, task }) => {
+      setSent({ messageId: message.id, taskId: task?.id ?? null, at: message.at });
+    },
+  });
   const send = (): void => {
-    const client = getClient();
-    if (client === null || floorId === null || sending) {
-      return;
+    if (floorId !== null && !hello.isPending) {
+      hello.mutate(floorId);
     }
-    setSending(true);
-    client.chat.send({ text: HELLO, projectId: floorId }).then(
-      ({ message, task }) => {
-        setSending(false);
-        setSent({ messageId: message.id, taskId: task?.id ?? null, at: message.at });
-        setError(null);
-      },
-      (e: unknown) => {
-        setSending(false);
-        setError(errorMessage(e));
-      },
-    );
   };
   const reply = sent === null || floorId === null ? null : replyTo(snapshot, sent, floorId);
   return (
@@ -104,14 +96,17 @@ export function SmokeStep({
             type="button"
             className="rounded bg-accent px-2 py-1 text-black disabled:opacity-50"
             disabled={
-              sending || !ready || floorId === null || (sent !== null && status.state === "unknown")
+              hello.isPending ||
+              !ready ||
+              floorId === null ||
+              (sent !== null && status.state === "unknown")
             }
             onClick={send}
           >
             {sent === null ? "Say hello" : "Try again"}
           </button>
         )}
-        {error === null ? null : <p className="text-red-400">{error}</p>}
+        {hello.error === null ? null : <p className="text-red-400">{errorMessage(hello.error)}</p>}
       </div>
     </Step>
   );

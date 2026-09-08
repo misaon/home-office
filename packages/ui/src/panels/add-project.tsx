@@ -5,8 +5,9 @@ import {
   type RepoInspection,
   type RepoSource,
 } from "@ho/protocol";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useState } from "react";
-import { getClient } from "../rpc.ts";
+import { type Client, getClient, requireClient } from "../rpc.ts";
 import { type Snapshot, sortedFloors, useUi } from "../store.ts";
 
 const INSPECT_DEBOUNCE_MS = 600;
@@ -179,8 +180,15 @@ export function AddProjectModal(): React.JSX.Element | null {
   const selectFloor = useUi((s) => s.selectFloor);
   const snapshot = useUi((s) => s.snapshot);
   const [draft, setDraft] = useState<Draft>(EMPTY);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const create = useMutation({
+    mutationFn: (input: Parameters<Client["projects"]["create"]>[0]) =>
+      requireClient().projects.create(input),
+    onSuccess: (project) => {
+      selectFloor(project.id);
+      setOpen(false);
+      setDraft(EMPTY);
+    },
+  });
   const source = open ? draft.source.trim() : "";
   const inspecting = useRepoInspection(source, (found) => {
     // Fill what the user has not typed themselves.
@@ -197,33 +205,22 @@ export function AddProjectModal(): React.JSX.Element | null {
   const close = (): void => {
     setOpen(false);
     setDraft(EMPTY);
-    setError(null);
+    create.reset();
   };
   const canCreate =
-    !busy &&
+    !create.isPending &&
     !inspecting.busy &&
     source !== "" &&
     draft.name.trim() !== "" &&
     inspection?.ok === true;
-  const create = async (): Promise<void> => {
-    const client = getClient();
-    if (client === null || inspection?.ok !== true) {
-      return;
-    }
-    setBusy(true);
-    try {
-      const project = await client.projects.create({
+  const submit = (): void => {
+    if (inspection?.ok === true) {
+      create.mutate({
         name: draft.name.trim(),
         repo: inspection.repo,
         defaultBranch: draft.branch.trim() === "" ? inspection.defaultBranch : draft.branch.trim(),
         importAgentIds: [...draft.imports],
       });
-      selectFloor(project.id);
-      close();
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
     }
   };
   const toggle = (id: AgentId): void => {
@@ -259,8 +256,10 @@ export function AddProjectModal(): React.JSX.Element | null {
         </label>
         <NameBranchFields draft={draft} setDraft={setDraft} />
         <ImportPicker groups={importable(snapshot)} imports={draft.imports} toggle={toggle} />
-        {error === null ? null : (
-          <p className="rounded bg-red-950/70 px-2 py-1 text-red-200">{error}</p>
+        {create.error === null ? null : (
+          <p className="rounded bg-red-950/70 px-2 py-1 text-red-200">
+            {errorMessage(create.error)}
+          </p>
         )}
         <div className="flex justify-end gap-2">
           <button type="button" className="rounded bg-line px-3 py-1" onClick={close}>
@@ -271,10 +270,10 @@ export function AddProjectModal(): React.JSX.Element | null {
             className="rounded bg-accent px-3 py-1 font-semibold text-black disabled:opacity-40"
             disabled={!canCreate}
             onClick={() => {
-              void create();
+              submit();
             }}
           >
-            {busy ? "Creating…" : "Create"}
+            {create.isPending ? "Creating…" : "Create"}
           </button>
         </div>
       </div>

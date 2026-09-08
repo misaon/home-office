@@ -1,6 +1,7 @@
 import { type Doctor, errorMessage } from "@ho/protocol";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { getClient } from "../rpc.ts";
+import { requireClient } from "../rpc.ts";
 import { dockerStatus, imagesStatus, tokenStatus } from "./status.ts";
 import { Step } from "./step.tsx";
 
@@ -30,8 +31,6 @@ const LOG_LIMIT = 400;
 export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
   const status = imagesStatus(doctor);
   const [lines, setLines] = useState<string[]>([]);
-  const [building, setBuilding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const controller = useRef<AbortController | null>(null);
@@ -53,33 +52,29 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
   }, [lines.length]);
   useEffect(() => () => controller.current?.abort(), []);
 
-  const build = async (): Promise<void> => {
-    const client = getClient();
-    if (client === null || building) {
-      return;
-    }
-    const aborter = new AbortController();
-    controller.current = aborter;
-    setBuilding(true);
-    setError(null);
-    setLines([]);
-    setStartedAt(Date.now());
-    try {
-      for await (const { line } of await client.system.buildImages(undefined, {
-        signal: aborter.signal,
-      })) {
-        setLines((prev) => [...prev.slice(-LOG_LIMIT), line]);
+  const build = useMutation({
+    mutationFn: async () => {
+      const aborter = new AbortController();
+      controller.current = aborter;
+      setLines([]);
+      setStartedAt(Date.now());
+      try {
+        for await (const { line } of await requireClient().system.buildImages(undefined, {
+          signal: aborter.signal,
+        })) {
+          setLines((prev) => [...prev.slice(-LOG_LIMIT), line]);
+        }
+      } catch (failure) {
+        if (!aborter.signal.aborted) {
+          throw failure;
+        }
       }
-    } catch (e) {
-      if (!aborter.signal.aborted) {
-        setError(errorMessage(e));
-      }
-    } finally {
-      setBuilding(false);
+    },
+    onSettled: () => {
       setStartedAt(null);
       refresh();
-    }
-  };
+    },
+  });
 
   return (
     <Step index={2} title="Agent images" status={status}>
@@ -89,16 +84,16 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
           servers. The first build downloads everything and takes a few minutes; later builds reuse
           cached layers.
         </p>
-        {status.state === "ok" && !building ? null : (
+        {status.state === "ok" && !build.isPending ? null : (
           <button
             type="button"
             className="rounded bg-accent px-2 py-1 text-black disabled:opacity-50"
-            disabled={building || doctor?.provider.ok !== true}
+            disabled={build.isPending || doctor?.provider.ok !== true}
             onClick={() => {
-              void build();
+              build.mutate();
             }}
           >
-            {building ? `Building… ${String(elapsed)} s` : "Build images"}
+            {build.isPending ? `Building… ${String(elapsed)} s` : "Build images"}
           </button>
         )}
         {lines.length > 0 ? (
@@ -107,7 +102,7 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
             <div ref={bottom} />
           </pre>
         ) : null}
-        {error === null ? null : <p className="text-red-400">{error}</p>}
+        {build.error === null ? null : <p className="text-red-400">{errorMessage(build.error)}</p>}
       </div>
     </Step>
   );
@@ -116,23 +111,19 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
 export function TokenStep({ doctor, refresh }: EnvProps): React.JSX.Element {
   const status = tokenStatus(doctor);
   const [value, setValue] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const store = useMutation({
+    mutationFn: (token: string) =>
+      requireClient().secrets.set({ key: "anthropic-oauth-token", value: token }),
+    onSuccess: () => {
+      setValue("");
+      refresh();
+    },
+  });
   const save = (): void => {
-    const client = getClient();
     const token = value.trim();
-    if (client === null || token === "") {
-      return;
+    if (token !== "") {
+      store.mutate(token);
     }
-    client.secrets.set({ key: "anthropic-oauth-token", value: token }).then(
-      () => {
-        setValue("");
-        setError(null);
-        refresh();
-      },
-      (e: unknown) => {
-        setError(errorMessage(e));
-      },
-    );
   };
   return (
     <Step index={3} title="Claude subscription token" status={status}>
@@ -167,7 +158,7 @@ export function TokenStep({ doctor, refresh }: EnvProps): React.JSX.Element {
             Save
           </button>
         </div>
-        {error === null ? null : <p className="text-red-400">{error}</p>}
+        {store.error === null ? null : <p className="text-red-400">{errorMessage(store.error)}</p>}
       </div>
     </Step>
   );

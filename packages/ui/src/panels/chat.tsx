@@ -1,7 +1,14 @@
 import { bossOf, chatOf } from "@ho/core";
-import { type ChatMessage, errorMessage, type ProjectId, type TaskId } from "@ho/protocol";
+import {
+  type ChatMessage,
+  type ChatSendInput,
+  errorMessage,
+  type ProjectId,
+  type TaskId,
+} from "@ho/protocol";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { getClient } from "../rpc.ts";
+import { requireClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
 
 const authorName = (snapshot: Snapshot, message: ChatMessage): string =>
@@ -69,9 +76,14 @@ export function ChatPanel(): React.JSX.Element {
   const snapshot = useUi((s) => s.snapshot);
   const floorId = useUi((s) => s.floorId);
   const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
   const [answering, setAnswering] = useState<TaskId | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const send = useMutation({
+    mutationFn: (input: ChatSendInput) => requireClient().chat.send(input),
+    onSuccess: (_message, input) => {
+      setText((current) => (current === input.text ? "" : current));
+      setAnswering(null);
+    },
+  });
   if (floorId === null) {
     return <p className="p-3 text-xs text-gray-400">Add a project (floor) first.</p>;
   }
@@ -81,28 +93,15 @@ export function ChatPanel(): React.JSX.Element {
   const questions = openQuestions(snapshot, floorId);
   const question = questions.find((q) => q.taskId === answering);
 
-  const send = (): void => {
-    const client = getClient();
+  const submit = (): void => {
     const body = text.trim();
-    if (client === null || body === "" || sending) {
+    if (body === "" || send.isPending) {
       return;
     }
-    const input =
+    send.mutate(
       question === undefined
         ? { text: body, projectId: floorId }
-        : { text: body, taskId: question.taskId };
-    setSending(true);
-    client.chat.send(input).then(
-      () => {
-        setText((current) => (current === text ? "" : current));
-        setAnswering(null);
-        setSending(false);
-        setError(null);
-      },
-      (failure: unknown) => {
-        setSending(false);
-        setError(errorMessage(failure));
-      },
+        : { text: body, taskId: question.taskId },
     );
   };
 
@@ -135,8 +134,10 @@ export function ChatPanel(): React.JSX.Element {
         </div>
       ) : null}
       <div className="border-t border-line p-2">
-        {error === null ? null : (
-          <p className="mb-2 rounded bg-red-950/70 px-2 py-1 text-xs text-red-200">{error}</p>
+        {send.error === null ? null : (
+          <p className="mb-2 rounded bg-red-950/70 px-2 py-1 text-xs text-red-200">
+            {errorMessage(send.error)}
+          </p>
         )}
         <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
           {question === undefined ? (
@@ -159,7 +160,7 @@ export function ChatPanel(): React.JSX.Element {
         <textarea
           aria-label="Message to the selected floor"
           maxLength={20_000}
-          disabled={sending}
+          disabled={send.isPending}
           className="h-16 w-full resize-none rounded bg-panel p-2 outline-none"
           placeholder={
             question === undefined
@@ -173,7 +174,7 @@ export function ChatPanel(): React.JSX.Element {
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
-              send();
+              submit();
             }
           }}
         />
