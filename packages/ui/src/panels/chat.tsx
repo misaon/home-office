@@ -69,6 +69,7 @@ export function ChatPanel(): React.JSX.Element {
   const snapshot = useUi((s) => s.snapshot);
   const floorId = useUi((s) => s.floorId);
   const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
   const [answering, setAnswering] = useState<TaskId | null>(null);
   const [error, setError] = useState<string | null>(null);
   if (floorId === null) {
@@ -83,18 +84,23 @@ export function ChatPanel(): React.JSX.Element {
   const send = (): void => {
     const client = getClient();
     const body = text.trim();
-    if (client === null || body === "") {
+    if (client === null || body === "" || sending) {
       return;
     }
     const input =
-      answering === null ? { text: body, projectId: floorId } : { text: body, taskId: answering };
-    setText("");
-    setAnswering(null);
+      question === undefined
+        ? { text: body, projectId: floorId }
+        : { text: body, taskId: question.taskId };
+    setSending(true);
     client.chat.send(input).then(
       () => {
+        setText((current) => (current === text ? "" : current));
+        setAnswering(null);
+        setSending(false);
         setError(null);
       },
       (failure: unknown) => {
+        setSending(false);
         setError(failure instanceof Error ? failure.message : String(failure));
       },
     );
@@ -151,6 +157,9 @@ export function ChatPanel(): React.JSX.Element {
           )}
         </div>
         <textarea
+          aria-label="Message to the selected floor"
+          maxLength={20_000}
+          disabled={sending}
           className="h-16 w-full resize-none rounded bg-panel p-2 outline-none"
           placeholder={
             question === undefined
@@ -162,7 +171,7 @@ export function ChatPanel(): React.JSX.Element {
             setText(e.target.value);
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               send();
             }

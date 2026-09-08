@@ -48,14 +48,15 @@ export function TokenSettings(): React.JSX.Element {
   };
   useEffect(refresh, [connection]);
   const save = (key: SecretKeyName): void => {
-    const value = values[key]?.trim() ?? "";
+    const raw = values[key];
+    const value = raw?.trim() ?? "";
     const client = getClient();
     if (client === null || value === "") {
       return;
     }
     client.secrets.set({ key, value }).then(
       () => {
-        setValues({ ...values, [key]: "" });
+        setValues((current) => ({ ...current, [key]: current[key] === raw ? "" : current[key] }));
         setError(null);
         refresh();
       },

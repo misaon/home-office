@@ -12,6 +12,7 @@
     "@ho/sim": "workspace:*",
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "pixi.js": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@types/react": "catalog:",
-    "@types/react-dom": "catalog:"
+    "@types/react-dom": "catalog:",
+    "tailwindcss": "catalog:"
   }
 }

@@ -1,27 +1,34 @@
 import { $, Glob } from "bun";
 import { existsSync } from "node:fs";
 
-// Runs `tsc -p` for every workspace tsconfig concurrently (TypeScript 7 native compiler).
-// Standalone Hutch projects (Electrobun) depend on a locally downloaded, git-ignored devkit; skip them until it exists.
-const hasDevkit = (config: string): boolean => {
+const configs = [...new Glob("{apps,packages,spikes}/*/tsconfig.json").scanSync(".")].toSorted();
+for (const config of configs) {
   const dir = config.slice(0, config.lastIndexOf("/"));
-  return !existsSync(`${dir}/hutch.config.ts`) || existsSync(`${dir}/.hutch/devkit`);
-};
-const configs = [...new Glob("{apps,packages,spikes}/*/tsconfig.json").scanSync(".")]
-  .filter((config) => hasDevkit(config))
-  .toSorted();
+  if (existsSync(`${dir}/hutch.config.ts`) && !existsSync(`${dir}/.hutch/devkit`)) {
+    throw new Error(`Missing desktop devkit: run hutch electrobun sync in ${dir}`);
+  }
+}
 const targets = ["tsconfig.json", ...configs];
 
-const results = await Promise.all(
-  targets.map(async (config) => {
-    const result = await $`tsc -p ${config} --pretty`.nothrow().quiet();
-    return {
-      config,
-      code: result.exitCode,
-      out: result.stdout.toString() + result.stderr.toString(),
-    };
+const results: { config: string; code: number; out: string }[] = [];
+const pending = [...targets];
+await Promise.all(
+  Array.from({ length: Math.min(4, targets.length) }, async () => {
+    while (pending.length > 0) {
+      const config = pending.shift();
+      if (config === undefined) {
+        return;
+      }
+      const result = await $`tsc -p ${config} --pretty`.nothrow().quiet();
+      results.push({
+        config,
+        code: result.exitCode,
+        out: result.stdout.toString() + result.stderr.toString(),
+      });
+    }
   }),
 );
+results.sort((a, b) => a.config.localeCompare(b.config));
 
 let failed = false;
 for (const { config, code, out } of results) {

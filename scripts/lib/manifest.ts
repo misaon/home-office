@@ -1,5 +1,5 @@
 import { CELL_PX, officePlan } from "@ho/sim";
-import { Glob } from "bun";
+import { CryptoHasher, Glob } from "bun";
 import { mkdir } from "node:fs/promises";
 
 const SRC = "assets/src";
@@ -9,7 +9,6 @@ const FRAME = /^(?<animation>[a-z]+(?:_[nsew])?)_f(?<frame>\d+)\.png$/u;
 type Manifest = {
   version: 1;
   tileSize: number;
-  /** Write time; the UI appends it to frame URLs so a re-imported sprite is never served from the browser cache. */
   revision: number;
   sprites: Record<string, Record<string, string[]>>;
 };
@@ -48,10 +47,14 @@ export async function writeManifest(): Promise<{
   problems: string[];
   missing: Missing[];
 }> {
-  const manifest: Manifest = { version: 1, tileSize: CELL_PX, revision: Date.now(), sprites: {} };
+  const manifest: Manifest = { version: 1, tileSize: CELL_PX, revision: 0, sprites: {} };
   const problems: string[] = [];
+  const hash = new CryptoHasher("sha256");
+  hash.update(String(CELL_PX));
   const files = [...new Glob("**/*.png").scanSync(SRC)].toSorted();
   for (const file of files) {
+    hash.update(file);
+    hash.update(new Uint8Array(await Bun.file(`${SRC}/${file}`).arrayBuffer()));
     const parts = file.split("/");
     const match = FRAME.exec(parts.at(-1) ?? "");
     if (parts.length !== 3 || match?.groups === undefined) {
@@ -68,6 +71,7 @@ export async function writeManifest(): Promise<{
       animations[key] = (animations[key] ?? []).toSorted((a, b) => frameOf(a) - frameOf(b));
     }
   }
+  manifest.revision = Number.parseInt(hash.digest("hex").slice(0, 12), 16);
   await mkdir("assets/dist", { recursive: true });
   await Bun.write(OUT, `${JSON.stringify(manifest, null, 2)}\n`);
   return {

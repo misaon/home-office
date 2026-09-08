@@ -180,7 +180,7 @@ function NewAgent({
         effort: draft.effort,
         appearance: { spriteSet: draft.spriteSet, gender: draft.gender },
         basePrompt: draft.basePrompt,
-        skillPack: draft.role,
+        skillPack: draft.role === "clerk" ? "none" : draft.role,
       })
       .then(() => {
         setDraft(emptyDraft(spriteSets[0] ?? "agent-a"));

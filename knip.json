@@ -3,9 +3,7 @@
   "workspaces": {
     ".": {
       "entry": ["scripts/*.ts"],
-      "project": ["scripts/**/*.ts"],
-      "ignoreDependencies": ["tailwindcss"],
-      "ignoreBinaries": ["hutch"]
+      "project": ["scripts/**/*.ts"]
     },
     "packages/*": {
       "project": ["src/**/*.{ts,tsx}"]
@@ -17,6 +15,10 @@
     "apps/desktop": {
       "entry": ["src/bun/index.ts", "electrobun.config.ts", "hutch.config.ts"],
       "project": ["src/**/*.ts"]
+    },
+    "packages/ui": {
+      "entry": ["src/main.tsx", "src/styles.css"],
+      "project": ["src/**/*.{ts,tsx,css}"]
     }
   },
   "ignoreWorkspaces": ["packages/agent-kit"]

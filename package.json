@@ -36,7 +36,8 @@
       "sharp": "0.35.4",
       "tinyqueue": "3.0.0",
       "proper-lockfile": "4.1.2",
-      "@types/proper-lockfile": "4.1.4"
+      "@types/proper-lockfile": "4.1.4",
+      "@tanstack/react-query": "5.102.8"
     }
   },
   "type": "module",
@@ -54,8 +55,9 @@
     "ui:build": "bun run scripts/ui-build.ts",
     "ui:watch": "bun run scripts/ui-build.ts --watch",
     "desktop:prepare": "bun run scripts/desktop-prepare.ts",
-    "desktop:dev": "bun run desktop:prepare && cd apps/desktop && hutch electrobun dev",
-    "desktop:build": "bun run desktop:prepare && cd apps/desktop && hutch electrobun build --env=stable"
+    "desktop:dev": "bun run desktop:prepare && bun run scripts/devkit.ts dev",
+    "desktop:build": "bun run desktop:prepare && bun run scripts/devkit.ts build",
+    "devkit": "bun run scripts/devkit.ts"
   },
   "devDependencies": {
     "@ho/sim": "workspace:*",
@@ -66,7 +68,6 @@
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "sharp": "catalog:",
-    "tailwindcss": "catalog:",
     "typescript": "catalog:"
   },
   "overrides": {

@@ -1,6 +1,7 @@
 import type { UsageSummary } from "@ho/protocol";
-import { useEffect, useState } from "react";
-import { getClient } from "../rpc.ts";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
 
 const fmt = (n: number): string => n.toLocaleString();
@@ -42,17 +43,16 @@ function Buckets({
 }
 
 export function UsagePanel(): React.JSX.Element {
-  const snapshot = useUi((s) => s.snapshot);
   const connection = useUi((s) => s.connection);
   const [hours, setHours] = useState(24);
-  const [summary, setSummary] = useState<UsageSummary | null>(null);
-  useEffect(() => {
-    const client = getClient();
-    if (client === null) {
-      return;
-    }
-    client.usage.summary(hours === 0 ? {} : { sinceHours: hours }).then(setSummary, () => null);
-  }, [hours, snapshot, connection]);
+  const query = useQuery({
+    queryKey: ["usage", hours],
+    queryFn: ({ signal }) =>
+      requireClient().usage.summary(hours === 0 ? {} : { sinceHours: hours }, { signal }),
+    enabled: connection === "online",
+    refetchInterval: 10_000,
+  });
+  const summary = query.data ?? null;
   return (
     <div className="space-y-3 overflow-y-auto p-3">
       <div className="flex items-center gap-2 text-xs">
@@ -70,6 +70,11 @@ export function UsagePanel(): React.JSX.Element {
           </button>
         ))}
       </div>
+      {query.error === null ? null : (
+        <p role="alert" className="text-red-400">
+          {query.error.message}
+        </p>
+      )}
       {summary === null ? (
         <p className="text-xs text-gray-400">No data yet.</p>
       ) : (

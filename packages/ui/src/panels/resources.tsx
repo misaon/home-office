@@ -1,23 +1,22 @@
-import type { ResourceInventory } from "@ho/protocol";
-import { useEffect, useState } from "react";
-import { getClient } from "../rpc.ts";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { getClient, requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
 
 const mb = (bytes: number | null): string =>
   bytes === null ? "–" : `${(bytes / 1_000_000).toFixed(bytes < 10_000_000 ? 1 : 0)} MB`;
 
 export function ResourcesPanel(): React.JSX.Element {
-  const snapshot = useUi((s) => s.snapshot);
   const connection = useUi((s) => s.connection);
-  const [inventory, setInventory] = useState<ResourceInventory | null>(null);
+  const query = useQuery({
+    queryKey: ["resources"],
+    queryFn: ({ signal }) => requireClient().resources.inventory(undefined, { signal }),
+    enabled: connection === "online",
+    refetchInterval: 30_000,
+  });
+  const inventory = query.data ?? null;
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const refresh = (): void => {
-    getClient()
-      ?.resources.inventory()
-      .then(setInventory, () => null);
-  };
-  useEffect(refresh, [snapshot, connection]);
   const prune = (): void => {
     const client = getClient();
     if (client === null) {
@@ -30,7 +29,7 @@ export function ResourcesPanel(): React.JSX.Element {
           `removed ${String(result.containers.length)} containers, ${String(result.volumes.length)} volumes, ${String(result.images.length)} images`,
         );
         setBusy(false);
-        refresh();
+        void query.refetch();
       },
       (error: unknown) => {
         setNote(error instanceof Error ? error.message : String(error));
@@ -49,6 +48,16 @@ export function ResourcesPanel(): React.JSX.Element {
         >
           {busy ? "Pruning…" : "Prune now"}
         </button>
+        <button
+          type="button"
+          className="rounded bg-panel px-2 py-1"
+          onClick={() => {
+            void query.refetch();
+          }}
+        >
+          Refresh
+        </button>
+        {query.error === null ? null : <span role="alert">{query.error.message}</span>}
         {note !== null ? <span className="text-gray-400">{note}</span> : null}
       </div>
       {inventory === null ? (

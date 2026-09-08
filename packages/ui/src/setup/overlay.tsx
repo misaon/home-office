@@ -1,6 +1,6 @@
-import type { Doctor } from "@ho/protocol";
-import { useEffect, useState } from "react";
-import { getClient } from "../rpc.ts";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { doctorQuery } from "../queries.ts";
 import { useUi } from "../store.ts";
 import { dockerStatus, imagesStatus, setupNeeded, tokenStatus } from "./status.ts";
 import { DockerStep, ImagesStep, TokenStep } from "./steps-environment.tsx";
@@ -23,11 +23,6 @@ const dismiss = (): void => {
   }
 };
 
-const fetchDoctor = (): Promise<Doctor | null> =>
-  getClient()
-    ?.system.doctor()
-    .catch(() => null) ?? Promise.resolve(null);
-
 /**
  * Opens the checklist once per connection when the office cannot work yet (no Docker, no images or no
  * token) unless the user dismissed it before; the header's "Setup" button reopens it. Floors and their
@@ -36,45 +31,28 @@ const fetchDoctor = (): Promise<Doctor | null> =>
 export function useSetupAutoOpen(): void {
   const connection = useUi((s) => s.connection);
   const setSetupOpen = useUi((s) => s.setSetupOpen);
+  const { data: doctor } = useQuery({
+    ...doctorQuery,
+    enabled: connection === "online" && !dismissed(),
+  });
   useEffect(() => {
-    if (connection !== "online" || dismissed()) {
-      return undefined;
+    if (connection === "online" && !dismissed() && doctor !== undefined && setupNeeded(doctor)) {
+      setSetupOpen(true);
     }
-    let cancelled = false;
-    void fetchDoctor().then((doctor) => {
-      if (!cancelled && doctor !== null && setupNeeded(doctor)) {
-        setSetupOpen(true);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [connection, setSetupOpen]);
+  }, [connection, doctor, setSetupOpen]);
 }
 
 export function SetupOverlay(): React.JSX.Element | null {
   const open = useUi((s) => s.setupOpen);
   const setSetupOpen = useUi((s) => s.setSetupOpen);
   const snapshot = useUi((s) => s.snapshot);
-  const [doctor, setDoctor] = useState<Doctor | null>(null);
-  const [tick, setTick] = useState(0);
+  const floorId = useUi((s) => s.floorId);
+  const connection = useUi((s) => s.connection);
+  const query = useQuery({ ...doctorQuery, enabled: open && connection === "online" });
+  const doctor = query.data ?? null;
   const refresh = (): void => {
-    setTick((n) => n + 1);
+    void query.refetch();
   };
-  useEffect(() => {
-    if (!open) {
-      return undefined;
-    }
-    let cancelled = false;
-    void fetchDoctor().then((d) => {
-      if (!cancelled) {
-        setDoctor(d);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, tick]);
   if (!open) {
     return null;
   }
@@ -92,7 +70,7 @@ export function SetupOverlay(): React.JSX.Element | null {
           <div>
             <h2 className="text-base font-semibold">Set up your office</h2>
             <p className="text-gray-400">
-              Three things make the office work; the fourth is a hello to a floor's boss.
+              Three things make the office work; the fourth is a hello to a floor’s boss.
             </p>
           </div>
           <div className="flex gap-2">
@@ -107,7 +85,7 @@ export function SetupOverlay(): React.JSX.Element | null {
         <DockerStep doctor={doctor} refresh={refresh} />
         <ImagesStep doctor={doctor} refresh={refresh} />
         <TokenStep doctor={doctor} refresh={refresh} />
-        <SmokeStep snapshot={snapshot} ready={ready} />
+        <SmokeStep key={floorId} snapshot={snapshot} ready={ready} />
       </div>
     </div>
   );
