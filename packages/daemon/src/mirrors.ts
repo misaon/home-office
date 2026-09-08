@@ -1,7 +1,6 @@
 import { compact, type Project } from "@ho/protocol";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { lock } from "proper-lockfile";
 
 /**
  * Projects defined by a git URL are mirrored on the host with the owner's own git credentials.
@@ -31,19 +30,26 @@ const git = async (args: readonly string[], cwd?: string): Promise<string> => {
   return stdout;
 };
 
+const pending = new Map<string, Promise<unknown>>();
+
+const serialize = <T>(key: string, work: () => Promise<T>): Promise<T> => {
+  const queued = (pending.get(key) ?? Promise.resolve()).then(work, work);
+  pending.set(
+    key,
+    queued.catch(() => undefined),
+  );
+  return queued;
+};
+
 /** Returns the host path the git-bridge should mount as `/src`, refreshing URL mirrors first. */
 export async function sourcePathFor(home: string, project: Project): Promise<string> {
   if (project.repo.kind === "local") {
     return project.repo.path;
   }
+  const { url } = project.repo;
   const path = mirrorPath(home, project);
   await mkdir(join(home, "mirrors"), { recursive: true, mode: 0o700 });
-  const release = await lock(path, {
-    realpath: false,
-    stale: 30_000,
-    retries: { retries: 20, minTimeout: 250, maxTimeout: 1000 },
-  });
-  try {
+  return serialize(path, async () => {
     if (await Bun.file(join(path, "HEAD")).exists()) {
       await git([
         "-C",
@@ -54,12 +60,10 @@ export async function sourcePathFor(home: string, project: Project): Promise<str
         `refs/heads/${project.defaultBranch}:refs/heads/${project.defaultBranch}`,
       ]);
     } else {
-      await git(["clone", "--bare", "--quiet", "--", project.repo.url, path]);
+      await git(["clone", "--bare", "--quiet", "--", url, path]);
     }
-  } finally {
-    await release();
-  }
-  return path;
+    return path;
+  });
 }
 
 /**

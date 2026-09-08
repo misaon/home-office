@@ -6,10 +6,7 @@
   "dependencies": {
     "@ho/daemon": "workspace:*",
     "@ho/protocol": "workspace:*",
-    "electrobun": "catalog:",
-    "proper-lockfile": "catalog:"
+    "electrobun": "catalog:"
   },
-  "devDependencies": {
-    "@types/proper-lockfile": "catalog:"
-  }
+  "devDependencies": {}
 }

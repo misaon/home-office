@@ -35,8 +35,6 @@
       "zustand": "5.0.15",
       "sharp": "0.35.4",
       "tinyqueue": "3.0.0",
-      "proper-lockfile": "4.1.2",
-      "@types/proper-lockfile": "4.1.4",
       "@tanstack/react-query": "5.102.8",
       "type-fest": "5.9.0"
     }

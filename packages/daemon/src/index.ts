@@ -1,15 +1,16 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { lock } from "proper-lockfile";
 import { type DaemonConfig, resolveHome } from "./config.ts";
 import type { DaemonInfo } from "./daemon-info.ts";
 import type { Office } from "./office.ts";
 import { launchDaemon } from "./launch.ts";
+import { acquireSingleInstanceLock } from "./single-instance.ts";
 
 export { DaemonConfig, loadConfig, resolveHome } from "./config.ts";
 export { DaemonInfo, daemonInfoPath, daemonUrl, readDaemonInfo } from "./daemon-info.ts";
 export { defaultResourcesRoot, type Resources, resolveResources } from "./paths.ts";
 export { Office } from "./office.ts";
+export { acquireSingleInstanceLock, type LockRelease } from "./single-instance.ts";
 
 export type DaemonHandle = {
   info: DaemonInfo;
@@ -31,8 +32,12 @@ export type DaemonOptions = {
 export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHandle> {
   const home = options.home ?? resolveHome();
   await mkdir(home, { recursive: true, mode: 0o700 });
+  const release = await acquireSingleInstanceLock(join(home, "daemon.lock"));
+  if (release === null) {
+    throw new Error(`another daemon already holds ${home}`);
+  }
   const cleanup = new AsyncDisposableStack();
-  cleanup.defer(await lock(home, { lockfilePath: join(home, "daemon.lock"), stale: 30_000 }));
+  cleanup.defer(release);
   try {
     return await launchDaemon(options, home, cleanup);
   } catch (error) {
