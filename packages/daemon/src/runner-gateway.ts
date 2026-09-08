@@ -5,14 +5,8 @@ import {
   type RunnerChannel,
   type RunnerLine,
 } from "@ho/core";
-import {
-  compact,
-  FromRunner,
-  RUNNER_PATH,
-  type RunnerHello,
-  type SessionId,
-  type ToRunner,
-} from "@ho/protocol";
+import { compact, type SessionId } from "@ho/protocol";
+import { FromRunner, RUNNER_PATH, type RunnerHello, type ToRunner } from "@ho/protocol/runner";
 import type { Logger } from "./logger.ts";
 
 export type RunnerConnection = { hello: RunnerHello; channel: RunnerChannel; close: () => void };

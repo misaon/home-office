@@ -1,14 +1,8 @@
 // ho-runner: PID 1 inside an agent sandbox. Dials the daemon's runner gateway over WebSocket with a
 // one-time token, then relays exactly one child process (stdin/stdout lines/stderr/exit). The agent's
 // credentials arrive over this channel and only ever live in the child's environment.
-import {
-  compact,
-  errorMessage,
-  type FromRunner,
-  RUNNER_ENV,
-  RUNNER_PATH,
-  ToRunner,
-} from "@ho/protocol";
+import { compact, errorMessage } from "@ho/protocol";
+import { type FromRunner, RUNNER_ENV, RUNNER_PATH, ToRunner } from "@ho/protocol/runner";
 import { pumpLines, pumpText } from "./pump.ts";
 
 const gateway = Bun.env[RUNNER_ENV.gateway];
