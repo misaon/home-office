@@ -897,7 +897,22 @@ Severita: medium
 Kde: `images/agent/Dockerfile:10-14`
 Důkaz: `docker history ho/agent:dev` layer sizes: **837 MB** for the single `apk add` (bash, curl, ca-certificates, libgcc, libstdc++, ripgrep, git, openssh-client, **chromium**, nodejs, npm, ttf-dejavu, ttf-liberation, unzip), 209 MB for the `claude-code` apk, 74.5 MB for `ho-runner`, 72.6 MB for the MCP `npm ci`, 36.7 MB for Bun. Locally the four provider variants total ~7.2 GB (`ho/agent:dev` 1.76 GB, `-opencode` 1.96 GB, `-codex` 1.89 GB, `-gemini-cli` 1.58 GB).
 Dopad: Náklady/DX: first-run setup downloads and builds ~1.8 GB before the office can do anything, and each extra provider adds another ~1.6-2 GB.
-Doporučení: Two contained wins: (a) B21.2 removes 74.5 MB; (b) chromium is only used when `config.browser.enabled` and the session is not triage (`packages/daemon/src/session-run.ts:178`), so moving chromium, the MCP servers and the fonts into an optional stage the base image does not include would take roughly 900 MB off installations that never use browser tooling. That is a build-graph change with a config flag, so it deserves its own wave.
+Doporučení: Two contained wins: (a) B21.2 removes 74.5 MB; (b) chromium is only used when
+`config.browser.enabled` and the session is not triage (`packages/daemon/src/session-run.ts:178`), so moving
+chromium, the MCP servers and the fonts into an optional stage the base image does not include would take
+roughly 900 MB off installations that never use browser tooling.
+
+**(a) is done and measured** (Wave 5): the runner is a 117 730-byte bundle instead of a 74 517 712-byte
+compiled binary, and `ho/agent:dev` went from **1.76 GB to 1.69 GB**.
+
+**(b) is deliberately not done, and here is the reasoning.** `browser.enabled` defaults to **true**, so the
+default installation uses chromium — the 900 MB would only be saved by someone who turns the browser off.
+Getting there means a browser and a no-browser flavour of every provider target: either eight targets, or
+the `ARG BASE=base-browser` + `FROM ${BASE}` indirection, plus a second axis in `imageRefFor`, the daemon
+choosing the flavour from config, and both flavours built and smoke-tested in CI (which has 14 GB of disk).
+That is a build-graph and image-matrix change whose benefit is conditional on a non-default setting, and it
+changes what a first run downloads — an owner-facing decision about the product's default shape, not a
+defect. Recorded here with the plan so it can be picked up deliberately.
 Odhad: velký
 
 ### B24.2 – `bun run devkit` downloads a toolchain from a vendor host on every CI run

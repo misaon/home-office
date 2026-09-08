@@ -3,7 +3,7 @@
 Restart-safe state of this audit. Updated at the end of every step.
 
 - **Branch:** `audit/deep-monorepo-audit-2026-09` (from `main` @ `ecd4aa5`)
-- **Phase:** 3 (implementation) — Waves 1–4 of 7 complete and verified
+- **Phase:** 3 (implementation) — Waves 1–5 of 7 complete and verified
 
 ## Done
 
@@ -149,9 +149,45 @@ and every other collection kept its identity) and panels select the collections 
 A real Claude Code session ran again end to end (6 turns) with no errors in the log — output in
 `audit/VERIFICATION.md`.
 
+## Wave 5 complete (2026-09-09) — verified
+
+**Security:** constant-time token comparison (`Bun.timingSafeEqual` does not exist in Bun 1.4.2 — the
+audit's own recommendation was wrong; `node:crypto` has it), `ho.db` and its WAL/shm files at 0600 with the
+state directory's 0700 re-asserted at every start, volume names encoded into Engine API paths, and the
+sandboxes' unrestricted egress written down as an accepted risk in `ARCHITECTURE.md` with what limits it.
+
+**The compiled binary:** it now says what it cannot do instead of returning 404 and "Internal server error"
+— `serves: { ui, images }` in `daemon.json`, a refusal from `ho ui` and `ho image build`, a doctor line
+saying images are not inspectable. Chasing that also found **A2.7**: a Keychain read from a compiled binary
+blocks forever (30 ms from source, still hanging after 15 s compiled), so secret reads are bounded at 5 s
+with a message naming the cause.
+
+**Images:** the runner is a 117 730-byte bundle on the image's own Bun instead of a 74 517 712-byte compiled
+binary — `ho/agent:dev` 1.76 → 1.69 GB — verified by a real session through the bundled runner. CI now
+builds and smoke-tests both images on a free arm64 runner, and both workflows cache the pinned Hutch
+toolchain instead of fetching it from a vendor host on every run.
+
+**Toolchain:** `bun run check` also builds the UI, so the pre-commit hook and CI check the same things; the
+desktop app got two strictness flags back (measured: they were off for nothing).
+
+**AI configuration:** the deprecated `includeCoAuthoredBy` replaced by `attribution`, the vendor's git
+instructions turned off (the office has its own and forbids pushing), dead `autoUpdatesChannel` removed,
+`bashOutputMaxChars: 10 000`, `fable` added to the catalogue, and effort defaults by role — worker and
+reviewer `high`, boss `medium`, clerk `low` — which also removed the last CLI/UI divergence in agent
+defaults. Every claim re-read from the live documentation today before changing anything.
+
+**Deliberately not done:** B24.1(b), the ~900 MB browser/chromium image split. `browser.enabled` defaults
+to true, so the saving only reaches installations that turn the browser off, and the change doubles the
+image matrix and alters what a first run downloads — an owner-facing decision, recorded in `AUDIT.md` with
+the plan.
+
+**For the owner:** the effort defaults are a cost change (B33.4), and B24.1(b) is waiting on a decision.
+
 ## Next step
 
-Wave 5 — infrastructure: A1.6 (desktop strictness flags), A2.1 (CI builds the images), **A2.6** (a compiled
-`ho` cannot serve the UI or report images), B19.1, B20.1–B20.4 (security), B21.2 (the runner embeds a second
-Bun), B24.1, B24.2 (image size), B33.1–B33.6 (AI configuration, cost and reasoning — B33.4 changes effort
-defaults, which is a cost change to flag for the owner).
+Wave 6 — DX and UI: B5.1 (the hand-maintained usage string and the 18-arm dispatch, per `adr/006`), B5.2
+(raw JSON from every mutating command; `--json` plus a human line, colour through `yoctocolors`), B5.3
+(three byte formatters), B5.4 (`stty -echo` left off on Ctrl-C; `@clack/prompts`), B6.3 (bundle splitting or
+delete the unused chunk naming), B6.5 (`repoOf` accepts URL schemes the protocol rejects), B13.1 (the
+provider state volume called "claude" for every provider), B13.2 (`keychain.ts` names the platform, not the
+port).

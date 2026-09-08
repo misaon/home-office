@@ -713,3 +713,131 @@ $ grep '"msg"' daemon.log | sort | uniq -c
 The office rendered it: screenshot with the floor plan and the chat panel showing the boss's status line
 ("Ryan is working on 'slice probe'") and the agent's question that moved the task to `blocked`. Live events
 seen by the UI for that session: `init, tool_call, tool_result, text_delta, usage, result` (19 events).
+
+## Wave 5 — infrastructure (2026-09-09)
+
+### Checks, audits, builds
+
+```
+$ bun install --frozen-lockfile   → Checked 230 installs across 382 packages (no changes)
+$ bun run check                   → typecheck · lint · fmt · knip · ui:build (now part of the gate, B19.1)
+                                    10.00s user 2.79s system 569% cpu 2.248 total
+$ (escapes grep)                  → none
+$ bun audit                       → No vulnerabilities found (checked 361 packages)
+$ npm ls --package-lock-only + npm audit (4 sandbox dirs) → 0 vulnerabilities each
+$ bun run assets:manifest         → 43 sprites
+$ bun build --compile apps/cli/src/main.ts   → compiled
+$ bun build --target=bun --minify packages/runner/src/main.ts → bundled
+$ bun run spikes/s6-acp-mock/src/run.ts
+CHECKS {"init":true,"permission":true,"toolCall":true,"toolResultOk":true,"result":true,"exitCode":0}
+```
+
+### Security (B20.1–B20.3)
+
+A state directory deliberately created world-readable, then a daemon started in it:
+
+```
+$ ls -ld <home>            (before)  drwxr-xr-x
+$ ls -ld <home>            (after)   drwx------
+$ ls -l <home>
+-rw-------  daemon.json     drwx------  daemon.lock
+-rw-------  ho.db           -rw-------  ho.db-shm     -rw-------  ho.db-wal      # were -rw-r--r--
+$ ho health                          → {"ok":true, …}
+$ curl -H 'Authorization: Bearer wrong' …/rpc → 401
+```
+
+`Bun.timingSafeEqual` does not exist in Bun 1.4.2 (`typeof` → `undefined`), which is what AUDIT.md's B20.1
+recommended; `node:crypto`'s does and is what shipped.
+
+### A compiled binary now says what it cannot do (A2.6), and never hangs on a secret (A2.7)
+
+```
+$ <compiled ho> daemon ; curl …/health            → {"ok":true}
+$ curl …/                                         → this build carries no office UI bundle; use the desktop
+                                                    app or run the daemon from a source checkout
+$ <compiled ho> ui --print                        → ho: this daemon serves no office UI (the build carries
+                                                    no bundle); use the desktop app or run the daemon from
+                                                    a source checkout
+$ <compiled ho> image build                       → ho: this build carries no image build contexts; build
+                                                    the images from a source checkout or the desktop app
+$ cat <home>/daemon.json | jq .serves             → {"ui": false, "images": false}
+$ <compiled ho> doctor                            → ho: the system secret store did not answer in 5 s; on
+                                                    macOS a build it has not seen before waits for a
+                                                    Keychain access prompt (approve it, or use a
+                                                    file-backed secret store)      [6 s, exit non-zero]
+   daemon.log: {"level":50,…,"err":"the system secret store did not answer in 5 s; …"}
+```
+
+and from source nothing changed:
+
+```
+$ daemon.json .serves → {"ui": true, "images": true}
+$ curl …/ → 200 · ho doctor → both images listed · ho ui --print → the tokened URL
+```
+
+The Keychain measurement behind A2.7, same item, same machine:
+
+```
+$ bun run <probe>.ts                                   → present=true in 30 ms
+$ bun build --compile <probe>.ts && ./keyprobe          → no output, still running after 15 s (killed)
+```
+
+### The runner on the image's own Bun (B21.2)
+
+```
+$ bun build --compile --minify --target=bun-linux-arm64-musl … → 74,517,712 bytes
+$ bun build --target=bun --minify …                            →    117,730 bytes   (633× smaller)
+$ ho image build ; docker images | grep '^ho/agent:dev'        → 1.69GB   (was 1.76GB)
+$ docker run --rm ho/agent:dev                                 → HO_GATEWAY and HO_SESSION_TOKEN are required
+$ (real session) daemon.log                                    → "runner connected", 1 turn, stopped cleanly
+```
+
+### Desktop strictness, measured flag by flag (A1.6)
+
+```
+exactOptionalPropertyTypes          15 errors, 0 in apps/desktop/src
+noPropertyAccessFromIndexSignature   0 errors      → re-enabled
+noUncheckedIndexedAccess             0 errors      → re-enabled
+noImplicitReturns                    1 error,  0 in apps/desktop/src
+```
+
+Keeping the devkit out of the strict program was attempted and fails:
+`error TS4094: Property 'partitionId' of exported anonymous class type may not be private or protected`.
+
+### AI configuration (B33.1–B33.6), re-read today and then run
+
+Documentation re-fetched 2026-09-09 (`settings-reference.md`, `env-vars.md`, `cli-reference.md`), quoting
+the parts that decided each change: "Use `attribution` instead, which replaces this key … but ignores it
+once you set `attribution.commit` or `attribution.pr`"; "To hide all attribution today, set
+`attribution.commit` and `attribution.pr` to empty strings and `attribution.sessionUrl` to `false`";
+`includeGitInstructions` default `true`, `false` "leaves both out"; `bashOutputMaxChars` "clamps the value
+into the range 4000 to 128000" and "when you set this key, Claude Code ignores the
+`BASH_MAX_OUTPUT_LENGTH` environment variable"; `--model` takes "`sonnet`, `opus`, `haiku`, or `fable`".
+
+Defaults, verified against a running daemon:
+
+```
+boss      opus    medium      (was high)
+worker    sonnet  high        (was medium)
+reviewer  sonnet  high
+clerk     haiku   low         (was sonnet medium — the role→model map used to live only in the UI)
+codex worker      high        (its catalogue offers low…xhigh)
+opencode worker   medium      (declares no effort levels; existing fallback)
+```
+
+And a real Claude Code session with the new settings ran to completion — 4 turns, task `done`, one report
+note, no settings warnings anywhere in the daemon log or the agent's stderr:
+
+```
+$ ho task assign <task> Angela
+01a08347-8056…  stopped  task=215e0777 agent=99c7ad91 turns=4  8in/643out/78632cache
+status: done   notes: ['report']
+```
+
+### Images after the wave
+
+```
+$ ho image build → images ready
+$ ho doctor      → image ho/agent:dev: present, up to date · image ho/git-bridge:dev: present, up to date
+$ docker images  → ho/agent:dev 1.69GB · ho/git-bridge:dev 41.4MB
+```
