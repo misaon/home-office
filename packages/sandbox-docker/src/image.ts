@@ -2,10 +2,10 @@ import type { BuildProgress, ImageSpec } from "@ho/core";
 import { z } from "zod";
 import type { DockerApi } from "./api.ts";
 
-export const HASH_LABEL = "ho.content-hash";
+const HASH_LABEL = "ho.content-hash";
 
 const ImageInspect = z.object({
-  Config: z.object({ Labels: z.record(z.string(), z.string()).nullable() }).nullable(),
+  Config: z.object({ Labels: z.record(z.string(), z.string()).nullish() }).nullish(),
 });
 
 export async function imageHash(api: DockerApi, ref: string): Promise<string | null> {
@@ -25,7 +25,7 @@ async function pump(
   let all = "";
   for await (const chunk of stream) {
     const text = decoder.decode(chunk, { stream: true });
-    all += text;
+    all = (all + text).slice(-4000);
     for (const line of text.split("\n")) {
       if (line.trim() !== "") {
         onLine?.(line);
@@ -39,12 +39,17 @@ async function pump(
 export async function buildImage(
   spec: ImageSpec,
   platform: string | undefined,
+  socket: string,
   onProgress?: (p: BuildProgress) => void,
 ): Promise<void> {
   const args = [
     "docker",
+    "--host",
+    `unix://${socket}`,
     "buildx",
     "build",
+    "--builder",
+    "default",
     "--load",
     "-t",
     spec.ref,

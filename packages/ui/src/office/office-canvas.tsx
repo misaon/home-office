@@ -77,6 +77,9 @@ export function OfficeCanvas(): React.JSX.Element {
       document.addEventListener("visibilitychange", onVisibility);
       onVisibility();
     })().catch((error: unknown) => {
+      if (!isDisposed()) {
+        useUi.getState().setError(error instanceof Error ? error.message : String(error));
+      }
       reportError(error);
     });
     return () => {

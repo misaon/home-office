@@ -86,8 +86,8 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
       <div className="space-y-1">
         <p className="text-gray-300">
           The agent image bundles Claude Code, git, RTK, headless Chromium and the browser MCP
-          servers (about 1.8 GB). The first build downloads everything and takes a few minutes;
-          later builds reuse cached layers.
+          servers. The first build downloads everything and takes a few minutes; later builds reuse
+          cached layers.
         </p>
         {status.state === "ok" && !building ? null : (
           <button
@@ -147,6 +147,7 @@ export function TokenStep({ doctor, refresh }: EnvProps): React.JSX.Element {
         <div className="flex gap-1">
           <input
             type="password"
+            aria-label="Claude subscription token"
             autoComplete="off"
             className="flex-1 rounded bg-ink px-2 py-1 font-mono"
             placeholder={

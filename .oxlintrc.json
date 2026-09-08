@@ -71,7 +71,13 @@
     "react/exhaustive-deps": "error",
     "react/button-has-type": "error",
     "react/react-in-jsx-scope": "off",
-    "react/exhaustive-effect-dependencies": "off"
+    "react/exhaustive-effect-dependencies": "off",
+    "import/no-unassigned-import": [
+      "error",
+      {
+        "allow": ["pixi.js/unsafe-eval"]
+      }
+    ]
   },
   "ignorePatterns": [
     "**/node_modules/**",

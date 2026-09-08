@@ -7,7 +7,7 @@ const KEYS: { key: SecretKeyName; label: string; hint: string }[] = [
   {
     key: "anthropic-oauth-token",
     label: "Claude subscription token",
-    hint: "Run `claude setup-token` in a terminal and paste the result. Stored in the Keychain, never in the log.",
+    hint: "Run `claude setup-token` in a terminal and paste the result. Stored in the configured secret store.",
   },
   {
     key: "anthropic-api-key",
@@ -85,6 +85,7 @@ export function TokenSettings(): React.JSX.Element {
           <div className="mt-1 flex gap-1">
             <input
               type="password"
+              aria-label={label}
               autoComplete="off"
               className="flex-1 rounded bg-ink px-2 py-1 font-mono"
               placeholder="paste token"

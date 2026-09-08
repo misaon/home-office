@@ -1,12 +1,11 @@
 import type { ImageSpec, ReadModel, SandboxProvider } from "@ho/core";
 import { imageRefFor, type ProviderId } from "@ho/protocol";
-import { createDockerApi } from "@ho/sandbox-docker";
+import { createDockerApi, imageHash } from "@ho/sandbox-docker";
 import { $ } from "bun";
 import { existsSync } from "node:fs";
 import { cp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { DaemonConfig } from "./config.ts";
-import { imageHash } from "./images-hash.ts";
 import { contextHash } from "./image-context.ts";
 import type { Resources } from "./paths.ts";
 

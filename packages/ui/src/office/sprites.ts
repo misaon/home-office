@@ -4,7 +4,6 @@ import { z } from "zod";
 
 const Manifest = z.object({
   tileSize: z.int().positive(),
-  /** Write time of the manifest; appended to frame URLs so re-imported art bypasses the browser cache. */
   revision: z.number().optional(),
   sprites: z.record(z.string(), z.record(z.string(), z.array(z.string()))),
 });
@@ -42,6 +41,7 @@ export class SpriteLibrary {
     // The stage is drawn at a fractional scale (fit to the pane, D20 density); linear sampling keeps the
     // painterly art smooth where nearest would drop rows and shimmer.
     TextureSource.defaultOptions.scaleMode = "linear";
+    Assets.setPreferences({ preferWorkers: false });
     const response = await fetch("/assets/dist/manifest.json", { cache: "no-store" });
     if (!response.ok) {
       throw new Error(`manifest: HTTP ${String(response.status)}`);
@@ -58,7 +58,7 @@ export class SpriteLibrary {
               Assets.load<Texture>({
                 alias: path,
                 src: `/${path}?r=${revision}`,
-                loadParser: "loadTextures",
+                parser: "texture",
               }),
             ),
           ).then((textures) => {
