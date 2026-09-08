@@ -1,6 +1,8 @@
 {
   "name": "ho-boss",
   "description": "Home Office boss pack: agentic engineering, context budget, search-first",
-  "version": "0.1.0",
-  "author": { "name": "Home Office" }
+  "version": "0.2.0",
+  "author": {
+    "name": "Home Office"
+  }
 }

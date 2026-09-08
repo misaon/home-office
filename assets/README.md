@@ -18,7 +18,7 @@ assets/src/<category>/<sprite>/<animation>[_<dir>]_f<frame>.png
 ```
 
 - `category`: `furniture`, `characters`, `bubbles`, `tiles`.
-- `sprite`: the key from the plan (`desk-developer`, `chair-qa`, `elevator`, `spa`, …), a character set name or an
+- `sprite`: the key from the plan (`desk-developer`, `chair-qa`, `elevator-cabin`, `spa`, …), a character set name or an
   emotion name.
 - `animation`: lowercase letters only. `static` for furniture without states; `empty`/`full` for the mailbox;
   character activities are listed below.
@@ -31,7 +31,7 @@ prints every plan object that still lacks art together with the size the art mus
 ## Pixel contract
 
 All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.ts` — **24 pixels per cell**
-(decision D20 in `docs/PLAN.md`; a 4 × 2 desk is 96 × 48 px, a character 48 × 48). The renderer draws art at its own pixel size — no scaling when the size is right.
+(a 4 × 2 footprint is 96 × 48 px; a character canvas is 48 × 120 px). The renderer draws art at its own pixel size — no scaling when the size is right.
 
 **Furniture**
 
@@ -66,10 +66,10 @@ All sizes derive from one constant, `CELL_PX` in `packages/sim/src/office-plan.t
 
 **Floor tiles**
 
-- `tiles/<key>/static_f0.png`: a **seamless** square texture repeated over the cells of one floor. The corridor
-  uses `floor-wood` (surface `office`); every room has its own key `floor-<room id>` — `floor-boss`, `floor-dev`,
+- `tiles/<key>/static_f0.png`: a **seamless** square texture repeated over the cells of one floor. The corridor and reception
+  use `floor-wood` (surface `office`); other rooms have their own key `floor-<room id>` — `floor-boss`, `floor-dev`,
   `floor-qa`, `floor-analyst`, `floor-meeting`, `floor-kitchen`, `floor-toilets`, `floor-lounge`, `floor-call-1`,
-  `floor-call-2`, `floor-reception`, `floor-terrace` (the spa is one decked area with the terrace and shares its
+  `floor-call-2`, `floor-terrace` (the spa is one decked area with the terrace and shares its
   tile). Until a room's tile lands it is a flat colour; rugs are separate floor-layer objects (`rug-teal`,
   `rug-green`, `rug-beige`). Import with the tile size in cells — **3 × 3 cells** (72 × 72 px) is the size that reads
   right: a marble slab or a plank is then about one cell, as in the reference — e.g.
@@ -155,7 +155,7 @@ bun run assets:import <source.png> <category>/<sprite>/<animation>[_<dir>] [--fr
 
 - Uses the delivered alpha, trims the art to the visible object (alpha below 16/255 counts as empty — generators
   leave an invisible halo far outside the object), scales it with an area-averaging filter to the footprint width
-  (furniture) or into the 2 × 2 canvas (characters, 2 × 5 cells) or 1 × 1 (bubbles), anchors it bottom-left or bottom-centre,
+  (furniture) or into a 2 × 5 cell canvas (characters) or 1 × 1 (bubbles), anchors it bottom-left or bottom-centre,
   writes the frames and refreshes the manifest. `--frames N` splits a horizontal strip of equal frames; a quoted `*` pattern
   (`"assets/inbox/spa-animate-*.png"`) imports a numbered file sequence as frames f0, f1, … — every frame is cropped
   to the common bounding box and scaled by one factor so nothing jitters; `--cells WxH` overrides the size for
@@ -196,6 +196,7 @@ look at it in the live app (`bun run ui:watch` + `ho daemon --ui`) and only then
 ```json
 {
   "version": 1,
+  "revision": 229077145983462,
   "tileSize": 24,
   "sprites": {
     "furniture/desk-developer": { "static": ["assets/src/furniture/desk-developer/static_f0.png"] }
@@ -203,7 +204,8 @@ look at it in the live app (`bun run ui:watch` + `ho daemon --ui`) and only then
 }
 ```
 
-The UI loads the PNGs individually; atlas packing is a later optimisation.
+The example revision is illustrative: the generator derives the actual revision from sprite contents and
+`CELL_PX`. The UI loads PNGs individually; atlas packing is a later optimisation.
 
 ## Attribution
 

@@ -56,11 +56,10 @@ production geometry lives in code and every destination must be reachable.
 - **Doors** open for whoever is about to pass through them — somebody standing in the doorway or with a door
   cell among the next four cells of their path — not for people walking past.
 - **Rendering.** `packages/ui/src/office/plan-view.ts` draws the architecture once (cached), glass panels and
-  doors that slide open when somebody is within three cells, and one node per object: the delivered sprite when
+  doors driven by the approach rule above, and one node per object: the delivered sprite when
   `furniture/<key>` is in the manifest, otherwise a geometric stand-in from `stand-ins.ts` in the approved palette.
   Art is drawn at its own pixel size (`CELL_PX` per cell, D20); a sprite delivered at the wrong width is scaled to
-  its footprint and reported in the red banner. Room labels are part of the stand-in stage and go away with real
-  art.
+  its footprint and reported in the red banner. Room labels remain visible even when sprites and floor textures are delivered.
 - **Walls.** Every wall cell is classified (`cap-h`, `face`, `block`, `cap-v`) and drawn from the delivered
   seamless tiles `tiles/wall-*` (`assets/README.md`, “Walls”; all four are in), with flat palette shapes as the
   fallback for a missing class. Straight pieces are tiled runs; every joint (corner, T, cross, end at a door or
@@ -159,8 +158,8 @@ decor are walk-through. The table is generated from `officePlan()`; regenerate i
 | `window`                 | 4 × 2             | 3     | dev                                                                                          | walk-through                                                                                |
 | `window`                 | 4 × 1             | 2     | toilets, lounge                                                                              | walk-through                                                                                |
 
-Characters: sets `boss`, `agent-a`, `agent-b`, `agent-c` and `postman` are the placeholders in use today (32 × 32
-frames from the 16 px era; the renderer scales any set to two cells wide). The receptionist Lola looks for the set
+Characters: sets `boss`, `agent-a`, `agent-b`, `agent-c` and `postman` are the placeholders in use today (48 × 120 px
+frames at 24 px per cell; the renderer scales any set to two cells wide). The receptionist Lola looks for the set
 `receptionist` and wears `agent-a` until it is delivered. A delivered set replaces one by name: frames 2 cells wide ×
 5 tall (D21), `bun run assets:import <strip.png> characters/<set>/<activity>_<dir> --frames N`. The activities and
 facings the simulation asks for are tabulated in `assets/README.md`; `idle_s` alone already renders, the rest falls
@@ -169,5 +168,5 @@ back to it.
 ## Later
 
 Glass and door tiles (walls and floors already take delivered seamless tiles; the flat palette colour remains for
-rooms without a floor tile), an elevator travel indicator, monitor and TV states, hot-tub water, a collapsible side
+rooms without a floor tile), an elevator travel indicator, monitor and TV states, a collapsible side
 panel, texture atlas packing once the scene is complete.
