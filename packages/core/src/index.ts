@@ -22,4 +22,5 @@ export * from "./result.ts";
 export type * from "./runtime.ts";
 export type * from "./sandbox.ts";
 export * from "./scheduler.ts";
+export * from "./socket.ts";
 export * from "./tasks/transitions.ts";
