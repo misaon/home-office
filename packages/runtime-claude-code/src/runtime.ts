@@ -83,41 +83,51 @@ export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions = {}): Age
         input: { text: string },
         signal?: Cancellation,
       ): AsyncIterable<RuntimeEvent> {
-        channel.write(userMessage(input.text));
-        for (;;) {
+        const cancelled = Promise.withResolvers<null>();
+        const cancel = (): void => {
+          channel.signal("SIGINT");
+          cancelled.resolve(null);
+        };
+        signal?.addEventListener("abort", cancel);
+        try {
           if (signal?.aborted === true) {
-            channel.signal("SIGINT");
-          }
-          const line = await reader.next();
-          if (line === null) {
-            yield {
-              kind: "error",
-              code: "process_exit",
-              message: "claude exited before producing a result",
-            };
             return;
           }
-          if (line.stream === "exit") {
-            yield {
-              kind: "error",
-              code: "process_exit",
-              message: `claude exited with code ${String(line.code)}`,
-            };
-            return;
-          }
-          if (line.stream === "stderr") {
-            options.onStderr?.(line.text);
-            continue;
-          }
-          for (const event of normalizeLine(line.text, clock.now)) {
-            if (event.kind === "result") {
-              resumeToken = event.runtimeSessionId;
-            }
-            yield event;
-            if (event.kind === "result") {
+          channel.write(userMessage(input.text));
+          for (;;) {
+            const line = await Promise.race([reader.next(), cancelled.promise]);
+            if (line === null) {
+              yield {
+                kind: "error",
+                code: "process_exit",
+                message: "claude exited before producing a result",
+              };
               return;
             }
+            if (line.stream === "exit") {
+              yield {
+                kind: "error",
+                code: "process_exit",
+                message: `claude exited with code ${String(line.code)}`,
+              };
+              return;
+            }
+            if (line.stream === "stderr") {
+              options.onStderr?.(line.text);
+              continue;
+            }
+            for (const event of normalizeLine(line.text, clock.now)) {
+              if (event.kind === "result") {
+                resumeToken = event.runtimeSessionId;
+              }
+              yield event;
+              if (event.kind === "result") {
+                return;
+              }
+            }
           }
+        } finally {
+          signal?.removeEventListener("abort", cancel);
         }
       }
 
@@ -129,13 +139,32 @@ export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions = {}): Age
         },
         close: async () => {
           channel.closeStdin();
-          const deadline = setTimeout(() => {
+          const terminate = setTimeout(() => {
             channel.signal("SIGTERM");
           }, 5000);
-          while (!reader.exited && (await reader.next()) !== null) {
-            // drain until exit
+          const kill = setTimeout(() => {
+            channel.signal("SIGKILL");
+          }, 10_000);
+          let deadline: ReturnType<typeof setTimeout> | undefined;
+          const drain = async (): Promise<void> => {
+            while (!reader.exited && (await reader.next()) !== null) {
+              continue;
+            }
+          };
+          try {
+            await Promise.race([
+              drain(),
+              new Promise<never>((_resolve, reject) => {
+                deadline = setTimeout(() => {
+                  reject(new Error("Claude did not exit"));
+                }, 15_000);
+              }),
+            ]);
+          } finally {
+            clearTimeout(terminate);
+            clearTimeout(kill);
+            clearTimeout(deadline);
           }
-          clearTimeout(deadline);
         },
         resumeToken: () => resumeToken,
       };

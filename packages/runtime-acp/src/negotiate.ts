@@ -55,15 +55,26 @@ export async function negotiate(
   stderr: (text: string) => void,
   lastStderr: () => string,
 ): Promise<Negotiated> {
-  const exitFirst = <T>(work: Promise<T>): Promise<T> =>
-    Promise.race([
-      work,
-      exited.then((code) => {
-        throw new Error(
-          `${preset.name} exited (code ${String(code)}) before answering${lastStderr()}`,
-        );
-      }),
-    ]);
+  const exitFirst = async <T>(work: Promise<T>): Promise<T> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        work,
+        exited.then((code) => {
+          throw new Error(
+            `${preset.name} exited (code ${String(code)}) before answering${lastStderr()}`,
+          );
+        }),
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => {
+            reject(new Error(`${preset.name} negotiation timed out`));
+          }, 30_000);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
   const agent = conn.agent;
   const init = await exitFirst(
     agent.request("initialize", {
@@ -75,7 +86,7 @@ export async function negotiate(
   const http = init.agentCapabilities?.mcpCapabilities?.http === true;
   const servers = mcpServers(spec, http);
   if (!http && Object.values(spec.mcpServers).some((s) => s.kind === "http")) {
-    stderr(`${preset.name} does not accept HTTP MCP servers; the office tools are unavailable`);
+    throw new Error(`${preset.name} does not accept HTTP MCP servers required by the office`);
   }
   const open = async (): Promise<Negotiated> => {
     if (spec.resume !== null && init.agentCapabilities?.loadSession === true) {

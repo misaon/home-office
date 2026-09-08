@@ -71,12 +71,18 @@ export const geminiPreset = (): AcpPreset => ({
   resume: true,
 });
 
-/** Codex through the codex-acp adapter; the model stays Codex's default (see the provider catalog). */
 export const codexPreset = (): AcpPreset => ({
   id: "codex",
   name: "Codex",
   argv: () => ["codex-acp"],
-  env: () => ({}),
+  env: (spec) => ({
+    NO_BROWSER: "1",
+    INITIAL_AGENT_MODE: "agent-full-access",
+    CODEX_CONFIG: JSON.stringify({
+      ...(spec.model === "default" ? {} : { model: spec.model }),
+      model_reasoning_effort: spec.effort,
+    }),
+  }),
   authMethods: ["openai-api-key", "api-key", "api"],
   resume: false,
 });

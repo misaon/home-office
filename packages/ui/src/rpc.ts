@@ -41,31 +41,36 @@ export function connect(token: string): Promise<{ client: Client; socket: WebSoc
     const socket = new WebSocket(`${scheme}://${window.location.host}/rpc`, [
       `${PROTOCOL_PREFIX}${token}`,
     ]);
-    socket.addEventListener(
-      "open",
-      () => {
-        const link = new RPCLink({ websocket: socket });
-        const client: Client = createORPCClient(link);
-        current = client;
-        socket.addEventListener(
-          "close",
-          () => {
-            if (current === client) {
-              current = null;
-            }
-          },
-          { once: true },
-        );
-        resolve({ client, socket });
-      },
-      { once: true },
-    );
-    socket.addEventListener(
-      "error",
-      () => {
-        reject(new Error("the daemon refused the connection"));
-      },
-      { once: true },
-    );
+    const cleanup = (): void => {
+      clearTimeout(deadline);
+      socket.removeEventListener("open", open);
+      socket.removeEventListener("error", fail);
+      socket.removeEventListener("close", fail);
+    };
+    const fail = (): void => {
+      cleanup();
+      socket.close();
+      reject(new Error("the daemon refused the connection or timed out"));
+    };
+    const open = (): void => {
+      cleanup();
+      const link = new RPCLink({ websocket: socket });
+      const client: Client = createORPCClient(link);
+      current = client;
+      socket.addEventListener(
+        "close",
+        () => {
+          if (current === client) {
+            current = null;
+          }
+        },
+        { once: true },
+      );
+      resolve({ client, socket });
+    };
+    const deadline = setTimeout(fail, 10_000);
+    socket.addEventListener("open", open);
+    socket.addEventListener("error", fail);
+    socket.addEventListener("close", fail);
   });
 }

@@ -18,16 +18,29 @@ async function connect(): Promise<{ client: HoClient; close: () => void }> {
     headers: { authorization: `Bearer ${info.token}` },
   });
   await new Promise<void>((resolve, reject) => {
-    websocket.addEventListener("open", () => {
+    const cleanup = (): void => {
+      clearTimeout(deadline);
+      websocket.removeEventListener("open", open);
+      websocket.removeEventListener("error", fail);
+      websocket.removeEventListener("close", fail);
+    };
+    const open = (): void => {
+      cleanup();
       resolve();
-    });
-    websocket.addEventListener("error", () => {
+    };
+    const fail = (): void => {
+      cleanup();
+      websocket.close();
       reject(
         new Error(
           `cannot reach the daemon at ${info.host}:${String(info.port)} (pid ${String(info.pid)})`,
         ),
       );
-    });
+    };
+    const deadline = setTimeout(fail, 10_000);
+    websocket.addEventListener("open", open);
+    websocket.addEventListener("error", fail);
+    websocket.addEventListener("close", fail);
   });
   const link = new RPCLink({ websocket });
   const client: HoClient = createORPCClient(link);

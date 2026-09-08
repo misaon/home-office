@@ -58,7 +58,7 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     scratchDirs: [],
     image: "claude-code",
     notes:
-      "Subscription via `claude setup-token`, or an Anthropic API key with an optional per-task budget in USD.",
+      "Subscription via `claude setup-token`, or an Anthropic API key with an optional per-session budget in USD.",
   },
   opencode: {
     id: "opencode",
@@ -67,13 +67,13 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     authKinds: ["api-key", "none"],
     defaultAuth: "api-key",
     models: [
-      { id: "anthropic/claude-sonnet-4-5", label: "Anthropic · Claude Sonnet 4.5 (API key)" },
+      { id: "anthropic/claude-sonnet-5", label: "Anthropic · Claude Sonnet 5 (API key)" },
       { id: "anthropic/claude-haiku-4-5", label: "Anthropic · Claude Haiku 4.5 (API key)" },
       { id: "openai/gpt-5", label: "OpenAI · GPT-5 (API key)" },
-      { id: "google/gemini-2.5-pro", label: "Google · Gemini 2.5 Pro (API key)" },
+      { id: "google/gemini-3.8-flash", label: "Google · Gemini 3.8 Flash (API key)" },
       { id: "ollama/qwen3-coder", label: "Ollama on this Mac · qwen3-coder (no key)" },
     ],
-    defaultModel: "anthropic/claude-sonnet-4-5",
+    defaultModel: "anthropic/claude-sonnet-5",
     freeFormModels: true,
     effortLevels: [],
     stateDir: `${HOME}/.local/share/opencode`,
@@ -88,15 +88,13 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     protocol: "acp",
     authKinds: ["api-key"],
     defaultAuth: "api-key",
-    // Ids shipped in Gemini CLI 0.58 (DEFAULT_GEMINI_MODEL = gemini-2.5-pro, FLASH = gemini-2.5-flash).
     models: [
+      { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+      { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite" },
+      { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro (preview)" },
       { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-      { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-      { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash-Lite" },
-      { id: "gemini-3-pro-preview", label: "Gemini 3 Pro (preview)" },
-      { id: "gemini-3-flash-preview", label: "Gemini 3 Flash (preview)" },
     ],
-    defaultModel: "gemini-2.5-flash",
+    defaultModel: "gemini-3.8-flash",
     freeFormModels: true,
     effortLevels: [],
     stateDir: `${HOME}/.gemini`,
@@ -112,13 +110,13 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     defaultAuth: "api-key",
     models: [{ id: "default", label: "Codex default model" }],
     defaultModel: "default",
-    freeFormModels: false,
-    effortLevels: [],
+    freeFormModels: true,
+    effortLevels: ["low", "medium", "high", "xhigh"],
     stateDir: `${HOME}/.codex`,
     scratchDirs: [`${HOME}/.cache`],
     image: "codex",
     notes:
-      "Runs through codex-acp with an OpenAI API key; the model is Codex's own default (ChatGPT sign-in is not used for automation).",
+      "Runs through codex-acp with an OpenAI API key; supports a model ID and reasoning effort through Codex configuration. Use default to retain the provider default.",
   },
 };
 

@@ -11,7 +11,7 @@ export const BROWSER_OUTPUT_DIR = "/tmp/browser";
  * performance, network and console. Chromium runs without its own sandbox because the container (CapDrop ALL,
  * no-new-privileges, read-only rootfs) is the sandbox and user namespaces are unavailable to it.
  */
-export const browserMcpServers = (): Record<string, McpServerSpec> => ({
+const SERVERS: Record<string, McpServerSpec> = {
   playwright: {
     kind: "stdio",
     command: "node",
@@ -27,7 +27,7 @@ export const browserMcpServers = (): Record<string, McpServerSpec> => ({
       "--output-dir",
       BROWSER_OUTPUT_DIR,
     ],
-    env: {},
+    env: { XDG_CONFIG_HOME: "/tmp/browser-config", XDG_CACHE_HOME: "/tmp/browser-cache" },
   },
   "chrome-devtools": {
     kind: "stdio",
@@ -42,6 +42,9 @@ export const browserMcpServers = (): Record<string, McpServerSpec> => ({
       "--chromeArg=--disable-dev-shm-usage",
       "--no-usage-statistics",
     ],
-    env: {},
+    env: { XDG_CONFIG_HOME: "/tmp/browser-config", XDG_CACHE_HOME: "/tmp/browser-cache" },
   },
-});
+};
+
+export const browserMcpServers = (devtools: boolean): Record<string, McpServerSpec> =>
+  Object.fromEntries(Object.entries(SERVERS).filter(([name]) => name === "playwright" || devtools));

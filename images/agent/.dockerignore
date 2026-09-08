@@ -1,1 +1,15 @@
-.gitignore
+**
+!Dockerfile
+!.dockerignore
+!bin/
+!bin/ho-runner
+!plugins/
+!plugins/**
+!rtk-config.toml
+!mcp/
+!mcp/package.json
+!mcp/package-lock.json
+!providers/
+!providers/*/
+!providers/*/package.json
+!providers/*/package-lock.json
