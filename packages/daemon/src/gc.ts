@@ -6,6 +6,8 @@ import type { Logger } from "./logger.ts";
 
 const INTERVAL_MS = 30 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
+const VOLUME_KINDS = ["task-volume", "provider-state"] as const;
+const LEGACY_VOLUME_KINDS = ["claude-config"] as const;
 
 const merge = (a: PruneReport, b: PruneReport): PruneReport => ({
   containers: [...a.containers, ...b.containers],
@@ -27,7 +29,7 @@ async function collectGarbage(
       await provider.prune({ labels: { ...managed, [LABELS.kind]: kind }, kinds: ["containers"] }),
     );
   }
-  for (const kind of ["task-volume", "claude-config"]) {
+  for (const kind of [...VOLUME_KINDS, ...LEGACY_VOLUME_KINDS]) {
     report = merge(
       report,
       await provider.prune({

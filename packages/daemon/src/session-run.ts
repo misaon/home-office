@@ -48,7 +48,7 @@ const sandboxSpec = (
   config: DaemonConfig,
   ctx: SessionContext,
   volume: string,
-  configVolume: string,
+  stateVolume: string,
   gatewayUrl: string,
   token: string,
 ): SandboxSpec => ({
@@ -68,7 +68,7 @@ const sandboxSpec = (
   volumes: [
     { name: volume, target: "/work" },
     // The CLI's conversation state; survives between sessions of the same task and agent (resume).
-    { name: configVolume, target: PROVIDERS[ctx.agent.provider].stateDir },
+    { name: stateVolume, target: PROVIDERS[ctx.agent.provider].stateDir },
   ],
   binds: [],
   tmpfs: {
@@ -94,7 +94,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
   const { provider, config, gateway, mcp, home } = deps;
   ctx.signal.throwIfAborted();
   const volume = `ho-task-${ctx.task.id.slice(-12)}`;
-  const configVolume = `${volume}-claude-${ctx.agent.id.slice(-8)}`;
+  const stateVolume = `${volume}-state-${ctx.agent.id.slice(-8)}`;
   const branch = ctx.task.artifacts.branch ?? branchFor(ctx.task.id);
   const labels = {
     [LABELS.managed]: "true",
@@ -106,7 +106,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     [LABELS.kind]: "network",
   });
   await provider.createVolume(volume, { ...labels, [LABELS.kind]: "task-volume" });
-  await provider.createVolume(configVolume, { ...labels, [LABELS.kind]: "claude-config" });
+  await provider.createVolume(stateVolume, { ...labels, [LABELS.kind]: "provider-state" });
   const sourcePath = await sourcePathFor(home, ctx.project);
   await prepareRepo(provider, config, sourcePath, ctx.project.defaultBranch, volume, branch);
   const issued = gateway.issue(ctx.session.id, ctx.signal);
@@ -121,7 +121,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
   try {
     ctx.signal.throwIfAborted();
     sandbox = await provider.start(
-      sandboxSpec(config, ctx, volume, configVolume, deps.gatewayUrl, issued.token),
+      sandboxSpec(config, ctx, volume, stateVolume, deps.gatewayUrl, issued.token),
     );
     const connection = await issued.connected;
     ctx.signal.throwIfAborted();
