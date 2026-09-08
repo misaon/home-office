@@ -25,6 +25,7 @@
         "ho": "./src/main.ts",
       },
       "dependencies": {
+        "@ho/core": "workspace:*",
         "@ho/daemon": "workspace:*",
         "@ho/protocol": "workspace:*",
         "@orpc/client": "catalog:",
@@ -34,7 +35,7 @@
     },
     "apps/desktop": {
       "name": "@ho/desktop",
-      "version": "0.1.0",
+      "version": "0.0.0",
       "dependencies": {
         "@ho/daemon": "workspace:*",
         "@ho/protocol": "workspace:*",
@@ -188,6 +189,7 @@
         "@agentclientprotocol/sdk": "catalog:",
         "@ho/core": "workspace:*",
         "@ho/protocol": "workspace:*",
+        "@ho/runner": "workspace:*",
         "@ho/runtime-acp": "workspace:*",
       },
     },

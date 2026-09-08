@@ -28,6 +28,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { Logger } from "./logger.ts";
 import type { Office } from "./office.ts";
+import { VERSION } from "./version.ts";
 
 export type McpSessionContext = {
   sessionId: SessionId;
@@ -267,7 +268,7 @@ export class McpGateway {
   }
 
   #build(entry: Entry): McpServer {
-    const server = new McpServer({ name: "home-office", version: "0.1.0" });
+    const server = new McpServer({ name: "home-office", version: VERSION });
     const run: Run = async (fn) => {
       try {
         return text(await fn());

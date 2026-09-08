@@ -18,8 +18,7 @@ import { startServer } from "./server.ts";
 import { SessionManager } from "./sessions.ts";
 
 import type { DaemonHandle, DaemonOptions } from "./index.ts";
-
-const VERSION = "0.0.0-dev";
+import { VERSION } from "./version.ts";
 
 export async function launchDaemon(
   options: DaemonOptions,

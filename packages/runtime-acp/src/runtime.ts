@@ -10,14 +10,14 @@ const CLOSE_GRACE_MS = 5000;
 const STDERR_TAIL = 6;
 const STDERR_TAIL_CHARS = 600;
 
-export type AcpRuntimeOptions = { onStderr?: (text: string) => void };
+export type AcpRuntimeOptions = { clientVersion: string; onStderr?: (text: string) => void };
 
 /**
  * One ACP agent per office session: spawn the CLI through the runner relay, negotiate, create (or load) a
  * session with the office's MCP servers, then run one prompt per `prompt()` call and translate the
  * notifications into runtime events.
  */
-export function createAcpRuntime(preset: AcpPreset, options: AcpRuntimeOptions = {}): AgentRuntime {
+export function createAcpRuntime(preset: AcpPreset, options: AcpRuntimeOptions): AgentRuntime {
   return {
     id: preset.id,
     capabilities: () => ({
@@ -40,7 +40,12 @@ export function createAcpRuntime(preset: AcpPreset, options: AcpRuntimeOptions =
       await channel.spawn(preset.argv(spec), { ...preset.env(spec), ...secrets }, spec.cwd);
       const { stream, exited } = channelStream(channel, stderr);
       const office = openConnection(stream);
-      const negotiated = await negotiate(office.conn, preset, spec, exited, stderr, lastStderr);
+      const negotiated = await negotiate(office.conn, preset, spec, {
+        exited,
+        stderr,
+        lastStderr,
+        clientVersion: options.clientVersion,
+      });
 
       const { sessionId } = negotiated;
       return {

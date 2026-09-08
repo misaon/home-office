@@ -45,14 +45,20 @@ function mcpServers(spec: RuntimeSessionSpec, http: boolean): McpServer[] {
  * initialize → (authenticate on demand) → session/load when possible, else session/new. Every request races
  * the agent's exit so a CLI that dies (missing binary, bad key) fails fast with its exit code.
  */
+export type NegotiateContext = {
+  exited: Promise<number | null>;
+  stderr: (text: string) => void;
+  lastStderr: () => string;
+  clientVersion: string;
+};
+
 export async function negotiate(
   conn: ClientConnection,
   preset: AcpPreset,
   spec: RuntimeSessionSpec,
-  exited: Promise<number | null>,
-  stderr: (text: string) => void,
-  lastStderr: () => string,
+  context: NegotiateContext,
 ): Promise<Negotiated> {
+  const { exited, stderr, lastStderr, clientVersion } = context;
   const exitFirst = async <T>(work: Promise<T>): Promise<T> => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
@@ -78,7 +84,7 @@ export async function negotiate(
     agent.request("initialize", {
       protocolVersion: PROTOCOL_VERSION,
       clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
-      clientInfo: { name: "home-office", version: "0.1.0" },
+      clientInfo: { name: "home-office", version: clientVersion },
     }),
   );
   const http = init.agentCapabilities?.mcpCapabilities?.http === true;

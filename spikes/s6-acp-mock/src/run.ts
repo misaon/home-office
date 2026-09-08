@@ -3,39 +3,10 @@
 // process inside a sandbox. Prints every runtime event and checks the ones that matter.
 import { createChannel, type RunnerChannel, type RunnerLine, type RuntimeEvent } from "@ho/core";
 import { AgentId, compact, SessionId, TaskId } from "@ho/protocol";
+import { pumpLines, pumpText } from "@ho/runner/pump";
 import { createAcpRuntime } from "@ho/runtime-acp";
 
 const here = import.meta.dir;
-
-async function pumpLines(
-  stream: ReadableStream<Uint8Array>,
-  onLine: (text: string) => void,
-): Promise<void> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    let index = buffer.indexOf("\n");
-    while (index >= 0) {
-      onLine(buffer.slice(0, index));
-      buffer = buffer.slice(index + 1);
-      index = buffer.indexOf("\n");
-    }
-  }
-  if (buffer !== "") {
-    onLine(buffer);
-  }
-}
-
-async function pumpText(
-  stream: ReadableStream<Uint8Array>,
-  onText: (text: string) => void,
-): Promise<void> {
-  const decoder = new TextDecoder();
-  for await (const chunk of stream) {
-    onText(decoder.decode(chunk, { stream: true }));
-  }
-}
 
 /** A RunnerChannel whose child runs locally; `lines()` is the same async channel the daemon's gateway uses. */
 function localChannel(): RunnerChannel & { exited: Promise<number | null> } {
@@ -90,6 +61,7 @@ const runtime = createAcpRuntime(
     resume: false,
   },
   {
+    clientVersion: "0.0.0-spike",
     onStderr: (text) => {
       process.stderr.write(`[agent stderr] ${text}\n`);
     },
