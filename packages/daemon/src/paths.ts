@@ -10,7 +10,8 @@ type ImageName = "agent" | "git-bridge";
  */
 export type Resources = {
   root: string;
-  imageContext: (name: ImageName) => string;
+  /** Docker build context of an image; null when this build carries no contexts (a compiled CLI). */
+  imageContext: (name: ImageName) => string | null;
   /** ho-runner sources, compiled into the agent image context; null when the context ships the binary. */
   runnerEntry: string | null;
   /** Role skill packs synced into the agent image context; null when the context already carries them. */
@@ -27,6 +28,10 @@ export type Resources = {
 export const defaultResourcesRoot = (): string =>
   Bun.env["HO_REPO_ROOT"] ?? resolve(import.meta.dir, "../../..");
 
+/** Whether this build carries the Docker build contexts of both images. */
+export const buildsImages = (resources: Resources): boolean =>
+  resources.imageContext("agent") !== null && resources.imageContext("git-bridge") !== null;
+
 const whenPresent = (dir: string, marker: string): string | null =>
   existsSync(resolve(dir, marker)) ? dir : null;
 
@@ -36,7 +41,7 @@ export function resolveResources(root: string = defaultResourcesRoot()): Resourc
   const pluginsSource = at("packages/agent-kit/plugins");
   return {
     root,
-    imageContext: (name) => at("images", name),
+    imageContext: (name) => whenPresent(at("images", name), "Dockerfile"),
     runnerEntry: existsSync(runnerEntry) ? runnerEntry : null,
     pluginsSource: existsSync(pluginsSource) ? pluginsSource : null,
     uiDir: whenPresent(at("packages/ui/dist"), "index.html"),

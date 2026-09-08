@@ -11,10 +11,14 @@ export async function doctor(): Promise<void> {
         ? `docker: ok ${report.provider.version} (api ${report.provider.apiVersion}, ${report.provider.os}/${report.provider.arch})`
         : `docker: FAIL ${report.provider.message}`,
     );
-    for (const image of report.images) {
-      line(
-        `image ${image.ref}: ${image.present ? (image.upToDate ? "present, up to date" : "present, STALE (run: ho image build)") : "MISSING (run: ho image build)"}`,
-      );
+    if (report.imageContexts) {
+      for (const image of report.images) {
+        line(
+          `image ${image.ref}: ${image.present ? (image.upToDate ? "present, up to date" : "present, STALE (run: ho image build)") : "MISSING (run: ho image build)"}`,
+        );
+      }
+    } else {
+      line("images: not inspectable — this build carries no image build contexts");
     }
     line(
       `secret anthropic-oauth-token: ${report.secrets.anthropicOauthToken ? "present" : "MISSING (claude setup-token → Keychain)"}`,

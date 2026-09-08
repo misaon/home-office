@@ -60,7 +60,10 @@ function serveUi(options: ServerOptions, pathname: string): Promise<Response> | 
       : serveStatic(assetsDir, pathname.slice(ASSETS_PREFIX.length - 1), null);
   }
   return dir === null
-    ? new Response("not found", { status: 404 })
+    ? new Response(
+        "this build carries no office UI bundle; use the desktop app or run the daemon from a source checkout",
+        { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } },
+      )
     : serveStatic(dir, pathname, "index.html");
 }
 
@@ -68,7 +71,7 @@ export function startServer(options: ServerOptions): { port: number; stop: () =>
   const handler = new RPCHandler(router, {
     interceptors: [
       onError((error) => {
-        if (error instanceof ORPCError) {
+        if (error instanceof ORPCError && error.code !== "INTERNAL_SERVER_ERROR") {
           options.log.debug({ code: error.code, err: error.message }, "rpc call rejected");
           return;
         }

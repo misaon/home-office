@@ -37,8 +37,11 @@ const contextPatterns = (resources: Resources, name: "agent" | "git-bridge"): st
 export async function contextHash(
   resources: Resources,
   name: "agent" | "git-bridge",
-): Promise<string> {
+): Promise<string | null> {
   const context = resources.imageContext(name);
+  if (context === null) {
+    return null;
+  }
   const paths = filesIn(context, contextPatterns(resources, name));
   const hashes = [await hashFiles(context, paths)];
   if (name === "agent") {

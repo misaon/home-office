@@ -32,6 +32,9 @@ export const imagesStatus = (doctor: Doctor | null): StepStatus => {
   if (!doctor.provider.ok) {
     return { state: "todo", text: "waiting for Docker" };
   }
+  if (!doctor.imageContexts) {
+    return { state: "todo", text: "this build carries no image build contexts" };
+  }
   const missing = doctor.images.filter((i) => !i.present).map((i) => i.ref);
   const stale = doctor.images.filter((i) => i.present && !i.upToDate).map((i) => i.ref);
   if (missing.length > 0) {

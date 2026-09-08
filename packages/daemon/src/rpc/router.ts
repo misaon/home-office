@@ -19,41 +19,10 @@ import {
 } from "@ho/core";
 import { contract, SecretKeyName, type StoredEvent } from "@ho/protocol";
 import { implement, ORPCError } from "@orpc/server";
-import { DomainFailure } from "../errors.ts";
 import type { RpcContext } from "./context.ts";
+import { guarded } from "./guarded.ts";
 
 const os = implement(contract).$context<RpcContext>();
-
-/** Runs an office command and translates domain failures into typed RPC errors. */
-const guarded = os.middleware(async ({ next }) => {
-  try {
-    return await next();
-  } catch (error) {
-    if (error instanceof DomainFailure) {
-      switch (error.error.code) {
-        case "not_found": {
-          throw new ORPCError("NOT_FOUND", {
-            message: error.message,
-            data: { entity: error.error.entity, id: error.error.id },
-          });
-        }
-        case "conflict": {
-          throw new ORPCError("CONFLICT", {
-            message: error.message,
-            data: { reason: error.error.reason },
-          });
-        }
-        case "invalid_transition": {
-          throw new ORPCError("INVALID_TRANSITION", {
-            message: error.message,
-            data: { from: error.error.from, to: error.error.to },
-          });
-        }
-      }
-    }
-    throw error;
-  }
-});
 
 const base = os.use(guarded);
 const HUMAN = { kind: "human" } as const;
@@ -97,6 +66,7 @@ export const router = base.router({
       return {
         provider,
         images: provider.ok ? await context.imageStatus() : [],
+        imageContexts: context.imageContexts,
         secrets: {
           anthropicOauthToken: (await context.secrets.get("anthropic-oauth-token")) !== null,
         },

@@ -6,7 +6,7 @@ import { startBossVoice } from "./boss-voice.ts";
 import { openOffice } from "./open-office.ts";
 import { DaemonConfig, loadConfig } from "./config.ts";
 import { type DaemonInfo, removeDaemonInfo, writeDaemonInfo } from "./daemon-info.ts";
-import { resolveResources } from "./paths.ts";
+import { buildsImages, resolveResources } from "./paths.ts";
 import { createLogger } from "./logger.ts";
 import { OfficeGate } from "./office-gate.ts";
 import { createJobs } from "./jobs.ts";
@@ -111,6 +111,7 @@ export async function launchDaemon(
     pid: process.pid,
     startedAt,
     version: VERSION,
+    serves: { ui: resources.uiDir !== null, images: buildsImages(resources) },
   };
   await writeDaemonInfo(home, info);
 

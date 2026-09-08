@@ -86,8 +86,34 @@ Severita: high
 Kde: `packages/daemon/src/paths.ts:26-28`, reached from `packages/daemon/src/images.ts:112-127` and `packages/daemon/src/server.ts#serveUi`
 Důkaz: Found in Wave 2, after A2.5 made the compiled daemon start at all. Against a binary built from this branch (`bun build --compile apps/cli/src/main.ts`): the daemon starts and `/health` answers `{"ok":true}`, but `GET /` returns **404 `not found`** and `ho doctor` prints `ho: Internal server error`. The daemon's own start line says `"resources":"/"` — `defaultResourcesRoot()` is `resolve(import.meta.dir, "../../..")`, which in a compiled executable walks a virtual path up to `/`. So `uiDir` and `assetsDir` resolve to nothing (`whenPresent` correctly returns null, hence the 404), and `imageContext("agent")` returns `/images/agent`, which does not exist: with the error interceptor added in B29.5 the daemon now logs the cause, `ENOENT: no such file or directory, open '/images/agent'`. Pre-existing, and the same root cause as A2.5: only the migrations layer was fixed there.
 Dopad: A self-compiled `ho` runs projects, agents and tasks fine but cannot show the office and cannot report or build images. The shipped desktop app is unaffected (it passes `resourcesRoot`), and so is running from source.
-Doporučení: Make `Resources.imageContext` nullable like every other field in that type, and have `imageStatus`/`ensureImages` report "no image context in this build" instead of throwing; then `doctor` degrades to a truthful report instead of a 500. Deferred to **Wave 5**, where the image/Docker work lives, and the CI smoke test gains a `doctor` call there.
+Doporučení: Make `Resources.imageContext` nullable like every other field in that type, and have `imageStatus`/`ensureImages` report "no image context in this build" instead of throwing; then `doctor` degrades to a truthful report instead of a 500.
+**Done in Wave 5, and it is broader than the finding said.** `imageContext` is nullable, `imageSpecs` returns null without contexts, `ensureImages` refuses with a sentence, `imageStatus` returns nothing and `Doctor` carries `imageContexts` so the CLI and the setup step say _why_ there are no image rows instead of implying none are needed. `daemon.json` gained `serves: { ui, images }`, so `ho ui` refuses up front instead of opening a URL that 404s, and the 404 body itself now explains. Verified against a compiled binary: `/health` ok, `GET /` returns the explanation, `ho ui --print` and `ho image build` both refuse with a sentence, `daemon.json` says `{ui: false, images: false}`; and from source nothing changed (`serves {ui: true, images: true}`, `GET /` 200, `doctor` lists both images, `ho ui --print` prints the tokened URL). Chasing the 500 also uncovered **A2.7**: the request never returned because a Keychain read from a compiled binary blocks forever.
 Odhad: střední
+
+### A2.7 – Reading a secret from a compiled binary blocks forever on macOS
+
+Severita: high
+Kde: `packages/secrets/src/keychain.ts` at the audited baseline
+Důkaz: Found in Wave 5 while fixing A2.6. The same Keychain item read with `Bun.secrets`:
+
+```
+$ bun run <probe>.ts          → present=true in 30 ms
+$ bun build --compile <probe>.ts --outfile keyprobe && ./keyprobe
+                              → no output, still running after 15 s (killed)
+```
+
+macOS decides Keychain access per application identity, and a freshly compiled binary is a new
+application: the read waits on an authorisation prompt that nothing in a terminal answers. The daemon read
+secrets with no timeout, so `ho doctor` and any session start from a compiled `ho` hung indefinitely — the
+symptom that made A2.6's investigation confusing, because the request never returned at all.
+Dopad: A self-compiled `ho` appears to hang with no message. The shipped desktop app is unaffected in
+practice (one application identity, the user approves once), and running from source is unaffected.
+Doporučení: A secret read must not be able to stall the daemon: bound it and say what happened. Done in
+Wave 5 — 5 s per call, with a message naming the cause. Verified: the compiled `ho doctor` now fails after
+6 s with "the system secret store did not answer in 5 s; on macOS a build it has not seen before waits for
+a Keychain access prompt (approve it, or use a file-backed secret store)", and the daemon logs the same at
+error level.
+Odhad: triviální
 
 ### A1.4 – No `incremental`, so every typecheck is a cold start
 

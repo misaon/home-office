@@ -15,6 +15,11 @@ export async function ui(args: readonly string[]): Promise<void> {
       `no running daemon found (${home}/daemon.json missing); start one with \`ho daemon\``,
     );
   }
+  if (info.serves?.ui === false) {
+    throw new Error(
+      "this daemon serves no office UI (the build carries no bundle); use the desktop app or run the daemon from a source checkout",
+    );
+  }
   const url = `${daemonUrl(info)}/#token=${info.token}`;
   if (parsed.flags["print"] === true) {
     line(url);

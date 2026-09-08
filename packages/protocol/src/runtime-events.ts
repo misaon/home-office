@@ -114,6 +114,8 @@ export type ResourceInventory = z.infer<typeof ResourceInventory>;
 export const Doctor = z.object({
   provider: ProviderHealth,
   images: z.array(z.object({ ref: z.string(), present: z.boolean(), upToDate: z.boolean() })),
+  /** False when this build carries no image build contexts (a compiled CLI), so `images` says nothing. */
+  imageContexts: z.boolean(),
   secrets: z.object({ anthropicOauthToken: z.boolean() }),
   sessions: z.object({ active: z.int().nonnegative(), max: z.int().positive() }),
   resources: ResourceSnapshot.nullable(),

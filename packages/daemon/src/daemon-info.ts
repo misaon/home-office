@@ -12,6 +12,8 @@ export const DaemonInfo = z.object({
   pid: z.int().positive(),
   startedAt: z.iso.datetime(),
   version: z.string(),
+  /** What this build carries; absent in files written by an older daemon. */
+  serves: z.object({ ui: z.boolean(), images: z.boolean() }).optional(),
 });
 export type DaemonInfo = z.infer<typeof DaemonInfo>;
 
