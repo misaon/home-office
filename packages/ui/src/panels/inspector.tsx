@@ -26,6 +26,14 @@ function describe(live: LiveEvent): string {
   if (e.kind === "usage") {
     return "";
   }
+  if (e.kind === "context") {
+    const share =
+      e.windowTokens === 0
+        ? ""
+        : ` (${String(Math.round((e.usedTokens / e.windowTokens) * 100))}%)`;
+    const cost = e.cost === null ? "" : ` · ${e.cost.amount.toFixed(2)} ${e.cost.currency}`;
+    return `context ${fmt(e.usedTokens)}/${fmt(e.windowTokens)}${share}${cost}`;
+  }
   if (e.kind === "rate_limited") {
     return "rate limited";
   }

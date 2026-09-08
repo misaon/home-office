@@ -215,6 +215,7 @@ async function consume(
         break;
       }
       case "usage":
+      case "context":
       case "rate_limited":
       case "text_delta":
       case "tool_call":

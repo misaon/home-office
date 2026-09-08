@@ -47,6 +47,12 @@ export async function session(args: readonly string[]): Promise<void> {
               line(`[${live.sessionId.slice(-8)}] usage ${JSON.stringify(e.usage)}`);
               break;
             }
+            case "context": {
+              line(
+                `[${live.sessionId.slice(-8)}] context ${String(e.usedTokens)}/${String(e.windowTokens)}${e.cost === null ? "" : ` cost ${e.cost.amount.toFixed(2)} ${e.cost.currency}`}`,
+              );
+              break;
+            }
             case "rate_limited": {
               line(`[${live.sessionId.slice(-8)}] rate limited until ${e.retryAt ?? "?"}`);
               break;

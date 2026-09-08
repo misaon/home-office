@@ -20,12 +20,13 @@ async function runEvents(client: Client, bridge: Bridge, signal: AbortSignal): P
   for await (const event of await client.events.subscribe(input, { signal })) {
     applyEvent(model, event);
     scheduleModelBump();
-    if (replayed) {
-      bridge.onEvent(event);
-    } else if (event.seq >= head.seq) {
+    if (!replayed && event.seq >= head.seq) {
       replayed = true;
       bridge.syncFromModel();
       useUi.getState().setReplayed(true);
+    }
+    if (replayed) {
+      bridge.onEvent(event);
     }
   }
 }

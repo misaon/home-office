@@ -19,7 +19,7 @@ export type TurnState = { text: string; tools: Map<string, string>; toolCalls: n
 
 export const newTurn = (): TurnState => ({ text: "", tools: new Map(), toolCalls: 0 });
 
-/** Maps one `session/update` notification onto the office's runtime events; plans, thoughts and usage stay internal. */
+/** Maps one `session/update` notification onto the office's runtime events; plans and thoughts stay internal. */
 export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeEvent[] {
   if (update.sessionUpdate === "agent_message_chunk") {
     if (update.content.type !== "text") {
@@ -43,6 +43,19 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
       events.push(finished(update.toolCallId, update.status, update.title, update.content));
     }
     return events;
+  }
+  if (update.sessionUpdate === "usage_update") {
+    return [
+      {
+        kind: "context",
+        usedTokens: update.used,
+        windowTokens: update.size,
+        cost:
+          update.cost === undefined || update.cost === null
+            ? null
+            : { amount: update.cost.amount, currency: update.cost.currency },
+      },
+    ];
   }
   if (update.sessionUpdate === "tool_call_update") {
     if (update.status !== "completed" && update.status !== "failed") {

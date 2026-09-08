@@ -87,6 +87,11 @@ export function UsagePanel(): React.JSX.Element {
           <Buckets title="By agent" rows={summary.byAgent} />
           <Buckets title="By project" rows={summary.byProject} />
           <Buckets title="By day" rows={summary.byDay} />
+          <p className="text-[11px] text-gray-500">
+            Token counts come from Claude Code. OpenCode, Gemini CLI and Codex speak ACP, which
+            reports how full the context window is and the session&apos;s cost rather than a token
+            split — those arrive live and are shown per session in Agent.
+          </p>
         </>
       )}
     </div>

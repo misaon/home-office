@@ -1,9 +1,9 @@
 import { errorMessage } from "@ho/protocol";
-import type { ClientConnection, McpServer } from "@agentclientprotocol/sdk";
+import { type ClientConnection, type McpServer, PROTOCOL_VERSION } from "@agentclientprotocol/sdk";
 import type { RuntimeSessionSpec } from "@ho/core";
 import type { AcpPreset } from "./presets.ts";
 
-const PROTOCOL_VERSION = 1;
+/** JSON-RPC application error the ACP spec assigns to "authentication required". */
 const AUTH_REQUIRED = -32000;
 
 export type Negotiated = {

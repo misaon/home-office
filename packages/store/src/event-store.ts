@@ -90,10 +90,7 @@ export function createSqliteEventStore(
         .limit(BATCH)
         .all();
       for (const row of rows) {
-        const event = toStored(row);
-        if (matches(filter, event)) {
-          yield event;
-        }
+        yield toStored(row);
         cursor = row.seq;
       }
       if (rows.length < BATCH) {
