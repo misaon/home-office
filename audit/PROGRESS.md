@@ -6,6 +6,7 @@ Restart-safe state of this audit. Updated at the end of every step.
 - **Phase:** 1 (read-only audit) — reading complete, verification complete, writing findings
 
 ## Done
+
 - Phase 0 inventory → `audit/INVENTORY.md`; baseline verification → `audit/VERIFICATION.md`;
   suppression census → `audit/SUPPRESSIONS.md`. Commit `ac30a34`.
 - Read **every** tracked `.ts`/`.tsx`/`.css`/`.html` file (200 files, 20 121 lines) plus every config,
@@ -24,12 +25,15 @@ Restart-safe state of this audit. Updated at the end of every step.
   - Docker Engine API levels and the pinned Alpine digest (verified against `/etc/alpine-release`).
 
 ## In progress
+
 - Writing `audit/AUDIT.md`, `audit/COVERAGE.md`, `audit/DEPENDENCIES.md`, `audit/adr/*`.
 
 ## Next step
+
 - Finish the four audit documents, then Wave 1.
 
 ## Environment notes for a restart
+
 - Scratch daemon home `/tmp/ho-audit-baseline` holds a project "Audit Repo"; a daemon may be listening on
   127.0.0.1:47800 (`ho ui --print` gives the tokened URL).
 - `bun run ui:watch` may be running and has published a **development** UI bundle to `packages/ui/dist`.
