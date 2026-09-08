@@ -1,4 +1,5 @@
 import {
+  chatOf,
   assignTask,
   copyAgent,
   createAgent,
@@ -214,11 +215,14 @@ export const router = base.router({
     }),
   },
   chat: {
-    history: base.chat.history.handler(({ input, context }) =>
-      context.office.model.chat
-        .filter((m) => input.projectId === undefined || m.projectId === input.projectId)
-        .slice(-input.limit),
-    ),
+    history: base.chat.history.handler(({ input, context }) => {
+      const model = context.office.model;
+      const messages =
+        input.projectId === undefined
+          ? [...model.chat.values()].flat().toSorted((a, b) => a.at.localeCompare(b.at))
+          : chatOf(model, input.projectId);
+      return messages.slice(-input.limit);
+    }),
     send: base.chat.send.handler(({ input, context }) =>
       context.office.execute(HUMAN, (m, ctx) => postChatMessage(m, input, ctx)),
     ),

@@ -1,6 +1,7 @@
 import { compact, type Session, type StoredEvent, type Task } from "@ho/protocol";
 import { isSessionActive, RATE_LIMITED } from "../commands/sessions.ts";
 import {
+  CHAT_TAIL,
   dropFrom,
   indexInto,
   mailSourceKey,
@@ -192,7 +193,9 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
       break;
     }
     case "chat.message_posted": {
-      model.chat.push(event.payload.message);
+      const message = event.payload.message;
+      const floor = model.chat.get(message.projectId) ?? [];
+      model.chat.set(message.projectId, [...floor, message].slice(-CHAT_TAIL));
       break;
     }
     case "mail.received": {

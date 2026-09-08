@@ -1,6 +1,7 @@
 import {
   type Agent,
   type AgentId,
+  type ChatMessage,
   compact,
   type NewEvent,
   type Project,
@@ -24,6 +25,13 @@ export type Roster = {
 /** The staff of one floor (its boss included). */
 export const membersOf = (model: Roster, projectId: ProjectId): Agent[] =>
   resolve(model.agents, model.agentsByProject.get(projectId));
+
+/** Enough of the model to read a floor's chat; the UI's immutable snapshot fits too. */
+export type ChatLog = { chat: ReadonlyMap<ProjectId, readonly ChatMessage[]> };
+
+/** The floor's recent chat, oldest first; the full history lives in the event log. */
+export const chatOf = (model: ChatLog, projectId: ProjectId): readonly ChatMessage[] =>
+  model.chat.get(projectId) ?? [];
 
 /** The floor's tasks, in creation order. */
 export const tasksOf = (

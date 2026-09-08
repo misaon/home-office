@@ -1,3 +1,4 @@
+import { chatOf } from "@ho/core";
 import { type ChatMessageId, errorMessage, type ProjectId, type TaskId } from "@ho/protocol";
 import { useState } from "react";
 import { getClient } from "../rpc.ts";
@@ -10,16 +11,10 @@ const HELLO =
 
 type Sent = { messageId: ChatMessageId; taskId: TaskId | null; at: string };
 
-const replyTo = (snapshot: Snapshot, sent: Sent, floorId: ProjectId): boolean | string => {
-  const reply = snapshot.chat.find(
-    (m) =>
-      m.projectId === floorId &&
-      m.author.kind === "agent" &&
-      m.taskId === sent.taskId &&
-      m.at >= sent.at,
-  );
-  return reply === undefined ? false : reply.text;
-};
+const replyTo = (snapshot: Snapshot, sent: Sent, floorId: ProjectId): string | null =>
+  chatOf(snapshot, floorId).find(
+    (m) => m.author.kind === "agent" && m.taskId === sent.taskId && m.at >= sent.at,
+  )?.text ?? null;
 
 function smokeStatus(
   snapshot: Snapshot,
@@ -36,8 +31,8 @@ function smokeStatus(
       : { state: "todo", text: "finish the steps above first" };
   }
   const reply = replyTo(snapshot, sent, floorId);
-  if (typeof reply === "string") {
-    const answered = snapshot.chat.find((m) => m.text === reply)?.at ?? sent.at;
+  if (reply !== null) {
+    const answered = chatOf(snapshot, floorId).find((m) => m.text === reply)?.at ?? sent.at;
     return {
       state: "ok",
       text: `the boss answered in ${String(Math.round((new Date(answered).getTime() - new Date(sent.at).getTime()) / 1000))} s`,
@@ -93,7 +88,7 @@ export function SmokeStep({
       },
     );
   };
-  const reply = sent === null || floorId === null ? false : replyTo(snapshot, sent, floorId);
+  const reply = sent === null || floorId === null ? null : replyTo(snapshot, sent, floorId);
   return (
     <Step index={4} title="Smoke test" status={status}>
       <div className="space-y-1">
@@ -102,7 +97,7 @@ export function SmokeStep({
           starts, Claude Code signs in with your token and the reply lands in Chat. Expect 20–60
           seconds and a few hundred tokens on {boss?.model ?? "the boss's model"}.
         </p>
-        {typeof reply === "string" ? (
+        {reply !== null ? (
           <blockquote className="rounded bg-ink p-2 text-gray-200">{reply}</blockquote>
         ) : (
           <button

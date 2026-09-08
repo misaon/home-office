@@ -19,7 +19,7 @@ export type ReadModel = {
   agents: Map<AgentId, Agent>;
   tasks: Map<TaskId, Task>;
   sessions: Map<SessionId, Session>;
-  chat: ChatMessage[];
+  chat: Map<ProjectId, ChatMessage[]>;
   mail: Map<MailItemId, MailItem>;
   lastSeq: number;
   agentsByProject: Map<ProjectId, Set<AgentId>>;
@@ -39,7 +39,7 @@ export const createReadModel = (): ReadModel => ({
   agents: new Map(),
   tasks: new Map(),
   sessions: new Map(),
-  chat: [],
+  chat: new Map(),
   mail: new Map(),
   lastSeq: -1,
   agentsByProject: new Map(),
@@ -53,6 +53,9 @@ export const createReadModel = (): ReadModel => ({
 });
 
 export const RATE_LIMIT_TAIL = 1000;
+
+/** Messages kept per floor in the projection; the whole history stays in the event log. */
+export const CHAT_TAIL = 500;
 
 export const mailSourceKey = (
   projectId: ProjectId,

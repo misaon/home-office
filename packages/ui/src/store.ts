@@ -24,7 +24,7 @@ export type Snapshot = {
   agents: ReadonlyMap<AgentId, Agent>;
   tasks: ReadonlyMap<TaskId, Task>;
   sessions: ReadonlyMap<SessionId, Session>;
-  chat: readonly ChatMessage[];
+  chat: ReadonlyMap<ProjectId, readonly ChatMessage[]>;
   mail: ReadonlyMap<MailItemId, MailItem>;
   /** The projection's own index, shared by reference: only `applyEvent` ever writes it. */
   agentsByProject: ReadonlyMap<ProjectId, ReadonlySet<AgentId>>;
@@ -38,7 +38,7 @@ const takeSnapshot = (): Snapshot => ({
   agents: new Map(model.agents),
   tasks: new Map(model.tasks),
   sessions: new Map(model.sessions),
-  chat: [...model.chat],
+  chat: new Map(model.chat),
   mail: new Map(model.mail),
   agentsByProject: model.agentsByProject,
 });

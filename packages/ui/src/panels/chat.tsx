@@ -1,4 +1,4 @@
-import { bossOf } from "@ho/core";
+import { bossOf, chatOf } from "@ho/core";
 import { type ChatMessage, errorMessage, type ProjectId, type TaskId } from "@ho/protocol";
 import { useEffect, useRef, useState } from "react";
 import { getClient } from "../rpc.ts";
@@ -77,7 +77,7 @@ export function ChatPanel(): React.JSX.Element {
   }
   const floor = snapshot.projects.get(floorId);
   const boss = bossOf(snapshot, floorId);
-  const messages = snapshot.chat.filter((m) => m.projectId === floorId).slice(-200);
+  const messages = chatOf(snapshot, floorId).slice(-200);
   const questions = openQuestions(snapshot, floorId);
   const question = questions.find((q) => q.taskId === answering);
 
