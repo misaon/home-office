@@ -30,11 +30,7 @@ export type EventStore = {
   lastSeq: () => Promise<number>;
 };
 
-export type SecretKey =
-  | "anthropic-oauth-token"
-  | "anthropic-api-key"
-  | "daemon-token"
-  | (string & {});
+export type SecretKey = "anthropic-oauth-token" | "anthropic-api-key" | (string & {});
 export type SecretStore = {
   get: (key: SecretKey) => Promise<string | null>;
   set: (key: SecretKey, value: string) => Promise<void>;

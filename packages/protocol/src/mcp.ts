@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TaskPriority } from "./domain.ts";
-import { AgentId, TaskId } from "./ids.ts";
+import { TaskId } from "./ids.ts";
 
 /**
  * Tools the daemon exposes to agents over MCP. Inputs are deliberately small: the boss receives summaries,
@@ -87,11 +87,3 @@ export const McpToolName = z.enum([
   "ho_list_agents",
 ]);
 export type McpToolName = z.infer<typeof McpToolName>;
-
-export const McpAgentSummary = z.object({
-  id: AgentId,
-  name: z.string(),
-  role: z.string(),
-  skills: z.string(),
-  activeSessions: z.int().nonnegative(),
-});
