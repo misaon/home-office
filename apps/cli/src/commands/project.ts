@@ -6,7 +6,7 @@ import {
   type RepoInspection,
   type RepoSource,
 } from "@ho/protocol";
-import { parse, str } from "../args.ts";
+import { list, parse, str } from "../args.ts";
 import { type HoClient, withClient } from "../client.ts";
 import { line, print } from "../output.ts";
 import { findAgent, findProject } from "./lookup.ts";
@@ -86,23 +86,6 @@ const intakeFrom = (
   };
 };
 
-/** `--import` may repeat; parseArgs keeps only the last value, so repeats are collected by hand. */
-const splitImports = (argv: readonly string[]): { imports: string[]; remaining: string[] } => {
-  const imports: string[] = [];
-  const remaining: string[] = [];
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
-    const next = argv[i + 1];
-    if (arg === "--import" && next !== undefined) {
-      imports.push(next);
-      i += 1;
-    } else if (arg !== undefined) {
-      remaining.push(arg);
-    }
-  }
-  return { imports, remaining };
-};
-
 /** Asks the daemon what the repository is (git, name, default branch) before it becomes a floor. */
 const inspect = async (
   client: HoClient,
@@ -116,13 +99,12 @@ const inspect = async (
 };
 
 async function add(client: HoClient, argv: readonly string[]): Promise<void> {
-  const { imports, remaining } = splitImports(argv);
-  const parsed = parse(remaining, ["path", "url", "branch", "pr", "draft"]);
+  const parsed = parse(argv, ["path", "url", "branch", "pr", "draft"], [], ["import"]);
   const inspection = await inspect(client, repoFrom(str(parsed, "path"), str(parsed, "url")));
   const branch = str(parsed, "branch");
   const publish = publishFrom(onOff(str(parsed, "pr")), onOff(str(parsed, "draft")));
   const importAgentIds = await Promise.all(
-    imports.map(async (ref) => (await findAgent(client, ref)).id),
+    list(parsed, "import").map(async (ref) => (await findAgent(client, ref)).id),
   );
   print(
     await client.projects.create({
