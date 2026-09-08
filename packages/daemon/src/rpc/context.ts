@@ -1,4 +1,4 @@
-import type { EventStore, SandboxProvider, SecretStore } from "@ho/core";
+import type { SandboxProvider, SecretStore } from "@ho/core";
 import type { RepoInspection, RepoInspectInput, UsageSummary } from "@ho/protocol";
 import type { DaemonConfig } from "../config.ts";
 import { ensureImages, type ImageStatus, imageStatus, neededVariants } from "../images.ts";
@@ -39,14 +39,14 @@ export type RpcContextDeps = Pick<
   | "version"
   | "startedAt"
   | "gc"
-> & { resources: Resources; store: EventStore };
+> & { resources: Resources };
 
 /** Binds the image, GC and usage operations the RPC handlers expose to the daemon's own services. */
-export const createRpcContext = ({ resources, store, ...deps }: RpcContextDeps): RpcContext => ({
+export const createRpcContext = ({ resources, ...deps }: RpcContextDeps): RpcContext => ({
   ...deps,
   buildImages: (onLine) =>
     ensureImages(deps.provider, deps.config, resources, neededVariants(deps.office.model), onLine),
   imageStatus: () => imageStatus(deps.config, resources, neededVariants(deps.office.model)),
-  usage: (sinceHours) => usageSummary(deps.office, store, sinceHours),
+  usage: (sinceHours) => Promise.resolve(usageSummary(deps.office, sinceHours)),
   inspectRepo,
 });

@@ -11,16 +11,25 @@ import {
   type TaskStatus,
 } from "@ho/protocol";
 import { type DomainError, notFound } from "../errors.ts";
-import type { ReadModel } from "../model/read-model.ts";
+import { type ReadModel, resolve } from "../model/read-model.ts";
 import { err, ok, type Result } from "../result.ts";
 import type { CommandContext } from "./context.ts";
 
 /** Enough of the model to find a floor's staff; the UI's immutable snapshot fits too. */
-export type Roster = { agents: ReadonlyMap<AgentId, Agent> };
+export type Roster = {
+  agents: ReadonlyMap<AgentId, Agent>;
+  agentsByProject: ReadonlyMap<ProjectId, ReadonlySet<AgentId>>;
+};
 
 /** The staff of one floor (its boss included). */
 export const membersOf = (model: Roster, projectId: ProjectId): Agent[] =>
-  [...model.agents.values()].filter((a) => a.projectId === projectId);
+  resolve(model.agents, model.agentsByProject.get(projectId));
+
+/** The floor's tasks, in creation order. */
+export const tasksOf = (
+  model: Pick<ReadModel, "tasks" | "tasksByProject">,
+  projectId: ProjectId,
+): Task[] => resolve(model.tasks, model.tasksByProject.get(projectId));
 
 /** The floor's boss; every floor gets one when it is created, so `undefined` only shows up mid-removal. */
 export const bossOf = (model: Roster, projectId: ProjectId): Agent | undefined =>

@@ -1,5 +1,5 @@
-import { isSessionActive, membersOf, type ReadModel } from "@ho/core";
-import type { Agent, Project, Session, Task, TaskNote } from "@ho/protocol";
+import { isSessionActive, membersOf, type ReadModel, resolve, tasksOf } from "@ho/core";
+import type { Agent, AgentId, Project, Session, Task, TaskNote } from "@ho/protocol";
 import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 
@@ -8,7 +8,16 @@ const browserGuide = (enabled: boolean): string =>
     ? `Browser: this sandbox has headless Chromium with the Playwright MCP server (browser_* tools: navigate, click, type, snapshot, take_screenshot) and may expose Chrome DevTools MCP when enabled in daemon settings; only use tools actually available in this session. Bun, Node and npm are installed. Start dev servers on 127.0.0.1 inside the sandbox and open them at http://127.0.0.1:<port>; there is no display and no access to the host. Screenshots are written to ${BROWSER_OUTPUT_DIR}; copy the ones that belong in the repository into it before committing. Close pages you no longer need.`
     : "";
 
-type Model = Pick<ReadModel, "agents" | "projects" | "tasks" | "sessions">;
+type Model = Pick<
+  ReadModel,
+  | "agents"
+  | "projects"
+  | "tasks"
+  | "sessions"
+  | "agentsByProject"
+  | "tasksByProject"
+  | "sessionsByAgent"
+>;
 
 const common = (agent: Agent, project: Project): string[] => [
   `You are ${agent.name}, ${agent.role === "boss" ? "the boss of" : `a ${agent.role} on`} the floor "${project.name}" at Home Office (one floor per project; this floor's repository is "${project.name}").`,
@@ -62,18 +71,17 @@ export const reviewPrompt = (
 
 /** The boss plans a chat message or a mail item for his floor: the roster is this floor's staff, nobody else. */
 export const triagePrompt = (agent: Agent, project: Project, model: Model): string => {
-  const active = [...model.sessions.values()].filter((s) => isSessionActive(s.state));
   const staff = membersOf(model, project.id).filter((a) => a.id !== agent.id);
+  const activeOf = (agentId: AgentId): number =>
+    resolve(model.sessions, model.sessionsByAgent.get(agentId)).filter((s) =>
+      isSessionActive(s.state),
+    ).length;
   const roster = staff.map(
     (a) =>
-      `- ${a.name} (${a.role}, skills: ${a.skillPack}, active sessions: ${String(active.filter((s) => s.agentId === a.id).length)})`,
+      `- ${a.name} (${a.role}, skills: ${a.skillPack}, active sessions: ${String(activeOf(a.id))})`,
   );
-  const open = [...model.tasks.values()].filter(
-    (t) =>
-      t.projectId === project.id &&
-      t.kind === "work" &&
-      t.status !== "done" &&
-      t.status !== "cancelled",
+  const open = tasksOf(model, project.id).filter(
+    (t) => t.kind === "work" && t.status !== "done" && t.status !== "cancelled",
   ).length;
   return [
     ...common(agent, project),

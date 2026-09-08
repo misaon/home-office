@@ -10,7 +10,7 @@ import {
   type Usage,
 } from "@ho/protocol";
 import { conflict, notFound } from "../errors.ts";
-import type { ReadModel } from "../model/read-model.ts";
+import { type ReadModel, resolve } from "../model/read-model.ts";
 import { err, ok } from "../result.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
 
@@ -25,21 +25,44 @@ const ZERO_USAGE: Usage = {
 export const isSessionActive = (state: SessionState): boolean =>
   state !== "stopped" && state !== "failed";
 
+/** Prefix of the `session.state_changed` reason the projection counts as a rate-limit incident. */
+export const RATE_LIMITED = "rate limited";
+
+export const rateLimitedReason = (retryAt: string | null | undefined): string =>
+  `${RATE_LIMITED} until ${retryAt ?? "unknown"}`;
+
 /** The most recent finished session of this agent on this task that has a resumable runtime conversation. */
 export const resumableSession = (
   model: ReadModel,
   taskId: TaskId,
   agentId: AgentId,
 ): Session | undefined =>
-  [...model.sessions.values()]
+  sessionsOfTask(model, taskId)
     .filter(
-      (s) =>
-        s.taskId === taskId &&
-        s.agentId === agentId &&
-        !isSessionActive(s.state) &&
-        s.runtimeSessionId !== undefined,
+      (s) => s.agentId === agentId && !isSessionActive(s.state) && s.runtimeSessionId !== undefined,
     )
     .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
+
+/** Every session ever opened on this task, in start order. */
+export const sessionsOfTask = (
+  model: Pick<ReadModel, "sessions" | "sessionsByTask">,
+  taskId: TaskId,
+): Session[] => resolve(model.sessions, model.sessionsByTask.get(taskId));
+
+/** Every session ever opened by this agent, in start order. */
+export const sessionsOfAgent = (
+  model: Pick<ReadModel, "sessions" | "sessionsByAgent">,
+  agentId: AgentId,
+): Session[] => resolve(model.sessions, model.sessionsByAgent.get(agentId));
+
+/** The sessions that have not stopped or failed. */
+export const activeSessions = (model: Pick<ReadModel, "sessions" | "activeSessions">): Session[] =>
+  resolve(model.sessions, model.activeSessions);
+
+export const activeSessionOfTask = (
+  model: Pick<ReadModel, "sessions" | "sessionsByTask">,
+  taskId: TaskId,
+): Session | undefined => sessionsOfTask(model, taskId).find((s) => isSessionActive(s.state));
 
 /**
  * Opens a session. `work`/`triage` start on an assigned task and move it to `in_progress`; `review` runs the
@@ -65,8 +88,8 @@ export function startSession(
     return err(conflict("session mode does not match the task kind"));
   }
   if (
-    [...model.sessions.values()].filter((s) => s.agentId === agent.id && isSessionActive(s.state))
-      .length >= agent.budgets.maxConcurrentSessions
+    sessionsOfAgent(model, agent.id).filter((s) => isSessionActive(s.state)).length >=
+    agent.budgets.maxConcurrentSessions
   ) {
     return err(conflict("agent session budget exhausted"));
   }
@@ -81,7 +104,7 @@ export function startSession(
       ),
     );
   }
-  if ([...model.sessions.values()].some((s) => s.taskId === task.id && isSessionActive(s.state))) {
+  if (activeSessionOfTask(model, task.id) !== undefined) {
     return err(conflict("task already has an active session"));
   }
   const previous = resumableSession(model, task.id, input.agentId);

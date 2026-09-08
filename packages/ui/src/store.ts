@@ -26,6 +26,8 @@ export type Snapshot = {
   sessions: ReadonlyMap<SessionId, Session>;
   chat: readonly ChatMessage[];
   mail: ReadonlyMap<MailItemId, MailItem>;
+  /** The projection's own index, shared by reference: only `applyEvent` ever writes it. */
+  agentsByProject: ReadonlyMap<ProjectId, ReadonlySet<AgentId>>;
 };
 
 /** The event-sourced read model, mutated in place by `applyEvent`; the simulation bridge reads it directly. */
@@ -38,6 +40,7 @@ const takeSnapshot = (): Snapshot => ({
   sessions: new Map(model.sessions),
   chat: [...model.chat],
   mail: new Map(model.mail),
+  agentsByProject: model.agentsByProject,
 });
 
 /** Floors in the order they were built: the first project is floor 1. */

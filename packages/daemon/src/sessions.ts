@@ -3,7 +3,7 @@ import {
   changeSessionState,
   createChannel,
   endSession,
-  isSessionActive,
+  rateLimitedReason,
   recordSessionUsage,
   resumableSession,
   type RuntimeEvent,
@@ -63,8 +63,7 @@ export class SessionManager {
   }
 
   get activeCount(): number {
-    return [...this.#deps.office.model.sessions.values()].filter((s) => isSessionActive(s.state))
-      .length;
+    return this.#deps.office.model.activeSessions.size;
   }
 
   /** Live runtime events for the UI and CLI. Not persisted. */
@@ -175,7 +174,7 @@ export class SessionManager {
       );
     } else if (event.kind === "rate_limited") {
       await this.#state(ctx.session.id, "idle", {
-        reason: `rate limited until ${event.retryAt ?? "unknown"}`,
+        reason: rateLimitedReason(event.retryAt),
       });
     } else if (event.kind === "init") {
       await this.#state(ctx.session.id, "running", { runtimeSessionId: event.runtimeSessionId });

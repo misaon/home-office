@@ -7,6 +7,7 @@ import {
   createTask,
   editTask,
   isSessionActive,
+  sessionsOfTask,
   postChatMessage,
   removeAgent,
   removeProject,
@@ -201,11 +202,10 @@ export const router = base.router({
   },
   sessions: {
     list: base.sessions.list.handler(({ input, context }) =>
-      [...context.office.model.sessions.values()].filter(
-        (s) =>
-          (input.taskId === undefined || s.taskId === input.taskId) &&
-          (input.active === undefined || isSessionActive(s.state) === input.active),
-      ),
+      (input.taskId === undefined
+        ? [...context.office.model.sessions.values()]
+        : sessionsOfTask(context.office.model, input.taskId)
+      ).filter((s) => input.active === undefined || isSessionActive(s.state) === input.active),
     ),
     stream: base.sessions.stream.handler(async function* ({ input, context, signal }) {
       for await (const live of context.sessions.stream(input.sessionId ?? null, signal)) {

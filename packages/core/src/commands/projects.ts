@@ -13,8 +13,8 @@ import { err, ok } from "../result.ts";
 import { isTerminal } from "../tasks/transitions.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
 import { bossFor, copyOf } from "./office-defaults.ts";
-import { isSessionActive } from "./sessions.ts";
-import { membersOf } from "./shared.ts";
+import { activeSessionOfTask } from "./sessions.ts";
+import { membersOf, tasksOf } from "./shared.ts";
 
 const nameTaken = (model: ReadModel, name: string, except?: ProjectId): boolean =>
   [...model.projects.values()].some(
@@ -109,17 +109,12 @@ export function removeProject(
   if (current === undefined) {
     return err(notFound("project", id));
   }
-  const tasks = [...model.tasks.values()].filter((t) => t.projectId === id);
+  const tasks = tasksOf(model, id);
   const open = tasks.filter((t) => !isTerminal(t.status)).length;
   if (open > 0) {
     return err(conflict(`project has ${String(open)} open task(s); finish or cancel them first`));
   }
-  const taskIds = new Set(tasks.map((task) => task.id));
-  if (
-    [...model.sessions.values()].some(
-      (session) => taskIds.has(session.taskId) && isSessionActive(session.state),
-    )
-  ) {
+  if (tasks.some((task) => activeSessionOfTask(model, task.id) !== undefined)) {
     return err(conflict("project has active sessions"));
   }
   const events: NewEvent[] = [

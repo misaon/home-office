@@ -12,7 +12,7 @@ import type { ReadModel } from "../model/read-model.ts";
 import { err, ok } from "../result.ts";
 import { defaultChoice, validateChoice } from "../providers.ts";
 import { isTerminal } from "../tasks/transitions.ts";
-import { isSessionActive } from "./sessions.ts";
+import { isSessionActive, sessionsOfAgent } from "./sessions.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
 import { copyOf } from "./office-defaults.ts";
 import { bossOf, membersOf } from "./shared.ts";
@@ -149,7 +149,7 @@ export function removeAgent(
   const busy = [...model.tasks.values()].filter(
     (t) => (t.assigneeId === id || t.reviewerId === id) && !isTerminal(t.status),
   ).length;
-  if ([...model.sessions.values()].some((s) => s.agentId === id && isSessionActive(s.state))) {
+  if (sessionsOfAgent(model, id).some((s) => isSessionActive(s.state))) {
     return err(conflict("agent has an active session"));
   }
   if (busy > 0) {

@@ -1,4 +1,3 @@
-import type { EventStore } from "@ho/core";
 import type { Usage, UsageSummary } from "@ho/protocol";
 import type { Office } from "./office.ts";
 
@@ -33,11 +32,7 @@ const sorted = (buckets: Map<string, Bucket>): Bucket[] =>
   );
 
 /** Token usage from the session projection, grouped for the Usage panel and `ho usage`. */
-export async function usageSummary(
-  office: Office,
-  store: EventStore,
-  sinceHours: number | undefined,
-): Promise<UsageSummary> {
+export function usageSummary(office: Office, sinceHours: number | undefined): UsageSummary {
   const now = office.clock.now().getTime();
   const since =
     sinceHours === undefined ? null : new Date(now - sinceHours * 3_600_000).toISOString();
@@ -58,16 +53,10 @@ export async function usageSummary(
     const day = session.startedAt.slice(0, 10);
     bump(byDay, day, day, session.usage);
   }
-  let rateLimitIncidents = 0;
-  for await (const event of store.read(-1, { types: ["session.state_changed"] })) {
-    if (
-      event.type === "session.state_changed" &&
-      event.payload.reason?.startsWith("rate limited") === true &&
-      (since === null || event.at >= since)
-    ) {
-      rateLimitIncidents += 1;
-    }
-  }
+  const rateLimitIncidents =
+    since === null
+      ? office.model.rateLimitsSeen
+      : office.model.rateLimits.filter((at) => at >= since).length;
   return {
     since,
     totals,

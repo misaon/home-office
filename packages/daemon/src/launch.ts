@@ -38,13 +38,7 @@ export async function launchDaemon(
     },
   });
 
-  const { database, store, office } = await openOffice(
-    home,
-    resources.migrationsDir,
-    ids,
-    clock,
-    log,
-  );
+  const { database, office } = await openOffice(home, resources.migrationsDir, ids, clock, log);
   cleanup.defer(() => {
     database.close();
   });
@@ -101,7 +95,6 @@ export async function launchDaemon(
       secrets,
       config,
       resources,
-      store,
       version: VERSION,
       startedAt,
       gc: jobs.gcOnce,

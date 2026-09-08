@@ -6,6 +6,7 @@ import {
   isSessionActive,
   membersOf,
   postAgentMessage,
+  sessionsOfAgent,
   setTaskArtifacts,
   submitReview,
 } from "@ho/core";
@@ -130,14 +131,15 @@ function registerCommon(server: McpServer, office: Office, entry: Entry, run: Ru
     { description: "The team on this floor: names, roles, skill packs and current load." },
     () =>
       run(() => {
-        const active = [...office.model.sessions.values()].filter((s) => isSessionActive(s.state));
         return Promise.resolve(
           membersOf(office.model, ctx.projectId).map((a) => ({
             id: a.id,
             name: a.name,
             role: a.role,
             skills: a.skillPack,
-            activeSessions: active.filter((s) => s.agentId === a.id).length,
+            activeSessions: sessionsOfAgent(office.model, a.id).filter((s) =>
+              isSessionActive(s.state),
+            ).length,
           })),
         );
       }),

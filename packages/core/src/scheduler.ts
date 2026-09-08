@@ -1,5 +1,5 @@
 import type { AgentId, SessionMode, Task, TaskId } from "@ho/protocol";
-import { isSessionActive } from "./commands/sessions.ts";
+import { activeSessions } from "./commands/sessions.ts";
 import type { ReadModel } from "./model/read-model.ts";
 
 export type SchedulerLimits = { maxConcurrentSessions: number };
@@ -26,7 +26,7 @@ const candidateOf = (task: Task): SessionStart | null => {
  * Pure: the daemon applies the decisions. Order: priority, then age. Respects the global cap and each agent's budget.
  */
 export function planSessionStarts(model: ReadModel, limits: SchedulerLimits): SessionStart[] {
-  const active = [...model.sessions.values()].filter((s) => isSessionActive(s.state));
+  const active = activeSessions(model);
   const busyTasks = new Set(active.map((s) => s.taskId));
   const perAgent = new Map<AgentId, number>();
   for (const session of active) {

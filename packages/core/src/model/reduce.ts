@@ -1,5 +1,12 @@
-import { compact, type StoredEvent, type Task } from "@ho/protocol";
-import type { ReadModel } from "./read-model.ts";
+import { compact, type Session, type StoredEvent, type Task } from "@ho/protocol";
+import { isSessionActive, RATE_LIMITED } from "../commands/sessions.ts";
+import {
+  dropFrom,
+  indexInto,
+  mailSourceKey,
+  RATE_LIMIT_TAIL,
+  type ReadModel,
+} from "./read-model.ts";
 
 const touch = (model: ReadModel, task: Task, at: string): void => {
   model.tasks.set(task.id, { ...task, updatedAt: at });
@@ -10,7 +17,9 @@ type SessionEvent = Extract<StoredEvent, { type: `session.${string}` }>;
 
 function applyTaskEvent(model: ReadModel, event: TaskEvent): void {
   if (event.type === "task.created") {
-    model.tasks.set(event.payload.task.id, event.payload.task);
+    const created = event.payload.task;
+    model.tasks.set(created.id, created);
+    indexInto(model.tasksByProject, created.projectId, created.id);
     return;
   }
   const task = model.tasks.get(event.payload.taskId);
@@ -69,9 +78,21 @@ function applyTaskEvent(model: ReadModel, event: TaskEvent): void {
   }
 }
 
+const trackSessionState = (model: ReadModel, session: Session): void => {
+  if (isSessionActive(session.state)) {
+    model.activeSessions.add(session.id);
+    return;
+  }
+  model.activeSessions.delete(session.id);
+};
+
 function applySessionEvent(model: ReadModel, event: SessionEvent): void {
   if (event.type === "session.started") {
-    model.sessions.set(event.payload.session.id, event.payload.session);
+    const started = event.payload.session;
+    model.sessions.set(started.id, started);
+    indexInto(model.sessionsByTask, started.taskId, started.id);
+    indexInto(model.sessionsByAgent, started.agentId, started.id);
+    trackSessionState(model, started);
     return;
   }
   const session = model.sessions.get(event.payload.sessionId);
@@ -81,12 +102,21 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
   switch (event.type) {
     case "session.state_changed": {
       const { runtimeSessionId, sandboxId } = event.payload;
-      model.sessions.set(session.id, {
+      if (event.payload.reason?.startsWith(RATE_LIMITED) === true) {
+        model.rateLimitsSeen += 1;
+        model.rateLimits.push(event.at);
+        if (model.rateLimits.length > RATE_LIMIT_TAIL) {
+          model.rateLimits.splice(0, model.rateLimits.length - RATE_LIMIT_TAIL);
+        }
+      }
+      const next = {
         ...session,
         state: event.payload.state,
         ...compact({ runtimeSessionId }),
         ...compact({ sandboxId }),
-      });
+      };
+      model.sessions.set(session.id, next);
+      trackSessionState(model, next);
       break;
     }
     case "session.usage_recorded": {
@@ -104,11 +134,13 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
       break;
     }
     case "session.ended": {
-      model.sessions.set(session.id, {
+      const ended = {
         ...session,
         state: event.payload.state,
         endedAt: event.payload.endedAt,
-      });
+      };
+      model.sessions.set(session.id, ended);
+      trackSessionState(model, ended);
       break;
     }
   }
@@ -127,15 +159,22 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
     }
     case "project.removed": {
       model.projects.delete(event.payload.projectId);
+      model.agentsByProject.delete(event.payload.projectId);
       break;
     }
     case "agent.created":
     case "agent.updated": {
-      model.agents.set(event.payload.agent.id, event.payload.agent);
+      const agent = event.payload.agent;
+      model.agents.set(agent.id, agent);
+      indexInto(model.agentsByProject, agent.projectId, agent.id);
       break;
     }
     case "agent.removed": {
+      const gone = model.agents.get(event.payload.agentId);
       model.agents.delete(event.payload.agentId);
+      if (gone !== undefined) {
+        dropFrom(model.agentsByProject, gone.projectId, gone.id);
+      }
       break;
     }
     case "task.created":
@@ -157,7 +196,12 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
       break;
     }
     case "mail.received": {
-      model.mail.set(event.payload.mail.id, event.payload.mail);
+      const mail = event.payload.mail;
+      model.mail.set(mail.id, mail);
+      model.mailBySource.set(
+        mailSourceKey(mail.projectId, mail.connector, mail.externalId),
+        mail.id,
+      );
       break;
     }
     case "mail.acknowledged": {
