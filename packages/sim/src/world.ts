@@ -85,6 +85,8 @@ export type Actor = {
   needs: Record<NeedKind, number>;
   emotion: { kind: Emotion; until: number | null } | null;
   idleUntil: number;
+  /** Per-actor offset on the blocked-walker wait, so two blocked walkers do not replan on the same frame. */
+  detourJitterMs: number;
 };
 
 export type ElevatorPhase = "closed" | "opening" | "open" | "closing";

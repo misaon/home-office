@@ -100,6 +100,9 @@ const NEIGHBOURS: readonly Point[] = [
   { x: 0, y: -1 },
 ];
 
+export const neighboursOf = (p: Point): Point[] =>
+  NEIGHBOURS.map((d) => ({ x: p.x + d.x, y: p.y + d.y }));
+
 // A turn costs six clear-floor steps: avoid staircases for small clearance gains.
 const TURN_COST = 6;
 type RouteNode = { order: number; p: Point; direction: number; id: number; g: number; f: number };

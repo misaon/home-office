@@ -1,5 +1,5 @@
 import type { AgentId, AgentRole } from "@ho/protocol";
-import { facingTowards, type Point } from "./grid.ts";
+import { facingTowards, neighboursOf, type Point } from "./grid.ts";
 import type { Anchor } from "./templates.ts";
 import {
   homeSteps,
@@ -106,17 +106,10 @@ export function releaseWork(world: World, agentId: AgentId, ok: boolean): void {
   actor.idleUntil = world.time + CELEBRATE_MS;
 }
 
-const neighbours = (p: Point): Point[] => [
-  { x: p.x - 1, y: p.y },
-  { x: p.x + 1, y: p.y },
-  { x: p.x, y: p.y + 1 },
-  { x: p.x, y: p.y - 1 },
-];
-
-/** A free cell next to `at` on the actor's floor, else the actor's own cell. */
-const adjacentFree = (world: World, actor: Actor, at: Point): Point => {
-  const floor = world.floors.get(actor.floorId);
-  return neighbours(at).find((p) => floor?.grid.isWalkable(p) === true) ?? actor.tile;
+/** A free cell next to `at` on that floor, else `fallback`. */
+export const adjacentFree = (world: World, floorId: string, at: Point, fallback: Point): Point => {
+  const floor = world.floors.get(floorId);
+  return neighboursOf(at).find((p) => floor?.grid.isWalkable(p) === true) ?? fallback;
 };
 
 /**
@@ -125,12 +118,14 @@ const adjacentFree = (world: World, actor: Actor, at: Point): Point => {
  */
 const meetingPoint = (world: World, source: Actor, target: Actor): Point => {
   if (!target.hidden) {
-    return adjacentFree(world, source, target.tile);
+    return adjacentFree(world, target.floorId, target.tile, source.tile);
   }
   const desk =
     target.work === null ? undefined : anchorOf(world, target.floorId, target.work.anchorId);
   const spot = desk ?? anchorOf(world, target.floorId, "entrance");
-  return spot === undefined ? source.tile : adjacentFree(world, source, spot.at);
+  return spot === undefined
+    ? source.tile
+    : adjacentFree(world, source.floorId, spot.at, source.tile);
 };
 
 /**

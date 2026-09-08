@@ -1,5 +1,5 @@
-import { facingTowards, findPath, type Point, samePoint } from "./grid.ts";
-import { nearestWalkable, occupied } from "./actors.ts";
+import { facingTowards, findPath, neighboursOf, samePoint } from "./grid.ts";
+import { nearestWalkable, type OccupancyIndex, occupied } from "./actors.ts";
 import { type Actor, release, SPEED_TILES_PER_S, type Step, type World } from "./world.ts";
 
 const finishStep = (actor: Actor): void => {
@@ -10,25 +10,12 @@ const finishStep = (actor: Actor): void => {
 
 /** How long a walker waits for a taken cell before looking for a way around it (plus a per-actor jitter). */
 const BLOCKED_WAIT_MS = 500;
-const jitterMs = (id: string): number => {
-  let h = 0;
-  for (const ch of id) {
-    h = (h * 31 + (ch.codePointAt(0) ?? 0)) % 400;
-  }
-  return h;
-};
-const NEIGHBOURS: readonly Point[] = [
-  { x: 1, y: 0 },
-  { x: -1, y: 0 },
-  { x: 0, y: 1 },
-  { x: 0, y: -1 },
-];
-
 function advanceWalk(
   world: World,
   actor: Actor,
   step: Extract<Step, { kind: "walk" }>,
   dtMs: number,
+  occupancy: OccupancyIndex,
 ): void {
   const floor = world.floors.get(actor.floorId);
   if (floor === undefined || step.floorId !== actor.floorId) {
@@ -37,7 +24,7 @@ function advanceWalk(
   }
   if (step.path === null) {
     const target = nearestWalkable(world, actor.floorId, step.to);
-    step.path = findPath(floor.grid, actor.tile, target, occupied(world, actor));
+    step.path = findPath(floor.grid, actor.tile, target, occupied(occupancy, actor));
     if (step.path.length === 0) {
       finishStep(actor);
       return;
@@ -50,21 +37,21 @@ function advanceWalk(
     return;
   }
   // Somebody stands in or is stepping into the next cell: wait a moment, then plan a detour around them.
-  if (actor.moving === null && occupied(world, actor, true)(next)) {
+  if (actor.moving === null && occupied(occupancy, actor, true)(next)) {
     step.blockedMs = (step.blockedMs ?? 0) + dtMs;
     actor.activity = "idle";
     actor.facing = facingTowards(actor.tile, next);
-    if (step.blockedMs >= BLOCKED_WAIT_MS + jitterMs(actor.id)) {
+    if (step.blockedMs >= BLOCKED_WAIT_MS + actor.detourJitterMs) {
       step.blockedMs = 0;
       const target = nearestWalkable(world, actor.floorId, step.to);
-      const around = occupied(world, actor, true);
+      const around = occupied(occupancy, actor, true);
       const detour = findPath(floor.grid, actor.tile, target, around);
       if (detour.length > 0) {
         step.path = detour;
         return;
       }
       // Boxed in head-on: step aside into any free neighbour, then plan again from there.
-      const aside = NEIGHBOURS.map((d) => ({ x: actor.tile.x + d.x, y: actor.tile.y + d.y })).find(
+      const aside = neighboursOf(actor.tile).find(
         (p) => floor.grid.isWalkable(p) && !around(p) && !samePoint(p, next),
       );
       if (aside !== undefined) {
@@ -102,14 +89,19 @@ function advanceWalk(
   };
 }
 
-export function advanceStep(world: World, actor: Actor, dtMs: number): void {
+export function advanceStep(
+  world: World,
+  actor: Actor,
+  dtMs: number,
+  occupancy: OccupancyIndex,
+): void {
   const step = actor.steps[0];
   if (step === undefined) {
     return;
   }
   switch (step.kind) {
     case "walk": {
-      advanceWalk(world, actor, step, dtMs);
+      advanceWalk(world, actor, step, dtMs, occupancy);
       return;
     }
     case "dwell": {

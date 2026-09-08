@@ -1,6 +1,6 @@
 import type { AgentId } from "@ho/protocol";
 import { facingTowards, type Point } from "./grid.ts";
-import { setEmotion } from "./intents.ts";
+import { adjacentFree, setEmotion } from "./intents.ts";
 import { pendingDeliveries, resumeSteps, setSteps, spawnActor, walkSteps } from "./actors.ts";
 import { type Actor, anchorOf, type Step, type World } from "./world.ts";
 
@@ -45,18 +45,11 @@ export function deliverMail(
 }
 
 const besides = (world: World, target: Actor): Point => {
-  const floor = world.floors.get(target.floorId);
   const at =
     target.hidden && target.home !== null
       ? (anchorOf(world, target.floorId, target.home.anchorId)?.at ?? target.tile)
       : target.tile;
-  const options: Point[] = [
-    { x: at.x - 1, y: at.y },
-    { x: at.x + 1, y: at.y },
-    { x: at.x, y: at.y + 1 },
-    { x: at.x, y: at.y - 1 },
-  ];
-  return options.find((p) => floor?.grid.isWalkable(p) === true) ?? at;
+  return adjacentFree(world, target.floorId, at, at);
 };
 
 /** Walk to the boss, hand the envelope over, emit `envelope_delivered`, then back to the desk or home. */

@@ -1,7 +1,7 @@
 /** Advances the world by `dtMs`. Idle decisions are made by the behaviour module through `onIdle`. */
 import type { Point } from "./grid.ts";
 import { advanceStep } from "./steps.ts";
-import { setSteps, walkSteps } from "./actors.ts";
+import { lazyOccupancy, setSteps, walkSteps } from "./actors.ts";
 import {
   type Actor,
   anchorOf,
@@ -102,6 +102,7 @@ export function tick(
   for (const [floorId, floor] of world.floors) {
     runElevator(world, floorId, floor, dtMs);
   }
+  const occupancy = lazyOccupancy(world);
   for (const actor of world.actors.values()) {
     const elevator = world.floors.get(actor.floorId)?.elevator;
     if (elevator === undefined || elevator.queue.includes(actor.id)) {
@@ -136,6 +137,6 @@ export function tick(
         onIdle(world, actor);
       }
     }
-    advanceStep(world, actor, dtMs);
+    advanceStep(world, actor, dtMs, occupancy);
   }
 }
