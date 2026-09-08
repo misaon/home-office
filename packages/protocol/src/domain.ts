@@ -70,7 +70,15 @@ export type Actor = z.infer<typeof Actor>;
 /** Every project (floor) has a repository: a checkout on this machine or a git URL mirrored by the daemon. */
 export const RepoSource = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("local"), path: z.string().min(1) }),
-  z.object({ kind: z.literal("git"), url: z.url() }),
+  z.object({
+    kind: z.literal("git"),
+    url: z
+      .url()
+      .regex(
+        /^(?:https:\/\/[^/@?#]+|ssh:\/\/(?:[^:/@?#]+@)?[^/@?#]+)(?:[/?#]|$)/u,
+        "use an HTTPS or SSH repository URL without embedded credentials",
+      ),
+  }),
 ]);
 export type RepoSource = z.infer<typeof RepoSource>;
 

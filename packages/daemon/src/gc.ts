@@ -47,14 +47,21 @@ export function startGc(
   provider: SandboxProvider,
   config: DaemonConfig,
   log: Logger,
-): { stop: () => void; runOnce: () => Promise<PruneReport> } {
-  const runOnce = async (): Promise<PruneReport> => {
+): { stop: () => Promise<void>; runOnce: () => Promise<PruneReport> } {
+  const collect = async (): Promise<PruneReport> => {
     const report = await collectGarbage(provider, config);
     const total = report.containers.length + report.volumes.length + report.images.length;
     if (total > 0) {
       log.info(report, "garbage collected");
     }
     return report;
+  };
+  let pending: Promise<PruneReport> | null = null;
+  const runOnce = (): Promise<PruneReport> => {
+    pending ??= collect().finally(() => {
+      pending = null;
+    });
+    return pending;
   };
   void runOnce().catch((error: unknown) => {
     log.warn({ err: error instanceof Error ? error.message : String(error) }, "initial gc failed");
@@ -65,8 +72,9 @@ export function startGc(
     });
   }, INTERVAL_MS);
   return {
-    stop: () => {
+    stop: async () => {
       clearInterval(timer);
+      await pending?.catch(() => null);
     },
     runOnce,
   };

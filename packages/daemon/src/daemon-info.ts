@@ -1,11 +1,12 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
+import { DaemonConfig } from "./config.ts";
 import { writePrivateFile } from "@ho/secrets";
 
 /** Written next to the database so local clients (CLI, desktop shell) can find and authenticate to the daemon. */
 export const DaemonInfo = z.object({
-  host: z.string(),
+  host: DaemonConfig.shape.host,
   port: z.int().positive(),
   token: z.string().min(16),
   pid: z.int().positive(),
@@ -28,3 +29,9 @@ export async function writeDaemonInfo(home: string, info: DaemonInfo): Promise<v
 
 export const removeDaemonInfo = (home: string): Promise<void> =>
   rm(daemonInfoPath(home), { force: true });
+
+export const daemonUrl = (
+  info: Pick<DaemonInfo, "host" | "port">,
+  protocol: "http" | "ws" = "http",
+): string =>
+  `${protocol}://${info.host.includes(":") ? `[${info.host}]` : info.host}:${String(info.port)}`;

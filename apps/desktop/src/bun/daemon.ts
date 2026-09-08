@@ -1,4 +1,4 @@
-import { type DaemonInfo, readDaemonInfo, startDaemon } from "@ho/daemon";
+import { daemonUrl, type DaemonInfo, readDaemonInfo, startDaemon } from "@ho/daemon";
 
 export type DaemonLink = {
   /** Where the office UI is served. */
@@ -11,7 +11,7 @@ export type DaemonLink = {
 
 const healthy = async (info: DaemonInfo): Promise<boolean> => {
   try {
-    const res = await fetch(`http://${info.host}:${String(info.port)}/health`, {
+    const res = await fetch(`${daemonUrl(info)}/health`, {
       signal: AbortSignal.timeout(1500),
     });
     return res.ok;
@@ -32,7 +32,7 @@ export async function attachOrStart(options: {
   const existing = await readDaemonInfo(options.home);
   if (existing !== null && (await healthy(existing))) {
     return {
-      url: `http://${existing.host}:${String(existing.port)}/`,
+      url: `${daemonUrl(existing)}/`,
       token: existing.token,
       mode: "attached",
       stop: () => Promise.resolve(),
@@ -40,7 +40,7 @@ export async function attachOrStart(options: {
   }
   const handle = await startDaemon(options);
   return {
-    url: `http://${handle.info.host}:${String(handle.info.port)}/`,
+    url: `${daemonUrl(handle.info)}/`,
     token: handle.info.token,
     mode: "embedded",
     stop: handle.stop,

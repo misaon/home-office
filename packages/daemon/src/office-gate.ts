@@ -1,7 +1,12 @@
 import type { Task, TaskId } from "@ho/protocol";
 import type { Logger } from "./logger.ts";
 
-type Waiter = { taskId: TaskId; since: string; resolve: () => void };
+type Waiter = {
+  taskId: TaskId;
+  since: string;
+  resolve: () => void;
+  timer: ReturnType<typeof setTimeout>;
+};
 
 /**
  * Holds the daemon back while an office UI is watching so an envelope's walk finishes first: the recipient's
@@ -32,7 +37,7 @@ export class OfficeGate {
     return () => {
       if (!released) {
         released = true;
-        this.#viewers -= 1;
+        this.#viewers = Math.max(0, this.#viewers - 1);
         if (this.#viewers === 0) {
           this.#release(() => true);
         }
@@ -85,21 +90,27 @@ export class OfficeGate {
       return Promise.resolve();
     }
     return new Promise((resolve) => {
-      const waiter: Waiter = { taskId, since, resolve };
-      this.#waiters.add(waiter);
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         if (this.#waiters.delete(waiter)) {
           this.#log.warn({ taskId }, "office animation timed out; continuing without it");
           resolve();
         }
       }, this.#timeoutMs);
+      const waiter: Waiter = { taskId, since, resolve, timer };
+      this.#waiters.add(waiter);
     });
+  }
+
+  close(): void {
+    this.#viewers = 0;
+    this.#release(() => true);
   }
 
   #release(matches: (w: Waiter) => boolean): void {
     for (const waiter of this.#waiters) {
       if (matches(waiter)) {
         this.#waiters.delete(waiter);
+        clearTimeout(waiter.timer);
         waiter.resolve();
       }
     }

@@ -1,4 +1,4 @@
-import { readDaemonInfo, resolveHome } from "@ho/daemon";
+import { daemonUrl, readDaemonInfo, resolveHome } from "@ho/daemon";
 import type { Contract } from "@ho/protocol";
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/websocket";
@@ -14,7 +14,7 @@ async function connect(): Promise<{ client: HoClient; close: () => void }> {
       `no running daemon found (${home}/daemon.json missing); start one with \`ho daemon\``,
     );
   }
-  const websocket = new WebSocket(`ws://${info.host}:${String(info.port)}/rpc`, {
+  const websocket = new WebSocket(`${daemonUrl(info, "ws")}/rpc`, {
     headers: { authorization: `Bearer ${info.token}` },
   });
   await new Promise<void>((resolve, reject) => {

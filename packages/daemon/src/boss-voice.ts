@@ -81,7 +81,7 @@ export function startBossVoice(
   office: Office,
   gate: OfficeGate,
   log: Logger,
-): { stop: () => void } {
+): { stop: () => Promise<void> } {
   const controller = new AbortController();
   const say = async (boss: Agent, text: string, taskId: Task["id"]): Promise<void> => {
     await office
@@ -134,21 +134,37 @@ export function startBossVoice(
       task.id,
     );
   };
-  void (async () => {
+  const pending = new Set<Promise<void>>();
+  const track = (work: Promise<void>): void => {
+    const done = work
+      .catch((error: unknown) => {
+        log.warn({ err: String(error) }, "boss voice failed");
+      })
+      .finally(() => {
+        pending.delete(done);
+      });
+    pending.add(done);
+  };
+  const listening = (async () => {
     for await (const event of office.store.subscribe(
       { types: ["task.created", "task.status_changed"] },
       controller.signal,
     )) {
       if (event.type === "task.created") {
-        void onCreated(event.payload.task);
+        track(onCreated(event.payload.task));
       } else if (event.type === "task.status_changed") {
-        void onStatus(event);
+        track(onStatus(event));
       }
     }
-  })();
+  })().catch((error: unknown) => {
+    log.error({ err: String(error) }, "boss voice subscription failed");
+  });
   return {
-    stop: () => {
+    stop: async () => {
       controller.abort();
+      gate.close();
+      await listening;
+      await Promise.allSettled(pending);
     },
   };
 }

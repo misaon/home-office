@@ -1,6 +1,7 @@
 import type { Project } from "@ho/protocol";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { lock } from "proper-lockfile";
 
 /**
  * Projects defined by a git URL are mirrored on the host with the owner's own git credentials.
@@ -36,11 +37,27 @@ export async function sourcePathFor(home: string, project: Project): Promise<str
     return project.repo.path;
   }
   const path = mirrorPath(home, project);
-  if (await Bun.file(join(path, "HEAD")).exists()) {
-    await git(["-C", path, "fetch", "--prune", "--quiet", "origin"]);
-  } else {
-    await mkdir(join(home, "mirrors"), { recursive: true, mode: 0o700 });
-    await git(["clone", "--mirror", "--quiet", project.repo.url, path]);
+  await mkdir(join(home, "mirrors"), { recursive: true, mode: 0o700 });
+  const release = await lock(path, {
+    realpath: false,
+    stale: 30_000,
+    retries: { retries: 20, minTimeout: 250, maxTimeout: 1000 },
+  });
+  try {
+    if (await Bun.file(join(path, "HEAD")).exists()) {
+      await git([
+        "-C",
+        path,
+        "fetch",
+        "--quiet",
+        "origin",
+        `refs/heads/${project.defaultBranch}:refs/heads/${project.defaultBranch}`,
+      ]);
+    } else {
+      await git(["clone", "--bare", "--quiet", "--", project.repo.url, path]);
+    }
+  } finally {
+    await release();
   }
   return path;
 }

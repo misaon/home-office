@@ -14,19 +14,18 @@ export function startScheduler(
   config: DaemonConfig,
   gate: OfficeGate,
   log: Logger,
-): { stop: () => void } {
+): { stop: () => Promise<void> } {
   const controller = new AbortController();
-  let ticking = false;
-  const tick = async (): Promise<void> => {
-    if (ticking || controller.signal.aborted) {
-      return;
-    }
-    ticking = true;
+  let active: Promise<void> | null = null;
+  const run = async (): Promise<void> => {
     try {
       const now = office.clock.now().toISOString();
       for (const start of planSessionStarts(office.model, {
         maxConcurrentSessions: config.scheduler.maxConcurrentSessions,
       })) {
+        if (controller.signal.aborted) {
+          break;
+        }
         const task = office.model.tasks.get(start.taskId);
         if (task !== undefined && gate.blocks(task, now)) {
           log.debug({ taskId: start.taskId }, "waiting for the office to deliver the handoff");
@@ -40,14 +39,21 @@ export function startScheduler(
         { err: error instanceof Error ? error.message : String(error) },
         "scheduler tick failed",
       );
-    } finally {
-      ticking = false;
     }
+  };
+  const tick = (): Promise<void> => {
+    if (controller.signal.aborted) {
+      return Promise.resolve();
+    }
+    active ??= run().finally(() => {
+      active = null;
+    });
+    return active;
   };
   const timer = setInterval(() => {
     void tick();
   }, TICK_MS);
-  void (async () => {
+  const listening = (async () => {
     for await (const event of office.store.subscribe(
       {
         types: [
@@ -64,11 +70,15 @@ export function startScheduler(
       void event;
       void tick();
     }
-  })();
+  })().catch((error: unknown) => {
+    log.error({ err: String(error) }, "scheduler subscription failed");
+  });
   return {
-    stop: () => {
+    stop: async () => {
       clearInterval(timer);
       controller.abort();
+      await listening;
+      await active;
     },
   };
 }

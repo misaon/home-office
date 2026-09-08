@@ -16,13 +16,14 @@ export async function settle(
   provisioned: Provisioned,
   outcome: Outcome,
 ): Promise<void> {
-  const { office, mcp, log } = deps;
+  const { office, mcp } = deps;
   const actor = { kind: "agent", agentId: ctx.agent.id } as const;
   const current = office.model.tasks.get(ctx.task.id);
   if (current === undefined) {
     return;
   }
-  const summary = outcome.report.trim() === "" ? "(no report)" : outcome.report;
+  const filed = mcp.report(provisioned.mcpToken);
+  const summary = filed?.summary ?? (outcome.report.trim() === "" ? "(no report)" : outcome.report);
   const failure = outcome.failure;
 
   if (ctx.session.mode === "review") {
@@ -61,19 +62,11 @@ export async function settle(
     return;
   }
 
-  // work: publish whatever was committed, then report on the agent's behalf if it did not.
-  let artifacts: TaskArtifacts = { branch: provisioned.branch, report: summary.slice(0, 4000) };
-  try {
-    artifacts = {
-      ...artifacts,
-      ...(await publish(deps, ctx, provisioned, summary.slice(0, 4000))),
-    };
-  } catch (error) {
-    log.warn(
-      { taskId: ctx.task.id, err: error instanceof Error ? error.message : String(error) },
-      "publish failed",
-    );
-  }
+  const artifacts: TaskArtifacts = {
+    branch: provisioned.branch,
+    report: summary.slice(0, 4000),
+    ...(await publish(deps, ctx, provisioned, summary.slice(0, 4000))),
+  };
   const existing = office.model.tasks.get(ctx.task.id)?.artifacts;
   await office.execute(SYSTEM, (m, c) =>
     setTaskArtifacts(m, { id: ctx.task.id, artifacts: { ...existing, ...artifacts } }, c),
@@ -83,7 +76,10 @@ export async function settle(
       fileReport(
         m,
         ctx.task.id,
-        { status: failure === null ? "review" : "blocked", summary: summary.slice(0, REPORT_MAX) },
+        {
+          status: failure !== null || filed?.status === "blocked" ? "blocked" : "review",
+          summary: summary.slice(0, REPORT_MAX),
+        },
         c,
       ),
     );

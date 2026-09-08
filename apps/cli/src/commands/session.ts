@@ -74,9 +74,13 @@ export async function session(args: readonly string[]): Promise<void> {
         if (ref === undefined) {
           throw new Error("session id is required");
         }
-        const found = (await client.sessions.list({})).find(
+        const matches = (await client.sessions.list({})).filter(
           (s) => s.id === ref || s.id.endsWith(ref),
         );
+        if (matches.length > 1) {
+          throw new Error(`session "${ref}" is ambiguous; use its full id`);
+        }
+        const found = matches[0];
         if (found === undefined) {
           throw new Error(`session "${ref}" not found`);
         }

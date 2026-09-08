@@ -10,6 +10,9 @@ import { findProject, onlyProject } from "./lookup.ts";
  */
 export async function chat(args: readonly string[]): Promise<void> {
   const parsed = parse(args, ["project", "task"]);
+  if (str(parsed, "task") !== undefined && str(parsed, "project") !== undefined) {
+    throw new Error("choose exactly one of --task and --project");
+  }
   const text = parsed.positionals.join(" ").trim();
   if (text === "") {
     throw new Error("message text is required");

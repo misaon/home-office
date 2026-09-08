@@ -19,6 +19,9 @@ export async function doctor(): Promise<void> {
     line(
       `secret anthropic-oauth-token: ${report.secrets.anthropicOauthToken ? "present" : "MISSING (claude setup-token → Keychain)"}`,
     );
+    if (!report.provider.ok || report.images.some((image) => !image.present || !image.upToDate)) {
+      process.exitCode = 1;
+    }
     line(`sessions: ${String(report.sessions.active)} active / ${String(report.sessions.max)} max`);
     if (report.resources !== null) {
       line(

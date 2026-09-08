@@ -5,6 +5,10 @@
   "type": "module",
   "dependencies": {
     "@ho/daemon": "workspace:*",
-    "electrobun": "catalog:"
+    "electrobun": "catalog:",
+    "proper-lockfile": "catalog:"
+  },
+  "devDependencies": {
+    "@types/proper-lockfile": "catalog:"
   }
 }

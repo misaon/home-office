@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import type { IntakePolicy, PublishPolicy, RepoSource } from "@ho/protocol";
 import { parse, str } from "../args.ts";
 import { type HoClient, withClient } from "../client.ts";
@@ -6,8 +7,11 @@ import { findAgent, findProject } from "./lookup.ts";
 import { subcommand } from "./help.ts";
 
 const repoFrom = (path: string | undefined, url: string | undefined): RepoSource => {
+  if (path !== undefined && url !== undefined) {
+    throw new Error("choose exactly one of --path and --url");
+  }
   if (path !== undefined) {
-    return { kind: "local", path };
+    return { kind: "local", path: resolve(path) };
   }
   if (url !== undefined) {
     return { kind: "git", url };

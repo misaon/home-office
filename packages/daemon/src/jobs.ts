@@ -12,11 +12,12 @@ import type { SessionManager } from "./sessions.ts";
 export type Jobs = {
   intake: IntakeService;
   gcOnce: () => Promise<{ containers: string[]; volumes: string[]; images: string[] }>;
-  stop: () => void;
+  start: () => void;
+  stop: () => Promise<void>;
 };
 
 /** The daemon's background loops: sandbox garbage collection, the session scheduler and mail intake. */
-export function startJobs(deps: {
+export function createJobs(deps: {
   office: Office;
   sessions: SessionManager;
   provider: SandboxProvider;
@@ -25,17 +26,24 @@ export function startJobs(deps: {
   log: Logger;
 }): Jobs {
   const { office, sessions, provider, config, gate, log } = deps;
-  const gc = startGc(provider, config, log);
-  const scheduler = startScheduler(office, sessions, config, gate, log);
+  let gc: ReturnType<typeof startGc> | null = null;
+  let scheduler: ReturnType<typeof startScheduler> | null = null;
   const intake = new IntakeService(office, [createGithubIssuesConnector()], log);
-  intake.start();
   return {
     intake,
-    gcOnce: () => gc.runOnce(),
-    stop: () => {
-      scheduler.stop();
-      intake.stop();
-      gc.stop();
+    gcOnce: () => {
+      if (gc === null) {
+        return Promise.reject(new Error("jobs have not started"));
+      }
+      return gc.runOnce();
+    },
+    start: () => {
+      gc ??= startGc(provider, config, log);
+      scheduler ??= startScheduler(office, sessions, config, gate, log);
+      intake.start();
+    },
+    stop: async () => {
+      await Promise.all([scheduler?.stop(), intake.stop(), gc?.stop()]);
     },
   };
 }

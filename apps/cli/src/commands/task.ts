@@ -47,7 +47,9 @@ export async function task(args: readonly string[]): Promise<void> {
         const projectId = (await findProject(client, required(parsed, "project"))).id;
         const assigneeRef = str(parsed, "assignee");
         const assigneeId =
-          assigneeRef === undefined ? undefined : (await findAgent(client, assigneeRef)).id;
+          assigneeRef === undefined
+            ? undefined
+            : (await findAgent(client, assigneeRef, projectId)).id;
         const brief = str(parsed, "brief");
         const priority = str(parsed, "priority");
         print(
@@ -67,10 +69,12 @@ export async function task(args: readonly string[]): Promise<void> {
       }
       case "assign": {
         const [idRef, agentRef] = parsed.positionals;
+        if (agentRef === undefined) {
+          throw new Error("agent reference or none is required");
+        }
+        const current = await client.tasks.get({ id: taskId(idRef) });
         const agentId =
-          agentRef === undefined || agentRef === "none"
-            ? null
-            : (await findAgent(client, agentRef)).id;
+          agentRef === "none" ? null : (await findAgent(client, agentRef, current.projectId)).id;
         print(await client.tasks.assign({ id: taskId(idRef), agentId }));
         return;
       }

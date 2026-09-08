@@ -140,7 +140,11 @@ async function main(): Promise<void> {
   // Links the UI opens in a new tab (pull requests) go to the default browser.
   Electrobun.events.on("new-window-open", (event: unknown) => {
     const url = openedUrl(event);
-    if (url !== null && !url.startsWith(link.url)) {
+    if (
+      url !== null &&
+      /^https?:\/\//u.test(url) &&
+      new URL(url).origin !== new URL(link.url).origin
+    ) {
       Utils.openExternal(url);
     }
   });
