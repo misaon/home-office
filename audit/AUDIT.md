@@ -48,6 +48,37 @@ Doporučení: Enable the nine; record the four rejections and why.
 Zdroj: oxlint 1.82.0 schema; `scripts/ui-build.ts:21` for `reactCompiler`.
 Odhad: střední
 
+**Correction after Wave 1 (2026-09-08).** The claim "the code already satisfies all nine" was wrong for
+three of them, which enabling the rules proved:
+
+- `typescript/explicit-function-return-type` produced **30 hits**. The code annotates every _declaration_
+  but not inline arrow expressions, a distinction I failed to make. Enabling it bare would have meant
+  writing `: void` on 30 contextually-typed callbacks — exactly the "misleading strictness" the brief
+  warns against. Resolved by enabling it with the rule's own `allowExpressions: true` option (measured:
+  30 hits → 5) and annotating those five, which are exported functions with inferred return types and
+  genuinely worth annotating.
+- `typescript/consistent-type-exports` produced **4 hits**, all in `packages/core/src/index.ts` — fixed
+  with `export type *` for the four type-only modules.
+- `import/no-cycle` produced **2 hits** — a real cycle this audit had missed. See B1.4.
+
+### B1.4 – A dependency cycle between `commands/chat.ts` and `commands/boss.ts`
+
+Severita: medium
+Kde: `packages/core/src/commands/chat.ts:5` ↔ `packages/core/src/commands/boss.ts:14` (baseline line numbers)
+Důkaz: `chat.ts` imported `triageMessage` from `boss.ts`; `boss.ts` imported `titleFromText` from `chat.ts`. Found by enabling `import/no-cycle` in Wave 1, **not** by the Phase 1 reading — I read both files and did not notice. Recorded as a miss.
+Dopad: Udržovatelnost: a cycle inside the pure domain package, invisible until a tool looked for it.
+Doporučení: `titleFromText` is a generic text helper with no dependency on chat; move it to `commands/shared.ts`, which both files already import. Done in Wave 1.
+Odhad: triviální
+
+### A2.5 – The compiled `ho` binary could not start the daemon at all
+
+Severita: **blocker**
+Kde: `packages/store/src/database.ts:24-26` and `packages/daemon/src/paths.ts:27-28` at the audited baseline
+Důkaz: `bun build --compile apps/cli/src/main.ts` produced a binary that died immediately with `ho: Can't find meta/_journal.json file`. Reproduced against the **baseline** commit's own binary, so it predates this audit. Cause: `defaultResourcesRoot()` is `resolve(import.meta.dir, "../../..")`, which inside a compiled executable resolves to a virtual path, so `resolveResources` reported `migrationsDir: null`; `openDatabase` then fell back to `fileURLToPath(new URL("../drizzle", import.meta.url))`, also virtual, and Drizzle's file-based migrator threw. Running from source and the packaged desktop app were both fine — the desktop passes `resourcesRoot` explicitly and `scripts/desktop-prepare.ts` copies the migrations — so only the shipped CLI binary was affected. Phase 1 missed this because it verified the daemon from source and the compiled binary only through `--help` and `doctor`; the CI smoke step added for A2.2 is what surfaced it.
+Dopad: Anyone running the compiled `ho` — the artefact `ci.yml` builds and the one a user would install — could not start a daemon.
+Doporučení: Carry the migrations inside the executable. Done in Wave 1: `packages/store/src/migrations.ts` imports the journal and each `.sql` with import attributes (`with { type: "text" }`, verified to survive `--compile`) and materialises them into a content-addressed temporary folder only when no folder is on disk. Byte-identical to Drizzle's own layout, so bookkeeping is unchanged — verified: a database migrated from the embedded copy records hash `38f97c41…686d52f` and `created_at 1788653253561`, exactly matching one migrated from the on-disk folder, so no existing database re-migrates.
+Odhad: střední
+
 ### A1.4 – No `incremental`, so every typecheck is a cold start
 
 Severita: medium

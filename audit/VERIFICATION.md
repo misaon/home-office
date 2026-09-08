@@ -156,3 +156,138 @@ the reception. Screenshot captured. `bridge.layoutIssues` was `[]`.
 
 `docker build` of `images/agent` — deferred to the Wave 5 record because the `rtk` stage compiles a Rust
 binary from git; the git-bridge image is built in the same step.
+
+---
+
+## Wave 1 — foundation
+
+### `bun install --frozen-lockfile`
+
+```
+bun install v1.4.2 (744846f84)
+Checked 235 installs across 388 packages (no changes) [7.00ms]
+```
+
+### `bun run check` — green
+
+```
+$ bun run typecheck && bun run lint && bun run fmt:check && bun run knip
+$ bun run scripts/typecheck.ts          (16 × ✔, all projects)
+$ oxlint --type-aware --deny-warnings   (silent — 9 new rules, 2 scoped overrides)
+$ oxfmt --check
+All matched files use the correct format.
+Finished in 323ms on 305 files using 12 threads.
+$ knip
+CHECK EXIT: 0
+```
+
+### A1.4 measured: `incremental` on the typecheck
+
+```
+cache files: 16, size: 3.6M      (.tscache/, git-ignored)
+cold (cache parked aside):  9.86s user  1.92s system  833% cpu  1.414 total
+warm 1:                     3.33s user  1.31s system  837% cpu  0.554 total
+warm 2:                     3.39s user  1.27s system  944% cpu  0.493 total
+git sees .tscache?  no (ignored)
+```
+
+Warm typechecks cost **3.33 s user CPU instead of 9.86 s** — a 66 % reduction on the path the pre-commit
+hook takes on every commit. Whole `check` pipeline: baseline 13.62 s user → now 9.40 s user.
+
+### A1.3 measured: narrowing `explicit-function-return-type`
+
+```
+{"allowExpressions":true}                                                    -> 5 hits
+{"allowExpressions":true,"allowIIFEs":true}                                  -> 5 hits
+{"allowExpressions":true,"allowIIFEs":true,"allowFunctionsWithoutTypeParameters":true} -> 1 hits
+```
+
+Bare, the rule produced 30 hits. `allowExpressions` leaves 5, all exported functions with inferred return
+types; all five were annotated. `allowFunctionsWithoutTypeParameters` was rejected — it would hide four of
+the five real ones.
+
+### A2.5 (blocker) — the compiled binary, before and after
+
+Before, against the **baseline** binary built from commit `ecd4aa5`:
+
+```
+$ export HO_HOME="$(mktemp -d)"; /tmp/ho-baseline daemon
+ho: Can't find meta/_journal.json file
+```
+
+The same code run from source was fine, which is why Phase 1 missed it:
+
+```
+$ bun run apps/cli/src/main.ts daemon
+health: {"ok":true}
+```
+
+After the fix, the compiled binary:
+
+```
+$ bun build --compile apps/cli/src/main.ts --outfile /tmp/ho-w1
+  [62ms] compile  /tmp/ho-w1
+$ /tmp/ho-w1 daemon & curl -fsS http://127.0.0.1:47800/health
+{"ok":true}
+daemon.json mode: 600
+$ /tmp/ho-w1 project add "W1 Check" --path "$PWD"   → project added
+$ /tmp/ho-w1 agent list
+01a082b5-18ce-7ac2-8105-3ecfa74947dc  Andrew  boss  claude-code/opus@high (subscription)  skills=boss  floor=W1 Check
+```
+
+Migration bookkeeping is byte-identical, so **no existing database re-migrates**:
+
+```
+DB migrated from the on-disk folder (baseline, created before Wave 1):
+[{"hash":"38f97c4147cf252b2d86f2fec1b19543a25c1578f19e60aa6eb703fe7686d52f","created_at":1788653253561}]
+DB migrated from the embedded copy (just now):
+ {"hash":"38f97c4147cf252b2d86f2fec1b19543a25c1578f19e60aa6eb703fe7686d52f","created_at":1788653253561}
+```
+
+Import attributes were verified to survive `--compile` before relying on them:
+
+```
+$ bun build --compile t.ts --outfile ./t-bin && ./t-bin
+text import works, length: 24 "CREATE TABLE x (a int);\n"
+```
+
+### Builds
+
+```
+$ bun run ui:build
+ui: 3 files, 1100 KiB → .../packages/ui/dist
+$ bun run assets:manifest
+assets/dist/manifest.json: 43 sprites, 250 frames
+$ bun build --compile apps/cli/src/main.ts --outfile /tmp/ho-w1              [62ms] compile
+$ bun build --compile --minify --target=bun-linux-arm64-musl packages/runner/src/main.ts   [86ms] compile
+```
+
+### `bun audit`
+
+```
+bun audit v1.4.2 (744846f84)
+No vulnerabilities found (checked 367 packages) [508.00ms]
+```
+
+### The office still renders
+
+Instrumented through the dev bundle per the procedure at the top of this file:
+
+```
+{"floors":1,"actors":["receptionist","boss"],"layoutIssues":[],"ticking":true,
+ "spriteSets":["agent-a","agent-b","agent-c","boss","postman"]}
+```
+
+Screenshot captured: floor tiles, walls, desks, plants, elevator, spa, Andrew at his desk, Lola at the
+reception — identical to the baseline.
+
+**Procedure note for later waves:** on this machine the 10.3 MB development bundle plus 251 sprite requests
+needs **40–50 s** in the hidden Browser pane before `window.__ho` is defined. Reading it at 20 s returns
+"no handle" and means nothing. Also: run only **one** daemon — two listeners on 47800 make `daemon.json`
+name one process while the socket answers from the other, which shows up as `rejected rpc connection`.
+
+### Docker image build
+
+Still deferred to the Wave 5 record. Note that Wave 1 changed `packages/protocol/src/**`, which feeds
+`contextHash`, so `ho doctor` now correctly reports both images as `present, STALE` — the content-hash
+mechanism working as designed (observed in the setup checklist: "out of date: ho/agent:dev, ho/git-bridge:dev").

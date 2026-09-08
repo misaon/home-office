@@ -3,7 +3,7 @@
 Restart-safe state of this audit. Updated at the end of every step.
 
 - **Branch:** `audit/deep-monorepo-audit-2026-09` (from `main` @ `ecd4aa5`)
-- **Phase:** 1 (read-only audit) — reading complete, verification complete, writing findings
+- **Phase:** 3 (implementation) — Wave 1 of 7 complete and verified
 
 ## Done
 
@@ -23,14 +23,6 @@ Restart-safe state of this audit. Updated at the end of every step.
   - TypeScript 7.0.2 `--build` / composite behaviour, proved empirically (TS6310, TS5102).
   - The installed `@agentclientprotocol/sdk@1.4.0` type surface (v1 vs `experimental/v2`).
   - Docker Engine API levels and the pinned Alpine digest (verified against `/etc/alpine-release`).
-
-## In progress
-
-- Writing `audit/AUDIT.md`, `audit/COVERAGE.md`, `audit/DEPENDENCIES.md`, `audit/adr/*`.
-
-## Next step
-
-- Finish the four audit documents, then Wave 1.
 
 ## Environment notes for a restart
 
@@ -55,9 +47,28 @@ required before Wave 1. Two items are flagged for the owner's attention when imp
 blocked on: the effort defaults (B33.4, a cost change) and the optional browser/chromium image split
 (B24.1b, ~900 MB off the agent image but a build-graph change).
 
+## Wave 1 complete (2026-09-08) — verified
+
+**Config:** oxlint `overrides` (four whole-file disables gone) + the `node` plugin + nine rules;
+`incremental` typecheck with a per-workspace `tsBuildInfoFile` (9.86 s → 3.33 s user CPU warm); knip now
+covers `apps/cli`; `trustedDependencies`; a 62 MB stray build artefact deleted; `@types/bun` 1.4.2,
+`knip` 6.35.0, root `zod`, `type-fest` in `@ho/protocol`.
+
+**Code:** `titleFromText` moved to `commands/shared.ts`, which breaks a real import cycle
+(**new finding B1.4**); four type-only re-exports marked `export type *`; five inferred return types
+annotated; the four hand-written sidecar guards in `scripts/lib/import-target.ts` replaced by a Zod schema
+(B16.2); and **the blocker A2.5 fixed** — migrations are now embedded via import attributes, so the
+compiled `ho` binary can start the daemon, which it could not do at baseline.
+
+**CI:** a daemon `/health` smoke test that also asserts `daemon.json` is mode 600, and an `npm ls`
+lockfile-drift guard before each sandbox `npm audit`.
+
+`bun run check` green; builds, the compiled daemon and the office render all verified — see
+`audit/VERIFICATION.md`. Two audit claims were corrected in `audit/AUDIT.md`: A1.3 ("already satisfied" —
+wrong, three rules had 36 hits) and the Phase 1 miss of B1.4 and A2.5.
+
 ## Next step
 
-Wave 1 — foundation: A1.1 (oxlint overrides), A1.2 (node plugin), A1.3 (nine rules), A1.4 (incremental),
-A1.5 (knip apps/cli), A1.7 (trustedDependencies), A1.8 (delete the 62 MB artefact), A4.2/A4.3 (bumps +
-root zod), B22.3 (type-fest), A2.2/A2.3 (CI daemon smoke + lockfile drift). Then `bun run check`, builds,
-daemon start, UI render — all recorded in `audit/VERIFICATION.md`.
+Wave 2 — hygiene: A3.2 (move `docs/audit/2026-09.md` under `docs/history/`), B12.1 (four misplaced doc
+comments), B13.4, B13.5 (version unification), B14.1 (24 error idioms → one `errorMessage` in `@ho/core`),
+B14.2–B14.4, **B15.1 (62 spread guards → one typed `compact()`)**, B15.2–B15.4, B28.1, B28.2.
