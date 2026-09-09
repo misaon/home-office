@@ -100,3 +100,55 @@ Two bugs turned up while testing and were fixed: `resolveToken` wiped the query 
 token fragment (so `?editor=1` never survived a launch URL), and the editor asked the daemon for its
 layouts before the socket was up. The office drawn for this test was deleted rather than committed; the
 directory is created on the first save.
+
+## The owner's notes, 2026-09-09 (second pass)
+
+| Note                                                                  | Built                                                                                                                                                                                                                                     |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Drop the Erase tool; erase by right-dragging the same way one paints  | The tool row is Wall / Room / Door / Furniture. The left button paints, **the right button erases** the same rectangle, the middle button or shift pans. The preview turns red while erasing.                                             |
+| The file name is read-only and follows the office name as it is typed | The `File` field shows `layouts/<slug>.json`, is `readOnly`, and is re-slugified on every keystroke of the name                                                                                                                           |
+| A door is 1×4 cells, not 1×1                                          | A doorway spans four cells **along the wall it is cut into** — the editor looks at the neighbouring cells and lays it out horizontally or vertically. Four wall cells in a row are required; otherwise the click is refused with a reason |
+| Furniture: plant 2×2, desk 3×6, chair 2×2                             | A `Furniture` tool with those footprints, a `Rotate` button that swaps them (a desk goes 3×6 or 6×3) and refusals for a wall or another object in the way                                                                                 |
+
+### What Prison Architect actually uses, and why ours is finer
+
+Read from the Paradox wiki, 2026-09-09: [office desk](https://prisonarchitect.paradoxwikis.com/Office_Desk)
+"Size: 2x1", [bed](https://prisonarchitect.paradoxwikis.com/Bed) "Size: 2x1",
+[chair](https://prisonarchitect.paradoxwikis.com/Chair) "Size: 1x1",
+[door](https://prisonarchitect.paradoxwikis.com/Door) "Size: 1x1".
+
+So Prison Architect's tile is about a metre and its furniture is one or two tiles. The owner's sizes are
+two to three times finer, and they are consistent at **roughly 25 cm per cell**: a 3×6 desk is 75 × 150
+cm, a 2×2 chair and plant are 50 × 50, and a 1×4 doorway is a metre wide. Two consequences worth stating
+rather than discovering later: the 60×34 floor is then **15 × 8.5 m** (127 m²), and the character dot —
+0.9 of a cell across, or 22 cm — was too small for a person beside 50 cm furniture, so it now spans 1.8
+cells (about 45 cm).
+
+### Measured
+
+The editor was driven in a browser again. Typing "HQ Ground Floor" as the name produced
+`layouts/hq-ground-floor.json` in the read-only field. Four walls, two doorways, three pieces of
+furniture and one right-drag erase later, the file holds:
+
+```
+doors    [{ x:18, y:5, w:4, h:1 }, { x:10, y:10, w:1, h:4 }]      ← along the wall each was cut into
+objects  [{ desk 3x6 at 13,8 }, { desk 6x3 at 20,8 }, { chair 2x2 at 13,15 }]
+walls    the top row is two runs — 10..25 and 30 — where the right-drag punched its hole
+```
+
+A door placed on a floor cell was refused: `a doorway needs 4 wall cells in a row`. The right-drag over
+the plant removed it (4 → 3 furniture) and cleared the wall cells it covered. Compiled:
+
+```
+door  (18,5) wall=wall kind=door  walkable=true      door  (21,5) wall=wall kind=door  walkable=true
+wall  (17,5) wall=wall kind=-     walkable=false     door  (10,13) wall=wall kind=door walkable=true
+desk  (13,8) wall=-    kind=desk  walkable=false     chair (13,15) wall=-   kind=chair walkable=true
+```
+
+The `objectKind` layer is what carries `door`, `desk` and `chair` into the view, so the sprite added
+later applies by kind. A chair does not block movement — it is sat on — while a desk and a plant do.
+
+One more bug turned up: the daemon served `index.html` with `cache-control: no-cache` and no validator,
+so a rebuilt UI could keep serving the previous bundle (the editor appeared to be missing entirely).
+The HTML entry is now `no-store` and the content-hashed assets are `immutable`, both verified with
+`curl -I`.

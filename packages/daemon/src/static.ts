@@ -2,12 +2,25 @@ import { realpath, stat } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 
 const HEADERS = {
-  "cache-control": "no-cache",
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
   "content-security-policy":
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
 };
+
+/**
+ * The bundle's file names carry a content hash, so they can be cached forever. Everything else — the
+ * HTML entry above all — must not be cached at all: a stale `index.html` points at a bundle that is no
+ * longer there, which is how a rebuilt UI can keep serving the previous one.
+ */
+const IMMUTABLE = "public, max-age=31536000, immutable";
+const NEVER = "no-store";
+const HASHED = /-[a-z\d]{6,}\.(?:js|css)$/u;
+
+const headers = (cache: string): Record<string, string> => ({
+  ...HEADERS,
+  "cache-control": cache,
+});
 
 export async function serveStatic(
   root: string,
@@ -32,7 +45,7 @@ export async function serveStatic(
   if (!within(target)) {
     return new Response("forbidden", { status: 403 });
   }
-  const fileResponse = async (path: string): Promise<Response | null> => {
+  const fileResponse = async (path: string, cache: string): Promise<Response | null> => {
     const actual = await realpath(path).catch(() => null);
     if (actual === null) {
       return null;
@@ -41,12 +54,12 @@ export async function serveStatic(
       return new Response("forbidden", { status: 403 });
     }
     return (await stat(actual)).isFile()
-      ? new Response(Bun.file(actual), { headers: HEADERS })
+      ? new Response(Bun.file(actual), { headers: headers(cache) })
       : null;
   };
   return (
-    (await fileResponse(target)) ??
-    (fallback === null ? null : await fileResponse(resolve(base, fallback))) ??
+    (await fileResponse(target, HASHED.test(decoded) ? IMMUTABLE : NEVER)) ??
+    (fallback === null ? null : await fileResponse(resolve(base, fallback), NEVER)) ??
     new Response("not found", { status: 404 })
   );
 }

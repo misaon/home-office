@@ -1,4 +1,4 @@
-import type { OfficeLayout } from "@ho/protocol";
+import { OBJECT_BLOCKS, type OfficeLayout } from "@ho/protocol";
 import type { Material, TileMap } from "./cells.ts";
 import type { Facing, Point } from "./grid.ts";
 import type { Anchor, FloorTemplate } from "./templates.ts";
@@ -48,15 +48,26 @@ export const layoutFromOffice = (office: OfficeLayout): Layout => ({
     material: r.material,
   })),
   rooms: office.rooms.map((r) => ({ at: { x: r.x, y: r.y }, w: r.w, h: r.h, room: r.room })),
-  objects: office.doors.map((door, i) => ({
-    id: `door-${String(i + 1)}`,
-    kind: door.kind,
-    at: { x: door.x, y: door.y },
-    w: 1,
-    h: 1,
-    facing: "s",
-    blocks: false,
-  })),
+  objects: [
+    ...office.doors.map((door, i) => ({
+      id: `door-${String(i + 1)}`,
+      kind: door.kind,
+      at: { x: door.x, y: door.y },
+      w: door.w,
+      h: door.h,
+      facing: "s" as const,
+      blocks: false,
+    })),
+    ...office.objects.map((object, i) => ({
+      id: `${object.kind}-${String(i + 1)}`,
+      kind: object.kind,
+      at: { x: object.x, y: object.y },
+      w: object.w,
+      h: object.h,
+      facing: "s" as const,
+      blocks: OBJECT_BLOCKS[object.kind],
+    })),
+  ],
   anchors: [],
 });
 
@@ -64,6 +75,7 @@ type Layers = {
   floor: (Material | null)[];
   wall: (Material | null)[];
   object: (string | null)[];
+  objectKind: (string | null)[];
   room: (string | null)[];
   blocked: Uint8Array;
 };
@@ -72,6 +84,7 @@ const layers = (cells: number): Layers => ({
   floor: Array.from({ length: cells }, () => null),
   wall: Array.from({ length: cells }, () => null),
   object: Array.from({ length: cells }, () => null),
+  objectKind: Array.from({ length: cells }, () => null),
   room: Array.from({ length: cells }, () => null),
   blocked: new Uint8Array(cells).fill(1),
 });
@@ -111,6 +124,7 @@ export function compileLayout(floorId: string, layout: Layout): FloorTemplate {
   for (const object of layout.objects) {
     for (const i of cellsOf(object, width, height)) {
       cells.object[i] = object.id;
+      cells.objectKind[i] = object.kind;
       cells.blocked[i] = object.blocks ? 1 : 0;
     }
   }

@@ -8,6 +8,7 @@ import {
   GROUND,
   OBJECT_EDGE,
   OBJECT_FILL,
+  OBJECTS,
   ROOM,
   ROOM_ALPHA,
   ROOM_DEFAULT,
@@ -71,7 +72,7 @@ const walls = (map: TileMap): Graphics => {
   return graphics;
 };
 
-/** One outlined rectangle per object footprint. */
+/** One outlined rectangle per object footprint, coloured by what the object is. */
 const objects = (template: FloorTemplate): Graphics => {
   const graphics = new Graphics();
   const seen = new Set<string>();
@@ -84,9 +85,10 @@ const objects = (template: FloorTemplate): Graphics => {
       }
       seen.add(id);
       const box = footprint(map, id, x, y);
+      const kind = map.objectKind[y * map.width + x] ?? "";
       graphics
         .rect(box.x * CELL_PX, box.y * CELL_PX, box.w * CELL_PX, box.h * CELL_PX)
-        .fill(OBJECT_FILL)
+        .fill(colourOf(OBJECTS, kind, OBJECT_FILL))
         .stroke({ color: OBJECT_EDGE, width: 1 });
     }
   }

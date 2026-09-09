@@ -2,9 +2,8 @@ import "pixi.js/unsafe-eval";
 import { CELL_PX, compileLayout, type FloorTemplate } from "@ho/sim";
 import { Application, Container, Graphics } from "pixi.js";
 import { Camera } from "../office/camera.ts";
-import { colourOf, DOOR, DOOR_DEFAULT } from "../office/palette.ts";
 import { floorTiles, gridLines } from "../office/tiles.ts";
-import { type Draft, draftLayout, type Rect, type Tool } from "./draft.ts";
+import { type Draft, draftLayout, type Rect } from "./draft.ts";
 
 const HOVER = 0x2b3140;
 const PREVIEW_ADD = 0x4c8bf5;
@@ -24,20 +23,18 @@ export class EditorScene {
   readonly #world = new Container();
   readonly #tiles = new Container();
   #grid = new Graphics();
-  readonly #doors = new Graphics();
   /** The whole preview layer is translucent, so its own fill stays a plain colour. */
   readonly #preview = new Graphics({ alpha: PREVIEW_ALPHA });
   #gridScale = 0;
   #template: FloorTemplate | null = null;
   #draft: Draft | null = null;
-  #tool: Tool = "wall";
   #host: HTMLElement | null = null;
   #observer: ResizeObserver | null = null;
   #paintFrom: Cell | null = null;
+  #erasing = false;
   #panning = false;
   #pointer: Cell | null = null;
-  onPaint: (rect: Rect) => void = () => undefined;
-  onHover: (cell: Cell | null) => void = () => undefined;
+  onPaint: (rect: Rect, erase: boolean) => void = () => undefined;
 
   async init(host: HTMLElement): Promise<void> {
     this.#host = host;
@@ -53,7 +50,7 @@ export class EditorScene {
     this.app.ticker.stop();
     host.append(this.app.canvas);
     this.app.stage.addChild(this.#world);
-    this.#world.addChild(this.#tiles, this.#grid, this.#doors, this.#preview);
+    this.#world.addChild(this.#tiles, this.#grid, this.#preview);
     this.camera.setViewport(this.app.screen.width, this.app.screen.height);
     this.#listen(this.app.canvas);
     this.#observer = new ResizeObserver(() => {
@@ -65,10 +62,6 @@ export class EditorScene {
   destroy(): void {
     this.#observer?.disconnect();
     this.app.destroy(true, { children: true });
-  }
-
-  setTool(tool: Tool): void {
-    this.#tool = tool;
   }
 
   /** Rebuilds the drawn office. Called on every edit: compiling 2000 cells is cheaper than diffing them. */
@@ -83,23 +76,8 @@ export class EditorScene {
     if (this.#gridScale === 0) {
       this.camera.fit();
     }
-    this.#drawDoors(draft);
     this.#gridScale = 0;
     this.#apply();
-  }
-
-  /** Doors are drawn here, not by the shared tile painter: the editor needs to tell one kind from another. */
-  #drawDoors(draft: Draft): void {
-    this.#doors.clear();
-    for (const [i, kind] of draft.door.entries()) {
-      if (kind !== null) {
-        const x = (i % draft.width) * CELL_PX;
-        const y = Math.floor(i / draft.width) * CELL_PX;
-        this.#doors
-          .rect(x + CELL_PX * 0.15, y + CELL_PX * 0.15, CELL_PX * 0.7, CELL_PX * 0.7)
-          .fill(colourOf(DOOR, kind, DOOR_DEFAULT));
-      }
-    }
   }
 
   #resize(): void {
@@ -143,7 +121,7 @@ export class EditorScene {
 
   #drawPreview(from: Cell | null, to: Cell | null): void {
     this.#preview.clear();
-    const colour = this.#tool === "erase" ? PREVIEW_ERASE : PREVIEW_ADD;
+    const colour = this.#erasing ? PREVIEW_ERASE : PREVIEW_ADD;
     if (to === null) {
       this.#apply();
       return;
@@ -180,7 +158,9 @@ export class EditorScene {
       { passive: false },
     );
     canvas.addEventListener("pointerdown", (event) => {
-      this.#panning = event.button !== 0 || event.shiftKey;
+      // Left paints, right erases, the middle button and shift pan.
+      this.#panning = event.button === 1 || event.shiftKey;
+      this.#erasing = !this.#panning && event.button === 2;
       if (!this.#panning) {
         this.#paintFrom = this.#cellAt(event);
         this.#drawPreview(this.#paintFrom, this.#paintFrom);
@@ -191,7 +171,6 @@ export class EditorScene {
     });
     canvas.addEventListener("pointermove", (event) => {
       const cell = this.#cellAt(event);
-      this.onHover(cell);
       if (this.#panning && this.#pointer !== null) {
         this.camera.panBy(event.clientX - this.#pointer.x, event.clientY - this.#pointer.y);
         this.#pointer = { x: event.clientX, y: event.clientY };
@@ -207,17 +186,20 @@ export class EditorScene {
       this.#panning = false;
       this.#preview.clear();
       if (from !== null && to !== null) {
-        this.onPaint({
-          x: Math.min(from.x, to.x),
-          y: Math.min(from.y, to.y),
-          w: Math.abs(from.x - to.x) + 1,
-          h: Math.abs(from.y - to.y) + 1,
-        });
+        this.onPaint(
+          {
+            x: Math.min(from.x, to.x),
+            y: Math.min(from.y, to.y),
+            w: Math.abs(from.x - to.x) + 1,
+            h: Math.abs(from.y - to.y) + 1,
+          },
+          this.#erasing,
+        );
       }
+      this.#erasing = false;
       this.#apply();
     });
     canvas.addEventListener("pointerleave", () => {
-      this.onHover(null);
       this.#preview.clear();
       this.#apply();
     });

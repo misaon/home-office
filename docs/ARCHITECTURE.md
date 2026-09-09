@@ -166,10 +166,16 @@ and a floor picks one by id; there is no builder, because the player never place
 
 Offices are drawn in an **internal editor** that exists in development builds only — `ui-build.ts`
 resolves its module to a stub for production, so the shipped bundle carries none of it. It paints walls,
-rooms and doors on the grid and saves `layouts/<id>.json` through the daemon, which reads that directory
-back and answers `available: false` where there is no repository to write into. The JSON stores what a
-cell _is_ — a wall material, a room kind, a door kind — never a colour, so art added later applies to
-offices drawn today.
+rooms, doorways and furniture on the grid — the left button paints, the right button erases, the middle
+button or shift pans — and saves `layouts/<id>.json` through the daemon, which reads that directory back
+and answers `available: false` where there is no repository to write into. The JSON stores what a cell
+_is_ — a wall material, a room kind, a door kind, a furniture kind — never a colour, so art added later
+applies to offices drawn today, and the compiled map carries that kind per cell for exactly that reason.
+
+Footprints are the owner's, at roughly 25 cm per cell: a doorway is 1×4 laid along the wall it cuts, a
+desk 3×6 (rotatable to 6×3), a chair and a plant 2×2, and a character spans 1.8 cells. Prison Architect
+is coarser — its office desk and bed are 2×1, its chair and door 1×1 — because its tile is about a
+metre; the numbers and their sources are in [the editor plan](plans/2026-09-09-layout-editor.md).
 
 The view draws ground, floors, room tint, the grid, walls, objects and then one dot per character.
 The grid is always visible — one hairline of one colour on every cell boundary, the map's outer edge

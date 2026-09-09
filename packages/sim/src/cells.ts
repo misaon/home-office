@@ -16,6 +16,8 @@ export type Cell = {
   wall: Material | null;
   /** Id of the object whose footprint covers this cell. */
   object: string | null;
+  /** What that object is (`desk`, `door`…): what the view draws and, later, which sprite applies. */
+  objectKind: string | null;
   /** Id of the room designated over this cell. */
   room: string | null;
 };
@@ -27,6 +29,7 @@ export type TileMap = {
   floor: readonly (Material | null)[];
   wall: readonly (Material | null)[];
   object: readonly (string | null)[];
+  objectKind: readonly (string | null)[];
   room: readonly (string | null)[];
   /** 1 where a cell cannot be walked through: void, a wall, or an object that blocks. */
   blocked: Uint8Array;
@@ -40,6 +43,7 @@ export const cellAt = (map: TileMap, x: number, y: number): Cell => {
     floor: map.floor[i] ?? null,
     wall: map.wall[i] ?? null,
     object: map.object[i] ?? null,
+    objectKind: map.objectKind[i] ?? null,
     room: map.room[i] ?? null,
   };
 };

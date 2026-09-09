@@ -1,80 +1,89 @@
-import { DoorKind, errorMessage, type OfficeLayout, RoomKind, WallMaterial } from "@ho/protocol";
+import {
+  DoorKind,
+  errorMessage,
+  OBJECT_SIZE,
+  ObjectKind,
+  type OfficeLayout,
+  RoomKind,
+  WallMaterial,
+} from "@ho/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button, CONTROL, Field, Section, Segmented } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
-import { type Draft, emptyDraft, fromOffice, paint, toOffice, type Tool } from "./draft.ts";
-import { EditorScene } from "./scene.ts";
+import {
+  type Draft,
+  emptyDraft,
+  erase,
+  fromOffice,
+  type Kinds,
+  paint,
+  slugify,
+  toOffice,
+  type Tool,
+} from "./draft.ts";
+import { EditorCanvas } from "./canvas.tsx";
 
 const TOOLS = [
   { value: "wall", label: "Wall" },
   { value: "room", label: "Room" },
   { value: "door", label: "Door" },
-  { value: "erase", label: "Erase" },
+  { value: "object", label: "Furniture" },
 ] as const satisfies readonly { value: Tool; label: string }[];
 
-const OFFICE_DEFAULT = { width: 60, height: 34 };
+const SIZE = { width: 60, height: 34 };
 const layoutsQuery = {
   queryKey: ["layouts"],
   queryFn: () => requireClient().layouts.list(),
 } as const;
 
-/** The Pixi canvas, wired to the draft: it redraws on every edit and reports what a drag painted. */
-function Canvas({
+/** The office's own fields. The file name is the name, slugified, so it cannot drift from it. */
+function OfficeFields({
   draft,
-  tool,
-  onPaint,
-  onHover,
+  setDraft,
 }: {
   draft: Draft;
-  tool: Tool;
-  onPaint: (rect: { x: number; y: number; w: number; h: number }) => void;
-  onHover: (cell: { x: number; y: number } | null) => void;
+  setDraft: (draft: Draft) => void;
 }): React.JSX.Element {
-  const host = useRef<HTMLDivElement>(null);
-  const scene = useRef<EditorScene | null>(null);
-  // The scene is built once; the draft reaches it through a ref so mounting does not depend on it.
-  const latest = useRef(draft);
-  useEffect(() => {
-    latest.current = draft;
-    scene.current?.setDraft(draft);
-  }, [draft]);
-  useEffect(() => {
-    const element = host.current;
-    if (element === null) {
-      return undefined;
-    }
-    const created = new EditorScene();
-    let disposed = false;
-    void created.init(element).then(() => {
-      if (disposed) {
-        created.destroy();
-        return;
-      }
-      scene.current = created;
-      created.setDraft(latest.current);
-    });
-    return () => {
-      disposed = true;
-      scene.current = null;
-      created.destroy();
-    };
-  }, []);
-  useEffect(() => {
-    scene.current?.setTool(tool);
-  }, [tool]);
-  useEffect(() => {
-    if (scene.current !== null) {
-      scene.current.onPaint = onPaint;
-      scene.current.onHover = onHover;
-    }
-  }, [onPaint, onHover]);
-  return <div ref={host} className="h-full w-full" />;
+  const office = toOffice(draft);
+  return (
+    <Section title="Office">
+      <Field id="ho-editor-name" label="Name">
+        <input
+          id="ho-editor-name"
+          className={CONTROL}
+          value={draft.name}
+          onChange={(e) => {
+            setDraft({ ...draft, name: e.target.value, id: slugify(e.target.value) });
+          }}
+        />
+      </Field>
+      <Field id="ho-editor-id" label="File" hint="taken from the name">
+        <input
+          id="ho-editor-id"
+          className={`${CONTROL} font-mono text-gray-400`}
+          readOnly
+          value={`layouts/${draft.id}.json`}
+        />
+      </Field>
+      <p className="text-2xs text-gray-500">
+        {draft.width} × {draft.height} cells · {office.walls.length} wall runs ·{" "}
+        {office.rooms.length} room runs · {draft.doors.length} doors · {draft.objects.length}{" "}
+        furniture
+      </p>
+    </Section>
+  );
 }
 
-type Kinds = { wall: WallMaterial; room: RoomKind; door: DoorKind };
+const KIND_LABEL: Record<Tool, string> = {
+  wall: "Material",
+  room: "Room type",
+  door: "Door",
+  object: "Furniture",
+};
 
+/** The palette of the active tool, plus the footprint furniture will take. */
 function Palette({
   kinds,
   setKinds,
@@ -83,60 +92,123 @@ function Palette({
   kinds: Kinds;
   setKinds: (kinds: Kinds) => void;
   tool: Tool;
-}): React.JSX.Element | null {
-  if (tool === "erase") {
-    return <p className="text-2xs text-gray-500">Drag to clear walls, rooms and doors.</p>;
-  }
+}): React.JSX.Element {
   const options =
-    tool === "wall" ? WallMaterial.options : tool === "room" ? RoomKind.options : DoorKind.options;
-  const value = kinds[tool];
+    tool === "wall"
+      ? WallMaterial.options
+      : tool === "room"
+        ? RoomKind.options
+        : tool === "door"
+          ? DoorKind.options
+          : ObjectKind.options;
+  const size = OBJECT_SIZE[kinds.object];
   return (
-    <Field id="ho-editor-kind" label={tool === "room" ? "Room type" : "Material"}>
-      <select
-        id="ho-editor-kind"
-        className={CONTROL}
-        value={value}
-        onChange={(e) => {
-          const next = e.target.value;
-          setKinds(
-            tool === "wall"
-              ? { ...kinds, wall: WallMaterial.parse(next) }
-              : tool === "room"
-                ? { ...kinds, room: RoomKind.parse(next) }
-                : { ...kinds, door: DoorKind.parse(next) },
-          );
-        }}
-      >
-        {options.map((option) => (
-          <option key={option}>{option}</option>
+    <>
+      <Field id="ho-editor-kind" label={KIND_LABEL[tool]}>
+        <select
+          id="ho-editor-kind"
+          className={CONTROL}
+          value={kinds[tool]}
+          onChange={(e) => {
+            const next = e.target.value;
+            setKinds(
+              tool === "wall"
+                ? { ...kinds, wall: WallMaterial.parse(next) }
+                : tool === "room"
+                  ? { ...kinds, room: RoomKind.parse(next) }
+                  : tool === "door"
+                    ? { ...kinds, door: DoorKind.parse(next) }
+                    : { ...kinds, object: ObjectKind.parse(next) },
+            );
+          }}
+        >
+          {options.map((option) => (
+            <option key={option}>{option}</option>
+          ))}
+        </select>
+      </Field>
+      {tool === "object" ? (
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => {
+              setKinds({ ...kinds, rotated: !kinds.rotated });
+            }}
+          >
+            Rotate
+          </Button>
+          <span className="font-mono text-2xs text-gray-400">
+            {kinds.rotated ? size.h : size.w} × {kinds.rotated ? size.w : size.h} cells
+          </span>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function SavedOffices({
+  load,
+  save,
+}: {
+  load: (office: OfficeLayout) => void;
+  save: () => void;
+}): React.JSX.Element {
+  const connection = useUi((s) => s.connection);
+  const store = useQuery({ ...layoutsQuery, enabled: connection === "online" });
+  const available = store.data?.available ?? false;
+  return (
+    <Section title="Saved offices">
+      {available ? null : (
+        <p className="text-2xs text-amber-300">
+          This build has no repository to write into, so saving is unavailable.
+        </p>
+      )}
+      <div className="space-y-1">
+        {(store.data?.layouts ?? []).map((office) => (
+          <button
+            key={office.id}
+            type="button"
+            className="block w-full rounded-md px-3 py-2 text-left hover:bg-line"
+            onClick={() => {
+              load(office);
+            }}
+          >
+            {office.name}{" "}
+            <span className="font-mono text-2xs text-gray-500">
+              {office.id} · {office.width}×{office.height}
+            </span>
+          </button>
         ))}
-      </select>
-    </Field>
+      </div>
+      <Button variant="primary" disabled={!available} onClick={save}>
+        Save office
+      </Button>
+    </Section>
   );
 }
 
 /**
- * The internal office editor. Compiled into development bundles only: `process.env.NODE_ENV` is replaced
- * at build time, so the production bundle cannot contain it. Draw walls, rooms and doors on the grid and
- * Save writes `layouts/<id>.json` in the repository through the daemon.
+ * The internal office editor. Compiled into development bundles only — `ui-build.ts` resolves this
+ * module to a stub for production. Left button paints, right button erases, and Save writes
+ * `layouts/<id>.json` in the repository through the daemon.
  */
 export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.Element {
   const queries = useQueryClient();
-  // The editor can open before the socket is up; asking then would only fail.
-  const connection = useUi((s) => s.connection);
-  const store = useQuery({ ...layoutsQuery, enabled: connection === "online" });
   const [draft, setDraft] = useState<Draft>(() =>
-    emptyDraft("new-office", "New office", OFFICE_DEFAULT.width, OFFICE_DEFAULT.height),
+    emptyDraft("New office", SIZE.width, SIZE.height),
   );
   const [tool, setTool] = useState<Tool>("wall");
-  const [kinds, setKinds] = useState<Kinds>({ wall: "wall", room: "team-room", door: "door" });
-  const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
+  const [kinds, setKinds] = useState<Kinds>({
+    wall: "wall",
+    room: "team-room",
+    door: "door",
+    object: "desk",
+    rotated: false,
+  });
+  const [note, setNote] = useState<string | null>(null);
   const save = useMutation({
     mutationFn: (office: OfficeLayout) => requireClient().layouts.save(office),
     onSuccess: () => queries.invalidateQueries({ queryKey: layoutsQuery.queryKey }),
   });
-  const available = store.data?.available ?? false;
-  const counts = toOffice(draft);
   return (
     <div className="absolute inset-0 z-40 flex bg-ink">
       <aside className="flex w-[320px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-line p-5 text-xs">
@@ -144,88 +216,40 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
           <h2 className="text-base font-semibold">Office editor</h2>
           <Button onClick={onClose}>Close</Button>
         </header>
-        <Section title="Office">
-          <Field id="ho-editor-id" label="Id (file name)">
-            <input
-              id="ho-editor-id"
-              className={`${CONTROL} font-mono`}
-              value={draft.id}
-              onChange={(e) => {
-                setDraft({ ...draft, id: e.target.value });
-              }}
-            />
-          </Field>
-          <Field id="ho-editor-name" label="Name">
-            <input
-              id="ho-editor-name"
-              className={CONTROL}
-              value={draft.name}
-              onChange={(e) => {
-                setDraft({ ...draft, name: e.target.value });
-              }}
-            />
-          </Field>
-          <p className="text-2xs text-gray-500">
-            {draft.width} × {draft.height} cells · {counts.walls.length} wall runs ·{" "}
-            {counts.rooms.length} room runs · {counts.doors.length} doors
-          </p>
-        </Section>
+        <OfficeFields draft={draft} setDraft={setDraft} />
         <Section title="Tool">
           <Segmented value={tool} options={TOOLS} onChange={setTool} />
           <Palette kinds={kinds} setKinds={setKinds} tool={tool} />
-          <p className="text-2xs text-gray-500">
-            Drag to paint. Shift-drag, the middle or the right button pans; the wheel zooms.
-            {hover === null ? "" : ` Cell ${String(hover.x)}, ${String(hover.y)}.`}
+          <p className="text-2xs leading-relaxed text-gray-500">
+            Drag with the left button to paint, with the right button to erase. The middle button or
+            shift pans; the wheel zooms.
           </p>
+          {note === null ? null : <p className="text-2xs text-amber-300">{note}</p>}
         </Section>
-        <Section title="Saved offices">
-          {available ? null : (
-            <p className="text-2xs text-amber-300">
-              This build has no repository to write into, so saving is unavailable.
-            </p>
-          )}
-          <div className="space-y-1">
-            {(store.data?.layouts ?? []).map((office) => (
-              <button
-                key={office.id}
-                type="button"
-                className="block w-full rounded-md px-3 py-2 text-left hover:bg-line"
-                onClick={() => {
-                  setDraft(fromOffice(office));
-                }}
-              >
-                {office.name}{" "}
-                <span className="font-mono text-2xs text-gray-500">
-                  {office.id} · {office.width}×{office.height}
-                </span>
-              </button>
-            ))}
-          </div>
-          <Button
-            variant="primary"
-            disabled={!available || save.isPending}
-            onClick={() => {
-              save.mutate(toOffice(draft));
-            }}
-          >
-            {save.isPending ? "Saving…" : "Save office"}
-          </Button>
-          {save.error === null ? null : (
-            <p className="text-2xs text-red-300">{errorMessage(save.error)}</p>
-          )}
-          {save.data === undefined ? null : (
-            <p className="font-mono text-2xs text-emerald-300">saved {save.data.path}</p>
-          )}
-        </Section>
+        <SavedOffices
+          load={(office) => {
+            setDraft(fromOffice(office));
+            setNote(null);
+          }}
+          save={() => {
+            save.mutate(toOffice(draft));
+          }}
+        />
+        {save.error === null ? null : (
+          <p className="text-2xs text-red-300">{errorMessage(save.error)}</p>
+        )}
+        {save.data === undefined ? null : (
+          <p className="font-mono text-2xs text-emerald-300">saved {save.data.path}</p>
+        )}
       </aside>
       <div className="min-w-0 flex-1 bg-white">
-        <Canvas
+        <EditorCanvas
           draft={draft}
-          tool={tool}
-          onPaint={(rect) => {
-            setDraft((current) => paint(current, tool, rect, kinds));
+          onPaint={(rect, erasing) => {
+            const result = erasing ? erase(draft, rect) : paint(draft, tool, rect, kinds);
+            setDraft(result.next);
+            setNote(result.note);
           }}
-          onHover={setHover}
         />
       </div>
     </div>

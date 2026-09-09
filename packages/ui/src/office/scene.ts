@@ -6,7 +6,11 @@ import { Camera } from "./camera.ts";
 import { DOT, DOT_EDGE, DOT_SELECTED } from "./palette.ts";
 import { floorTiles, gridLines } from "./tiles.ts";
 
-const DOT_RADIUS = Math.round(CELL_PX * 0.45);
+/**
+ * A character is about two cells across, which is what keeps them proportional to the furniture the
+ * editor places: a chair is 2×2 and a desk 3×6 at roughly 25 cm per cell.
+ */
+const DOT_RADIUS = Math.round(CELL_PX * 0.9);
 /** How far the pointer may travel before a click counts as a drag instead of a selection. */
 const DRAG_SLOP_PX = 4;
 const WHEEL_STEP = 1.15;
