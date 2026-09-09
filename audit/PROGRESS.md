@@ -258,7 +258,7 @@ per session (B33.4); the browser image split and the atlas are waiting on a yes 
 
 ## The audit is complete (2026-09-09)
 
-Seven waves, 65 commits, [pull request #5](https://github.com/misaon/home-office/pull/5). The coverage
+Seven waves, 64 commits, [pull request #5](https://github.com/misaon/home-office/pull/5). The coverage
 matrix is closed: **42 rows, every one `OVĚŘENO`, none `N/A`** — every point of the brief turned out to
 apply to this repository.
 
