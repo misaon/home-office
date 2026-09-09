@@ -6,12 +6,14 @@ import type { Anchor, AnchorKind, FloorTemplate } from "./templates.ts";
 export const RECEPTION_ANCHOR = "reception-staff";
 
 /**
- * Every office is this many cells, and the map is the office — nothing surrounds it. The 40:34 ratio is
- * the office pane's own (1000 × 847 px measured at the desktop app's 1440 × 900 window, next to a 440 px
- * panel and a 53 px bar), so the whole floor fits in view at 25 px per cell without scrolling. Zooming
- * in is for looking at one room; zooming out stops at the whole floor.
+ * Every office is this many cells, and the map is the office — nothing surrounds it. The 48:34 ratio
+ * follows the office pane on a maximised 1920 × 1080 window, which is 1480 × 1027 px once the 440 px
+ * panel and the 53 px bar are taken off (ratio 1.441 against the floor's 1.412), so the whole floor is
+ * in view at 30 px per cell with a 15 px margin either side. A wider or narrower window centres the
+ * floor and shows that difference as margin. Zooming in is for looking at one room; zooming out stops
+ * at the whole floor.
  */
-export const OFFICE = { width: 40, height: 34 } as const;
+export const OFFICE = { width: 48, height: 34 } as const;
 
 const spot = (
   id: string,
@@ -29,7 +31,7 @@ const spot = (
 const desks = (): Anchor[] =>
   [0, 1, 2].flatMap((row) =>
     [0, 1, 2, 3].map((column) =>
-      spot(`desk-${String(row)}-${String(column)}`, "desk", 14 + column * 6, 6 + row * 7),
+      spot(`desk-${String(row)}-${String(column)}`, "desk", 14 + column * 7, 6 + row * 7),
     ),
   );
 
@@ -37,10 +39,10 @@ const strolls = (): Anchor[] =>
   [
     { x: 8, y: 22 },
     { x: 20, y: 26 },
-    { x: 32, y: 22 },
+    { x: 36, y: 22 },
     { x: 18, y: 10 },
-    { x: 26, y: 32 },
-    { x: 37, y: 17 },
+    { x: 28, y: 32 },
+    { x: 45, y: 17 },
   ].map((at, i) => spot(`wander-${String(i + 1)}`, "wander", at.x, at.y));
 
 /**
@@ -62,13 +64,13 @@ const emptyOffice = (): Layout => ({
     spot("entrance", "entrance", 5, 17, "e"),
     spot(RECEPTION_ANCHOR, "reception", 8, 17, "e"),
     spot("mailbox", "mailbox", 8, 14),
-    spot("boss-desk", "boss-desk", 34, 4, "s", "boss"),
+    spot("boss-desk", "boss-desk", 42, 4, "s", "boss"),
     ...desks(),
-    spot("coffee", "coffee", 10, 28),
-    spot("restroom", "restroom", 16, 31),
-    spot("smoke", "smoke", 36, 31),
-    spot("relax", "relax", 25, 28),
-    spot("sleep", "sleep", 30, 25),
+    spot("coffee", "coffee", 11, 28),
+    spot("restroom", "restroom", 17, 31),
+    spot("smoke", "smoke", 44, 31),
+    spot("relax", "relax", 28, 28),
+    spot("sleep", "sleep", 34, 25),
     ...strolls(),
   ],
 });

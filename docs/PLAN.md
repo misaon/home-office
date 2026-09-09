@@ -79,8 +79,8 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 - 2026-09-09 — Owner task: the grid system of the map — Prison Architect's mechanics were read from its
   wiki before anything was written (tile as the atom, walls occupying whole cells, rooms as a painted
   designation), and the owner settled the decisions, the load-bearing one being that **layouts are
-  written in code, never built by the player**. The map is the office at a fixed 40×34 cells — the pane's
-  own ratio, so it fits without scrolling — compiled from a `Layout` into four per-cell layers with a
+  written in code, never built by the player**. The map is the office at a fixed 48×34 cells — the ratio
+  of the pane on a maximised 1920×1080 window, so it fits without scrolling — compiled from a `Layout` into four per-cell layers with a
   derived collision mask, under an always-visible grid and a camera that zooms in to 64 px per cell and
   cannot be pulled back past the whole floor. Sources, decisions
   and the measured verification in [the grid plan](plans/2026-09-09-grid-system.md).

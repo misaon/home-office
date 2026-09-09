@@ -22,12 +22,12 @@ over: foundations, planning, budgets and every build tool — those exist for a 
 
 ## Owner decisions
 
-| Decision       | Chosen                                                                                                                                                        | Rejected                                                                                                                                                                                 |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Walls          | A wall occupies a whole cell, as in Prison Architect                                                                                                          | Walls on cell edges (cheaper floor space, but a second geometry to model and un-PA-like)                                                                                                 |
-| Map and camera | The map **is** the office, fixed at 40×34 cells so it fits the pane without scrolling; the wheel still zooms and dragging still pans, for looking at one room | A large 100×70 map with the office as a patch inside it (built first, then withdrawn by the owner — it left the floor standing in an empty field); a medium map with zoom but no panning |
-| Grid           | Always visible: a fine line, a stronger one every 8 cells                                                                                                     | Only while a tool is active (there are no tools — the grid is the map's own structure)                                                                                                   |
-| Authoring      | **Layouts are written in code**, several of them, selectable                                                                                                  | A player-facing builder with placement tools (explicitly not wanted)                                                                                                                     |
+| Decision       | Chosen                                                                                                                                                                                                         | Rejected                                                                                                                                                                                 |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Walls          | A wall occupies a whole cell, as in Prison Architect                                                                                                                                                           | Walls on cell edges (cheaper floor space, but a second geometry to model and un-PA-like)                                                                                                 |
+| Map and camera | The map **is** the office, fixed at 48×34 cells — the ratio of the pane on a maximised 1920×1080 window — so it fits without scrolling; the wheel still zooms and dragging still pans, for looking at one room | A large 100×70 map with the office as a patch inside it (built first, then withdrawn by the owner — it left the floor standing in an empty field); a medium map with zoom but no panning |
+| Grid           | Always visible: a fine line, a stronger one every 8 cells                                                                                                                                                      | Only while a tool is active (there are no tools — the grid is the map's own structure)                                                                                                   |
+| Authoring      | **Layouts are written in code**, several of them, selectable                                                                                                                                                   | A player-facing builder with placement tools (explicitly not wanted)                                                                                                                     |
 
 ## The model
 
@@ -71,12 +71,23 @@ the next instruction; this step only has to make placing them a matter of data.
 `bun run check` passes. Read out of the live scene in a browser against a running daemon:
 
 ```
-pane     1000 x 847 px   ratio 1.181      (1440 x 900 window, 440 px panel, 53 px bar)
-map      40 x 34 cells   ratio 1.176      world 960 x 816 px
-layers   floor 1360  wall 0  object 0  room 0        (1360 = every cell of the map)
+map      48 x 34 cells   ratio 1.412      world 1152 x 816 px
+layers   floor 1632  wall 0  object 0  room 0        (1632 = every cell of the map)
 blocked  0                                           (no void and no walls yet: all of it walkable)
-anchors  29
+anchors  29, none off the map
 ```
+
+The shipped `Camera` was then run against the panes three real windows leave (width minus the 440 px
+panel, height minus the 53 px bar):
+
+```
+1920x1080 maximised   pane 1480x1027  ratio 1.441  →  30.2 px/cell,  15 px per side,  0 top+bottom
+1440x900 window       pane 1000x 847  ratio 1.181  →  20.8 px/cell,   0 per side,    69 top+bottom
+2560x1440 maximised   pane 2120x1387  ratio 1.528  →  40.8 px/cell,  81 px per side,  0 top+bottom
+```
+
+At 40×34 the same 1920 × 1080 pane left **136 px of margin per side**; the owner saw exactly that and
+asked for a wider office.
 
 The camera was driven directly against that pane:
 
