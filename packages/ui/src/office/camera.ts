@@ -1,7 +1,10 @@
 import { CELL_PX } from "@ho/sim";
 
-/** Pixels per cell: how close the map can be pulled, and where it starts. */
-const ZOOM = { min: 6, max: 40, default: 16 } as const;
+/**
+ * How close the map can be pulled, in pixels per cell. There is no lower bound of its own: zooming out
+ * stops with the whole floor in view, because the floor is sized to fit the pane in the first place.
+ */
+const ZOOM_IN_MAX = 64;
 
 type Size = { width: number; height: number };
 
@@ -10,7 +13,7 @@ type Size = { width: number; height: number };
  * smaller than the canvas is centred instead of clamped, so it can never be lost off-screen.
  */
 export class Camera {
-  #zoom: number = ZOOM.default;
+  #zoom = ZOOM_IN_MAX;
   #x = 0;
   #y = 0;
   #view: Size = { width: 1, height: 1 };
@@ -46,10 +49,15 @@ export class Camera {
 
   /** Fits the whole map in view and centres it: where a floor starts before anybody touches the camera. */
   fit(): void {
+    this.#zoom = this.#fitZoom();
+    this.#clamp();
+  }
+
+  /** The zoom at which the whole floor is visible; also the furthest the camera can be pulled back. */
+  #fitZoom(): number {
     const byWidth = this.#view.width / this.#world.width;
     const byHeight = this.#view.height / this.#world.height;
-    this.#zoom = clamp(Math.min(byWidth, byHeight) * CELL_PX, ZOOM.min, ZOOM.max);
-    this.#clamp();
+    return Math.min(byWidth, byHeight) * CELL_PX;
   }
 
   /** Drag: the map follows the pointer, so the offset moves against it. */
@@ -61,7 +69,8 @@ export class Camera {
 
   /** Wheel: the world point under the cursor stays under the cursor. */
   zoomBy(factor: number, canvasX: number, canvasY: number): void {
-    const next = clamp(this.#zoom * factor, ZOOM.min, ZOOM.max);
+    const floor = this.#fitZoom();
+    const next = clamp(this.#zoom * factor, floor, Math.max(ZOOM_IN_MAX, floor));
     if (next === this.#zoom) {
       return;
     }
@@ -74,6 +83,8 @@ export class Camera {
   }
 
   #clamp(): void {
+    const floor = this.#fitZoom();
+    this.#zoom = clamp(this.#zoom, floor, Math.max(ZOOM_IN_MAX, floor));
     this.#x = clampAxis(this.#x, this.#view.width / this.scale, this.#world.width);
     this.#y = clampAxis(this.#y, this.#view.height / this.scale, this.#world.height);
   }

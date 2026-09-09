@@ -22,12 +22,12 @@ over: foundations, planning, budgets and every build tool — those exist for a 
 
 ## Owner decisions
 
-| Decision       | Chosen                                                       | Rejected                                                                                 |
-| -------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| Walls          | A wall occupies a whole cell, as in Prison Architect         | Walls on cell edges (cheaper floor space, but a second geometry to model and un-PA-like) |
-| Map and camera | A large map (100×70) with wheel zoom and panning             | A fixed plane fitted to the pane; a medium map with zoom but no panning                  |
-| Grid           | Always visible: a fine line, a stronger one every 8 cells    | Only while a tool is active (there are no tools — the grid is the map's own structure)   |
-| Authoring      | **Layouts are written in code**, several of them, selectable | A player-facing builder with placement tools (explicitly not wanted)                     |
+| Decision       | Chosen                                                                                                                                                        | Rejected                                                                                                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Walls          | A wall occupies a whole cell, as in Prison Architect                                                                                                          | Walls on cell edges (cheaper floor space, but a second geometry to model and un-PA-like)                                                                                                 |
+| Map and camera | The map **is** the office, fixed at 40×34 cells so it fits the pane without scrolling; the wheel still zooms and dragging still pans, for looking at one room | A large 100×70 map with the office as a patch inside it (built first, then withdrawn by the owner — it left the floor standing in an empty field); a medium map with zoom but no panning |
+| Grid           | Always visible: a fine line, a stronger one every 8 cells                                                                                                     | Only while a tool is active (there are no tools — the grid is the map's own structure)                                                                                                   |
+| Authoring      | **Layouts are written in code**, several of them, selectable                                                                                                  | A player-facing builder with placement tools (explicitly not wanted)                                                                                                                     |
 
 ## The model
 
@@ -49,9 +49,10 @@ Layout (authored in code)                 TileMap (compiled once per floor)
 
 ## The view
 
-- **Camera.** The canvas fills the pane. The wheel zooms around the cursor between 6 and 40 px per cell,
-  dragging pans, and the map is clamped so it cannot be lost off-screen. The pane itself no longer
-  scrolls.
+- **Camera.** The canvas fills the pane. The wheel zooms around the cursor, dragging pans, and the map
+  is clamped so it cannot be lost off-screen. **Zooming out stops with the whole floor in view** — the
+  floor is sized to fit, so there is nothing further back to see — and zooming in reaches 64 px per
+  cell. The pane itself never scrolls.
 - **Grid.** A 1 px line on every cell boundary and a stronger line every 8 cells, drawn once per zoom
   level, plus the map's own edge. Cells outside the office footprint are void and read as a lighter
   ground, so the office's shape is visible without a single sprite.
@@ -70,21 +71,25 @@ the next instruction; this step only has to make placing them a matter of data.
 `bun run check` passes. Read out of the live scene in a browser against a running daemon:
 
 ```
-map      100x70 = 7000 cells        anchors 29
-layers   floor 1344  wall 0  object 0  room 0     (1344 = the 48x28 office footprint)
-blocked  5656                                     (7000 - 1344: void is impassable)
-walkable 1344                                     (the derived collision grid, cell by cell)
+pane     1000 x 847 px   ratio 1.181      (1440 x 900 window, 440 px panel, 53 px bar)
+map      40 x 34 cells   ratio 1.176      world 960 x 816 px
+layers   floor 1360  wall 0  object 0  room 0        (1360 = every cell of the map)
+blocked  0                                           (no void and no walls yet: all of it walkable)
+anchors  29
 ```
 
-The camera was driven directly, with the map 2400×1680 world px:
+The camera was driven directly against that pane:
 
 ```
-setViewport(1000, 600); fit()   → zoom 8.57 px/cell, offset (-200, 0)   height-limited, centred sideways
-zoomBy(2, 500, 300)             → zoom 17.14, offset (500, 420); the world point under the cursor stayed
-                                  (1200, 840) before and after
-panBy(-100000, -100000)         → clamped to (1000, 840) = 2400 - 1000/0.714, 1680 - 600/0.714
-zoomBy(0.001, 0, 0)             → clamped to the 6 px/cell floor, re-centred at (-800, -360)
+fit()                    → 24.91 px/cell, offset (-1.7, 0)   fills the height, centred across the width
+zoomBy(0.001, 0, 0)      → unchanged at 24.91: it cannot be pulled back past the whole floor
+zoomBy(1000, 500, 400)   → clamped to 64 px/cell (a 6x6 room across 384 px)
+panBy(-9999, -9999)      → clamped to (585, 498.4) = 960 - 1000/2.667, 816 - 847/2.667
+fit()                    → exactly back to 24.91, (-1.7, 0)
 ```
+
+The earlier 100×70 map and its centred 48×28 office patch were measured the same way before the owner
+replaced them with fixed office dimensions; the numbers above are the ones that ship.
 
 Walls, objects and rooms read 0 because no layout declares any yet — which is the point of the step: the
 next instruction is data, not renderer work.

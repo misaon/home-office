@@ -150,7 +150,10 @@ the rooms, the furniture and the whole sprite pipeline are gone. What the map is
 after Prison Architect and verified against its wiki: the square cell is the atom, and **a wall is the
 content of a cell rather than an edge**, so a 4×4 room needs a 6×6 outline.
 
-The map is 100×70 cells. An office is a `Layout` **written in code** (`packages/sim/src/layouts.ts`):
+**The map is the office, and its size is fixed at 40×34 cells.** That ratio is the office pane's own —
+1000 × 847 px measured at the desktop app's 1440 × 900 window, beside the 440 px panel and the 53 px bar
+— so the whole floor fits in view at 24.9 px per cell with nothing to scroll. An office is a `Layout`
+**written in code** (`packages/sim/src/layouts.ts`):
 rectangles of floor, of wall and of room designation, objects with a cell footprint, and the anchors its
 characters use. `compileLayout` paints those declarations into a `TileMap` — four per-cell layers
 (floor, wall, object, room) plus the `blocked` mask the collision `Grid` is derived from, where void, a
@@ -160,8 +163,10 @@ and a floor picks one by id; there is no builder, because the player never place
 
 The view draws ground, floors, room tint, the grid, walls, objects and then one dot per character.
 The grid is always visible — a hairline per cell, a stronger line every eight — and the camera zooms
-with the wheel around the cursor (6–40 px per cell) and pans by dragging, clamped so the map cannot be
-lost off-screen and centred when it is smaller than the pane. `CELL_PX` is the unit positions are
+with the wheel around the cursor and pans by dragging, clamped so the map cannot be lost off-screen and
+centred when it is smaller than the pane. Zooming out has no bound of its own: it stops with the whole
+floor in view, because the floor is sized to fit. Zooming in reaches 64 px per cell, which puts a 6×6
+room across 384 px — that is what the camera is for. `CELL_PX` is the unit positions are
 expressed in, not an art density. Until the owner's next instruction, do not reintroduce art.
 
 Movement uses a weighted grid A* with a TinyQueue heap, clearance and turn costs, plus explicit actor

@@ -1,17 +1,17 @@
-import type { Facing, Point } from "./grid.ts";
+import type { Facing } from "./grid.ts";
 import { compileLayout, type Layout } from "./layout.ts";
 import type { Anchor, AnchorKind, FloorTemplate } from "./templates.ts";
 
 /** Lola's spot: the roster settles the receptionist on this anchor by id. */
 export const RECEPTION_ANCHOR = "reception-staff";
 
-/** The map every layout is authored on, in cells. Zoom and panning cover it; the office sits inside it. */
-export const MAP = { width: 100, height: 70 } as const;
-
-/** Where the empty office's floor sits on the map, and how large it is. */
-const OFFICE = { at: { x: 26, y: 21 }, w: 48, h: 28 } as const;
-
-const on = (x: number, y: number): Point => ({ x: OFFICE.at.x + x, y: OFFICE.at.y + y });
+/**
+ * Every office is this many cells, and the map is the office — nothing surrounds it. The 40:34 ratio is
+ * the office pane's own (1000 × 847 px measured at the desktop app's 1440 × 900 window, next to a 440 px
+ * panel and a 53 px bar), so the whole floor fits in view at 25 px per cell without scrolling. Zooming
+ * in is for looking at one room; zooming out stops at the whole floor.
+ */
+export const OFFICE = { width: 40, height: 34 } as const;
 
 const spot = (
   id: string,
@@ -22,53 +22,53 @@ const spot = (
   group?: string,
 ): Anchor =>
   group === undefined
-    ? { id, kind, at: on(x, y), facing }
-    : { id, kind, at: on(x, y), facing, group };
+    ? { id, kind, at: { x, y }, facing }
+    : { id, kind, at: { x, y }, facing, group };
 
 /** Twelve seats in four columns, the only structure the empty office has. */
 const desks = (): Anchor[] =>
   [0, 1, 2].flatMap((row) =>
     [0, 1, 2, 3].map((column) =>
-      spot(`desk-${String(row)}-${String(column)}`, "desk", 16 + column * 6, 6 + row * 6),
+      spot(`desk-${String(row)}-${String(column)}`, "desk", 14 + column * 6, 6 + row * 7),
     ),
   );
 
 const strolls = (): Anchor[] =>
   [
-    { x: 10, y: 18 },
-    { x: 24, y: 18 },
-    { x: 38, y: 18 },
-    { x: 20, y: 10 },
-    { x: 32, y: 26 },
-    { x: 44, y: 14 },
+    { x: 8, y: 22 },
+    { x: 20, y: 26 },
+    { x: 32, y: 22 },
+    { x: 18, y: 10 },
+    { x: 26, y: 32 },
+    { x: 37, y: 17 },
   ].map((at, i) => spot(`wander-${String(i + 1)}`, "wander", at.x, at.y));
 
 /**
- * The office as it stands while its own design is being written: one rectangle of floor on the map, no
- * walls, no rooms and no objects yet — only the spots the characters move between.
+ * The office as it stands while its own design is being written: the whole map is floor, with no walls,
+ * no rooms and no objects yet — only the spots the characters move between.
  */
 const emptyOffice = (): Layout => ({
   id: "empty-office",
   name: "Empty office",
-  width: MAP.width,
-  height: MAP.height,
-  floors: [{ ...OFFICE, material: "office" }],
+  width: OFFICE.width,
+  height: OFFICE.height,
+  floors: [{ at: { x: 0, y: 0 }, w: OFFICE.width, h: OFFICE.height, material: "office" }],
   walls: [],
   rooms: [],
   objects: [],
   anchors: [
-    spot("car", "car", 2, 14, "e"),
-    spot("elevator", "elevator", 4, 14, "e"),
-    spot("entrance", "entrance", 6, 14, "e"),
-    spot(RECEPTION_ANCHOR, "reception", 9, 14, "e"),
-    spot("mailbox", "mailbox", 9, 11),
-    spot("boss-desk", "boss-desk", 42, 5, "s", "boss"),
+    spot("car", "car", 1, 17, "e"),
+    spot("elevator", "elevator", 3, 17, "e"),
+    spot("entrance", "entrance", 5, 17, "e"),
+    spot(RECEPTION_ANCHOR, "reception", 8, 17, "e"),
+    spot("mailbox", "mailbox", 8, 14),
+    spot("boss-desk", "boss-desk", 34, 4, "s", "boss"),
     ...desks(),
-    spot("coffee", "coffee", 12, 22),
-    spot("restroom", "restroom", 18, 24),
-    spot("smoke", "smoke", 44, 24),
-    spot("relax", "relax", 30, 22),
-    spot("sleep", "sleep", 36, 20),
+    spot("coffee", "coffee", 10, 28),
+    spot("restroom", "restroom", 16, 31),
+    spot("smoke", "smoke", 36, 31),
+    spot("relax", "relax", 25, 28),
+    spot("sleep", "sleep", 30, 25),
     ...strolls(),
   ],
 });
