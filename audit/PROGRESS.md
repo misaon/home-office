@@ -256,8 +256,20 @@ and the texture atlas (ADR 003) are both owner decisions with their plans record
 **For the owner, once more:** worker and reviewer sessions now default to `high` effort, which costs more
 per session (B33.4); the browser image split and the atlas are waiting on a yes or no.
 
-## Next step
+## The audit is complete (2026-09-09)
 
-Open the pull request from `audit/deep-monorepo-audit-2026-09` into `main` with the §10 description, and
-let CI run it — the one thing this audit cannot verify locally is the GitHub Actions workflow itself
-(A2.1). That row is the last to close.
+Seven waves, 65 commits, [pull request #5](https://github.com/misaon/home-office/pull/5). The coverage
+matrix is closed: **42 rows, every one `OVĚŘENO`, none `N/A`** — every point of the brief turned out to
+apply to this repository.
+
+The last row was A2, and it could only be closed by GitHub: run 34329322345 on this pull request built
+both Docker images on a free arm64 runner (5 m 58 s) and ran the daemon smoke check (40 s), both green,
+with the transcript in `VERIFICATION.md`. Everything else in that file was measured locally.
+
+**What is not done, deliberately, and why** — each recorded beside its finding rather than quietly
+dropped: the ~900 MB browser image split (B24.1(b), an owner decision because `browser.enabled` defaults
+to true), the texture atlas (ADR 003, medium confidence on the payoff), tests (out of scope by
+instruction), and the two recommendations measurement withdrew (B5.4, B16.1).
+
+**What waits on the owner:** the effort defaults raise per-session cost (B33.4), and the browser split and
+the atlas need a yes or no.

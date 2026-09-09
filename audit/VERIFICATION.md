@@ -1109,3 +1109,33 @@ $ empty tracked files                                   → assets/src/.gitkeep 
 $ git status --porcelain -uall                          → only the files this wave changed
 $ bun run knip                                          → clean
 ```
+
+### CI ran this pull request (A2.1, A2.2) — the last row to close
+
+Everything else in this file was measured on the owner's machine. The workflow itself could only be
+verified by GitHub running it, which is what opening the pull request did. Run **34329322345**, both jobs
+green, 2026-09-09 08:28:42Z → 08:34:46Z:
+
+```
+$ gh pr checks 5
+check   pass   40s     https://github.com/misaon/home-office/actions/runs/34329322345/job/102393929173
+images  pass   5m58s   https://github.com/misaon/home-office/actions/runs/34329322345/job/102393929489
+
+check job — the daemon smoke step added in Wave 1 (B27.1), the one that caught A2.5:
+  {"level":30,…,"events":0,"lastSeq":-1,"msg":"read model rebuilt"}
+  {"level":30,…,"host":"127.0.0.1","port":47800,"msg":"rpc server listening"}
+  {"ok":true}
+  daemon 0.0.0-dev listening on 127.0.0.1:47800 (pid 2942)
+  {"level":30,…,"msg":"daemon stopping"}
+  (the step is `set -e`, so `test "$(stat -c '%a' "$HO_HOME/daemon.json")" = 600` passing is the assertion)
+check job — the sandbox lockfile guard and audits fixed in Wave 2 (A2.3):
+  found 0 vulnerabilities   ×4   (mcp, codex, gemini-cli, opencode)
+
+images job — ubuntu-24.04-arm, buildx with the GHA layer cache (A2.1, added in Wave 5):
+  git-bridge, then the agent image's `base` and `claude-code` targets
+  HO_GATEWAY and HO_SESSION_TOKEN are required      # the entrypoint refusal
+  rtk 0.48.0                                        # claude --version && rtk --version && settings.json
+  git version 2.54.0                                # ho/git-bridge:ci --version
+```
+
+With this, all 42 rows of the coverage matrix read `OVĚŘENO` and none is `N/A`.

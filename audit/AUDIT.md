@@ -198,6 +198,14 @@ Kde: `.github/workflows/ci.yml:16-40`
 Důkaz: The `check` job typechecks, lints, formats, runs knip, `bun audit`, `npm audit` over the four sandbox manifests, builds the UI and the asset manifest, and compiles the CLI and the runner. It never runs `docker build` on `images/agent/Dockerfile` or `images/git-bridge/Dockerfile`. The agent Dockerfile has a hard `RUN test "$TARGETARCH" = arm64` (`images/agent/Dockerfile:9`), five build targets, an apk repository added from `downloads.claude.ai`, a `cargo install` from a git revision, and three `--version` smoke checks — none of which has a CI signal. `release.yml` does not build them either; it builds the desktop app, which only bundles the build _context_.
 Dopad: Náklady/DX: a broken agent image is discovered by the user minutes into first-run setup. A change to `mcp/package.json` that breaks the two `test -f` assertions (`images/agent/Dockerfile:31-32`) is invisible until then.
 Doporučení: Add a job that builds at least the `base` and `claude-code` targets on an arm64 runner with buildx cache; if arm64 runners are unavailable, build under QEMU on a schedule rather than on the pull-request critical path.
+
+**Verified on CI, 2026-09-09** — the one thing this audit could not check from a laptop. The `images` job
+on `ubuntu-24.04-arm` built `ho/git-bridge`, then the agent image's `base` and `claude-code` targets with
+the GHA layer cache, and its smoke step passed: the entrypoint refusal matched
+`HO_GATEWAY and HO_SESSION_TOKEN are required`, `claude --version && rtk --version` printed `rtk 0.48.0`
+with `/home/agent/.claude/settings.json` non-empty, and `ho/git-bridge:ci --version` printed
+`git version 2.54.0`. **5 m 58 s**, inside the 45-minute timeout and on a free runner.
+Zdroj: run 34329322345 on this pull request (`gh run view`, read 2026-09-09).
 Odhad: střední
 
 ### A2.2 – Nothing verifies that the daemon actually starts
@@ -207,6 +215,13 @@ Kde: `.github/workflows/ci.yml:38-40`
 Důkaz: CI compiles `apps/cli/src/main.ts` and `packages/runner/src/main.ts` and stops. No step starts the daemon and hits `/health` — even though that is a ten-second, Docker-free check (verified by hand in this session: with an empty `HO_HOME` the daemon opens SQLite, runs migrations, replays an empty log, binds 127.0.0.1:47800 and serves `/health`).
 Dopad: A regression in `openDatabase`, the migrations, `Bun.serve` or the oRPC wiring ships green.
 Doporučení: One step: start `ho daemon` with a temporary `HO_HOME` in the background, poll `/health` until 200 with a timeout, assert `daemon.json` exists with mode 0600, then SIGTERM.
+
+**Verified on CI, 2026-09-09.** The step added in Wave 1 — the one that immediately caught A2.5 — ran on
+GitHub's own runner and printed `{"ok":true}`,
+`daemon 0.0.0-dev listening on 127.0.0.1:47800 (pid 2942)`, the 0600 assertion on `daemon.json` (the step
+is `set -e`, so it passing is the assertion), and `daemon stopping` on SIGTERM. The whole `check` job took
+**40 s**, and the four sandbox `npm audit`s reported `found 0 vulnerabilities` each.
+Zdroj: run 34329322345 on this pull request (`gh run view`, read 2026-09-09).
 Odhad: triviální
 
 ### A2.3 – The sandbox audit reads lockfiles without checking they match their manifests
