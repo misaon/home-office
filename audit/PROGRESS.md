@@ -267,9 +267,30 @@ both Docker images on a free arm64 runner (5 m 58 s) and ran the daemon smoke ch
 with the transcript in `VERIFICATION.md`. Everything else in that file was measured locally.
 
 **What is not done, deliberately, and why** — each recorded beside its finding rather than quietly
-dropped: the ~900 MB browser image split (B24.1(b), an owner decision because `browser.enabled` defaults
-to true), the texture atlas (ADR 003, medium confidence on the payoff), tests (out of scope by
+dropped: the browser image split (B24.1(b)), the texture atlas (ADR 003), tests (out of scope by
 instruction), and the two recommendations measurement withdrew (B5.4, B16.1).
 
-**What waits on the owner:** the effort defaults raise per-session cost (B33.4), and the browser split and
-the atlas need a yes or no.
+## The owner's decisions, 2026-09-09
+
+All three open points closed, and two of them changed something in the record:
+
+- **Effort defaults stay.** Reading the live vendor documentation for this decision corrected the audit's
+  own framing: `high` is "the default on every model except Opus 4.7", so Wave 5 moved workers and
+  reviewers _up to_ the vendor default rather than above it. On a subscription this consumes usage limits
+  faster rather than producing a bill; the per-task levers remain `maxTurnsPerTask` and concurrency
+  (B33.4).
+- **The agent image is not split.** Measured for the decision, the browser costs **~1.06 GB** of the
+  1.69 GB image — more than the finding's ~900 MB guess — but it is stored once for all four provider
+  targets, `browser.enabled` defaults to true, and `chromium-headless-shell` would save only ~150 MB. A
+  third option (a browser sidecar reached over `--cdp-endpoint` / `--browser-url`) is recorded with the
+  reason it was declined: it must share the session's network namespace to see the agent's own dev server
+  (B24.1).
+- **The texture atlas is deferred** until the art is complete: first paint measures 73 ms with all ~230
+  sprites loaded, Pixi's 16-texture batch limit only bites at thousands of sprites, and 47 furniture keys
+  still have no art at all (ADR 003).
+
+And one question the owner asked afterwards, answered in [ADR 007](adr/007-a2a-protocol.md): **A2A is not
+adopted.** It solves agent-to-agent interoperability across trust domains, which a single-machine daemon
+that starts every agent itself does not have; the providers HO runs reach A2A only through third-party MCP
+bridges; and the one genuinely attractive case — an outside orchestrator delegating work to a floor — is
+blocked on the authenticated remote transport the roadmap defers.

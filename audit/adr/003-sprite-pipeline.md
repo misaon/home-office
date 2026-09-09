@@ -1,6 +1,9 @@
 # ADR 003 — C3: How should we work with sprite files?
 
 **Status:** decided — keep the pipeline, move exact pixel work onto `sharp`, add a texture atlas.
+**Update 2026-09-09 — the atlas is deferred by the owner**, and the measurements it was waiting for are in
+the correction at the end of this file. Items 1 and 2 stand as recorded (with `sharp` adopted only where it
+proved byte-identical).
 **Confidence:** high on the first two, medium on the atlas.
 **Date:** 2026-09-08.
 
@@ -120,3 +123,24 @@ stays hand-written, adopting sharp there would only trade exact `subarray` copie
 
 `sharp` keeps the job it is better at — decoding and encoding PNG — and the atlas recommendation is
 unaffected. Details and the numbers are under B16.1 in `AUDIT.md`.
+
+## Correction 2026-09-09 — the atlas, measured and deferred
+
+Item 3 said the atlas removes ~250 HTTP round trips. Measured in the browser pane against the daemon
+serving the production bundle: `responseEnd` **6 ms**, the 1 111 KiB script fetched in **5 ms**,
+`domContentLoaded` **73 ms**, `loadEventEnd` **74 ms**, and the ~230 sprite PNGs each 26–42 ms, all in
+parallel on loopback. So the whole first paint including every sprite is well under a tenth of a second,
+and the atlas would remove milliseconds nobody sees.
+
+On the rendering side, PixiJS's own guidance is "Use Spritesheets where possible to minimize total
+textures" because "Sprites can be batched with up to 16 different textures (dependent on hardware)"
+(pixijs.com/8.x/guides/concepts/performance-tips, read 2026-09-09). That limit bites when thousands of
+sprites are on screen; this office renders one floor at a time — ~30 actors plus furniture, with the floor
+and walls already baked into one cached texture — and the ticker is capped at 30 fps.
+
+The other fact that decides the timing: the art is unfinished. `bun run assets:manifest` reports **43
+sprites / 250 frames** delivered and **47 furniture keys still drawn as geometric stand-ins**. An atlas
+built now would be regenerated with every delivery.
+
+**Decision: defer until the art is complete**, then generate the atlas from the manifest (a mechanical
+transform, ~40 lines of packer) — or drop it if first paint still measures like the numbers above.

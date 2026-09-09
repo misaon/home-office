@@ -540,7 +540,7 @@ So Ctrl-C at the prompt cannot leave the user's shell non-echoing on Bun 1.4.2. 
 necessary for the in-process path (the command keeps running after the secret is read and must echo again),
 and the `SIGINT`/`SIGTERM` handler I had already written for this finding was removed before it was
 committed rather than left in as code for a non-existent bug. `@clack/prompts` is not adopted — see the
-correction in `audit/adr/005-tooling-and-libraries.md`.
+correction in `audit/adr/005-library-candidates.md`.
 Zdroj: https://raw.githubusercontent.com/oven-sh/bun/main/src/jsc/bindings/c-bindings.cpp (Bun `main`, read
 2026-09-09; the pinned 1.4.2 runtime behaves as measured above).
 
@@ -1074,6 +1074,32 @@ choosing the flavour from config, and both flavours built and smoke-tested in CI
 That is a build-graph and image-matrix change whose benefit is conditional on a non-default setting, and it
 changes what a first run downloads — an owner-facing decision about the product's default shape, not a
 defect. Recorded here with the plan so it can be picked up deliberately.
+
+**Decided by the owner on 2026-09-09: keep the image as it is.** The decision was taken on measurements
+made that day, which also correct this finding's own estimate — the browser costs **more** than the ~900 MB
+guessed above, and the numbers behind "keep it anyway" are these:
+
+- the same `apk add` line **with** chromium and the fonts builds a **1.22 GB** image; **without** them,
+  **158 MB**. So the browser and its X/mesa dependency tree cost **~1.06 GB**, and the agent image would be
+  about **0.63 GB** without it;
+- chromium itself is only 288 MiB of that (`apk info -s chromium`) — the rest is what Alpine's chromium
+  pulls in, which is why the alternative below barely helps;
+- `chromium-headless-shell` exists in Alpine 3.24 (177 MiB installed) and produces a **1.07 GB** image —
+  it saves ~150 MB, not the layer, because it needs the same dependencies, and it would risk the
+  chrome-devtools-mcp features that expect a full browser;
+- the 1.06 GB is stored **once**: all four provider targets share the `base` layer, so it is not paid per
+  provider;
+- and `browser.enabled` still defaults to true, so the split would help only an installation that turns
+  browser tooling off.
+
+A third option was researched and also declined for now: both MCP servers can drive a browser in another
+container — Playwright MCP takes `--cdp-endpoint`, chrome-devtools-mcp takes `--browser-url` and its
+documentation recommends exactly that "if you are running the MCP server in a sandboxed environment that
+does not allow starting a new Chrome instance" (read 2026-09-09). That would take the 1.06 GB out of the
+agent image unconditionally, but the sidecar has to share the session's network namespace
+(`--network container:<sandbox>`) or it cannot see the dev server the agent runs on `localhost`, and it
+adds a container to the session lifecycle. Revisit if a browser-less default ever becomes the product's
+shape.
 Odhad: velký
 
 ### B24.2 – `bun run devkit` downloads a toolchain from a vendor host on every CI run
@@ -1441,12 +1467,24 @@ new-agent form finally agree (the role→model map used to live only in the UI, 
 clerk `sonnet`). Verified live: boss `opus@medium`, worker `sonnet@high`, reviewer `sonnet@high`, clerk
 `haiku@low`; `codex` (which offers low…xhigh) gives a worker `high`; `opencode` and `gemini-cli` declare no
 effort levels, so they keep `medium` through the existing fallback.
-**For the owner:** this is a cost change. Workers and reviewers — the agents that actually change the
-repository — now think harder per session than before, and the boss's triage costs less. Both are per-agent
-settings, so any floor can be tuned in Settings without touching code.
+**For the owner:** this changes what a session spends. Workers and reviewers — the agents that actually
+change the repository — now think harder per session than before, and the boss's triage costs less. Both
+are per-agent settings, so any floor can be tuned in Settings without touching code.
+
+**Framing corrected, and decided by the owner on 2026-09-09: keep the new defaults.** Calling this a "cost
+change" overstated it in one direction. The live vendor documentation describes `high` as "Balances token
+usage and intelligence. The default on every model except Opus 4.7", and `medium` as what "reduces token
+usage for cost-sensitive work that can trade off some intelligence". So the change moved workers and
+reviewers **up to the vendor default**, not above it — what the office had before was a deliberate discount
+nobody had chosen. On a subscription this shows up as usage limits consumed faster rather than as a bill:
+Anthropic states that consumption varies with, among other things, the effort level. The real per-task cost
+levers stay `budgets.maxTurnsPerTask` (60) and `maxConcurrentSessions` (2), which bound how many turns
+happen at all.
 Zdroj: https://code.claude.com/docs/en/cli-reference (`--effort low|medium|high|xhigh|max|ultracode`), read
-2026-09-09; bundled `claude-api` skill effort guidance.
-Odhad: střední (a defaults change with a cost implication — worth the owner's eye)
+2026-09-09; https://code.claude.com/docs/en/model-config, read 2026-09-09, for the per-level guidance and
+the statement that `high` is the default on every model except Opus 4.7; Anthropic's usage-limit guidance
+that consumption varies with the effort level (read 2026-09-09); bundled `claude-api` skill effort guidance.
+Odhad: střední (a defaults change the owner has now confirmed)
 
 ### B33.5 – `BASH_MAX_OUTPUT_LENGTH` is the one unused token lever worth setting
 

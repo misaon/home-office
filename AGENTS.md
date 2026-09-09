@@ -10,7 +10,7 @@ containers, and an Electrobun desktop app that renders them as a pixel-art offic
 4. `docs/CONVENTIONS.md` — strict TypeScript, oxlint, formatting, error handling, security and git rules.
 5. `audit/` — the September 2026 audit: `AUDIT.md` (every finding, including the ones measurement
    withdrew), `COVERAGE.md` (one row per audited point), `VERIFICATION.md` (the commands and their real
-   output), `SUPPRESSIONS.md` and `adr/001`–`006` for the decisions that needed an argument.
+   output), `SUPPRESSIONS.md` and `adr/001`–`007` for the decisions that needed an argument.
 
 ## Commands
 
