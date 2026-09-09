@@ -1024,3 +1024,88 @@ $ ho doctor                                    → both images present, up to da
 The office rendered it live: header "Connected", floor tab "Wave 6", and the chat panel showing Andrew's
 line "Toby is working on “describe greet.js”." The 393 `rejected rpc connection` lines in that log came
 from the stale tab this wave then fixed (B6.7), and are the reason B21.4 was found.
+
+## Wave 7 — documentation (2026-09-09)
+
+### Checks, audits, builds
+
+```
+$ bun install --frozen-lockfile   → Checked 231 installs across 383 packages (no changes) [17.00ms]
+$ bun run check                   → 16/16 tsconfig ✔ · oxlint clean · oxfmt 317 files · knip clean ·
+                                    ui: 3 files, 1111 KiB
+$ bun audit                       → No vulnerabilities found (checked 362 packages)
+$ npm ls --package-lock-only + npm audit  (mcp, codex, gemini-cli, opencode) → found 0 vulnerabilities ×4
+$ ho image build                  → images ready   (the agent image rebuilt: the MCP bump below changed
+                                    the content hash, which is B24.3's fix working again)
+$ ho doctor                       → both images present, up to date
+$ docker run --rm ho/agent:dev    → HO_GATEWAY and HO_SESSION_TOKEN are required
+```
+
+### One inaccuracy in the audit's own record
+
+`audit/DEPENDENCIES.md` listed `chrome-devtools-mcp` 1.8.0 → 1.9.0 under "Bumped", and `AUDIT.md`
+recommended it — but `images/agent/mcp/package.json` still pinned 1.8.0 and its lockfile agreed. The bump
+is now applied for real:
+
+```
+$ npm install --prefix images/agent/mcp --package-lock-only  → up to date, audited 5 packages
+$ (lockfile)  node_modules/chrome-devtools-mcp 1.9.0 · node_modules/@playwright/mcp 0.0.80
+$ npm audit --omit=dev --prefix images/agent/mcp             → found 0 vulnerabilities
+$ (registry, read 2026-09-09) chrome-devtools-mcp latest 1.9.0 published 2026-09-08T09:53:29Z
+                              @playwright/mcp   latest 0.0.80 published 2026-09-01T03:48:24Z
+$ docker run --rm --entrypoint sh ho/agent:dev …
+chrome-devtools-mcp 1.9.0 · @playwright/mcp 0.0.80 · rtk 0.48.0 · claude 2.1.263 · claude settings present
+```
+
+### Every number the documentation states, re-read in the source
+
+```
+live log caps            packages/ui/src/store.ts:70-71   LIVE_LIMIT 300 · LIVE_SESSION_LIMIT 20
+chat tail                packages/core/src/model/read-model.ts:63   CHAT_TAIL 500
+rate-limit tail          read-model.ts:60                 RATE_LIMIT_TAIL 1000
+handshake timeout        packages/core/src/socket.ts:3     HANDSHAKE_TIMEOUT_MS 10_000
+hidden-document bump     packages/ui/src/store.ts:158      HIDDEN_BUMP_MS 200
+renderer frame cap       packages/ui/src/office/scene.ts:65   ticker.maxFPS = 30
+floor view cache         scene.ts:127                     while (#floors.size > 2)  (LRU by re-insert)
+claude-code termination  runtime-claude-code/src/runtime.ts:141-159  SIGTERM 5 s · SIGKILL 10 s · give up 15 s
+acp termination          runtime-acp/src/runtime.ts:9,60-71   CLOSE_GRACE_MS 5000 ×1 / ×2 / ×3
+single-instance lock     daemon/src/single-instance.ts:9   STALE_MS 30_000, atomic mkdir + pid liveness
+office gate timeout      daemon/src/office-gate.ts:27      30_000
+state directory default  daemon/src/config.ts:69          ~/.config/home-office, HO_HOME overrides
+mirror path              daemon/src/mirrors.ts:10          <home>/mirrors/<projectId>.git, mode 0700
+task branch              daemon/src/git-bridge.ts:8        ho/task-<taskId>
+git-bridge network       daemon/src/git-bridge.ts:24       network: "none"
+container hardening      sandbox-docker/src/provider.ts:69-71  CapDrop ALL · no-new-privileges · ReadonlyRootfs
+static file safety       daemon/src/static.ts:1,26,36      realpath escape check · nosniff
+compiler projects        bun run typecheck                 16
+image contents           docker run ho/agent:dev           node v24.18.1 · bun 1.4.2
+```
+
+### Documentation changed
+
+`README.md` (the compiled binary's limits, the secret store, a link to this audit rather than the earlier
+report), `AGENTS.md` (the audit directory, `bun run check` including the UI build, `packages/runner` in the
+layout, tests/comments framed as the owner's per-task decision, and "a number in documentation is a
+claim"), `docs/STACK.md` (Knip 6.35.0, `proper-lockfile` replaced by an own single-instance lock,
+`type-fest`/`yoctocolors` added, the secret store, the runner bundle and its image saving, the React
+Compiler and why there is no `useCallback`, chrome-devtools-mcp 1.9.0, and ADR 004/005 as the source),
+`docs/ARCHITECTURE.md` (the runner as a bundle, the single-instance lock, provider-state volumes with the
+legacy label still pruned, what `turns` means per provider, ACP context usage, the hidden-document still
+frame and the 200 ms bump, the refused-token tab, the bounded secret read, the rotated log, and
+`packages/runner` in the package table), `docs/CONVENTIONS.md` (the check list, the eight lint rules that
+change how code is written, the secret-store rule, the dependency rule, and "correct the document beside
+the original claim"), `docs/PLAN.md` (what this audit implemented, a re-scoped retention and accounting
+row, the image-size row, the ADR index, what waits on the owner, and an audit-log entry) and
+`docs/OFFICE-ART.md` (A3.3: `assets/README.md` named as the load-bearing contract, with the three files
+that implement it).
+
+### Final sweep for leftovers (B28)
+
+```
+$ git ls-files | wc -l                                  → 642
+$ grep -rn "TODO|FIXME|XXX|HACK" apps packages scripts  → none
+$ grep -rn "console.log(|debugger;" apps packages scripts → none
+$ empty tracked files                                   → assets/src/.gitkeep (deliberate)
+$ git status --porcelain -uall                          → only the files this wave changed
+$ bun run knip                                          → clean
+```

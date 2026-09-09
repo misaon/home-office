@@ -161,4 +161,4 @@ All figures from the same registry sweep on 2026-09-08.
 
 **Added:** `type-fest` (dev, root — types only, erased at runtime), `yoctocolors` (`@ho/cli`).
 **Removed:** `proper-lockfile`, `@types/proper-lockfile`.
-**Bumped:** `knip` 6.34.0 → 6.35.0, `@types/bun` 1.4.1 → 1.4.2, `chrome-devtools-mcp` 1.8.0 → 1.9.0.
+**Bumped:** `knip` 6.34.0 → 6.35.0 and `@types/bun` 1.4.1 → 1.4.2 (Wave 5); `chrome-devtools-mcp` 1.8.0 → 1.9.0 in the sandbox MCP tree — recorded here after Wave 5 but only actually applied in Wave 7, when checking this line against the manifest found it still pinned to 1.8.0. The agent image was rebuilt for it and `npm audit` is clean.

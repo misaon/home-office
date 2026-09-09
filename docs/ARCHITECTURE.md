@@ -1,7 +1,9 @@
 # Home Office architecture
 
-Implementation reference, reviewed 2026-09-08. Historical decisions and work logs live in
-[PLAN.md](PLAN.md); audit findings and research are in [history/AUDIT-2026-09.md](history/AUDIT-2026-09.md).
+Implementation reference, reviewed 2026-09-09. Historical decisions and work logs live in
+[PLAN.md](PLAN.md); the findings, measurements and decisions behind the current behaviour are in
+[../audit](../audit/AUDIT.md) — `COVERAGE.md` maps them to the audited points and `VERIFICATION.md` holds
+the command output each claim rests on. An [earlier audit report](history/AUDIT-2026-09.md) is history.
 This document distinguishes implemented behavior from future work.
 
 ## Processes and boundaries
@@ -13,8 +15,9 @@ macOS Apple Silicon with Docker Desktop. Agent images contain Linux arm64 musl b
 checks the TypeScript and builds cross-target binaries; it does not establish Linux desktop support.
 
 The daemon owns SQLite, the Docker socket, repository publication and host GitHub credentials. Each
-agent runs as a non-root process inside a temporary Docker container. A compiled `ho-runner` connects
-outbound to the daemon's authenticated WebSocket gateway and relays one child process. Credentials
+agent runs as a non-root process inside a temporary Docker container. `ho-runner`, a Bun bundle executed
+by the image's own Bun, connects outbound to the daemon's authenticated WebSocket gateway and relays one
+child process. Credentials
 arrive in a spawn message and enter that child's environment. The runner token is not inherited by the
 child. A separate short-lived git-bridge container copies a repository into a Docker task volume and
 publishes its result branch back to the host. Agent containers never mount the host repository.
@@ -36,7 +39,8 @@ The simulation is a visual projection. It controls envelope timing while a viewe
 | `packages/runtime-claude-code` | Claude stream-json process adapter, resume and usage translation                    |
 | `packages/runtime-acp`         | ACP negotiation, streams, events and OpenCode/Gemini/Codex presets                  |
 | `packages/intake-github`       | Host `gh` issue polling and acknowledgement adapter                                 |
-| `packages/secrets`             | Native Bun secret store and atomic owner-only file fallback                         |
+| `packages/runner`              | The in-sandbox relay: one child process, stdio framing and bounded buffers          |
+| `packages/secrets`             | OS credential store via `Bun.secrets`, with an atomic owner-only file fallback      |
 | `packages/sim`                 | Pure office layout, movement, reservations, needs and envelope choreography         |
 | `packages/ui`                  | React panels, Zustand projection, TanStack Query requests and Pixi rendering        |
 | `packages/agent-kit`           | Role skill packs copied into provider images                                        |
@@ -65,7 +69,9 @@ and fails startup. It never silently starts a new database. Unsupported historic
 an explicit migration or restore. Snapshots, automatic event compaction and log retention are not
 implemented; historical projections and startup replay grow with retained history.
 
-Startup holds a refreshed `proper-lockfile` lock on the state directory. Resources unwind through
+Startup takes a single-instance lock on the state directory: an atomic `mkdir` of `daemon.lock` plus a
+`holder.json` recording the pid, so a lock left behind by a killed daemon is detected as stale
+(`process.kill(pid, 0)`) and taken over instead of blocking the next start. Resources unwind through
 `AsyncDisposableStack` on failure and shutdown. Jobs and pending session work are awaited before storage
 closes. Restart reconciles interrupted sessions with managed containers and blocks affected tasks for
 explicit resumption. An unavailable Docker service prevents recovery of previously active sessions.
@@ -86,8 +92,10 @@ explicit resumption. An unavailable Docker service prevents recovery of previous
 5. Publication/delivery failure blocks the task. Success records artifacts and applies the report,
    selecting a reviewer when configured. Review approval finishes work; requested changes return it to
    its author subject to the review-round cap. A review without a verdict blocks for human attention.
-6. Session containers are removed. Task/config volumes are eligible for GC according to creation age
-   and active-container protection. Retention is not a sliding inactivity timer; publish valuable work
+6. Session containers are removed. Task volumes (`ho.kind: task-volume`) and per-agent provider-state
+   volumes (`ho.kind: provider-state`, named `ho-task-<task>-state-<agent>`) are eligible for GC according
+   to creation age and active-container protection; the collector still prunes the older
+   `claude-config` label so volumes created before that rename do not leak. Retention is not a sliding inactivity timer; publish valuable work
    and do not rely on old volumes as permanent storage.
 
 The boss turns chat/mail into scoped delegated tasks with `ho_delegate`, replies through `ho_reply`,
@@ -111,9 +119,16 @@ are separate, session-scoped credentials.
 Wall-time and concurrency caps apply across providers; review-round caps belong to tasks. Legacy
 configuration names `maxTurnsPerTask` and `maxUsdPerTask` currently supply **per-session Claude CLI
 limits**, not aggregate task caps across retries. ACP does not expose an equivalent enforced USD/turn
-budget here. ACP `turns` is an approximation from tool calls, and provider token accounting is not yet
-complete. Zero reported usage is not proof that a provider ran for free. Verify spending in the provider
-account as well as the office Usage panel.
+budget here.
+
+`turns` is each provider's own definition and the two do not mean the same thing: Claude Code reports
+`num_turns` from its result line (model round-trips inside one run), while an ACP session reports the
+number of prompts the office sent — one `session/prompt` to one `StopReason` is one turn in that
+protocol. It used to report the number of tool calls, which was neither. ACP context-window usage
+(`used`, `size`, and cost when the provider sends it) is recorded as a runtime `context` event and is
+deliberately not folded into token counters. Provider token accounting is still incomplete: zero reported
+usage is not proof that a provider ran for free. Verify spending in the provider account as well as the
+office Usage panel.
 
 Default role/model choices are editable. RTK's Claude hook compacts supported shell output; actual token
 savings depend on the workload. Failed raw command output remains available in temporary storage. The
@@ -135,10 +150,16 @@ reservations. Needs and seeded RNG drive idle behavior. Plan steps describe walk
 handoff completion and leaving the office; queued envelope deliveries survive later intents. Each floor
 has its own elevator and animations. Simulation stepping is fixed and catch-up is bounded.
 
-Pixi renders at at most 30 fps, pauses in hidden documents, updates visible actors and keeps at most two
-floor views cached. ResizeObserver updates camera fitting. Sprite requests are coalesced. React reads
-immutable Zustand snapshots; TanStack Query deduplicates and cancels health/resource/usage requests.
-The live log retains at most 20 sessions with 300 events each. Historical domain state is not bounded by
+Pixi renders at at most 30 fps and stops its ticker in a hidden document, but a hidden office is not a
+blank one. While the document is hidden the scene draws a still frame — the ticker's own four calls with
+`dt = 0`, then one explicit `render()` — once at mount and again on every store change, so a tab that was
+never visible still shows its floor the moment it is revealed. The store's update coalescing switches from
+`requestAnimationFrame` to a 200 ms timeout for the same reason: a hidden document never runs a rAF
+callback, and the pending-bump flag would otherwise stay set and drop every later change. The scene updates
+visible actors and keeps at most two floor views cached. ResizeObserver updates camera fitting. Sprite requests are
+coalesced. React reads immutable Zustand snapshots; TanStack Query deduplicates and cancels
+health/resource/usage requests. The live log retains at most 20 sessions with 300 events each, and the
+per-floor chat projection keeps the last 500 messages. Historical domain state is not bounded by
 those live-log limits. Source reload polling is only present in development UI builds.
 
 ## Security and operational limits
@@ -146,7 +167,9 @@ those live-log limits. Source reload polling is only present in development UI b
 - The daemon accepts loopback bindings only (`127.0.0.1`, `::1`, `localhost`) and checks bearer tokens and
   request origins. Remote plaintext binding is rejected. There is no implemented remote TLS/server mode.
 - Desktop preload places the launch token in sessionStorage. CLI browser launch uses a URL fragment,
-  removed immediately by the UI. `daemon.json` and file-backed secrets use atomic mode-0600 writes.
+  removed immediately by the UI. `daemon.json` and file-backed secrets use atomic mode-0600 writes. A tab
+  whose token the daemon refuses does not retry: it asks `/health` once, says so, and waits for a fresh
+  launch URL, so a forgotten tab cannot fill the log with rejected connections.
 - Static files reject malformed/traversal/symlink escapes, carry security headers and revalidate mutable
   content. The RPC and runner connections use bounded payloads/queues, backpressure and startup deadlines.
 - Containers use non-root users, dropped capabilities, no-new-privileges, read-only rootfs, tmpfs,
@@ -168,9 +191,18 @@ those live-log limits. Source reload polling is only present in development UI b
   allowlist; that is a project of its own and is not implemented.
 - The daemon token is compared in constant time, and `ho.db` (with its WAL and shm files) is written
   mode 0600; the state directory's mode is re-asserted at every start, not only when it is created.
+- Reads of the OS credential store are bounded at 5 seconds and say why they timed out — on macOS a build
+  the Keychain has not seen before waits for an access prompt, which used to hang a compiled binary
+  indefinitely. A timeout is not treated as "no store here": it propagates rather than silently writing
+  the secret into the file backend.
+- The daemon's own log file is bounded where nobody watches stdout: the desktop app's destination rotates
+  at 8 MiB and keeps one previous file.
 - No automatic merge, provider failover, persistent acknowledgement outbox, sliding volume retention,
   reusable project cache volumes, OS-wide resource monitor or remote deployment backend is implemented.
 
 The unsigned desktop build is assembled with a revision/checksum-pinned Hutch toolchain. Release builds
 validate the tag and its ancestry on `main`; a separate job holds GitHub publication permissions. See
-[STACK.md](STACK.md) for dependencies and [history/AUDIT-2026-09.md](history/AUDIT-2026-09.md) for tradeoffs and follow-ups.
+[STACK.md](STACK.md) for dependencies and [../audit/AUDIT.md](../audit/AUDIT.md) for the tradeoffs,
+including the ones the audit decided against: no framework migration (ADR 001), PixiJS kept (ADR 002), the
+sprite pipeline kept with `sharp` only where it is byte-identical (ADR 003), and the ~900 MB browser image
+split left undone pending an owner decision (B24.1).

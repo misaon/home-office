@@ -223,10 +223,41 @@ the user, and answering it with a different store would be worse. And ACP sessio
 **For the owner:** nothing new to decide in this wave. Still open from Wave 5: the effort defaults are a
 cost change (B33.4), and B24.1(b) (the ~900 MB browser image split) waits on a decision.
 
+## Wave 7 complete (2026-09-09) — verified, and the audit is done
+
+**The documentation now describes the code that exists.** Six files changed. What they used to say and no
+longer do: that a _compiled_ `ho-runner` connects to the gateway (it is a Bun bundle on the image's own
+Bun), that startup holds a `proper-lockfile` lock (an atomic `mkdir` plus a pid liveness check), that
+provider state lives in `claude-config` volumes (`provider-state`, with the old label still pruned), that
+ACP `turns` is "an approximation from tool calls" (one prompt, one turn — and the two providers' numbers
+still mean different things, which the document now says out loud), that secrets are a macOS Keychain
+story (Keychain, libsecret or Credential Manager, chosen by whether the host store answers), and that a
+hidden office simply stops (it draws a still frame, and the store coalesces on a 200 ms timeout because a
+hidden document never runs a rAF callback). `README.md` now warns that a self-compiled `ho` carries no UI
+bundle and no image contexts, `docs/CONVENTIONS.md` lists the eight lint rules that actually change how
+code gets written, and `docs/OFFICE-ART.md` names `assets/README.md` as the load-bearing sprite contract
+together with the three files that implement it (A3.3).
+
+**Every number in those documents was re-read in the source** — the live-log caps, the chat tail, the
+handshake timeout, the termination ladder, the floor-view cache, `maxFPS`, the compiler-project count, the
+mirror path, the task-branch prefix — and the image was asked for its own versions (`rtk 0.48.0`,
+`claude 2.1.263`, `bun 1.4.2`, `node v24.18.1`). The transcript is in `audit/VERIFICATION.md`.
+
+**The wave also caught the audit lying about itself.** `DEPENDENCIES.md` listed
+`chrome-devtools-mcp` 1.8.0 → 1.9.0 as bumped in Wave 5, but the sandbox manifest still pinned 1.8.0. The
+bump is applied now — lockfile regenerated, `npm audit` clean, agent image rebuilt (the rebuild was itself
+a re-test of B24.3: the content hash noticed) — and the record says what happened.
+
+**The coverage matrix is closed.** Every row reads `OVĚŘENO`; none is `N/A`, because every point in
+A1–A4, B1–B33 and C1–C5 turned out to apply to this repository. Where a recommendation was deliberately
+not implemented, the row says so instead of claiming otherwise: the ~900 MB browser image split (B24.1(b))
+and the texture atlas (ADR 003) are both owner decisions with their plans recorded.
+
+**For the owner, once more:** worker and reviewer sessions now default to `high` effort, which costs more
+per session (B33.4); the browser image split and the atlas are waiting on a yes or no.
+
 ## Next step
 
-Wave 7 — documentation: A3.1 and A3.3, the rewrite of every markdown file to match the code this audit
-leaves behind (including B25.3's note in `docs/STACK.md` about `reactCompiler` and why there is no
-`useCallback`, and the `secrets.store` values in the config documentation). It also has to close the
-coverage matrix: 13 rows are still `ROZHODNUTO` — A2, A3, B7, B24, B26, B28, B29, B32 and C1–C5 — and the
-brief requires every row to read `OVĚŘENO` or `N/A` in the last commit of the pull request.
+Open the pull request from `audit/deep-monorepo-audit-2026-09` into `main` with the §10 description, and
+let CI run it — the one thing this audit cannot verify locally is the GitHub Actions workflow itself
+(A2.1). That row is the last to close.

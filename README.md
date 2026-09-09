@@ -34,15 +34,23 @@ bun run apps/cli/src/main.ts daemon --ui
 ```
 
 In another terminal, `bun run apps/cli/src/main.ts ui` opens the browser UI. For a standalone CLI,
-run `bun build --compile --minify apps/cli/src/main.ts --outfile apps/cli/dist/ho` and use that binary.
+run `bun build --compile --minify apps/cli/src/main.ts --outfile apps/cli/dist/ho` and use that binary —
+it carries no office UI bundle and no Docker build contexts, so `ho ui` and `ho image build` say so
+instead of failing obscurely, and `ho doctor` reports images as not inspectable. Run the daemon from a
+source checkout, or use the desktop app, when you want those.
 `bun run ui:watch` rebuilds and reloads an open development UI. `bun run setup` installs the local git hook.
 State defaults to `~/.config/home-office`; `HO_HOME` selects a separate state directory.
+
+Secrets live in this machine's credential store — Keychain on macOS, libsecret on Linux, Credential
+Manager on Windows — and fall back to a mode-0600 JSON file in the state directory when the host has
+none; `secrets.store` in `config.json` (`auto`, `os` or `file`) overrides that choice.
 
 ## Documentation
 
 - [Current architecture and limitations](docs/ARCHITECTURE.md)
 - [Stack choices and framework assessment](docs/STACK.md)
 - [Current plan and remaining work](docs/PLAN.md)
-- [Independent September 2026 audit](docs/history/AUDIT-2026-09.md)
 - [Engineering conventions](docs/CONVENTIONS.md)
 - [Sprite import contract](assets/README.md) and [office art](docs/OFFICE-ART.md)
+- [The September 2026 deep audit](audit/AUDIT.md) — findings, coverage matrix, verification transcripts
+  and six ADRs; [an earlier audit report](docs/history/AUDIT-2026-09.md) is kept as history
