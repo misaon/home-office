@@ -76,6 +76,13 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-09 — Owner task: the grid system of the map — Prison Architect's mechanics were read from its
+  wiki before anything was written (tile as the atom, walls occupying whole cells, rooms as a painted
+  designation), and the owner settled the four decisions, the load-bearing one being that **layouts are
+  written in code, never built by the player**. A 100×70 map, a `Layout` compiled into four per-cell
+  layers with a derived collision mask, an always-visible grid and a zoom/pan camera. Sources, decisions
+  and the measured verification in [the grid plan](plans/2026-09-09-grid-system.md).
+
 - 2026-09-09 — Owner task: the office starts again from scratch — All art (306 PNGs, 48 MB), the sprite
   pipeline (`assets/`, the three `assets:*` scripts and their libraries) and the approved layout (rooms,
   furniture, doors, glazing, decor, the plan audit) were deleted at the owner's instruction. A floor is

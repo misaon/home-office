@@ -8,7 +8,7 @@ import {
   type FloorTemplate,
   handoff,
   idleBehaviour,
-  planeTemplate,
+  floorTemplate,
   receive,
   releaseWork,
   removeActor,
@@ -72,7 +72,7 @@ export class Bridge {
   templateFor(floorId: string): FloorTemplate {
     let template = this.#templates.get(floorId);
     if (template === undefined) {
-      template = planeTemplate(floorId);
+      template = floorTemplate(floorId);
       this.#templates.set(floorId, template);
     }
     return template;

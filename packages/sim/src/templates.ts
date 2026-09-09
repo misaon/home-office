@@ -1,4 +1,5 @@
-import { type Facing, Grid, type Point } from "./grid.ts";
+import { gridFromMap, type TileMap } from "./cells.ts";
+import type { Facing, Grid, Point } from "./grid.ts";
 
 export type AnchorKind =
   | "desk"
@@ -18,14 +19,12 @@ export type AnchorKind =
 /** A named cell an actor can walk to and use; `group` reserves a spot for one kind (the boss's desk). */
 export type Anchor = { id: string; kind: AnchorKind; at: Point; facing: Facing; group?: string };
 
-/** One floor: how large the plane is and the spots on it. Nothing on it blocks movement yet. */
+/** One floor: a compiled layout and the spots its characters move between. */
 export type FloorTemplate = {
   id: string;
   name: string;
-  width: number;
-  height: number;
+  map: TileMap;
   anchors: Anchor[];
 };
 
-/** The collision grid of a floor. The plane is empty, so every cell is walkable. */
-export const gridFor = (template: FloorTemplate): Grid => new Grid(template.width, template.height);
+export const gridFor = (template: FloorTemplate): Grid => gridFromMap(template.map);

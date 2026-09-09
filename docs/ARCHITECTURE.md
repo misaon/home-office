@@ -146,12 +146,23 @@ profiles, config and caches are temporary. No egress allowlist or CONNECT proxy 
 ## Simulation and UI
 
 **The office is being designed again from scratch (2026-09-09, at the owner's instruction).** The art,
-the rooms, the furniture and the whole sprite pipeline are gone; what remains is the movement. A floor is
-a bare walkable plane of 48×28 cells (`packages/sim/src/plane.ts`) carrying only named spots — the lift,
-the reception, a boss desk, twelve seats, coffee/restroom/smoke/relax/sleep and a handful of stroll
-targets — and the renderer draws a white surface with one dot per character. `CELL_PX` is now just the
-unit positions are expressed in. The next mechanic is specified per the owner's instructions; until then
-do not reintroduce art.
+the rooms, the furniture and the whole sprite pipeline are gone. What the map is now is a grid, modelled
+after Prison Architect and verified against its wiki: the square cell is the atom, and **a wall is the
+content of a cell rather than an edge**, so a 4×4 room needs a 6×6 outline.
+
+The map is 100×70 cells. An office is a `Layout` **written in code** (`packages/sim/src/layouts.ts`):
+rectangles of floor, of wall and of room designation, objects with a cell footprint, and the anchors its
+characters use. `compileLayout` paints those declarations into a `TileMap` — four per-cell layers
+(floor, wall, object, room) plus the `blocked` mask the collision `Grid` is derived from, where void, a
+wall and a blocking object are impassable and an object that does not block clears its cells (that is a
+door). Later rectangles win over earlier ones, so a layout reads top-down. Several layouts can coexist
+and a floor picks one by id; there is no builder, because the player never places anything.
+
+The view draws ground, floors, room tint, the grid, walls, objects and then one dot per character.
+The grid is always visible — a hairline per cell, a stronger line every eight — and the camera zooms
+with the wheel around the cursor (6–40 px per cell) and pans by dragging, clamped so the map cannot be
+lost off-screen and centred when it is smaller than the pane. `CELL_PX` is the unit positions are
+expressed in, not an art density. Until the owner's next instruction, do not reintroduce art.
 
 Movement uses a weighted grid A* with a TinyQueue heap, clearance and turn costs, plus explicit actor
 reservations. Needs and seeded RNG drive idle behavior. Plan steps describe walking, dwelling, emitting

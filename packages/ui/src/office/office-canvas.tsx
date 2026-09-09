@@ -54,7 +54,8 @@ export function OfficeCanvas(): React.JSX.Element {
       const drawFrame = (dtMs: number): void => {
         try {
           bridge.tick(dtMs);
-          created.showFloor(bridge.world, useUi.getState().floorId);
+          const floorId = useUi.getState().floorId;
+          created.showFloor(floorId === null ? null : bridge.templateFor(floorId));
           created.update(bridge.world, useUi.getState().selectedAgentId);
         } catch (error) {
           useUi.getState().setError(errorMessage(error));
@@ -90,7 +91,7 @@ export function OfficeCanvas(): React.JSX.Element {
   }, []);
 
   return (
-    <div className="relative h-full w-full overflow-x-hidden overflow-y-auto bg-white">
+    <div className="relative h-full w-full overflow-hidden bg-white">
       <div ref={host} className="h-full w-full" />
       {lastError !== null ? (
         <div className="absolute inset-x-0 top-0 bg-red-900/80 px-3 py-1 font-mono text-xs text-red-100">
