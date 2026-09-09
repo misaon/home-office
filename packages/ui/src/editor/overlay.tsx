@@ -7,11 +7,10 @@ import {
   RoomKind,
   WallMaterial,
 } from "@ho/protocol";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Button, CONTROL, Field, Section, Segmented } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
-import { useUi } from "../store.ts";
 import {
   type Draft,
   emptyDraft,
@@ -24,6 +23,7 @@ import {
   type Tool,
 } from "./draft.ts";
 import { EditorCanvas } from "./canvas.tsx";
+import { layoutsQuery, SavedOffices } from "./offices.tsx";
 
 const TOOLS = [
   { value: "wall", label: "Wall" },
@@ -33,11 +33,6 @@ const TOOLS = [
 ] as const satisfies readonly { value: Tool; label: string }[];
 
 const SIZE = { width: 60, height: 34 };
-const layoutsQuery = {
-  queryKey: ["layouts"],
-  queryFn: () => requireClient().layouts.list(),
-} as const;
-
 /** The office's own fields. The file name is the name, slugified, so it cannot drift from it. */
 function OfficeFields({
   draft,
@@ -145,47 +140,6 @@ function Palette({
   );
 }
 
-function SavedOffices({
-  load,
-  save,
-}: {
-  load: (office: OfficeLayout) => void;
-  save: () => void;
-}): React.JSX.Element {
-  const connection = useUi((s) => s.connection);
-  const store = useQuery({ ...layoutsQuery, enabled: connection === "online" });
-  const available = store.data?.available ?? false;
-  return (
-    <Section title="Saved offices">
-      {available ? null : (
-        <p className="text-2xs text-amber-300">
-          This build has no repository to write into, so saving is unavailable.
-        </p>
-      )}
-      <div className="space-y-1">
-        {(store.data?.layouts ?? []).map((office) => (
-          <button
-            key={office.id}
-            type="button"
-            className="block w-full rounded-md px-3 py-2 text-left hover:bg-line"
-            onClick={() => {
-              load(office);
-            }}
-          >
-            {office.name}{" "}
-            <span className="font-mono text-2xs text-gray-500">
-              {office.id} · {office.width}×{office.height}
-            </span>
-          </button>
-        ))}
-      </div>
-      <Button variant="primary" disabled={!available} onClick={save}>
-        Save office
-      </Button>
-    </Section>
-  );
-}
-
 /**
  * The internal office editor. Compiled into development bundles only — `ui-build.ts` resolves this
  * module to a stub for production. Left button paints, right button erases, and Save writes
@@ -205,6 +159,18 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
     rotated: false,
   });
   const [note, setNote] = useState<string | null>(null);
+  // R rotates the piece being held, the way Prison Architect does, unless a field has the keyboard.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key.toLowerCase() === "r" && document.activeElement?.tagName !== "INPUT") {
+        setKinds((current) => ({ ...current, rotated: !current.rotated }));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
   const save = useMutation({
     mutationFn: (office: OfficeLayout) => requireClient().layouts.save(office),
     onSuccess: () => queries.invalidateQueries({ queryKey: layoutsQuery.queryKey }),
@@ -221,8 +187,10 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
           <Segmented value={tool} options={TOOLS} onChange={setTool} />
           <Palette kinds={kinds} setKinds={setKinds} tool={tool} />
           <p className="text-2xs leading-relaxed text-gray-500">
-            Drag with the left button to paint, with the right button to erase. The middle button or
-            shift pans; the wheel zooms.
+            {tool === "object"
+              ? "Click to place; the outline shows what it will take. R rotates it."
+              : "Drag with the left button to paint, with the right button to erase what this tool paints."}{" "}
+            The middle button or shift pans; the wheel zooms.
           </p>
           {note === null ? null : <p className="text-2xs text-amber-300">{note}</p>}
         </Section>
@@ -245,8 +213,10 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
       <div className="min-w-0 flex-1 bg-white">
         <EditorCanvas
           draft={draft}
+          tool={tool}
+          kinds={kinds}
           onPaint={(rect, erasing) => {
-            const result = erasing ? erase(draft, rect) : paint(draft, tool, rect, kinds);
+            const result = erasing ? erase(draft, tool, rect) : paint(draft, tool, rect, kinds);
             setDraft(result.next);
             setNote(result.note);
           }}

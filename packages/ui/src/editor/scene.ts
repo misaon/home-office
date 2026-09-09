@@ -1,11 +1,13 @@
 import "pixi.js/unsafe-eval";
 import { CELL_PX, compileLayout, type FloorTemplate } from "@ho/sim";
-import { Application, Container, Graphics } from "pixi.js";
+import { Application, Container, Graphics, Text } from "pixi.js";
 import { Camera } from "../office/camera.ts";
 import { floorTiles, gridLines } from "../office/tiles.ts";
-import { type Draft, draftLayout, type Rect } from "./draft.ts";
+import { type Draft, draftLayout, ghostAt, type Kinds, type Rect, type Tool } from "./draft.ts";
+import { labelsOf } from "./labels.ts";
 
 const HOVER = 0x2b3140;
+const LABEL = { fontFamily: "monospace", fontSize: 11, fill: 0x1f2430 } as const;
 const PREVIEW_ADD = 0x4c8bf5;
 const PREVIEW_ERASE = 0xe0525f;
 const PREVIEW_ALPHA = 0.28;
@@ -25,6 +27,11 @@ export class EditorScene {
   #grid = new Graphics();
   /** The whole preview layer is translucent, so its own fill stays a plain colour. */
   readonly #preview = new Graphics({ alpha: PREVIEW_ALPHA });
+  /** Names written across placed shapes; kept at a constant size whatever the zoom. */
+  readonly #labels = new Container();
+  #tool: Tool = "wall";
+  #kinds: Kinds | null = null;
+  #hover: Cell | null = null;
   #gridScale = 0;
   #template: FloorTemplate | null = null;
   #draft: Draft | null = null;
@@ -50,7 +57,7 @@ export class EditorScene {
     this.app.ticker.stop();
     host.append(this.app.canvas);
     this.app.stage.addChild(this.#world);
-    this.#world.addChild(this.#tiles, this.#grid, this.#preview);
+    this.#world.addChild(this.#tiles, this.#grid, this.#labels, this.#preview);
     this.camera.setViewport(this.app.screen.width, this.app.screen.height);
     this.#listen(this.app.canvas);
     this.#observer = new ResizeObserver(() => {
@@ -64,6 +71,13 @@ export class EditorScene {
     this.app.destroy(true, { children: true });
   }
 
+  /** The active tool and its palette: furniture is placed by a click, so its footprint is shown first. */
+  setTool(tool: Tool, kinds: Kinds): void {
+    this.#tool = tool;
+    this.#kinds = kinds;
+    this.#drawPreview(this.#paintFrom, this.#hover);
+  }
+
   /** Rebuilds the drawn office. Called on every edit: compiling 2000 cells is cheaper than diffing them. */
   setDraft(draft: Draft): void {
     this.#draft = draft;
@@ -72,12 +86,34 @@ export class EditorScene {
       child.destroy({ children: true });
     });
     this.#tiles.addChild(floorTiles(this.#template));
+    this.#drawLabels(draft);
     this.camera.setMap(draft.width, draft.height);
     if (this.#gridScale === 0) {
       this.camera.fit();
     }
     this.#gridScale = 0;
     this.#apply();
+  }
+
+  #drawLabels(draft: Draft): void {
+    this.#labels.removeChildren().forEach((child) => {
+      child.destroy();
+    });
+    for (const label of labelsOf(draft)) {
+      const text = new Text({ text: label.text, style: LABEL, resolution: 3 });
+      text.anchor.set(0.5);
+      text.position.set(label.x * CELL_PX, label.y * CELL_PX);
+      this.#labels.addChild(text);
+    }
+    this.#scaleLabels();
+  }
+
+  /** Labels live in world space but must not grow with it, or a zoomed-in office is all text. */
+  #scaleLabels(): void {
+    const inverse = 1 / this.camera.scale;
+    for (const label of this.#labels.children) {
+      label.scale.set(inverse);
+    }
   }
 
   #resize(): void {
@@ -97,6 +133,7 @@ export class EditorScene {
       Math.round(-this.camera.offsetX * scale),
       Math.round(-this.camera.offsetY * scale),
     );
+    this.#scaleLabels();
     if (this.#gridScale !== scale && this.#template !== null) {
       this.#gridScale = scale;
       const next = gridLines(this.#template.map, scale);
@@ -119,6 +156,22 @@ export class EditorScene {
     return x < 0 || y < 0 || x >= draft.width || y >= draft.height ? null : { x, y };
   }
 
+  /** The rectangle the pointer is about to affect: a drag, or a piece of furniture's own footprint. */
+  #pending(from: Cell | null, to: Cell): Rect {
+    const draft = this.#draft;
+    const kinds = this.#kinds;
+    if (this.#tool === "object" && !this.#erasing && draft !== null && kinds !== null) {
+      return ghostAt(draft, to, kinds);
+    }
+    const start = from ?? to;
+    return {
+      x: Math.min(start.x, to.x),
+      y: Math.min(start.y, to.y),
+      w: Math.abs(start.x - to.x) + 1,
+      h: Math.abs(start.y - to.y) + 1,
+    };
+  }
+
   #drawPreview(from: Cell | null, to: Cell | null): void {
     this.#preview.clear();
     const colour = this.#erasing ? PREVIEW_ERASE : PREVIEW_ADD;
@@ -126,11 +179,7 @@ export class EditorScene {
       this.#apply();
       return;
     }
-    const start = from ?? to;
-    const x = Math.min(start.x, to.x);
-    const y = Math.min(start.y, to.y);
-    const w = Math.abs(start.x - to.x) + 1;
-    const h = Math.abs(start.y - to.y) + 1;
+    const { x, y, w, h } = this.#pending(from, to);
     const edge = { color: from === null ? HOVER : colour, width: 2 / this.camera.scale };
     this.#preview
       .rect(x * CELL_PX, y * CELL_PX, w * CELL_PX, h * CELL_PX)
@@ -171,6 +220,7 @@ export class EditorScene {
     });
     canvas.addEventListener("pointermove", (event) => {
       const cell = this.#cellAt(event);
+      this.#hover = cell;
       if (this.#panning && this.#pointer !== null) {
         this.camera.panBy(event.clientX - this.#pointer.x, event.clientY - this.#pointer.y);
         this.#pointer = { x: event.clientX, y: event.clientY };
@@ -186,20 +236,18 @@ export class EditorScene {
       this.#panning = false;
       this.#preview.clear();
       if (from !== null && to !== null) {
-        this.onPaint(
-          {
-            x: Math.min(from.x, to.x),
-            y: Math.min(from.y, to.y),
-            w: Math.abs(from.x - to.x) + 1,
-            h: Math.abs(from.y - to.y) + 1,
-          },
-          this.#erasing,
-        );
+        // Furniture is placed where the pointer was released, never as a dragged rectangle.
+        const rect =
+          this.#tool === "object" && !this.#erasing
+            ? { x: to.x, y: to.y, w: 1, h: 1 }
+            : this.#pending(from, to);
+        this.onPaint(rect, this.#erasing);
       }
       this.#erasing = false;
       this.#apply();
     });
     canvas.addEventListener("pointerleave", () => {
+      this.#hover = null;
       this.#preview.clear();
       this.#apply();
     });

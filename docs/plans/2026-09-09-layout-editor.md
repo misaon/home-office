@@ -152,3 +152,33 @@ One more bug turned up: the daemon served `index.html` with `cache-control: no-c
 so a rebuilt UI could keep serving the previous bundle (the editor appeared to be missing entirely).
 The HTML entry is now `no-store` and the content-hashed assets are `immutable`, both verified with
 `curl -I`.
+
+## The owner's notes, 2026-09-09 (third pass)
+
+| Note                                                                                                   | Built                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Load an existing office (JSON) and edit it                                                             | The saved list already loaded offices from the repository; a `Load an office from a JSON file` field now accepts one from anywhere, parsed with the schema and reported by its own message when it does not fit |
+| Furniture is placed by a click, not a drag, with the footprint shown first; a key rotates what is held | The furniture tool draws its footprint under the cursor and places on the click. **R** rotates 90°, as in Prison Architect, unless a field has the keyboard                                                     |
+| Objects and rooms carry their name in the middle of the shape                                          | One label per placed object and doorway, and **one per contiguous room area** rather than per row, drawn at a constant size whatever the zoom                                                                   |
+| Right-drag erases only what the active tool paints                                                     | `erase(draft, tool, rect)`: the room tool clears designations and leaves walls standing, the wall tool clears walls, the door and furniture tools remove their own                                              |
+
+### Measured
+
+```
+labels        two separate team-room areas → two labels, at (5,4) and (22,4); kitchen at (6,13.5);
+              a 3×6 desk placed at 15,10 → its label at (16.5,13); a 2×2 chair at 25,12 → (26,13)
+furniture     a plain click places it; R turns "3 × 6 cells" into "6 × 3 cells" and the next click
+              lands the rotated piece
+erase         wall 6 runs + room 6 runs over the same area: right-drag with the room tool → rooms 0,
+              walls still 6; right-drag with the wall tool → walls 0, furniture untouched
+load a file   a JSON with two walls, a room, a doorway and a plant came back as 40 × 24 cells, 11 wall
+              runs, 5 room runs, 1 door, 1 furniture, with the name and file field following it;
+              a malformed one answered "Too small: expected string to have >=1 characters"
+```
+
+Two bugs fell out of this pass. **The first drag after opening the editor did nothing**: the scene is
+built asynchronously and the effect that handed it the paint callback had already run against a null
+scene, so the callback only arrived with the next re-render. It is now handed over inside the scene's
+own initialisation, through a ref. And `bun run check` finishes with a production `ui:build`, which
+replaces the development bundle the editor lives in — the editor then vanishes until the watcher
+rebuilds. That trap is now written down in [AGENTS.md](../../AGENTS.md).

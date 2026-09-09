@@ -21,7 +21,9 @@ containers, and an Electrobun desktop app that renders them as a pixel-art offic
   `bun run setup` installs the git hook that enforces it.
 - `bun run fmt` — format everything with oxfmt.
 - `bun run ui:watch` — rebuild the office UI on change (the page reloads itself). The internal office
-  editor exists only in this build: open it from the header or with `?editor=1`.
+  editor exists only in this build: open it from the header or with `?editor=1`. Note that `bun run
+check` ends with a production `ui:build`, which replaces that bundle — touch a UI file afterwards to
+  get the development one back.
 - `bun run desktop:dev` / `bun run desktop:build` — Electrobun app via Hutch (`apps/desktop`; resources assembled by `bun run desktop:prepare`).
 
 ## Layout

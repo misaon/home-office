@@ -116,6 +116,10 @@ const footprint = (draft: Draft, at: Rect, kinds: Kinds): Rect => {
 
 export type Painted = { next: Draft; note: string | null };
 
+/** The cells an object would take if it were placed here, so the cursor can show them before the click. */
+export const ghostAt = (draft: Draft, at: { x: number; y: number }, kinds: Kinds): Rect =>
+  footprint(draft, { ...at, w: 1, h: 1 }, kinds);
+
 /** Paints with the active tool. Doors need wall to cut through; furniture needs the room to be free. */
 export function paint(draft: Draft, tool: Tool, rect: Rect, kinds: Kinds): Painted {
   const next = copy(draft);
@@ -153,15 +157,25 @@ export function paint(draft: Draft, tool: Tool, rect: Rect, kinds: Kinds): Paint
   return { next, note: null };
 }
 
-/** The right button: clears walls and rooms in the area and removes whatever it touches. */
-export function erase(draft: Draft, rect: Rect): Painted {
+/**
+ * The right button erases, and only what the active tool paints: dragging over a wall with the room tool
+ * clears the designation and leaves the wall standing.
+ */
+export function erase(draft: Draft, tool: Tool, rect: Rect): Painted {
   const next = copy(draft);
-  for (const i of indices(draft, rect)) {
-    next.wall[i] = null;
-    next.room[i] = null;
+  if (tool === "wall" || tool === "room") {
+    for (const i of indices(draft, rect)) {
+      if (tool === "wall") {
+        next.wall[i] = null;
+      } else {
+        next.room[i] = null;
+      }
+    }
+  } else if (tool === "door") {
+    next.doors = draft.doors.filter((door) => !overlaps(door, rect));
+  } else {
+    next.objects = draft.objects.filter((object) => !overlaps(object, rect));
   }
-  next.doors = draft.doors.filter((door) => !overlaps(door, rect));
-  next.objects = draft.objects.filter((object) => !overlaps(object, rect));
   return { next, note: null };
 }
 
