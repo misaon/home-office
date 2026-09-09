@@ -47,10 +47,20 @@ export const OBJECTS: Readonly<Record<string, number>> = {
 export const OBJECT_FILL = 0xb9bfca;
 export const OBJECT_EDGE = 0x8b93a1;
 
-export const ROOM: Readonly<Record<string, number>> = {};
+/** A hue per room, so a plan can be read without consulting a legend. */
+export const ROOM: Readonly<Record<string, number>> = {
+  reception: 0xe0a33c,
+  "boss-office": 0x8b6fd0,
+  "team-room": 0x4c8bf5,
+  meeting: 0x2fae9e,
+  kitchen: 0xe0603c,
+  restroom: 0x3cb4e0,
+  corridor: 0x9aa2b1,
+  terrace: 0x5fae4c,
+};
 export const ROOM_DEFAULT = 0x6f9bd8;
 /** Room designation is a tint over the floor, as Prison Architect's chessboard overlay is. */
-export const ROOM_ALPHA = 0.16;
+export const ROOM_ALPHA = 0.22;
 
 export const DOT = 0x2b3140;
 export const DOT_SELECTED = 0xffd166;

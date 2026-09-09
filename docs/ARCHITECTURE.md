@@ -175,8 +175,10 @@ applies to offices drawn today, and the compiled map carries that kind per cell 
 Footprints live in one table, `OBJECT_SPEC` in the protocol: cells across and down, whether the piece
 blocks movement, whether it mounts on a wall, and whether its direction matters. They are the owner's,
 at roughly 25 cm per cell and derived from the real pieces — a developer's desk 6×3, the boss's 8×4, a
-reception counter 10×3, a meeting table 12×5, chairs 2×2, a doorway 1×4 along the wall it cuts — and a
-character spans 1.8 cells. Doors and furniture are placed by a click with their footprint shown first,
+reception counter 10×3, a meeting table 12×5, the lift car 6×6, chairs 2×2, a doorway 1×4 — and a
+character spans 1.8 cells. Each room kind carries its own hue, and a room's name is drawn on the
+deepest cell of its area rather than the middle of its bounding box, so a corridor wrapped around other
+rooms still labels itself inside the corridor. Doors and furniture are placed by a click with their footprint shown first,
 a right click turns them a quarter and a right drag erases; walls and rooms are still dragged out.
 Prison Architect is coarser — its office desk and bed are 2×1, its chair and door 1×1 — because its tile
 is about a metre; the whole catalogue and its sources are in

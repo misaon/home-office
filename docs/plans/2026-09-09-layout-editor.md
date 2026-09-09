@@ -285,3 +285,29 @@ display object per arrow (a stem rectangle and a head polygon) rather than shape
 `Graphics`. **The triangles turned out to be an artifact of a hidden Browser pane** — they did not change
 by a pixel across three different drawing implementations, which is what gave them away. Screenshots of
 a hidden pane cannot be trusted; the geometry above is measured instead.
+
+## The owner's notes, 2026-09-09 (seventh pass)
+
+| Note                                   | Built                                                                                                  |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| The lift takes too many cells          | 8×8 → **6×6** (1.5 × 1.5 m at 25 cm per cell): 36 cells instead of 64                                  |
+| Every room needs its own tint          | A hue per kind, eight distinct ones, and the tint went from 0.16 to 0.22 alpha so they read over white |
+| A room's name must sit inside its area | The label takes the **deepest cell** of the area, not the middle of its bounding box                   |
+
+### Why the bounding box was wrong, measured
+
+A corridor filling 2,2–18,14 with a team room cut out of its middle at 5,5–15,11:
+
+```
+corridor  label at 3.5, 3.5   → the cell under it is "corridor"
+team-room label at 7.5, 7.5   → "team-room"
+the bounding-box centre would be 10, 8 → "team-room"   ← the corridor's name inside another room
+```
+
+An L-shaped kitchen (2,2 4×14 plus 2,12 16×4) labels itself at 4.5, 12.5 — inside the kitchen, where
+its two arms meet. Depth grows inward from the edge of an area by breadth-first search and the label
+takes the deepest cell, which is inside the shape by construction.
+
+Room tints: reception `#e0a33c`, boss-office `#8b6fd0`, team-room `#4c8bf5`, meeting `#2fae9e`, kitchen
+`#e0603c`, restroom `#3cb4e0`, corridor `#9aa2b1`, terrace `#5fae4c` — eight distinct colours for eight
+kinds.

@@ -78,8 +78,8 @@ export type ObjectSpec = {
 };
 
 export const OBJECT_SPEC: Readonly<Record<ObjectKind, ObjectSpec>> = {
-  // The lift car: where staff arrive on the floor. 2 × 2 m, walkable, and it faces the way it opens.
-  elevator: { w: 8, h: 8, blocks: false, onWall: false, arrow: true },
+  // The lift car: where staff arrive on the floor. 1.5 × 1.5 m, walkable, facing the way it opens.
+  elevator: { w: 6, h: 6, blocks: false, onWall: false, arrow: true },
   // Desks: 160 × 80 cm for the team, 200 × 90 for the boss, a 240 × 70 counter at reception.
   "desk-developer": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },
   "desk-qa": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },
