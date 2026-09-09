@@ -165,7 +165,8 @@ door). Later rectangles win over earlier ones, so a layout reads top-down. Sever
 and a floor picks one by id; there is no builder, because the player never places anything.
 
 The view draws ground, floors, room tint, the grid, walls, objects and then one dot per character.
-The grid is always visible — a hairline per cell, a stronger line every eight — and the camera zooms
+The grid is always visible — one hairline of one colour on every cell boundary, the map's outer edge
+included — and the camera zooms
 with the wheel around the cursor and pans by dragging, clamped so the map cannot be lost off-screen and
 centred when it is smaller than the pane. Zooming out has no bound of its own: it stops with the whole
 floor in view, because the floor is sized to fit. Zooming in reaches 64 px per cell, which puts a 6×6

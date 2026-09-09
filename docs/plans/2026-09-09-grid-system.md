@@ -26,7 +26,7 @@ over: foundations, planning, budgets and every build tool — those exist for a 
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Walls          | A wall occupies a whole cell, as in Prison Architect                                                                                                                                                           | Walls on cell edges (cheaper floor space, but a second geometry to model and un-PA-like)                                                                                                 |
 | Map and camera | The map **is** the office, fixed at 48×34 cells — the ratio of the pane on a maximised 1920×1080 window — so it fits without scrolling; the wheel still zooms and dragging still pans, for looking at one room | A large 100×70 map with the office as a patch inside it (built first, then withdrawn by the owner — it left the floor standing in an empty field); a medium map with zoom but no panning |
-| Grid           | Always visible: a fine line, a stronger one every 8 cells                                                                                                                                                      | Only while a tool is active (there are no tools — the grid is the map's own structure)                                                                                                   |
+| Grid           | Always visible: one hairline of one colour on every cell boundary (a stronger line every 8 cells was built first and the owner asked for it uniform)                                                           | Only while a tool is active (there are no tools — the grid is the map's own structure)                                                                                                   |
 | Authoring      | **Layouts are written in code**, several of them, selectable                                                                                                                                                   | A player-facing builder with placement tools (explicitly not wanted)                                                                                                                     |
 
 ## The model
@@ -53,8 +53,8 @@ Layout (authored in code)                 TileMap (compiled once per floor)
   is clamped so it cannot be lost off-screen. **Zooming out stops with the whole floor in view** — the
   floor is sized to fit, so there is nothing further back to see — and zooming in reaches 64 px per
   cell. The pane itself never scrolls.
-- **Grid.** A 1 px line on every cell boundary and a stronger line every 8 cells, drawn once per zoom
-  level, plus the map's own edge. Cells outside the office footprint are void and read as a lighter
+- **Grid.** One 1 px line, one colour, on every cell boundary including the map's outer edge, redrawn
+  once per zoom level so it stays a hairline at any zoom. Cells outside the office footprint are void and read as a lighter
   ground, so the office's shape is visible without a single sprite.
 - **Layers, in order:** ground → floors → room designation → walls → objects → characters (the dots).
   Only the layers a layout fills actually draw anything, which is what makes "we then place objects,

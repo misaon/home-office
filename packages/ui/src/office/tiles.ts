@@ -5,9 +5,7 @@ import {
   FLOOR,
   FLOOR_DEFAULT,
   GRID_LINE,
-  GRID_MAJOR,
   GROUND,
-  MAP_EDGE,
   OBJECT_EDGE,
   OBJECT_FILL,
   ROOM,
@@ -16,9 +14,6 @@ import {
   WALL,
   WALL_DEFAULT,
 } from "./palette.ts";
-
-/** A stronger grid line every this many cells, so the eye can count squares. */
-const MAJOR_EVERY = 8;
 
 const cell = (x: number, y: number): { x: number; y: number } => ({
   x: x * CELL_PX,
@@ -116,25 +111,18 @@ function footprint(
   return { x: fromX, y: fromY, w, h };
 }
 
-/** The grid itself: one hairline per cell boundary, a stronger one every eight, and the map's edge. */
+/** The grid itself: one hairline on every cell boundary, the map's outer edge included. */
 export function gridLines(map: TileMap, scale: number): Graphics {
   const graphics = new Graphics();
   const width = map.width * CELL_PX;
   const height = map.height * CELL_PX;
-  const hairline = 1 / scale;
-  for (const [step, colour] of [
-    [1, GRID_LINE],
-    [MAJOR_EVERY, GRID_MAJOR],
-  ] as const) {
-    for (let x = 0; x <= map.width; x += step) {
-      graphics.moveTo(x * CELL_PX, 0).lineTo(x * CELL_PX, height);
-    }
-    for (let y = 0; y <= map.height; y += step) {
-      graphics.moveTo(0, y * CELL_PX).lineTo(width, y * CELL_PX);
-    }
-    graphics.stroke({ color: colour, width: step === 1 ? hairline : hairline * 1.5 });
+  for (let x = 0; x <= map.width; x += 1) {
+    graphics.moveTo(x * CELL_PX, 0).lineTo(x * CELL_PX, height);
   }
-  return graphics.rect(0, 0, width, height).stroke({ color: MAP_EDGE, width: hairline * 2 });
+  for (let y = 0; y <= map.height; y += 1) {
+    graphics.moveTo(0, y * CELL_PX).lineTo(width, y * CELL_PX);
+  }
+  return graphics.stroke({ color: GRID_LINE, width: 1 / scale });
 }
 
 /** Everything a floor draws before its characters: ground and floors, the grid, then walls and objects. */

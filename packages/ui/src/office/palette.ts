@@ -1,9 +1,7 @@
 /** The office has no art yet, so every material is a colour. Unknown ids fall back to the defaults. */
 export const GROUND = 0xf1f2f4;
+/** One colour and one weight for every line of the grid, the map's own edge included. */
 export const GRID_LINE = 0xe3e6eb;
-/** Every eighth line is stronger, the way squared paper reads. */
-export const GRID_MAJOR = 0xcdd2db;
-export const MAP_EDGE = 0xaeb5c2;
 
 export const FLOOR: Readonly<Record<string, number>> = { office: 0xffffff };
 export const FLOOR_DEFAULT = 0xffffff;
