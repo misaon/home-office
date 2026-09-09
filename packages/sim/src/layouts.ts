@@ -6,14 +6,14 @@ import type { Anchor, AnchorKind, FloorTemplate } from "./templates.ts";
 export const RECEPTION_ANCHOR = "reception-staff";
 
 /**
- * Every office is this many cells, and the map is the office — nothing surrounds it. The 48:34 ratio
- * follows the office pane on a maximised 1920 × 1080 window, which is 1480 × 1027 px once the 440 px
- * panel and the 53 px bar are taken off (ratio 1.441 against the floor's 1.412), so the whole floor is
- * in view at 30 px per cell with a 15 px margin either side. A wider or narrower window centres the
- * floor and shows that difference as margin. Zooming in is for looking at one room; zooming out stops
- * at the whole floor.
+ * Every office is this many cells, and the map is the office — nothing surrounds it. 50:34 is a shade
+ * wider than the pane a maximised 1920 × 1080 window leaves (1480 × 1027 px once the 440 px panel and
+ * the 53 px bar come off, ratio 1.441 against the floor's 1.471), so the floor is limited by the pane's
+ * width rather than its height: no margin at the sides, ten pixels above and below, and the sides stay
+ * clean as the window loses height to a menu bar or dock. Zooming in is for looking at one room;
+ * zooming out stops at the whole floor.
  */
-export const OFFICE = { width: 48, height: 34 } as const;
+export const OFFICE = { width: 50, height: 34 } as const;
 
 const spot = (
   id: string,
@@ -42,7 +42,7 @@ const strolls = (): Anchor[] =>
     { x: 36, y: 22 },
     { x: 18, y: 10 },
     { x: 28, y: 32 },
-    { x: 45, y: 17 },
+    { x: 47, y: 17 },
   ].map((at, i) => spot(`wander-${String(i + 1)}`, "wander", at.x, at.y));
 
 /**
@@ -64,11 +64,11 @@ const emptyOffice = (): Layout => ({
     spot("entrance", "entrance", 5, 17, "e"),
     spot(RECEPTION_ANCHOR, "reception", 8, 17, "e"),
     spot("mailbox", "mailbox", 8, 14),
-    spot("boss-desk", "boss-desk", 42, 4, "s", "boss"),
+    spot("boss-desk", "boss-desk", 44, 4, "s", "boss"),
     ...desks(),
     spot("coffee", "coffee", 11, 28),
     spot("restroom", "restroom", 17, 31),
-    spot("smoke", "smoke", 44, 31),
+    spot("smoke", "smoke", 46, 31),
     spot("relax", "relax", 28, 28),
     spot("sleep", "sleep", 34, 25),
     ...strolls(),
