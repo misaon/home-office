@@ -1,6 +1,7 @@
 import { errorMessage, type SecretKeyName } from "@ho/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Button, Section } from "../kit/controls.tsx";
 import { secretsStatusQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
@@ -61,53 +62,49 @@ export function TokenSettings(): React.JSX.Element {
     }
   };
   return (
-    <section className="space-y-2">
-      <h3 className="text-[11px] tracking-wide text-gray-400 uppercase">Credentials</h3>
+    <Section title="Credentials">
       {KEYS.map(({ key, label, hint }) => (
-        <div key={key} className="rounded border border-line bg-panel p-2 text-[11px]">
+        <div key={key} className="space-y-2 rounded-md border border-line bg-panel p-3 text-xs">
           <div className="flex items-center justify-between">
             <span className="font-medium">{label}</span>
             <span className={present.includes(key) ? "text-emerald-300" : "text-gray-400"}>
               {present.includes(key) ? "stored" : "missing"}
             </span>
           </div>
-          <p className="text-gray-400">{hint}</p>
-          <div className="mt-1 flex gap-1">
+          <p className="leading-relaxed text-gray-400">{hint}</p>
+          <div className="flex gap-2">
             <input
               type="password"
               aria-label={label}
               autoComplete="off"
-              className="flex-1 rounded bg-ink px-2 py-1 font-mono"
+              className="flex-1 rounded-md border border-line bg-ink px-3 py-2 font-mono focus:border-accent/60 focus:outline-none"
               placeholder="paste token"
               value={values[key] ?? ""}
               onChange={(e) => {
                 setValues({ ...values, [key]: e.target.value });
               }}
             />
-            <button
-              type="button"
-              className="rounded bg-accent px-2 text-black"
+            <Button
+              variant="primary"
               onClick={() => {
                 save(key);
               }}
             >
               Save
-            </button>
+            </Button>
             {present.includes(key) ? (
-              <button
-                type="button"
-                className="rounded bg-line px-2"
+              <Button
                 onClick={() => {
                   forget.mutate(key);
                 }}
               >
                 Forget
-              </button>
+              </Button>
             ) : null}
           </div>
         </div>
       ))}
       {failure === null ? null : <p className="text-red-400">{errorMessage(failure)}</p>}
-    </section>
+    </Section>
   );
 }

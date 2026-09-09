@@ -1,6 +1,7 @@
 import type { UsageSummary } from "@ho/protocol";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
 
@@ -14,8 +15,7 @@ function Buckets({
   rows: UsageSummary["byAgent"];
 }): React.JSX.Element {
   return (
-    <section>
-      <h3 className="mb-1 text-[11px] tracking-wide text-gray-400 uppercase">{title}</h3>
+    <Section title={title}>
       <table className="w-full text-left text-xs">
         <thead className="text-gray-500">
           <tr>
@@ -29,7 +29,7 @@ function Buckets({
         <tbody>
           {rows.map((r) => (
             <tr key={r.key} className="border-t border-line">
-              <td className="truncate py-0.5">{r.label}</td>
+              <td className="truncate py-1.5">{r.label}</td>
               <td className="text-right">{fmt(r.usage.inputTokens)}</td>
               <td className="text-right">{fmt(r.usage.outputTokens)}</td>
               <td className="text-right">{fmt(r.usage.cacheReadTokens)}</td>
@@ -38,7 +38,7 @@ function Buckets({
           ))}
         </tbody>
       </table>
-    </section>
+    </Section>
   );
 }
 
@@ -54,14 +54,14 @@ export function UsagePanel(): React.JSX.Element {
   });
   const summary = query.data ?? null;
   return (
-    <div className="space-y-3 overflow-y-auto p-3">
-      <div className="flex items-center gap-2 text-xs">
+    <div className="space-y-5 overflow-y-auto p-4">
+      <div className="flex items-center gap-2.5 text-xs">
         <span className="text-gray-400">Window</span>
         {[24, 24 * 7, 0].map((h) => (
           <button
             key={h}
             type="button"
-            className={`rounded px-2 py-0.5 ${hours === h ? "bg-accent text-black" : "bg-panel"}`}
+            className={`rounded-md px-3 py-1.5 ${hours === h ? "bg-accent font-medium text-black" : "bg-panel hover:bg-line"}`}
             onClick={() => {
               setHours(h);
             }}
@@ -79,7 +79,7 @@ export function UsagePanel(): React.JSX.Element {
         <p className="text-xs text-gray-400">No data yet.</p>
       ) : (
         <>
-          <div className="text-xs text-gray-300">
+          <div className="leading-relaxed text-xs text-gray-300">
             {String(summary.sessions)} sessions · {fmt(summary.totals.inputTokens)} in ·{" "}
             {fmt(summary.totals.outputTokens)} out · {fmt(summary.totals.cacheReadTokens)} cache
             read · {String(summary.rateLimitIncidents)} rate-limit incidents
@@ -87,7 +87,7 @@ export function UsagePanel(): React.JSX.Element {
           <Buckets title="By agent" rows={summary.byAgent} />
           <Buckets title="By project" rows={summary.byProject} />
           <Buckets title="By day" rows={summary.byDay} />
-          <p className="text-[11px] text-gray-500">
+          <p className="leading-relaxed text-xs text-gray-500">
             Token counts come from Claude Code. OpenCode, Gemini CLI and Codex speak ACP, which
             reports how full the context window is and the session&apos;s cost rather than a token
             split — those arrive live and are shown per session in Agent.

@@ -29,14 +29,15 @@ export function ProviderModelFields({
   const catalog = PROVIDERS[value.provider];
   const listed = catalog.models.some((m) => m.id === value.model);
   const [custom, setCustom] = useState(!listed && catalog.freeFormModels);
-  const input = dense ? "rounded bg-ink px-1" : "rounded bg-panel px-1 py-1";
+  const control = "rounded-md border border-line bg-ink";
+  const input = dense ? `${control} px-2 py-1` : `${control} px-2 py-1.5`;
   const switchProvider = (provider: ProviderId): void => {
     setCustom(false);
     onChange({ provider, ...defaultChoice(provider, role) });
   };
   return (
     <>
-      <label className="flex items-center gap-1">
+      <label className="flex items-center gap-2">
         {dense ? "provider" : null}
         <select
           className={input}
@@ -53,7 +54,7 @@ export function ProviderModelFields({
         </select>
       </label>
       {catalog.authKinds.length > 1 ? (
-        <label className="flex items-center gap-1">
+        <label className="flex items-center gap-2">
           {dense ? "auth" : null}
           <select
             className={input}
@@ -68,7 +69,7 @@ export function ProviderModelFields({
           </select>
         </label>
       ) : null}
-      <label className="flex items-center gap-1">
+      <label className="flex items-center gap-2">
         {dense ? "model" : null}
         {custom ? (
           <input
@@ -104,7 +105,7 @@ export function ProviderModelFields({
         )}
       </label>
       {catalog.effortLevels.length > 0 ? (
-        <label className="flex items-center gap-1">
+        <label className="flex items-center gap-2">
           {dense ? "effort" : null}
           <select
             className={input}

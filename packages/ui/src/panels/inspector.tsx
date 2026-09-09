@@ -54,8 +54,8 @@ function SessionBlock({
   const task = tasks.get(session.taskId);
   const events = (live ?? []).filter((l) => l.event.kind !== "usage").slice(-60);
   return (
-    <section className="rounded border border-line bg-panel p-2 text-xs">
-      <div className="flex justify-between">
+    <section className="space-y-1.5 rounded-md border border-line bg-panel p-3 text-xs">
+      <div className="flex justify-between gap-3">
         <span className="font-medium">
           {session.mode} · {task?.title ?? session.taskId}
         </span>
@@ -65,10 +65,10 @@ function SessionBlock({
       </div>
       <div className="text-gray-400">{usageLine(session.usage)}</div>
       {task?.artifacts.branch === undefined ? null : (
-        <div className="truncate font-mono text-[10px] text-gray-300">{task.artifacts.branch}</div>
+        <div className="truncate font-mono text-2xs text-gray-300">{task.artifacts.branch}</div>
       )}
       {events.length === 0 ? null : (
-        <ul className="mt-1 max-h-64 space-y-0.5 overflow-y-auto font-mono text-[10px]">
+        <ul className="mt-2 max-h-64 space-y-1 overflow-y-auto font-mono text-2xs">
           {events.map((l, i) => {
             const text = describe(l);
             return text === "" ? null : (
@@ -98,9 +98,9 @@ export function InspectorPanel(): React.JSX.Element {
     .toSorted((a, b) => a.name.localeCompare(b.name));
   if (agent === undefined) {
     return (
-      <div className="p-3 text-xs">
-        <p className="mb-2 text-gray-400">Click a character in the office or pick an agent:</p>
-        <ul className="space-y-1">
+      <div className="p-4 text-xs">
+        <p className="mb-3 text-gray-400">Click a character in the office or pick an agent:</p>
+        <ul className="space-y-2">
           {agents.map((a) => (
             <li key={a.id}>
               <button
@@ -127,8 +127,8 @@ export function InspectorPanel(): React.JSX.Element {
     .slice(0, 8);
   const floor = projects.get(agent.projectId)?.name ?? agent.projectId;
   return (
-    <div className="space-y-2 overflow-y-auto p-3 text-xs">
-      <div>
+    <div className="space-y-4 overflow-y-auto p-4 text-xs">
+      <div className="space-y-1">
         <div className="text-base font-semibold">{agent.name}</div>
         <div className="text-gray-400">
           {agent.role} · {agent.provider} · {agent.model} / {agent.effort} · skills{" "}
@@ -136,7 +136,7 @@ export function InspectorPanel(): React.JSX.Element {
         </div>
         <div className="text-gray-400">floor: {floor}</div>
         {agent.basePrompt === "" ? null : (
-          <p className="mt-1 whitespace-pre-wrap text-gray-300">{agent.basePrompt}</p>
+          <p className="mt-2 whitespace-pre-wrap text-gray-300">{agent.basePrompt}</p>
         )}
       </div>
       {sessions.length === 0 ? <p className="text-gray-400">No sessions yet.</p> : null}

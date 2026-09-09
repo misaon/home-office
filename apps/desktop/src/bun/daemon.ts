@@ -1,4 +1,5 @@
 import { daemonUrl, type DaemonInfo, readDaemonInfo, startDaemon } from "@ho/daemon";
+import { nativeDirectoryPicker } from "./pick-directory.ts";
 
 export type DaemonLink = {
   /** Where the office UI is served. */
@@ -38,7 +39,8 @@ export async function attachOrStart(options: {
       stop: () => Promise.resolve(),
     };
   }
-  const handle = await startDaemon(options);
+  // Only an embedded daemon can show this app's own dialogs; an attached one keeps its own fallback.
+  const handle = await startDaemon({ ...options, pickDirectory: nativeDirectoryPicker });
   return {
     url: `${daemonUrl(handle.info)}/`,
     token: handle.info.token,

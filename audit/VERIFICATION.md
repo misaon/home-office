@@ -1212,3 +1212,103 @@ ho.token = "stale-from-a-previous-launch" → "The daemon refused this page's to
 location.hash = "#token=<current>"       → the office loads, no reload, "Add a project (floor)"
 $ bun run check → typecheck 16/16 · oxlint clean · oxfmt · knip · ui 3 files, 1112 KiB
 ```
+
+## The add-project dialog and the airier UI (2026-09-09)
+
+The owner's task: a native directory picker behind an icon, a separate git-URL input, a branch select
+instead of a text field, and an airier UI. Plan and decisions in
+[docs/plans/2026-09-09-add-project-and-ui-spacing.md](../docs/plans/2026-09-09-add-project-and-ui-spacing.md).
+
+### What git actually answers, before the code assumed it
+
+```
+$ git for-each-ref --format='%(refname:short)' refs/heads refs/remotes/origin | head -20
+audit/deep-monorepo-audit-2026-09
+codex/monorepo-audit-2026-09
+codex/office-art-base
+feat/floors-andrew-lola
+feat/office-base-v1
+ho/add-contributing-md-04a0d2d4
+ho/task-01a0830f-d332-7601-b1e8-6447ced7a451
+…
+main
+origin
+origin/audit/deep-monorepo-audit-2026-09
+origin/main
+
+$ git ls-remote --symref https://github.com/misaon/home-office.git HEAD 'refs/heads/*'
+ref: refs/heads/main	HEAD
+29bcf5cb237325e3d6f58a4085834837928f2f8c	HEAD
+2c437d2891bc9747b13b5ba2097ebd1a0f82f396	refs/heads/audit/deep-monorepo-audit-2026-09
+fa035f9645eb942fcf086b9c7a7ebf567b462ce1	refs/heads/codex/monorepo-audit-2026-09
+83de20a293789e1aadf8fa2f034804c067c4e26c	refs/heads/feat/office-base-v1
+29bcf5cb237325e3d6f58a4085834837928f2f8c	refs/heads/main
+```
+
+One `ls-remote` carries the symbolic HEAD and every head, so the branch list costs no extra round trip.
+`origin`, `origin/HEAD` and the `origin/` prefix are dropped, the default branch goes first.
+
+### The AppleScript the daemon runs, checked before it was written into the fallback
+
+```
+$ osascript -e 'on run argv' -e 'return item 1 of argv' -e 'end run' -- hello
+hello
+$ osascript -e 'on run argv' -e 'return POSIX path of ((item 1 of argv) as POSIX file)' -e 'end run' -- /tmp
+/tmp
+$ osacompile -o /tmp/check.scpt -e 'on run argv' \
+    -e 'set chosen to choose folder with prompt (item 1 of argv) default location ((item 2 of argv) as POSIX file)' \
+    -e 'return POSIX path of chosen' -e 'end run'
+(exit 0 — compiles)
+```
+
+`--` ends option parsing and the arguments reach `run argv`, so the prompt and the starting directory
+are never part of the script source.
+
+### The office, driven in a browser against a live daemon
+
+An isolated daemon (`HO_HOME=<scratch>`, port 47810) serving the production UI bundle:
+
+```
+$ curl -s http://127.0.0.1:47810/health
+{"ok":true}
+```
+
+- Empty office → "Add a project (floor)" → the dialog opens with the source switch on "Folder on this
+  machine", the folder button beside the path, and the branch select disabled ("filled in once git
+  answers").
+- Typing `…/home-office/packages/ui` (a subdirectory, not the repository root): hint
+  `git repository · 13 branches`, floor name filled with `home-office`, and the select holds exactly
+  the 13 branches with `main` selected — `origin/*` duplicates removed, default first:
+  `["main","audit/deep-monorepo-audit-2026-09","codex/monorepo-audit-2026-09","codex/office-art-base","feat/add-project-picker-and-airier-ui","feat/floors-andrew-lola","feat/office-base-v1","ho/add-contributing-md-04a0d2d4","ho/task-01a0830f…","ho/task-01a08328…","ho/task-01a08341…","ho/task-01a08347…","ho/zjistit-hlavn-zpr-vu-dne-na-seznam-cz-zp-8b64a75d"]`
+- "Git URL" with `git@github.com:misaon/home-office.git` (git's scp shorthand, not a URL): hint
+  `git repository · 4 branches`, select `["main","audit/deep-monorepo-audit-2026-09","codex/monorepo-audit-2026-09","feat/office-base-v1"]`,
+  "Create floor" enabled.
+- `not-a-repo` in the same field: `Not a repository URL — use https://host/org/repo,
+ssh://git@host/org/repo or git@host:org/repo` in red, name and branch cleared, Create disabled, and
+  no request sent — the URL is rejected in the page, not by the daemon.
+- The folder button: the daemon spawned the dialog with the typed path as its starting location, and
+  the arguments are arguments —
+
+```
+$ ps -ww -o command -p $(pgrep -f osascript)
+osascript -e on run argv -e set chosen to choose folder with prompt (item 1 of argv) default location
+((item 2 of argv) as POSIX file) -e return POSIX path of chosen -e end run -- Choose the repository
+folder /Users/ondrejmisak/WebstormProjects/home-office/packages/ui
+```
+
+Dismissing it returned `cancelled`: the field kept what was typed and no error appeared.
+
+- "Create floor" created the floor; the office drew its plan, the header tab, Andrew in the chat panel
+  and the setup checklist.
+
+### Checks
+
+```
+$ bun run check
+✔ 16/16 tsconfig targets · oxlint --type-aware --deny-warnings clean · oxfmt 324 files
+knip clean · ui: 3 files, 1123 KiB
+```
+
+Not covered: the desktop app's own `Utils.openFileDialog` panel (it needs the packaged Electrobun app,
+where the daemon runs in-process and receives the native picker), and a real folder chosen in the
+dialog rather than dismissed.

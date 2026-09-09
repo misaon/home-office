@@ -76,6 +76,14 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-09 — Owner task: the add-project dialog and an airier UI — A native directory picker behind
+  the folder icon (`system.pickDirectory` with a `DirectoryPicker` port: the desktop app's own open
+  panel, `osascript` for a daemon on its own), a separate git-URL input behind a source switch, a
+  default-branch select filled from `projects.inspect`, and absolute spacing/text scales with shared
+  form primitives across the panels, settings, setup checklist and header. Plan and decisions in
+  [the task plan](plans/2026-09-09-add-project-and-ui-spacing.md), evidence in
+  [audit/VERIFICATION.md](../audit/VERIFICATION.md).
+
 - 2026-09-08 — Independent audit — Incremental commits cover state/security, simulation/assets,
   lifecycle/delivery, UI/build/CI, provider/Docker repairs, integration fixes and documentation.
   Local static checks, production UI, existing ACP verification, all provider Docker builds,

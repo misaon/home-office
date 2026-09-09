@@ -22,6 +22,8 @@ import {
   AgentUpdateInput,
   ChatHistoryInput,
   ChatSendInput,
+  DirectoryPick,
+  DirectoryPickInput,
   EventsSubscribeInput,
   Health,
   ProjectCreateInput,
@@ -67,6 +69,11 @@ export const contract = {
     doctor: base.output(Doctor),
     /** Builds (or refreshes) the agent and git-bridge images, streaming build output. */
     buildImages: base.output(eventIterator(z.object({ line: z.string() }))),
+    /**
+     * Opens the host's native directory dialog and reports what was chosen. The office UI is served over
+     * HTTP to both the desktop window and a browser, so the dialog belongs to the host side of the RPC.
+     */
+    pickDirectory: base.input(DirectoryPickInput).output(DirectoryPick),
     /** Removes stopped sandboxes, expired task volumes and dangling images. */
     gc: base.output(
       z.object({

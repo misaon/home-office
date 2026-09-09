@@ -7,6 +7,7 @@ import {
   ProjectId,
 } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
+import { Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { sortedFloors, useUi } from "../store.ts";
 
@@ -48,17 +49,17 @@ function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
     ...spriteSets.filter((s) => s !== agent.appearance.spriteSet),
   ];
   return (
-    <div className="rounded border border-line bg-panel p-2">
+    <div className="space-y-2.5 rounded-md border border-line bg-panel p-3">
       <div className="flex items-center justify-between">
         <span className="font-medium">
           {agent.name} <span className="text-gray-400">· {agent.role}</span>
         </span>
         {agent.role === "boss" ? (
-          <span className="text-[11px] text-gray-500">runs this floor</span>
+          <span className="text-xs text-gray-500">runs this floor</span>
         ) : (
           <button
             type="button"
-            className="text-[11px] text-red-300 hover:underline"
+            className="text-xs text-red-300 hover:underline"
             onClick={() => {
               if (window.confirm(`Remove ${agent.name}?`)) {
                 remove.mutate();
@@ -69,7 +70,7 @@ function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
           </button>
         )}
       </div>
-      <div className="mt-1 grid grid-cols-2 gap-1 text-[11px]">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
         <ProviderModelFields
           dense
           role={agent.role}
@@ -78,10 +79,10 @@ function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
             update(next);
           }}
         />
-        <label className="flex items-center gap-1">
+        <label className="flex items-center gap-2">
           sprite
           <select
-            className="rounded bg-ink px-1"
+            className="rounded-md border border-line bg-ink px-2 py-1"
             value={agent.appearance.spriteSet}
             onChange={(e) => {
               update({ appearance: { ...agent.appearance, spriteSet: e.target.value } });
@@ -92,10 +93,10 @@ function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
             ))}
           </select>
         </label>
-        <label className="flex items-center gap-1">
+        <label className="flex items-center gap-2">
           gender
           <select
-            className="rounded bg-ink px-1"
+            className="rounded-md border border-line bg-ink px-2 py-1"
             value={agent.appearance.gender}
             onChange={(e) => {
               update({ appearance: { ...agent.appearance, gender: Gender.parse(e.target.value) } });
@@ -108,10 +109,10 @@ function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
         </label>
       </div>
       {agent.role === "boss" || otherFloors.length === 0 ? null : (
-        <div className="mt-1 flex items-center gap-1 text-[11px] text-gray-400">
+        <div className="flex items-center gap-2 text-xs text-gray-400">
           copy to floor
           <select
-            className="rounded bg-ink px-1"
+            className="rounded-md border border-line bg-ink px-2 py-1"
             value=""
             onChange={(e) => {
               if (e.target.value !== "") {
@@ -128,9 +129,7 @@ function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
           </select>
         </div>
       )}
-      {failure === null ? null : (
-        <p className="mt-1 text-[11px] text-red-400">{errorMessage(failure)}</p>
-      )}
+      {failure === null ? null : <p className="text-xs text-red-400">{errorMessage(failure)}</p>}
     </div>
   );
 }
@@ -150,14 +149,11 @@ export function AgentsSettings(): React.JSX.Element {
         Number(b.role === "boss") - Number(a.role === "boss") || a.name.localeCompare(b.name),
     );
   return (
-    <section className="space-y-2">
-      <h3 className="text-[11px] tracking-wide text-gray-400 uppercase">
-        Team of floor {projects.get(floorId)?.name ?? ""}
-      </h3>
+    <Section title={`Team of floor ${projects.get(floorId)?.name ?? ""}`}>
       {agents.map((a) => (
         <AgentRow key={a.id} agent={a} projects={projects} />
       ))}
       <NewAgent floorId={floorId} />
-    </section>
+    </Section>
   );
 }

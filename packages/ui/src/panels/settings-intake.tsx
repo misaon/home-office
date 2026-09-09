@@ -1,6 +1,7 @@
 import { errorMessage, type IntakePolicy, type IntakeStatus, type Project } from "@ho/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Button } from "../kit/controls.tsx";
 import { intakeStatusQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
@@ -24,14 +25,14 @@ function IntakeFields({
   update,
 }: FieldsProps): React.JSX.Element {
   return (
-    <div className="grid grid-cols-2 gap-1">
-      <label className="flex items-center gap-1">
+    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+      <label className="flex items-center gap-2">
         every
         <input
           type="number"
           min={30}
           max={3600}
-          className="w-16 rounded bg-ink px-1"
+          className="w-16 rounded-md border border-line bg-ink px-2 py-1"
           defaultValue={intake.intervalSeconds}
           onBlur={(e) => {
             const seconds = Number(e.target.value);
@@ -47,7 +48,7 @@ function IntakeFields({
         />
         s
       </label>
-      <label className="flex items-center gap-1">
+      <label className="flex items-center gap-2">
         <input
           type="checkbox"
           checked={intake.dryRun}
@@ -57,10 +58,10 @@ function IntakeFields({
         />
         dry run (log only)
       </label>
-      <label className="col-span-2 flex items-center gap-1">
+      <label className="col-span-2 flex items-center gap-2">
         labels
         <input
-          className="flex-1 rounded bg-ink px-1 font-mono"
+          className="flex-1 rounded-md border border-line bg-ink px-2 py-1 font-mono"
           placeholder="all open issues"
           value={labels}
           onChange={(e) => {
@@ -69,7 +70,7 @@ function IntakeFields({
           onBlur={saveLabels}
         />
       </label>
-      <label className="flex items-center gap-1">
+      <label className="flex items-center gap-2">
         <input
           type="checkbox"
           checked={intake.comment}
@@ -79,10 +80,10 @@ function IntakeFields({
         />
         comment on the issue
       </label>
-      <label className="flex items-center gap-1">
+      <label className="flex items-center gap-2">
         label
         <input
-          className="w-24 rounded bg-ink px-1 font-mono"
+          className="w-24 rounded-md border border-line bg-ink px-2 py-1 font-mono"
           defaultValue={intake.ackLabel}
           onBlur={(e) => {
             if (e.target.value.trim() !== intake.ackLabel) {
@@ -100,7 +101,7 @@ function IntakeHealth({ status }: { status: IntakeStatus | null }): React.JSX.El
     return null;
   }
   return (
-    <p className="text-gray-400">
+    <p className="leading-relaxed text-gray-400">
       last poll {when(status.lastPollAt)}
       {status.nextPollAt === null ? "" : `, next ${when(status.nextPollAt)}`}, received{" "}
       {status.received}
@@ -163,9 +164,9 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
 
   const { intake } = project;
   return (
-    <div className="mt-2 space-y-1 border-t border-line pt-2 text-[11px]">
+    <div className="mt-3 space-y-3 border-t border-line pt-3 text-xs">
       <div className="flex items-center justify-between">
-        <label className="flex items-center gap-1">
+        <label className="flex items-center gap-2">
           <input
             type="checkbox"
             checked={intake.enabled}
@@ -175,16 +176,14 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
           />
           GitHub issues → mail
         </label>
-        <button
-          type="button"
-          className="rounded bg-line px-2 py-0.5 disabled:opacity-50"
+        <Button
           disabled={poll.isPending}
           onClick={() => {
             poll.mutate();
           }}
         >
           {poll.isPending ? "Polling…" : "Poll now"}
-        </button>
+        </Button>
       </div>
       <IntakeFields
         intake={intake}

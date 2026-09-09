@@ -1,6 +1,7 @@
 import { chmod, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { type DaemonConfig, resolveHome } from "./config.ts";
+import type { DirectoryPicker } from "./host-dialog.ts";
 import type { DaemonInfo } from "./daemon-info.ts";
 import type { Office } from "./office.ts";
 import { launchDaemon } from "./launch.ts";
@@ -8,6 +9,7 @@ import { acquireSingleInstanceLock } from "./single-instance.ts";
 
 export { DaemonConfig, loadConfig, resolveHome } from "./config.ts";
 export { DaemonInfo, daemonInfoPath, daemonUrl, readDaemonInfo } from "./daemon-info.ts";
+export { type DirectoryPicker, osascriptDirectoryPicker } from "./host-dialog.ts";
 export { defaultResourcesRoot, type Resources, resolveResources } from "./paths.ts";
 export { Office } from "./office.ts";
 export { acquireSingleInstanceLock, type LockRelease } from "./single-instance.ts";
@@ -27,6 +29,11 @@ export type DaemonOptions = {
   resourcesRoot?: string;
   /** Log to this file instead of stdout (the desktop app has no visible stdout). */
   logFile?: string;
+  /**
+   * Shows the host's directory dialog. The desktop app injects a panel owned by its own window;
+   * without one the daemon falls back to macOS `osascript`.
+   */
+  pickDirectory?: DirectoryPicker;
 };
 
 export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHandle> {

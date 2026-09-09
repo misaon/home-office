@@ -35,16 +35,33 @@ export type ProjectCreateInput = z.infer<typeof ProjectCreateInput>;
 /** What the daemon learns about a repository before it becomes a floor: a git check, a name and its branch. */
 export const RepoInspectInput = z.object({ repo: RepoSource });
 export type RepoInspectInput = z.infer<typeof RepoInspectInput>;
+/** How many branch names one inspection carries; a select does not need a huge repository's full list. */
+export const REPO_BRANCH_LIMIT = 500;
 export const RepoInspection = z.discriminatedUnion("ok", [
   z.object({
     ok: z.literal(true),
     name: z.string().min(1),
     defaultBranch: z.string().min(1),
+    /** Every branch git reported, the default first; the dialog offers these instead of free text. */
+    branches: z.array(z.string().min(1)).max(REPO_BRANCH_LIMIT).default([]),
     repo: RepoSource,
   }),
   z.object({ ok: z.literal(false), message: z.string() }),
 ]);
 export type RepoInspection = z.infer<typeof RepoInspection>;
+/** Where the host's directory dialog opens; a path that is not a directory is ignored. */
+export const DirectoryPickInput = z.object({ startIn: z.string().min(1).optional() });
+export type DirectoryPickInput = z.infer<typeof DirectoryPickInput>;
+/**
+ * The result of the host's native directory dialog. `unavailable` is not a failure: a daemon on a host
+ * without a dialog (another platform, or a future remote daemon) says so, and the path is typed instead.
+ */
+export const DirectoryPick = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("picked"), path: z.string().min(1) }),
+  z.object({ status: z.literal("cancelled") }),
+  z.object({ status: z.literal("unavailable"), message: z.string() }),
+]);
+export type DirectoryPick = z.infer<typeof DirectoryPick>;
 /**
  * Patches carry only the keys a client sent. `.partial()` alone would re-apply field defaults to absent
  * keys, so defaulted fields are unwrapped here (a patch of `{ name }` must not reset the branch or policy).

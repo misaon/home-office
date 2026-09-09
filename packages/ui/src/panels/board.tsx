@@ -1,5 +1,6 @@
 import { mailForTask } from "@ho/core";
 import type { Task, TaskStatus } from "@ho/protocol";
+import { Section } from "../kit/controls.tsx";
 import { type Snapshot, useUi } from "../store.ts";
 
 const COLUMNS: { status: TaskStatus[]; title: string }[] = [
@@ -23,9 +24,9 @@ function TaskCard({ task, agents, tasks, inbox }: CardProps): React.JSX.Element 
   const reviewer = task.reviewerId === undefined ? undefined : agents.get(task.reviewerId);
   const mail = mailForTask({ tasks, mail: inbox }, task);
   return (
-    <div className="rounded border border-line bg-panel p-2 text-xs">
+    <div className="rounded-md border border-line bg-panel p-3 text-xs">
       <div className="font-medium">{task.title}</div>
-      <div className="mt-1 flex flex-wrap gap-x-2 text-gray-400">
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-gray-400">
         <span>{task.status}</span>
         <span>{task.priority}</span>
         {task.kind === "triage" ? <span>triage</span> : null}
@@ -44,7 +45,7 @@ function TaskCard({ task, agents, tasks, inbox }: CardProps): React.JSX.Element 
       {assignee === undefined ? null : (
         <button
           type="button"
-          className="mt-1 text-accent hover:underline"
+          className="mt-2 block text-accent hover:underline"
           onClick={() => {
             selectAgent(assignee.id);
           }}
@@ -54,13 +55,13 @@ function TaskCard({ task, agents, tasks, inbox }: CardProps): React.JSX.Element 
         </button>
       )}
       {task.artifacts.branch === undefined ? null : (
-        <div className="mt-1 truncate font-mono text-[10px] text-gray-300">
+        <div className="mt-2 truncate font-mono text-2xs text-gray-300">
           {task.artifacts.branch}
         </div>
       )}
       {task.artifacts.prUrl === undefined ? null : (
         <a
-          className="text-[10px] text-sky-300 hover:underline"
+          className="text-2xs text-sky-300 hover:underline"
           href={task.artifacts.prUrl}
           target="_blank"
           rel="noreferrer"
@@ -85,25 +86,26 @@ export function BoardPanel(): React.JSX.Element {
     .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-line p-2 text-xs">
+      <div className="flex items-center gap-3 border-b border-line px-4 py-3 text-xs">
         <span className="text-gray-400">Floor</span>
         <span>{floor?.name ?? "—"}</span>
         <span className="ml-auto text-gray-400">{tasks.length} tasks</span>
       </div>
-      <div className="flex-1 space-y-3 overflow-y-auto p-2">
+      <div className="flex-1 space-y-6 overflow-y-auto p-4">
         {COLUMNS.map((column) => {
           const items = tasks.filter((t) => column.status.includes(t.status));
           return (
-            <section key={column.title}>
-              <h3 className="mb-1 text-[11px] tracking-wide text-gray-400 uppercase">
-                {column.title} · {items.length}
-              </h3>
-              <div className="space-y-1">
+            <Section
+              key={column.title}
+              title={column.title}
+              aside={<span className="text-2xs text-gray-500">{items.length}</span>}
+            >
+              <div className="space-y-2">
                 {items.slice(0, 30).map((t) => (
                   <TaskCard key={t.id} task={t} agents={agents} tasks={allTasks} inbox={inbox} />
                 ))}
               </div>
-            </section>
+            </Section>
           );
         })}
       </div>

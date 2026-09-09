@@ -7,6 +7,21 @@
   --color-panel: #171a21;
   --color-line: #262b36;
   --color-accent: #ffd166;
+
+  /* The office is a fixed desktop window, so both scales are absolute. A rem scale hung off a 13px
+     root turned `text-xs` into 9.75px and `p-2` into 7px, which is what made every panel look glued
+     together. */
+  --spacing: 4px;
+  --text-2xs: 11px;
+  --text-2xs--line-height: 1.45;
+  --text-xs: 12px;
+  --text-xs--line-height: 1.5;
+  --text-sm: 13px;
+  --text-sm--line-height: 1.55;
+  --text-base: 15px;
+  --text-base--line-height: 1.5;
+  --text-lg: 17px;
+  --text-lg--line-height: 1.4;
 }
 
 html,
@@ -17,10 +32,23 @@ body,
   background: var(--color-ink);
   color: #e6e6e6;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 canvas {
   display: block;
   image-rendering: pixelated;
+}
+
+/* Native controls inherit the office's own type and dark ground instead of the platform's. */
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+select option {
+  background: var(--color-ink);
 }

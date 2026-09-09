@@ -49,7 +49,7 @@ function Messages({
     bottom.current?.scrollIntoView({ block: "end" });
   }, [messages.length]);
   return (
-    <div className="flex-1 space-y-2 overflow-y-auto p-3">
+    <div className="flex-1 space-y-3 overflow-y-auto p-4">
       {messages.length === 0 ? (
         <p className="text-xs text-gray-500">
           Write to the boss of this floor. Lola brings him your message; he plans, delegates and
@@ -59,11 +59,11 @@ function Messages({
       {messages.map((m) => (
         <div
           key={m.id}
-          className={`max-w-[92%] rounded px-2 py-1 ${
+          className={`max-w-[92%] rounded-lg px-3 py-2 text-sm ${
             m.author.kind === "human" ? "ml-auto bg-accent/20" : "bg-panel"
           }`}
         >
-          <div className="text-[10px] text-gray-400">
+          <div className="mb-1 text-2xs text-gray-400">
             {authorName(agents, m)} · {new Date(m.at).toLocaleTimeString()}
           </div>
           <div className="whitespace-pre-wrap">{m.text}</div>
@@ -91,7 +91,7 @@ export function ChatPanel(): React.JSX.Element {
     },
   });
   if (floorId === null) {
-    return <p className="p-3 text-xs text-gray-400">Add a project (floor) first.</p>;
+    return <p className="p-4 text-xs text-gray-400">Add a project (floor) first.</p>;
   }
   const floor = projects.get(floorId);
   const boss = bossOf({ agents, agentsByProject }, floorId);
@@ -113,18 +113,18 @@ export function ChatPanel(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-line px-3 py-1 text-[11px] text-gray-400">
+      <div className="border-b border-line px-4 py-3 text-xs text-gray-400">
         Chat with <span className="text-gray-200">{boss?.name ?? "the boss"}</span>
         {floor === undefined ? "" : ` · floor ${floor.name}`}
       </div>
       <Messages messages={messages} agents={agents} />
       {questions.length > 0 ? (
-        <div className="border-t border-line bg-amber-950/40 p-2 text-xs">
+        <div className="space-y-1 border-t border-line bg-amber-950/40 p-3 text-xs">
           {questions.map((q) => (
             <button
               key={q.taskId}
               type="button"
-              className={`block w-full rounded px-2 py-1 text-left hover:bg-line ${
+              className={`block w-full rounded-md px-3 py-2 text-left hover:bg-line ${
                 answering === q.taskId ? "bg-line" : ""
               }`}
               onClick={() => {
@@ -134,18 +134,18 @@ export function ChatPanel(): React.JSX.Element {
               <span className="text-amber-300">
                 ? {q.asker} on “{q.title}”
               </span>
-              <div className="text-gray-300">{q.text}</div>
+              <div className="mt-1 text-gray-300">{q.text}</div>
             </button>
           ))}
         </div>
       ) : null}
-      <div className="border-t border-line p-2">
+      <div className="border-t border-line p-4">
         {send.error === null ? null : (
-          <p className="mb-2 rounded bg-red-950/70 px-2 py-1 text-xs text-red-200">
+          <p className="mb-3 rounded-md bg-red-950/70 px-3 py-2 text-xs text-red-200">
             {errorMessage(send.error)}
           </p>
         )}
-        <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
+        <div className="mb-2 flex items-center gap-3 text-xs text-gray-400">
           {question === undefined ? (
             <span>To {boss?.name ?? "the boss"}</span>
           ) : (
@@ -167,7 +167,7 @@ export function ChatPanel(): React.JSX.Element {
           aria-label="Message to the selected floor"
           maxLength={20_000}
           disabled={send.isPending}
-          className="h-16 w-full resize-none rounded bg-panel p-2 outline-none"
+          className="h-20 w-full resize-none rounded-md border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent/60"
           placeholder={
             question === undefined
               ? "Ask the floor for something… (Enter to send, Shift+Enter for a new line)"

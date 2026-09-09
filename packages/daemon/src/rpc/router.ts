@@ -80,6 +80,9 @@ export const router = base.router({
     buildImages: base.system.buildImages.handler(({ context, signal }) =>
       linesFrom(context.buildImages, signal),
     ),
+    pickDirectory: base.system.pickDirectory.handler(({ input, context }) =>
+      context.pickDirectory(input),
+    ),
     gc: base.system.gc.handler(({ context }) => context.gc()),
   },
   usage: {

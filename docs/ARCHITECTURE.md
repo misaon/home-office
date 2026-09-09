@@ -22,6 +22,13 @@ arrive in a spawn message and enter that child's environment. The runner token i
 child. A separate short-lived git-bridge container copies a repository into a Docker task volume and
 publishes its result branch back to the host. Agent containers never mount the host repository.
 
+Native host dialogs are a daemon port, not a UI capability. The same UI bundle runs in the Electrobun
+webview and in a plain browser, so `system.pickDirectory` asks the daemon, and the daemon holds a
+`DirectoryPicker`: the desktop app injects an open panel owned by its own window through `startDaemon`,
+and a daemon started on its own falls back to macOS `osascript`. A host without a dialog answers
+`unavailable`, which the office turns into "type the path" rather than an error. The prompt and starting
+directory are AppleScript `run argv` arguments, never script source.
+
 The simulation is a visual projection. It controls envelope timing while a viewer is present, with a
 30-second daemon timeout; it cannot determine task success, permissions or publication results.
 
@@ -149,6 +156,12 @@ Movement uses a weighted grid A* with a TinyQueue heap, clearance and turn costs
 reservations. Needs and seeded RNG drive idle behavior. Plan steps describe walking, dwelling, emitting
 handoff completion and leaving the office; queued envelope deliveries survive later intents. Each floor
 has its own elevator and animations. Simulation stepping is fixed and catch-up is bounded.
+
+Both scales the panels use are absolute, set once in `@theme`: `--spacing: 4px` and a px text ramp
+(`--text-2xs` 11px through `--text-base` 15px) with their own line heights. A rem scale hung off the
+13px root made `text-xs` render at 9.75px and `p-2` at 7px, which is why the panels looked glued
+together; the shared primitives in `packages/ui/src/kit` (`Field`, `Section`, `Button`, `Segmented`,
+`Modal`) carry the rhythm so a panel does not invent its own.
 
 Pixi renders at at most 30 fps and stops its ticker in a hidden document, but a hidden office is not a
 blank one. While the document is hidden the scene draws a still frame — the ticker's own four calls with

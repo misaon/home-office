@@ -50,13 +50,13 @@ function FloorTabs({ floorId }: { floorId: ProjectId | null }): React.JSX.Elemen
   const selectFloor = useUi((s) => s.selectFloor);
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
   return (
-    <nav className="flex min-w-0 items-center gap-1 overflow-x-auto">
+    <nav className="flex min-w-0 items-center gap-1.5 overflow-x-auto">
       {sortedFloors(projects).map((p, i) => (
         <button
           key={p.id}
           type="button"
           title={p.repo.kind === "local" ? p.repo.path : p.repo.url}
-          className={`flex shrink-0 items-center gap-1 rounded px-2 py-0.5 text-xs ${
+          className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs ${
             p.id === floorId ? "bg-accent text-black" : "bg-ink text-gray-300 hover:bg-line"
           }`}
           onClick={() => {
@@ -69,7 +69,7 @@ function FloorTabs({ floorId }: { floorId: ProjectId | null }): React.JSX.Elemen
       ))}
       <button
         type="button"
-        className="shrink-0 rounded bg-ink px-2 py-0.5 text-xs text-gray-300 hover:bg-line"
+        className="shrink-0 rounded-md bg-ink px-3 py-1.5 text-xs text-gray-300 hover:bg-line"
         title="Add a project (a new floor)"
         onClick={() => {
           setAddProjectOpen(true);
@@ -93,7 +93,7 @@ function EmptyOffice(): React.JSX.Element {
       {ready ? (
         <button
           type="button"
-          className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-black shadow-lg hover:brightness-110"
+          className="rounded-lg bg-accent px-8 py-4 text-base font-semibold text-black shadow-lg transition hover:brightness-110"
           onClick={() => {
             setAddProjectOpen(true);
           }}
@@ -103,7 +103,7 @@ function EmptyOffice(): React.JSX.Element {
       ) : (
         <p className="text-sm text-gray-500">{CONNECTION_TEXT[connection]}</p>
       )}
-      <div className="absolute right-3 bottom-2 flex items-center gap-3 text-[11px] text-gray-500">
+      <div className="absolute right-5 bottom-4 flex items-center gap-3 text-xs text-gray-500">
         <span
           className={`inline-block h-2 w-2 rounded-full ${connection === "online" ? "bg-emerald-500" : "bg-red-500"}`}
         />
@@ -144,7 +144,7 @@ export function App(): React.JSX.Element {
       <SetupOverlay />
       <AddProjectModal />
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-line bg-panel px-3 py-1">
+        <header className="flex items-center gap-4 border-b border-line bg-panel px-4 py-2.5">
           <span className="shrink-0 font-semibold tracking-wide">Home Office</span>
           <span
             className={`h-2 w-2 shrink-0 rounded-full ${connection === "online" ? "bg-emerald-400" : "bg-red-400"}`}
@@ -153,7 +153,7 @@ export function App(): React.JSX.Element {
           <FloorTabs floorId={floorId} />
           <button
             type="button"
-            className="ml-auto shrink-0 rounded bg-panel px-2 py-1 text-xs text-gray-300 hover:bg-line"
+            className="ml-auto shrink-0 rounded-md border border-line px-3 py-1.5 text-xs text-gray-300 hover:bg-line"
             title="Docker, images, token, smoke test"
             onClick={() => {
               setSetupOpen(true);
@@ -166,13 +166,13 @@ export function App(): React.JSX.Element {
           <OfficeCanvas />
         </div>
       </main>
-      <aside className="flex w-[400px] shrink-0 flex-col border-l border-line bg-ink">
+      <aside className="flex w-[440px] shrink-0 flex-col border-l border-line bg-ink">
         <nav className="flex border-b border-line bg-panel">
           {PANELS.map((p) => (
             <button
               key={p.id}
               type="button"
-              className={`flex-1 px-2 py-2 text-xs ${
+              className={`flex-1 px-2 py-3 text-xs transition ${
                 p.id === panel
                   ? "border-b-2 border-accent text-white"
                   : "text-gray-400 hover:text-white"

@@ -1,6 +1,7 @@
 import { errorMessage, formatBytes } from "@ho/protocol";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { resourcesQuery } from "../queries.ts";
+import { Button, Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
 
@@ -23,27 +24,23 @@ export function ResourcesPanel(): React.JSX.Element {
         ? null
         : `removed ${String(prune.data.containers.length)} containers, ${String(prune.data.volumes.length)} volumes, ${String(prune.data.images.length)} images`;
   return (
-    <div className="space-y-3 overflow-y-auto p-3 text-xs">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className="rounded bg-panel px-2 py-1 hover:bg-line disabled:opacity-50"
+    <div className="space-y-5 overflow-y-auto p-4 text-xs">
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
           disabled={prune.isPending}
           onClick={() => {
             prune.mutate();
           }}
         >
           {prune.isPending ? "Pruning…" : "Prune now"}
-        </button>
-        <button
-          type="button"
-          className="rounded bg-panel px-2 py-1"
+        </Button>
+        <Button
           onClick={() => {
             void query.refetch();
           }}
         >
           Refresh
-        </button>
+        </Button>
         {query.error === null ? null : <span role="alert">{query.error.message}</span>}
         {note !== null ? <span className="text-gray-400">{note}</span> : null}
       </div>
@@ -57,30 +54,28 @@ export function ResourcesPanel(): React.JSX.Element {
             {formatBytes(inventory.snapshot.volumesBytes)}) · images{" "}
             {formatBytes(inventory.snapshot.imagesBytes)}
           </div>
-          <section>
-            <h3 className="mb-1 text-[11px] tracking-wide text-gray-400 uppercase">Containers</h3>
+          <Section title="Containers">
             {inventory.containers.length === 0 ? <p className="text-gray-500">none</p> : null}
             {inventory.containers.map((c) => (
-              <div key={c.name} className="flex justify-between border-t border-line py-0.5">
+              <div key={c.name} className="flex justify-between gap-3 border-t border-line py-1.5">
                 <span className="truncate font-mono">{c.name}</span>
-                <span className="text-gray-400">
+                <span className="shrink-0 text-gray-400">
                   {c.kind} · {c.state}
                 </span>
               </div>
             ))}
-          </section>
-          <section>
-            <h3 className="mb-1 text-[11px] tracking-wide text-gray-400 uppercase">Volumes</h3>
+          </Section>
+          <Section title="Volumes">
             {inventory.volumes.length === 0 ? <p className="text-gray-500">none</p> : null}
             {inventory.volumes.map((v) => (
-              <div key={v.name} className="flex justify-between border-t border-line py-0.5">
+              <div key={v.name} className="flex justify-between gap-3 border-t border-line py-1.5">
                 <span className="truncate font-mono">{v.name}</span>
-                <span className="text-gray-400">
+                <span className="shrink-0 text-gray-400">
                   {v.kind} · {formatBytes(v.sizeBytes)}
                 </span>
               </div>
             ))}
-          </section>
+          </Section>
         </>
       )}
     </div>
