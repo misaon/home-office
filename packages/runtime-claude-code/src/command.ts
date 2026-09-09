@@ -4,10 +4,14 @@ import type { RuntimeSessionSpec } from "@ho/core";
  * Static, token-lean Claude Code settings applied inside every sandbox (inline JSON, no files).
  * The RTK PreToolUse hook is not here: `rtk init --hook-only` writes it into the image's user settings,
  * which Claude Code reads through `--setting-sources user` and RTK checks before rewriting.
+ * `includeGitInstructions: false` because the office supplies its own git workflow and forbids pushing;
+ * `bashOutputMaxChars` bounds what a verbose command pours into the context (RTK keeps the full output
+ * on tmpfs). The autoupdater is off, so the release channel key would be dead configuration.
  */
 export const CLAUDE_SETTINGS = {
-  includeCoAuthoredBy: false,
-  autoUpdatesChannel: "stable",
+  attribution: { commit: "", pr: "", sessionUrl: false },
+  includeGitInstructions: false,
+  bashOutputMaxChars: 10_000,
   env: {
     DISABLE_AUTOUPDATER: "1",
     DISABLE_TELEMETRY: "1",

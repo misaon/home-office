@@ -10,10 +10,12 @@
     "build": "bun build --compile --minify ./src/main.ts --outfile ./dist/ho"
   },
   "dependencies": {
+    "@ho/core": "workspace:*",
     "@ho/daemon": "workspace:*",
     "@ho/protocol": "workspace:*",
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
+    "yoctocolors": "catalog:",
     "zod": "catalog:"
   }
 }

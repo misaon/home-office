@@ -3,7 +3,7 @@ import {
   changeSessionState,
   createChannel,
   endSession,
-  isSessionActive,
+  rateLimitedReason,
   recordSessionUsage,
   resumableSession,
   type RuntimeEvent,
@@ -12,14 +12,16 @@ import {
   startSession,
   transitionTask,
 } from "@ho/core";
-import type {
-  LiveEvent,
-  ProviderId,
-  Session,
-  SessionId,
-  SessionMode,
-  SessionState,
-  TaskId,
+import {
+  compact,
+  errorMessage,
+  type LiveEvent,
+  type ProviderId,
+  type Session,
+  type SessionId,
+  type SessionMode,
+  type SessionState,
+  type TaskId,
 } from "@ho/protocol";
 import { secretEnvFor } from "./auth.ts";
 import type { DaemonConfig } from "./config.ts";
@@ -61,8 +63,7 @@ export class SessionManager {
   }
 
   get activeCount(): number {
-    return [...this.#deps.office.model.sessions.values()].filter((s) => isSessionActive(s.state))
-      .length;
+    return this.#deps.office.model.activeSessions.size;
   }
 
   /** Live runtime events for the UI and CLI. Not persisted. */
@@ -161,7 +162,7 @@ export class SessionManager {
 
   #end(sessionId: SessionId, state: "stopped" | "failed", reason?: string): Promise<Session> {
     return this.#deps.office.execute(SYSTEM, (m, ctx) =>
-      endSession(m, { sessionId, state, ...(reason === undefined ? {} : { reason }) }, ctx),
+      endSession(m, { sessionId, state, ...compact({ reason }) }, ctx),
     );
   }
 
@@ -173,7 +174,7 @@ export class SessionManager {
       );
     } else if (event.kind === "rate_limited") {
       await this.#state(ctx.session.id, "idle", {
-        reason: `rate limited until ${event.retryAt ?? "unknown"}`,
+        reason: rateLimitedReason(event.retryAt),
       });
     } else if (event.kind === "init") {
       await this.#state(ctx.session.id, "running", { runtimeSessionId: event.runtimeSessionId });
@@ -210,7 +211,7 @@ export class SessionManager {
         outcome.failure ?? undefined,
       );
     } catch (error) {
-      const message = (error instanceof Error ? error.message : String(error)).slice(0, 2000);
+      const message = errorMessage(error).slice(0, 2000);
       log.error({ sessionId, err: message }, "session failed");
       this.#emit(sessionId, { kind: "error", code: "unknown", message });
       const status = office.model.tasks.get(ctx.task.id)?.status;

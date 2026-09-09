@@ -39,17 +39,19 @@ const CONNECTION_TEXT = {
   connecting: "Connecting to the daemon…",
   online: "Connected",
   offline: "Daemon offline — retrying…",
-  unauthorized: "No daemon token. Open the office with `ho ui`.",
+  unauthorized: "This page carries no daemon token. Run `ho ui` to open the office with it.",
+  rejected:
+    "The daemon refused this page's token — it mints a new one every launch. Run `ho ui` again to reconnect.",
 } as const;
 
 /** Floor tabs in the header: numbered by creation, the "+" adds a project (a new floor). */
 function FloorTabs({ floorId }: { floorId: ProjectId | null }): React.JSX.Element {
-  const snapshot = useUi((s) => s.snapshot);
+  const projects = useUi((s) => s.snapshot.projects);
   const selectFloor = useUi((s) => s.selectFloor);
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
   return (
     <nav className="flex min-w-0 items-center gap-1 overflow-x-auto">
-      {sortedFloors(snapshot).map((p, i) => (
+      {sortedFloors(projects).map((p, i) => (
         <button
           key={p.id}
           type="button"

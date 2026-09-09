@@ -11,12 +11,12 @@ import {
 } from "./api.ts";
 
 export async function removeContainer(api: DockerApi, id: string): Promise<void> {
-  await api.maybe("DELETE", `/containers/${id}?v=1&force=1`);
+  await api.maybe("DELETE", `/containers/${encodeURIComponent(id)}?v=1&force=1`);
 }
 
 const removeVolumeIfFree = async (api: DockerApi, name: string): Promise<boolean> => {
   try {
-    await api.raw("DELETE", `/volumes/${name}`);
+    await api.raw("DELETE", `/volumes/${encodeURIComponent(name)}`);
     return true;
   } catch (error) {
     // 404: already gone; 409: still in use by a container, leave it for the next sweep.

@@ -1,4 +1,5 @@
-import type { SecretKey, SecretStore } from "@ho/core";
+import type { SecretStore } from "@ho/core";
+import type { SecretKeyName } from "@ho/protocol";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
@@ -6,7 +7,7 @@ import { writePrivateFile } from "./private-file.ts";
 
 const Contents = z.record(z.string(), z.string());
 
-/** Plain JSON file with mode 0600. Used where no OS keychain is available (Linux servers). */
+/** Plain JSON file with mode 0600. Used where the host has no credential store (headless servers). */
 export const createFileSecretStore = (path: string): SecretStore => {
   const load = async (): Promise<Record<string, string>> => {
     const file = Bun.file(path);
@@ -28,9 +29,10 @@ export const createFileSecretStore = (path: string): SecretStore => {
     return next;
   };
   return {
-    get: async (key: SecretKey) => (await load())[key] ?? null,
-    set: (key: SecretKey, value: string) => mutate((contents) => ({ ...contents, [key]: value })),
-    delete: (key: SecretKey) =>
+    get: async (key: SecretKeyName) => (await load())[key] ?? null,
+    set: (key: SecretKeyName, value: string) =>
+      mutate((contents) => ({ ...contents, [key]: value })),
+    delete: (key: SecretKeyName) =>
       mutate((contents) => {
         const { [key]: _dropped, ...rest } = contents;
         return rest;

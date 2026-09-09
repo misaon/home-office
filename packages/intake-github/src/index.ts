@@ -54,7 +54,10 @@ export function createGithubIssuesConnector(): IntakeConnector {
       if (repo === undefined || !/^[a-z0-9-]+\/[a-z0-9_.-]+$/iu.test(repo)) {
         throw new Error("invalid GitHub repository identity");
       }
-      const labels = encodeURIComponent(project.intake.labels.join(","));
+      const labels =
+        project.intake.labels.length === 0
+          ? ""
+          : `&labels=${encodeURIComponent(project.intake.labels.join(","))}`;
       const pages = IssuePages.parse(
         JSON.parse(
           await gh(
@@ -62,7 +65,7 @@ export function createGithubIssuesConnector(): IntakeConnector {
               "api",
               "--paginate",
               "--slurp",
-              `repos/${repo}/issues?state=open&per_page=100&labels=${labels}`,
+              `repos/${repo}/issues?state=open&per_page=100${labels}`,
             ],
             target.cwd,
             cancel,
@@ -86,7 +89,6 @@ export function createGithubIssuesConnector(): IntakeConnector {
       cancel?: Cancellation,
     ): Promise<void> => {
       const target = ghTarget(project);
-      const signal = cancel;
       if (project.intake.comment) {
         await gh(
           [
@@ -98,7 +100,7 @@ export function createGithubIssuesConnector(): IntakeConnector {
             closing(ack).slice(0, COMMENT_MAX),
           ],
           target.cwd,
-          signal,
+          cancel,
         );
       }
       if (ack.outcome === "received" && project.intake.ackLabel !== "") {
@@ -112,7 +114,7 @@ export function createGithubIssuesConnector(): IntakeConnector {
             project.intake.ackLabel,
           ],
           target.cwd,
-          signal,
+          cancel,
         );
       }
     },

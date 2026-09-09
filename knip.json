@@ -19,6 +19,9 @@
     "packages/ui": {
       "entry": ["src/main.tsx", "src/styles.css"],
       "project": ["src/**/*.{ts,tsx,css}"]
+    },
+    "apps/cli": {
+      "project": ["src/**/*.ts"]
     }
   },
   "ignoreWorkspaces": ["packages/agent-kit"]

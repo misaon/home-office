@@ -1,14 +1,12 @@
 {
   "name": "@ho/desktop",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "dependencies": {
     "@ho/daemon": "workspace:*",
-    "electrobun": "catalog:",
-    "proper-lockfile": "catalog:"
+    "@ho/protocol": "workspace:*",
+    "electrobun": "catalog:"
   },
-  "devDependencies": {
-    "@types/proper-lockfile": "catalog:"
-  }
+  "devDependencies": {}
 }

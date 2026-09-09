@@ -5,7 +5,7 @@ import type { ElectrobunConfig } from "electrobun";
  * UI the daemon serves. `resources/ho` (written by `bun run desktop:prepare`, git-ignored) mirrors the
  * repository paths the daemon needs: image build contexts, the UI bundle, sprites and migrations.
  */
-const version = Bun.env["HO_RELEASE_VERSION"] ?? "0.1.0";
+const version = Bun.env["HO_RELEASE_VERSION"] ?? "0.0.0";
 if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.test(version)) {
   throw new Error("HO_RELEASE_VERSION must be a stable semantic version");
 }

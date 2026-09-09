@@ -24,15 +24,74 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
+      - name: Cache the pinned Hutch toolchain
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .tools
+          key: hutch-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/devkit.ts') }}
       - run: bun run devkit
       - run: bun run check
       - run: bun audit
       - name: Audit sandbox dependencies
         run: |
           for directory in images/agent/mcp images/agent/providers/*; do
+            npm ls --prefix "$directory" --package-lock-only >/dev/null
             npm audit --omit=dev --prefix "$directory"
           done
       - run: bun run ui:build
       - run: bun run assets:manifest
       - run: bun build --compile apps/cli/src/main.ts --outfile /tmp/ho
-      - run: bun build --compile --minify --target=bun-linux-arm64-musl packages/runner/src/main.ts --outfile /tmp/ho-runner
+      - run: bun build --target=bun --minify packages/runner/src/main.ts --outfile /tmp/ho-runner.js
+      - name: Smoke test the daemon
+        run: |
+          export HO_HOME="$(mktemp -d)"
+          /tmp/ho daemon >"$HO_HOME/daemon.log" 2>&1 &
+          for _ in $(seq 1 50); do
+            if curl -fsS "http://127.0.0.1:47800/health" >/dev/null 2>&1; then break; fi
+            sleep 0.2
+          done
+          curl -fsS "http://127.0.0.1:47800/health" | tee /dev/stderr | grep -q '"ok":true'
+          test "$(stat -c '%a' "$HO_HOME/daemon.json")" = 600
+          pkill -TERM -f 'ho daemon'
+          cat "$HO_HOME/daemon.log"
+
+  images:
+    # The agent Dockerfile requires arm64 (`RUN test "$TARGETARCH" = arm64`); Linux arm64 hosted runners are
+    # free in public repositories. Only `base` and `claude-code` are built: the four provider targets share
+    # `base`, and the runner has 14 GB of disk.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
+      - run: bun install --frozen-lockfile
+      - name: Assemble the agent build context
+        run: |
+          bun build --target=bun --minify \
+            packages/runner/src/main.ts --outfile images/agent/bin/ho-runner.js
+          rm -rf images/agent/plugins
+          cp -R packages/agent-kit/plugins images/agent/plugins
+      - name: Build the git-bridge image
+        run: |
+          docker buildx build --load -t ho/git-bridge:ci \
+            --cache-from type=gha,scope=git-bridge --cache-to type=gha,mode=max,scope=git-bridge \
+            images/git-bridge
+      - name: Build the agent image (base, then claude-code)
+        run: |
+          docker buildx build --load --target base -t ho/agent-base:ci \
+            --cache-from type=gha,scope=agent --cache-to type=gha,mode=max,scope=agent \
+            images/agent
+          docker buildx build --load --target claude-code -t ho/agent:ci \
+            --cache-from type=gha,scope=agent images/agent
+      - name: Smoke test the images
+        run: |
+          docker run --rm ho/agent:ci 2>&1 \
+            | grep -q "HO_GATEWAY and HO_SESSION_TOKEN are required"
+          docker run --rm --entrypoint sh ho/agent:ci -c \
+            'claude --version && rtk --version && test -s /home/agent/.claude/settings.json'
+          docker run --rm ho/git-bridge:ci --version

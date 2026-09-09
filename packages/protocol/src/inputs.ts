@@ -157,6 +157,7 @@ export const ChatHistoryInput = z.object({
   projectId: ProjectId.optional(),
   limit: z.int().positive().max(500).default(100),
 });
+export type ChatHistoryInput = z.infer<typeof ChatHistoryInput>;
 
 export const SessionListInput = z.object({
   taskId: TaskId.optional(),
@@ -180,6 +181,7 @@ export const UsageBucket = z.object({
   usage: Usage,
   sessions: z.int().nonnegative(),
 });
+export type UsageBucket = z.infer<typeof UsageBucket>;
 export const UsageSummary = z.object({
   since: IsoDateTime.nullable(),
   totals: Usage,

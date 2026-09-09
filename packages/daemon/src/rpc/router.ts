@@ -1,4 +1,5 @@
 import {
+  chatOf,
   assignTask,
   copyAgent,
   createAgent,
@@ -7,6 +8,7 @@ import {
   createTask,
   editTask,
   isSessionActive,
+  sessionsOfTask,
   postChatMessage,
   removeAgent,
   removeProject,
@@ -17,41 +19,10 @@ import {
 } from "@ho/core";
 import { contract, SecretKeyName, type StoredEvent } from "@ho/protocol";
 import { implement, ORPCError } from "@orpc/server";
-import { DomainFailure } from "../errors.ts";
 import type { RpcContext } from "./context.ts";
+import { guarded } from "./guarded.ts";
 
 const os = implement(contract).$context<RpcContext>();
-
-/** Runs an office command and translates domain failures into typed RPC errors. */
-const guarded = os.middleware(async ({ next }) => {
-  try {
-    return await next();
-  } catch (error) {
-    if (error instanceof DomainFailure) {
-      switch (error.error.code) {
-        case "not_found": {
-          throw new ORPCError("NOT_FOUND", {
-            message: error.message,
-            data: { entity: error.error.entity, id: error.error.id },
-          });
-        }
-        case "conflict": {
-          throw new ORPCError("CONFLICT", {
-            message: error.message,
-            data: { reason: error.error.reason },
-          });
-        }
-        case "invalid_transition": {
-          throw new ORPCError("INVALID_TRANSITION", {
-            message: error.message,
-            data: { from: error.error.from, to: error.error.to },
-          });
-        }
-      }
-    }
-    throw error;
-  }
-});
 
 const base = os.use(guarded);
 const HUMAN = { kind: "human" } as const;
@@ -75,7 +46,7 @@ async function* linesFrom(
     });
   yield* channel.iterate();
   if (state.failure !== null) {
-    throw state.failure;
+    throw new ORPCError("INTERNAL_SERVER_ERROR", { message: state.failure.message });
   }
 }
 
@@ -95,6 +66,7 @@ export const router = base.router({
       return {
         provider,
         images: provider.ok ? await context.imageStatus() : [],
+        imageContexts: context.imageContexts,
         secrets: {
           anthropicOauthToken: (await context.secrets.get("anthropic-oauth-token")) !== null,
         },
@@ -201,11 +173,10 @@ export const router = base.router({
   },
   sessions: {
     list: base.sessions.list.handler(({ input, context }) =>
-      [...context.office.model.sessions.values()].filter(
-        (s) =>
-          (input.taskId === undefined || s.taskId === input.taskId) &&
-          (input.active === undefined || isSessionActive(s.state) === input.active),
-      ),
+      (input.taskId === undefined
+        ? [...context.office.model.sessions.values()]
+        : sessionsOfTask(context.office.model, input.taskId)
+      ).filter((s) => input.active === undefined || isSessionActive(s.state) === input.active),
     ),
     stream: base.sessions.stream.handler(async function* ({ input, context, signal }) {
       for await (const live of context.sessions.stream(input.sessionId ?? null, signal)) {
@@ -214,11 +185,14 @@ export const router = base.router({
     }),
   },
   chat: {
-    history: base.chat.history.handler(({ input, context }) =>
-      context.office.model.chat
-        .filter((m) => input.projectId === undefined || m.projectId === input.projectId)
-        .slice(-input.limit),
-    ),
+    history: base.chat.history.handler(({ input, context }) => {
+      const model = context.office.model;
+      const messages =
+        input.projectId === undefined
+          ? [...model.chat.values()].flat().toSorted((a, b) => a.at.localeCompare(b.at))
+          : chatOf(model, input.projectId);
+      return messages.slice(-input.limit);
+    }),
     send: base.chat.send.handler(({ input, context }) =>
       context.office.execute(HUMAN, (m, ctx) => postChatMessage(m, input, ctx)),
     ),

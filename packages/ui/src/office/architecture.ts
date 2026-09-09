@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
 import { type PlanGlass, type PlanRect, type PlanRoom, roomFloorKey, SURFACE_TILE } from "@ho/sim";
 import { Container, Graphics, type Texture, TilingSprite } from "pixi.js";
 import { label, PALETTE, surfaceColor, TILE } from "./stand-ins.ts";

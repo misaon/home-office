@@ -1,20 +1,20 @@
-import type {
-  Agent,
-  AgentCopyInput,
-  AgentCreateInput,
-  AgentId,
-  AgentUpdateInput,
-  ProjectId,
+import {
+  type Agent,
+  type AgentCopyInput,
+  type AgentCreateInput,
+  type AgentId,
+  type AgentUpdateInput,
+  compact,
+  type ProjectId,
 } from "@ho/protocol";
 import { conflict, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { err, ok } from "../result.ts";
 import { defaultChoice, validateChoice } from "../providers.ts";
 import { isTerminal } from "../tasks/transitions.ts";
-import { isSessionActive } from "./sessions.ts";
+import { isSessionActive, sessionsOfAgent } from "./sessions.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
 import { copyOf } from "./office-defaults.ts";
-import { definedOnly } from "./projects.ts";
 import { bossOf, membersOf } from "./shared.ts";
 
 /** Names are unique per floor: Andrew runs every floor, Pam may work on two. */
@@ -88,11 +88,11 @@ export function updateAgent(
       return err(conflict("this floor already has a boss"));
     }
   }
-  const merged: Agent = { ...current, ...definedOnly(input.patch), updatedAt: ctx.now };
+  const merged: Agent = { ...current, ...compact(input.patch), updatedAt: ctx.now };
   // A provider switch keeps whatever still fits and takes the new provider's defaults for the rest.
   const agent: Agent =
     input.patch.provider !== undefined && input.patch.provider !== current.provider
-      ? { ...merged, ...defaultChoice(merged.provider), ...definedOnly(input.patch) }
+      ? { ...merged, ...defaultChoice(merged.provider), ...compact(input.patch) }
       : merged;
   const choice = validateChoice(agent);
   if (!choice.ok) {
@@ -149,7 +149,7 @@ export function removeAgent(
   const busy = [...model.tasks.values()].filter(
     (t) => (t.assigneeId === id || t.reviewerId === id) && !isTerminal(t.status),
   ).length;
-  if ([...model.sessions.values()].some((s) => s.agentId === id && isSessionActive(s.state))) {
+  if (sessionsOfAgent(model, id).some((s) => isSessionActive(s.state))) {
     return err(conflict("agent has an active session"));
   }
   if (busy > 0) {

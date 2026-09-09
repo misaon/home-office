@@ -1,3 +1,4 @@
+import { errorMessage } from "@ho/protocol";
 import { planSessionStarts } from "@ho/core";
 import type { DaemonConfig } from "./config.ts";
 import type { OfficeGate } from "./office-gate.ts";
@@ -5,9 +6,10 @@ import type { Logger } from "./logger.ts";
 import type { Office } from "./office.ts";
 import type { SessionManager } from "./sessions.ts";
 
-const TICK_MS = 2_000;
+/** How long to wait before retrying a task the office gate is still animating. */
+const GATE_RETRY_MS = 1_000;
 
-/** Starts sessions for assigned tasks whenever the model changes or on a slow heartbeat. */
+/** Starts sessions for assigned tasks whenever the model changes, plus a retry while the office animates. */
 export function startScheduler(
   office: Office,
   sessions: SessionManager,
@@ -17,6 +19,16 @@ export function startScheduler(
 ): { stop: () => Promise<void> } {
   const controller = new AbortController();
   let active: Promise<void> | null = null;
+  let retry: ReturnType<typeof setTimeout> | null = null;
+  const retryLater = (): void => {
+    if (retry !== null || controller.signal.aborted) {
+      return;
+    }
+    retry = setTimeout(() => {
+      retry = null;
+      void tick();
+    }, GATE_RETRY_MS);
+  };
   const run = async (): Promise<void> => {
     try {
       const now = office.clock.now().toISOString();
@@ -29,16 +41,14 @@ export function startScheduler(
         const task = office.model.tasks.get(start.taskId);
         if (task !== undefined && gate.blocks(task, now)) {
           log.debug({ taskId: start.taskId }, "waiting for the office to deliver the handoff");
+          retryLater();
           continue;
         }
         log.info({ taskId: start.taskId, agentId: start.agentId }, "scheduling session");
         await sessions.start(start.taskId, start.agentId, start.mode);
       }
     } catch (error) {
-      log.error(
-        { err: error instanceof Error ? error.message : String(error) },
-        "scheduler tick failed",
-      );
+      log.error({ err: errorMessage(error) }, "scheduler tick failed");
     }
   };
   const tick = (): Promise<void> => {
@@ -50,9 +60,6 @@ export function startScheduler(
     });
     return active;
   };
-  const timer = setInterval(() => {
-    void tick();
-  }, TICK_MS);
   const listening = (async () => {
     for await (const event of office.store.subscribe(
       {
@@ -75,7 +82,9 @@ export function startScheduler(
   });
   return {
     stop: async () => {
-      clearInterval(timer);
+      if (retry !== null) {
+        clearTimeout(retry);
+      }
       controller.abort();
       await listening;
       await active;

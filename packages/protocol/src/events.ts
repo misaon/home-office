@@ -1,3 +1,4 @@
+import type { DistributedOmit } from "type-fest";
 import { z } from "zod";
 import {
   Actor,
@@ -32,7 +33,9 @@ const Envelope = z.object({
 const event = <TType extends string, TPayload extends z.ZodRawShape>(
   type: TType,
   payload: TPayload,
-) => Envelope.extend({ type: z.literal(type), payload: z.object(payload) });
+): ReturnType<
+  typeof Envelope.extend<{ type: z.ZodLiteral<TType>; payload: z.ZodObject<TPayload> }>
+> => Envelope.extend({ type: z.literal(type), payload: z.object(payload) });
 
 /** Persisted domain events. Keep these coarse: live agent chatter is streamed, not stored. */
 export const DomainEvent = z.discriminatedUnion("type", [
@@ -105,7 +108,5 @@ export type DomainEventOf<T extends DomainEventType> = Extract<DomainEvent, { ty
 export const StoredEvent = z.intersection(DomainEvent, z.object({ seq: z.int().nonnegative() }));
 export type StoredEvent = DomainEvent & { seq: number };
 
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
-
 /** What a producer hands to the store: everything but `id`, `at` and `seq`, which the store assigns. */
-export type NewEvent = DistributiveOmit<DomainEvent, "id" | "at">;
+export type NewEvent = DistributedOmit<DomainEvent, "id" | "at">;

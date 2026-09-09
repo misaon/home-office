@@ -1,9 +1,9 @@
+import { type Command, subcommand } from "../command.ts";
 import { withClient } from "../client.ts";
 import { line } from "../output.ts";
-import { subcommand } from "./help.ts";
 
-export async function image(args: readonly string[]): Promise<void> {
-  const { sub } = subcommand(args, "image");
+async function image(args: readonly string[]): Promise<void> {
+  const { sub } = subcommand(args, imageCommand);
   if (sub !== "build") {
     throw new Error(`unknown image command "${sub}"`);
   }
@@ -14,3 +14,10 @@ export async function image(args: readonly string[]): Promise<void> {
     line("images ready");
   });
 }
+
+export const imageCommand: Command = {
+  name: "image",
+  summary: "build the agent and git-bridge images",
+  usage: ["  ho image build"],
+  run: image,
+};

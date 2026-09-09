@@ -1,48 +1,18 @@
 import {
   type Agent,
   type AgentUpdateInput,
-  AgentRole,
-  type EffortLevel,
+  errorMessage,
   Gender,
+  type Project,
   ProjectId,
-  PROVIDERS,
-  type ProviderId,
 } from "@ho/protocol";
-import { useState } from "react";
-import { getClient } from "../rpc.ts";
-import { type Snapshot, sortedFloors, useUi } from "../store.ts";
-import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
+import { useMutation } from "@tanstack/react-query";
+import { requireClient } from "../rpc.ts";
+import { sortedFloors, useUi } from "../store.ts";
 
-/** Roles a floor hires; the boss comes with the floor. */
-const ROLES = AgentRole.options.filter((r) => r !== "boss");
 const GENDERS = Gender.options;
-/** Claude Code aliases per role (D12); other providers start from their catalog default. */
-const DEFAULT_MODEL: Record<AgentRole, string> = {
-  boss: "opus",
-  worker: "sonnet",
-  reviewer: "sonnet",
-  clerk: "haiku",
-};
-
-type Draft = Choice & {
-  name: string;
-  role: AgentRole;
-  spriteSet: string;
-  gender: Gender;
-  basePrompt: string;
-};
-
-const emptyDraft = (spriteSet: string): Draft => ({
-  name: "",
-  role: "worker",
-  provider: "claude-code",
-  auth: "subscription",
-  model: "sonnet",
-  effort: "medium",
-  spriteSet,
-  gender: "neutral",
-  basePrompt: "",
-});
+import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
+import { NewAgent } from "./agent-new.tsx";
 
 const choiceOf = (agent: Agent): Choice => ({
   provider: agent.provider,
@@ -51,21 +21,27 @@ const choiceOf = (agent: Agent): Choice => ({
   effort: agent.effort,
 });
 
-const effortFor = (provider: ProviderId, current: EffortLevel): EffortLevel => {
-  const levels = PROVIDERS[provider].effortLevels;
-  return levels.length === 0 || levels.includes(current) ? current : (levels[0] ?? current);
-};
+type RowProps = { agent: Agent; projects: ReadonlyMap<ProjectId, Project> };
 
-type RowProps = { agent: Agent; snapshot: Snapshot; onError: (e: unknown) => void };
-
-function AgentRow({ agent, snapshot, onError }: RowProps): React.JSX.Element {
+function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
   const spriteSets = useUi((s) => s.spriteSets);
-  const otherFloors = sortedFloors(snapshot).filter((p) => p.id !== agent.projectId);
+  const otherFloors = sortedFloors(projects).filter((p) => p.id !== agent.projectId);
+  const save = useMutation({
+    mutationFn: (patch: AgentUpdateInput["patch"]) =>
+      requireClient().agents.update({ id: agent.id, patch }),
+  });
+  const copy = useMutation({
+    mutationFn: (projectId: ProjectId) => requireClient().agents.copy({ id: agent.id, projectId }),
+  });
+  const remove = useMutation({
+    mutationFn: () => requireClient().agents.remove({ id: agent.id }),
+  });
+  const failure = save.error ?? copy.error ?? remove.error;
   const update = (patch: AgentUpdateInput["patch"]): void => {
-    getClient()?.agents.update({ id: agent.id, patch }).catch(onError);
+    save.mutate(patch);
   };
   const copyTo = (projectId: ProjectId): void => {
-    getClient()?.agents.copy({ id: agent.id, projectId }).catch(onError);
+    copy.mutate(projectId);
   };
   const sprites = [
     agent.appearance.spriteSet,
@@ -85,7 +61,7 @@ function AgentRow({ agent, snapshot, onError }: RowProps): React.JSX.Element {
             className="text-[11px] text-red-300 hover:underline"
             onClick={() => {
               if (window.confirm(`Remove ${agent.name}?`)) {
-                getClient()?.agents.remove({ id: agent.id }).catch(onError);
+                remove.mutate();
               }
             }}
           >
@@ -96,6 +72,7 @@ function AgentRow({ agent, snapshot, onError }: RowProps): React.JSX.Element {
       <div className="mt-1 grid grid-cols-2 gap-1 text-[11px]">
         <ProviderModelFields
           dense
+          role={agent.role}
           value={choiceOf(agent)}
           onChange={(next) => {
             update(next);
@@ -151,122 +128,22 @@ function AgentRow({ agent, snapshot, onError }: RowProps): React.JSX.Element {
           </select>
         </div>
       )}
-    </div>
-  );
-}
-
-function NewAgent({
-  floorId,
-  onError,
-}: {
-  floorId: ProjectId;
-  onError: (e: unknown) => void;
-}): React.JSX.Element {
-  const spriteSets = useUi((s) => s.spriteSets);
-  const [draft, setDraft] = useState<Draft>(emptyDraft(spriteSets[0] ?? "agent-a"));
-  const add = (): void => {
-    const client = getClient();
-    if (client === null || draft.name.trim() === "") {
-      return;
-    }
-    client.agents
-      .create({
-        projectId: floorId,
-        name: draft.name.trim(),
-        role: draft.role,
-        provider: draft.provider,
-        auth: draft.auth,
-        model: draft.model.trim(),
-        effort: draft.effort,
-        appearance: { spriteSet: draft.spriteSet, gender: draft.gender },
-        basePrompt: draft.basePrompt,
-        skillPack: draft.role === "clerk" ? "none" : draft.role,
-      })
-      .then(() => {
-        setDraft(emptyDraft(spriteSets[0] ?? "agent-a"));
-      }, onError);
-  };
-  return (
-    <div className="grid grid-cols-2 gap-1 rounded border border-dashed border-line p-2 text-[11px]">
-      <input
-        className="col-span-2 rounded bg-panel px-2 py-1"
-        placeholder="Name"
-        value={draft.name}
-        onChange={(e) => {
-          setDraft({ ...draft, name: e.target.value });
-        }}
-      />
-      <select
-        className="rounded bg-panel px-1 py-1"
-        value={draft.role}
-        onChange={(e) => {
-          const role = AgentRole.parse(e.target.value);
-          setDraft({
-            ...draft,
-            role,
-            ...(draft.provider === "claude-code" ? { model: DEFAULT_MODEL[role] } : {}),
-          });
-        }}
-      >
-        {ROLES.map((x) => (
-          <option key={x}>{x}</option>
-        ))}
-      </select>
-      <ProviderModelFields
-        value={draft}
-        onChange={(next) => {
-          setDraft({ ...draft, ...next, effort: effortFor(next.provider, next.effort) });
-        }}
-      />
-      <select
-        className="rounded bg-panel px-1 py-1"
-        value={draft.spriteSet}
-        onChange={(e) => {
-          setDraft({ ...draft, spriteSet: e.target.value });
-        }}
-      >
-        {(spriteSets.length === 0 ? [draft.spriteSet] : spriteSets).map((x) => (
-          <option key={x}>{x}</option>
-        ))}
-      </select>
-      <select
-        className="rounded bg-panel px-1 py-1"
-        value={draft.gender}
-        onChange={(e) => {
-          setDraft({ ...draft, gender: Gender.parse(e.target.value) });
-        }}
-      >
-        {GENDERS.map((x) => (
-          <option key={x}>{x}</option>
-        ))}
-      </select>
-      <textarea
-        className="col-span-2 h-14 rounded bg-panel px-2 py-1"
-        placeholder="Base prompt (persona, habits, constraints)"
-        value={draft.basePrompt}
-        onChange={(e) => {
-          setDraft({ ...draft, basePrompt: e.target.value });
-        }}
-      />
-      <button type="button" className="rounded bg-accent px-2 py-1 text-black" onClick={add}>
-        Add agent
-      </button>
+      {failure === null ? null : (
+        <p className="mt-1 text-[11px] text-red-400">{errorMessage(failure)}</p>
+      )}
     </div>
   );
 }
 
 /** The staff of the selected floor: the boss first, then everybody else by name. */
 export function AgentsSettings(): React.JSX.Element {
-  const snapshot = useUi((s) => s.snapshot);
+  const projects = useUi((s) => s.snapshot.projects);
+  const staff = useUi((s) => s.snapshot.agents);
   const floorId = useUi((s) => s.floorId);
-  const [error, setError] = useState<string | null>(null);
-  const onError = (e: unknown): void => {
-    setError(e instanceof Error ? e.message : String(e));
-  };
   if (floorId === null) {
     return <p className="text-gray-400">Add a project (floor) first.</p>;
   }
-  const agents = [...snapshot.agents.values()]
+  const agents = [...staff.values()]
     .filter((a) => a.projectId === floorId)
     .toSorted(
       (a, b) =>
@@ -275,13 +152,12 @@ export function AgentsSettings(): React.JSX.Element {
   return (
     <section className="space-y-2">
       <h3 className="text-[11px] tracking-wide text-gray-400 uppercase">
-        Team of floor {snapshot.projects.get(floorId)?.name ?? ""}
+        Team of floor {projects.get(floorId)?.name ?? ""}
       </h3>
       {agents.map((a) => (
-        <AgentRow key={a.id} agent={a} snapshot={snapshot} onError={onError} />
+        <AgentRow key={a.id} agent={a} projects={projects} />
       ))}
-      <NewAgent floorId={floorId} onError={onError} />
-      {error === null ? null : <p className="text-red-400">{error}</p>}
+      <NewAgent floorId={floorId} />
     </section>
   );
 }

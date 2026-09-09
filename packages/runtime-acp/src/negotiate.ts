@@ -1,8 +1,9 @@
-import type { ClientConnection, McpServer } from "@agentclientprotocol/sdk";
+import { errorMessage } from "@ho/protocol";
+import { type ClientConnection, type McpServer, PROTOCOL_VERSION } from "@agentclientprotocol/sdk";
 import type { RuntimeSessionSpec } from "@ho/core";
 import type { AcpPreset } from "./presets.ts";
 
-const PROTOCOL_VERSION = 1;
+/** JSON-RPC application error the ACP spec assigns to "authentication required". */
 const AUTH_REQUIRED = -32000;
 
 export type Negotiated = {
@@ -14,9 +15,6 @@ export type Negotiated = {
 
 export const isAuthRequired = (error: unknown): boolean =>
   typeof error === "object" && error !== null && "code" in error && error.code === AUTH_REQUIRED;
-
-export const describe = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
 
 /** HO's MCP server (http) and the sandbox-local browser servers (stdio) in ACP's shape. */
 function mcpServers(spec: RuntimeSessionSpec, http: boolean): McpServer[] {
@@ -47,14 +45,20 @@ function mcpServers(spec: RuntimeSessionSpec, http: boolean): McpServer[] {
  * initialize → (authenticate on demand) → session/load when possible, else session/new. Every request races
  * the agent's exit so a CLI that dies (missing binary, bad key) fails fast with its exit code.
  */
+export type NegotiateContext = {
+  exited: Promise<number | null>;
+  stderr: (text: string) => void;
+  lastStderr: () => string;
+  clientVersion: string;
+};
+
 export async function negotiate(
   conn: ClientConnection,
   preset: AcpPreset,
   spec: RuntimeSessionSpec,
-  exited: Promise<number | null>,
-  stderr: (text: string) => void,
-  lastStderr: () => string,
+  context: NegotiateContext,
 ): Promise<Negotiated> {
+  const { exited, stderr, lastStderr, clientVersion } = context;
   const exitFirst = async <T>(work: Promise<T>): Promise<T> => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
@@ -80,7 +84,7 @@ export async function negotiate(
     agent.request("initialize", {
       protocolVersion: PROTOCOL_VERSION,
       clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
-      clientInfo: { name: "home-office", version: "0.1.0" },
+      clientInfo: { name: "home-office", version: clientVersion },
     }),
   );
   const http = init.agentCapabilities?.mcpCapabilities?.http === true;
@@ -100,7 +104,7 @@ export async function negotiate(
         );
         return { sessionId: spec.resume, resumed: true, servers };
       } catch (error) {
-        stderr(`session/load failed (${describe(error)}); starting a new conversation`);
+        stderr(`session/load failed (${errorMessage(error)}); starting a new conversation`);
       }
     }
     const created = await exitFirst(

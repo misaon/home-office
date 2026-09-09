@@ -6,7 +6,7 @@ import { startBossVoice } from "./boss-voice.ts";
 import { openOffice } from "./open-office.ts";
 import { DaemonConfig, loadConfig } from "./config.ts";
 import { type DaemonInfo, removeDaemonInfo, writeDaemonInfo } from "./daemon-info.ts";
-import { resolveResources } from "./paths.ts";
+import { buildsImages, resolveResources } from "./paths.ts";
 import { createLogger } from "./logger.ts";
 import { OfficeGate } from "./office-gate.ts";
 import { createJobs } from "./jobs.ts";
@@ -18,8 +18,7 @@ import { startServer } from "./server.ts";
 import { SessionManager } from "./sessions.ts";
 
 import type { DaemonHandle, DaemonOptions } from "./index.ts";
-
-const VERSION = "0.0.0-dev";
+import { VERSION } from "./version.ts";
 
 export async function launchDaemon(
   options: DaemonOptions,
@@ -39,17 +38,13 @@ export async function launchDaemon(
     },
   });
 
-  const { database, store, office } = await openOffice(
-    home,
-    resources.migrationsDir,
-    ids,
-    clock,
-    log,
-  );
+  const { database, office } = await openOffice(home, resources.migrationsDir, ids, clock, log);
   cleanup.defer(() => {
     database.close();
   });
-  const secrets = createSecretStore(home, config.secrets.store);
+  const secrets = createSecretStore(home, config.secrets.store, (reason) => {
+    log.warn({ reason }, "no OS credential store; using the file secret store");
+  });
   const provider = createDockerProvider({
     socket: config.docker.socket,
     platform: config.docker.platform,
@@ -102,7 +97,6 @@ export async function launchDaemon(
       secrets,
       config,
       resources,
-      store,
       version: VERSION,
       startedAt,
       gc: jobs.gcOnce,
@@ -119,6 +113,7 @@ export async function launchDaemon(
     pid: process.pid,
     startedAt,
     version: VERSION,
+    serves: { ui: resources.uiDir !== null, images: buildsImages(resources) },
   };
   await writeDaemonInfo(home, info);
 

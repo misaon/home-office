@@ -1,28 +1,26 @@
-import type { Agent, AgentId, RepoInspection, RepoSource } from "@ho/protocol";
+import {
+  type Agent,
+  type AgentId,
+  errorMessage,
+  type RepoInspection,
+  REPO_URL_FORMS,
+  repoSourceOf,
+} from "@ho/protocol";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useState } from "react";
-import { getClient } from "../rpc.ts";
+import { type Client, getClient, requireClient } from "../rpc.ts";
 import { type Snapshot, sortedFloors, useUi } from "../store.ts";
 
 const INSPECT_DEBOUNCE_MS = 600;
 
-/** A git URL when it looks like one (scheme or scp-style), else a path on this machine. */
-const repoOf = (source: string): RepoSource =>
-  /^(?:https?:|git@|ssh:|git:|file:)/u.test(source)
-    ? { kind: "git", url: source }
-    : { kind: "local", path: source };
-
-const describeError = (e: unknown): string => (e instanceof Error ? e.message : String(e));
-
 type Group = { floor: string; agents: Agent[] };
 
 /** Staff of the other floors, grouped by floor, for the import checkboxes (bosses stay with their floor). */
-const importable = (snapshot: Snapshot): Group[] =>
-  sortedFloors(snapshot)
+const importable = (projects: Snapshot["projects"], agents: Snapshot["agents"]): Group[] =>
+  sortedFloors(projects)
     .map((p, i) => ({
       floor: `${String(i + 1)} · ${p.name}`,
-      agents: [...snapshot.agents.values()].filter(
-        (a) => a.projectId === p.id && a.role !== "boss",
-      ),
+      agents: [...agents.values()].filter((a) => a.projectId === p.id && a.role !== "boss"),
     }))
     .filter((g) => g.agents.length > 0);
 
@@ -50,7 +48,7 @@ function useRepoInspection(
         return;
       }
       setState({ source, result: null, busy: true });
-      client.projects.inspect({ repo: repoOf(source) }).then(
+      client.projects.inspect({ repo: repoSourceOf(source) }).then(
         (result) => {
           if (!cancelled) {
             setState({ source, result, busy: false });
@@ -61,7 +59,7 @@ function useRepoInspection(
         },
         (e: unknown) => {
           if (!cancelled) {
-            setState({ source, result: { ok: false, message: describeError(e) }, busy: false });
+            setState({ source, result: { ok: false, message: errorMessage(e) }, busy: false });
           }
         },
       );
@@ -75,7 +73,10 @@ function useRepoInspection(
 }
 
 const inspectionText = (source: string, { result, busy }: Inspecting): string => {
-  if (source === "" || (result === null && !busy)) {
+  if (source === "") {
+    return `a directory on this machine, or ${REPO_URL_FORMS}`;
+  }
+  if (result === null && !busy) {
     return " ";
   }
   if (busy) {
@@ -173,10 +174,18 @@ export function AddProjectModal(): React.JSX.Element | null {
   const open = useUi((s) => s.addProjectOpen);
   const setOpen = useUi((s) => s.setAddProjectOpen);
   const selectFloor = useUi((s) => s.selectFloor);
-  const snapshot = useUi((s) => s.snapshot);
+  const projects = useUi((s) => s.snapshot.projects);
+  const agents = useUi((s) => s.snapshot.agents);
   const [draft, setDraft] = useState<Draft>(EMPTY);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const create = useMutation({
+    mutationFn: (input: Parameters<Client["projects"]["create"]>[0]) =>
+      requireClient().projects.create(input),
+    onSuccess: (project) => {
+      selectFloor(project.id);
+      setOpen(false);
+      setDraft(EMPTY);
+    },
+  });
   const source = open ? draft.source.trim() : "";
   const inspecting = useRepoInspection(source, (found) => {
     // Fill what the user has not typed themselves.
@@ -193,33 +202,22 @@ export function AddProjectModal(): React.JSX.Element | null {
   const close = (): void => {
     setOpen(false);
     setDraft(EMPTY);
-    setError(null);
+    create.reset();
   };
   const canCreate =
-    !busy &&
+    !create.isPending &&
     !inspecting.busy &&
     source !== "" &&
     draft.name.trim() !== "" &&
     inspection?.ok === true;
-  const create = async (): Promise<void> => {
-    const client = getClient();
-    if (client === null || inspection?.ok !== true) {
-      return;
-    }
-    setBusy(true);
-    try {
-      const project = await client.projects.create({
+  const submit = (): void => {
+    if (inspection?.ok === true) {
+      create.mutate({
         name: draft.name.trim(),
         repo: inspection.repo,
         defaultBranch: draft.branch.trim() === "" ? inspection.defaultBranch : draft.branch.trim(),
         importAgentIds: [...draft.imports],
       });
-      selectFloor(project.id);
-      close();
-    } catch (e) {
-      setError(describeError(e));
-    } finally {
-      setBusy(false);
     }
   };
   const toggle = (id: AgentId): void => {
@@ -243,7 +241,7 @@ export function AddProjectModal(): React.JSX.Element | null {
           <span className="text-gray-400">Repository path or URL</span>
           <input
             className="mt-1 w-full rounded bg-ink px-2 py-1 font-mono"
-            placeholder="/Users/you/projects/app or https://github.com/org/repo.git"
+            placeholder="/Users/you/projects/app or git@github.com:org/repo.git"
             value={draft.source}
             onChange={(e) => {
               setDraft({ ...draft, source: e.target.value, name: "", branch: "" });
@@ -254,9 +252,15 @@ export function AddProjectModal(): React.JSX.Element | null {
           </span>
         </label>
         <NameBranchFields draft={draft} setDraft={setDraft} />
-        <ImportPicker groups={importable(snapshot)} imports={draft.imports} toggle={toggle} />
-        {error === null ? null : (
-          <p className="rounded bg-red-950/70 px-2 py-1 text-red-200">{error}</p>
+        <ImportPicker
+          groups={importable(projects, agents)}
+          imports={draft.imports}
+          toggle={toggle}
+        />
+        {create.error === null ? null : (
+          <p className="rounded bg-red-950/70 px-2 py-1 text-red-200">
+            {errorMessage(create.error)}
+          </p>
         )}
         <div className="flex justify-end gap-2">
           <button type="button" className="rounded bg-line px-3 py-1" onClick={close}>
@@ -267,10 +271,10 @@ export function AddProjectModal(): React.JSX.Element | null {
             className="rounded bg-accent px-3 py-1 font-semibold text-black disabled:opacity-40"
             disabled={!canCreate}
             onClick={() => {
-              void create();
+              submit();
             }}
           >
-            {busy ? "Creating…" : "Create"}
+            {create.isPending ? "Creating…" : "Create"}
           </button>
         </div>
       </div>

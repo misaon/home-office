@@ -42,6 +42,16 @@ export const RuntimeEvent = z.discriminatedUnion("kind", [
     input: z.unknown(),
   }),
   z.object({ kind: z.literal("usage"), usage: Usage }),
+  /**
+   * What ACP agents report instead of a token split: how full the context window is, and the session's
+   * cumulative cost when the agent knows it. `usedTokens` is a level, not an increment — never add it up.
+   */
+  z.object({
+    kind: z.literal("context"),
+    usedTokens: z.int().nonnegative(),
+    windowTokens: z.int().nonnegative(),
+    cost: z.object({ amount: z.number(), currency: z.string() }).nullable(),
+  }),
   z.object({ kind: z.literal("rate_limited"), retryAt: IsoDateTime.nullable() }),
   z.object({
     kind: z.literal("result"),
@@ -104,6 +114,8 @@ export type ResourceInventory = z.infer<typeof ResourceInventory>;
 export const Doctor = z.object({
   provider: ProviderHealth,
   images: z.array(z.object({ ref: z.string(), present: z.boolean(), upToDate: z.boolean() })),
+  /** False when this build carries no image build contexts (a compiled CLI), so `images` says nothing. */
+  imageContexts: z.boolean(),
   secrets: z.object({ anthropicOauthToken: z.boolean() }),
   sessions: z.object({ active: z.int().nonnegative(), max: z.int().positive() }),
   resources: ResourceSnapshot.nullable(),

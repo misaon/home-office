@@ -9,6 +9,26 @@ const wait = (ms: number): Promise<void> =>
     setTimeout(resolve, ms);
   });
 
+const nextLaunchUrl = (): Promise<void> =>
+  new Promise((resolve) => {
+    window.addEventListener(
+      "hashchange",
+      () => {
+        resolve();
+      },
+      { once: true },
+    );
+  });
+
+/** A browser cannot read the status of a failed websocket handshake, so the daemon is asked separately. */
+const daemonAnswers = async (): Promise<boolean> => {
+  try {
+    return (await fetch("/health", { cache: "no-store" })).ok;
+  } catch {
+    return false;
+  }
+};
+
 async function runEvents(client: Client, bridge: Bridge, signal: AbortSignal): Promise<void> {
   const head = await client.events.head();
   let replayed = model.lastSeq >= head.seq;
@@ -20,12 +40,13 @@ async function runEvents(client: Client, bridge: Bridge, signal: AbortSignal): P
   for await (const event of await client.events.subscribe(input, { signal })) {
     applyEvent(model, event);
     scheduleModelBump();
-    if (replayed) {
-      bridge.onEvent(event);
-    } else if (event.seq >= head.seq) {
+    if (!replayed && event.seq >= head.seq) {
       replayed = true;
       bridge.syncFromModel();
       useUi.getState().setReplayed(true);
+    }
+    if (replayed) {
+      bridge.onEvent(event);
     }
   }
 }
@@ -49,15 +70,7 @@ export async function startSync(bridge: Bridge): Promise<void> {
   let token = resolveToken();
   while (token === null) {
     useUi.getState().setConnection("unauthorized");
-    await new Promise<void>((resolve) => {
-      window.addEventListener(
-        "hashchange",
-        () => {
-          resolve();
-        },
-        { once: true },
-      );
-    });
+    await nextLaunchUrl();
     token = resolveToken();
   }
   for (;;) {
@@ -92,7 +105,11 @@ export async function startSync(bridge: Bridge): Promise<void> {
       controller.abort();
       bridge.detach();
     } catch {
-      // The daemon is unreachable or rejected the token; retry below.
+      if (await daemonAnswers()) {
+        useUi.getState().setConnection("rejected");
+        await nextLaunchUrl();
+        continue;
+      }
     }
     useUi.getState().setConnection("offline");
     await wait(RETRY_MS);

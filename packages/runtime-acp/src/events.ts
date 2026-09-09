@@ -15,11 +15,11 @@ const contentText = (blocks: readonly ToolCallContent[] | undefined): string =>
     .join(" ");
 
 /** Per-prompt bookkeeping: the text the agent produced and the titles of tool calls still running. */
-export type TurnState = { text: string; tools: Map<string, string>; toolCalls: number };
+export type TurnState = { text: string; tools: Map<string, string> };
 
-export const newTurn = (): TurnState => ({ text: "", tools: new Map(), toolCalls: 0 });
+export const newTurn = (): TurnState => ({ text: "", tools: new Map() });
 
-/** Maps one `session/update` notification onto the office's runtime events; plans, thoughts and usage stay internal. */
+/** Maps one `session/update` notification onto the office's runtime events; plans and thoughts stay internal. */
 export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeEvent[] {
   if (update.sessionUpdate === "agent_message_chunk") {
     if (update.content.type !== "text") {
@@ -34,7 +34,6 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
       throw new Error("ACP exceeded 1024 outstanding tool calls");
     }
     turn.tools.set(update.toolCallId, update.title);
-    turn.toolCalls += 1;
     const events: RuntimeEvent[] = [
       { kind: "tool_call", id: update.toolCallId, name, input: update.rawInput ?? update.title },
     ];
@@ -43,6 +42,19 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
       events.push(finished(update.toolCallId, update.status, update.title, update.content));
     }
     return events;
+  }
+  if (update.sessionUpdate === "usage_update") {
+    return [
+      {
+        kind: "context",
+        usedTokens: update.used,
+        windowTokens: update.size,
+        cost:
+          update.cost === undefined || update.cost === null
+            ? null
+            : { amount: update.cost.amount, currency: update.cost.currency },
+      },
+    ];
   }
   if (update.sessionUpdate === "tool_call_update") {
     if (update.status !== "completed" && update.status !== "failed") {
@@ -79,7 +91,7 @@ export function stopToEvent(stop: StopReason, turn: TurnState, sessionId: string
     kind: "result",
     ok: stop === "end_turn",
     text: turn.text,
-    turns: Math.max(1, turn.toolCalls),
+    turns: 1,
     runtimeSessionId: sessionId,
   };
 }

@@ -2,7 +2,7 @@
 !Dockerfile
 !.dockerignore
 !bin/
-!bin/ho-runner
+!bin/ho-runner.js
 !plugins/
 !plugins/**
 !rtk-config.toml

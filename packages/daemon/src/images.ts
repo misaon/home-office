@@ -16,23 +16,27 @@ export const LABELS = {
   project: "ho.project",
 } as const;
 const IMAGE_LABELS = { [LABELS.managed]: "true", [LABELS.kind]: "image" };
-const RUNNER_IN_CONTEXT = "bin/ho-runner";
+const RUNNER_IN_CONTEXT = "bin/ho-runner.js";
 const PLUGINS_IN_CONTEXT = "plugins";
 
 /**
- * Compiles ho-runner for the Alpine arm64 sandbox into the agent image build context. Packaged builds ship
- * the binary inside the context (no sources, no `bun` on PATH), so the step only checks that it is there.
+ * Bundles ho-runner into the agent image build context; the image's own Bun runs it. Packaged builds ship
+ * the bundle inside the context (no sources, no `bun` on PATH), so the step only checks that it is there.
  */
-async function ensureRunner(resources: Resources, onLine?: (line: string) => void): Promise<void> {
-  const target = join(resources.imageContext("agent"), RUNNER_IN_CONTEXT);
+async function ensureRunner(
+  context: string,
+  resources: Resources,
+  onLine?: (line: string) => void,
+): Promise<void> {
+  const target = join(context, RUNNER_IN_CONTEXT);
   if (resources.runnerEntry === null) {
     if (!existsSync(target)) {
-      throw new Error(`ho-runner binary missing from the bundled image context (${target})`);
+      throw new Error(`ho-runner bundle missing from the bundled image context (${target})`);
     }
     return;
   }
   const result =
-    await $`bun build --compile --minify --target=bun-linux-arm64-musl ${resources.runnerEntry} --outfile ${target}`
+    await $`bun build --target=bun --minify ${resources.runnerEntry} --outfile ${target}`
       .quiet()
       .nothrow();
   onLine?.(result.stdout.toString().trim());
@@ -42,11 +46,11 @@ async function ensureRunner(resources: Resources, onLine?: (line: string) => voi
 }
 
 /** Copies the role skill packs from @ho/agent-kit into the build context (replacing the previous copy). */
-async function syncPlugins(resources: Resources): Promise<void> {
+async function syncPlugins(context: string, resources: Resources): Promise<void> {
   if (resources.pluginsSource === null) {
     return;
   }
-  const target = join(resources.imageContext("agent"), PLUGINS_IN_CONTEXT);
+  const target = join(context, PLUGINS_IN_CONTEXT);
   await rm(target, { recursive: true, force: true });
   await cp(resources.pluginsSource, target, { recursive: true });
 }
@@ -64,9 +68,12 @@ async function agentImageSpecs(
   config: DaemonConfig,
   resources: Resources,
   variants: readonly ProviderId[],
-): Promise<ImageSpec[]> {
+): Promise<ImageSpec[] | null> {
   const context = resources.imageContext("agent");
   const contentHash = await contextHash(resources, "agent");
+  if (context === null || contentHash === null) {
+    return null;
+  }
   return variants.map((variant) => ({
     ref: imageRefFor(config.docker.agentImage, variant),
     contextDir: context,
@@ -77,16 +84,37 @@ async function agentImageSpecs(
   }));
 }
 
-async function bridgeImageSpec(config: DaemonConfig, resources: Resources): Promise<ImageSpec> {
+async function bridgeImageSpec(
+  config: DaemonConfig,
+  resources: Resources,
+): Promise<ImageSpec | null> {
   const context = resources.imageContext("git-bridge");
+  const contentHash = await contextHash(resources, "git-bridge");
+  if (context === null || contentHash === null) {
+    return null;
+  }
   return {
     ref: config.docker.bridgeImage,
     contextDir: context,
     platform: config.docker.platform,
     labels: IMAGE_LABELS,
-    contentHash: await contextHash(resources, "git-bridge"),
+    contentHash,
   };
 }
+
+/** Every image this build can build, or null when it carries no build contexts (a compiled CLI). */
+async function imageSpecs(
+  config: DaemonConfig,
+  resources: Resources,
+  variants: readonly ProviderId[],
+): Promise<ImageSpec[] | null> {
+  const agents = await agentImageSpecs(config, resources, variants);
+  const bridge = await bridgeImageSpec(config, resources);
+  return agents === null || bridge === null ? null : [...agents, bridge];
+}
+
+const NO_CONTEXT =
+  "this build carries no image build contexts; build the images from a source checkout or the desktop app";
 
 export async function ensureImages(
   provider: SandboxProvider,
@@ -95,12 +123,14 @@ export async function ensureImages(
   variants: readonly ProviderId[],
   onLine?: (line: string) => void,
 ): Promise<void> {
-  await ensureRunner(resources, onLine);
-  await syncPlugins(resources);
-  for (const spec of [
-    ...(await agentImageSpecs(config, resources, variants)),
-    await bridgeImageSpec(config, resources),
-  ]) {
+  const context = resources.imageContext("agent");
+  const specs = await imageSpecs(config, resources, variants);
+  if (context === null || specs === null) {
+    throw new Error(NO_CONTEXT);
+  }
+  await ensureRunner(context, resources, onLine);
+  await syncPlugins(context, resources);
+  for (const spec of specs) {
     onLine?.(`ensuring ${spec.ref} (${spec.contentHash})`);
     await provider.ensureImage(spec, (p) => onLine?.(p.line));
   }
@@ -108,17 +138,17 @@ export async function ensureImages(
 
 export type ImageStatus = { ref: string; present: boolean; upToDate: boolean };
 
-/** Whether each image exists locally and was built from the current build context. */
+/** Whether each image exists locally and was built from the current build context; empty without contexts. */
 export async function imageStatus(
   config: DaemonConfig,
   resources: Resources,
   variants: readonly ProviderId[],
 ): Promise<ImageStatus[]> {
+  const specs = await imageSpecs(config, resources, variants);
+  if (specs === null) {
+    return [];
+  }
   const api = createDockerApi(config.docker.socket);
-  const specs = [
-    ...(await agentImageSpecs(config, resources, variants)),
-    await bridgeImageSpec(config, resources),
-  ];
   return Promise.all(
     specs.map(async (spec) => {
       const hash = await imageHash(api, spec.ref);

@@ -1,8 +1,9 @@
 // Where an import lands and how big it must be (from the manifest key and the office plan), plus the sidecar
 // every import writes so layers drawn on the same canvas can register on each other (`--like`).
 import { CELL_PX, officePlan } from "@ho/sim";
+import { z } from "zod";
 import type { Rgba } from "./png.ts";
-import { type Anchor, type Box, place, resample } from "./raster.ts";
+import { type Anchor, place, resample } from "./raster.ts";
 
 const CHARACTER_W = 2;
 const CHARACTER_H = 5;
@@ -159,24 +160,30 @@ export function fit(art: Rgba, target: Target): { frame: Rgba; scale: number } {
   return { frame: place(scaled, target.width, height, target.anchor), scale };
 }
 
-type Size = { width: number; height: number };
-export type Sidecar = { source: Size; crop: Box; output: Size };
+const Size = z.object({ width: z.int().positive(), height: z.int().positive() });
+const Sidecar = z.object({
+  source: Size,
+  crop: z.object({
+    x: z.int().nonnegative(),
+    y: z.int().nonnegative(),
+    w: z.int().positive(),
+    h: z.int().positive(),
+  }),
+  output: Size,
+});
+export type Sidecar = z.infer<typeof Sidecar>;
+
 export const sidecarOf = (spriteKey: string): string => {
   if (!/^(?:tiles|characters|bubbles|furniture)\/[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(spriteKey)) {
     return fail("invalid sprite key");
   }
   return `assets/src/${spriteKey}/import.json`;
 };
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
-const isSize = (v: unknown): v is Size =>
-  isRecord(v) && typeof v["width"] === "number" && typeof v["height"] === "number";
-const isBox = (v: unknown): v is Box =>
-  isRecord(v) && ["x", "y", "w", "h"].every((k) => typeof v[k] === "number");
-const isSidecar = (v: unknown): v is Sidecar =>
-  isRecord(v) && isSize(v["source"]) && isBox(v["crop"]) && isSize(v["output"]);
+
 export async function readSidecar(spriteKey: string): Promise<Sidecar | null> {
-  const parsed: unknown = await Bun.file(sidecarOf(spriteKey))
+  const raw: unknown = await Bun.file(sidecarOf(spriteKey))
     .json()
     .catch(() => null);
-  return isSidecar(parsed) ? parsed : null;
+  const parsed = Sidecar.safeParse(raw);
+  return parsed.success ? parsed.data : null;
 }

@@ -1,4 +1,4 @@
-import type { Agent, Project, ProjectId } from "@ho/protocol";
+import { type Agent, compact, type Project, type ProjectId } from "@ho/protocol";
 import type { HoClient } from "../client.ts";
 
 const pick = <T extends { id: string; name: string }>(
@@ -39,8 +39,7 @@ export const findAgent = async (
   client: HoClient,
   ref: string,
   projectId?: ProjectId,
-): Promise<Agent> =>
-  pick(await client.agents.list(projectId === undefined ? {} : { projectId }), ref, "agent");
+): Promise<Agent> => pick(await client.agents.list(compact({ projectId })), ref, "agent");
 
 /** The floor a command means when `--project` is omitted: the only one there is, otherwise an error. */
 export const onlyProject = async (client: HoClient): Promise<Project> => {

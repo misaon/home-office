@@ -1,19 +1,28 @@
-import { bossOf } from "@ho/core";
-import type { ChatMessage, ProjectId, TaskId } from "@ho/protocol";
+import { bossOf, chatOf } from "@ho/core";
+import {
+  type ChatMessage,
+  type ChatSendInput,
+  errorMessage,
+  type ProjectId,
+  type TaskId,
+} from "@ho/protocol";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { getClient } from "../rpc.ts";
+import { requireClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
 
-const authorName = (snapshot: Snapshot, message: ChatMessage): string =>
-  message.author.kind === "human"
-    ? "You"
-    : (snapshot.agents.get(message.author.agentId)?.name ?? "agent");
+const authorName = (agents: Snapshot["agents"], message: ChatMessage): string =>
+  message.author.kind === "human" ? "You" : (agents.get(message.author.agentId)?.name ?? "agent");
 
 type Question = { taskId: TaskId; title: string; text: string; asker: string };
 
 /** Open questions colleagues on this floor asked the human; answering resumes the task. */
-const openQuestions = (snapshot: Snapshot, floorId: ProjectId): Question[] =>
-  [...snapshot.tasks.values()]
+const openQuestions = (
+  tasks: Snapshot["tasks"],
+  agents: Snapshot["agents"],
+  floorId: ProjectId,
+): Question[] =>
+  [...tasks.values()]
     .filter((t) => t.projectId === floorId && t.status === "blocked")
     .flatMap((t) => {
       const question = t.notes.findLast((n) => n.kind === "question");
@@ -23,17 +32,17 @@ const openQuestions = (snapshot: Snapshot, floorId: ProjectId): Question[] =>
       }
       const asker =
         question.author.kind === "agent"
-          ? (snapshot.agents.get(question.author.agentId)?.name ?? "a colleague")
+          ? (agents.get(question.author.agentId)?.name ?? "a colleague")
           : "a colleague";
       return [{ taskId: t.id, title: t.title, text: question.text, asker }];
     });
 
 function Messages({
   messages,
-  snapshot,
+  agents,
 }: {
-  messages: ChatMessage[];
-  snapshot: Snapshot;
+  messages: readonly ChatMessage[];
+  agents: Snapshot["agents"];
 }): React.JSX.Element {
   const bottom = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -55,7 +64,7 @@ function Messages({
           }`}
         >
           <div className="text-[10px] text-gray-400">
-            {authorName(snapshot, m)} · {new Date(m.at).toLocaleTimeString()}
+            {authorName(agents, m)} · {new Date(m.at).toLocaleTimeString()}
           </div>
           <div className="whitespace-pre-wrap">{m.text}</div>
         </div>
@@ -66,43 +75,39 @@ function Messages({
 }
 
 export function ChatPanel(): React.JSX.Element {
-  const snapshot = useUi((s) => s.snapshot);
+  const projects = useUi((s) => s.snapshot.projects);
+  const agents = useUi((s) => s.snapshot.agents);
+  const agentsByProject = useUi((s) => s.snapshot.agentsByProject);
+  const tasks = useUi((s) => s.snapshot.tasks);
+  const chat = useUi((s) => s.snapshot.chat);
   const floorId = useUi((s) => s.floorId);
   const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
   const [answering, setAnswering] = useState<TaskId | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const send = useMutation({
+    mutationFn: (input: ChatSendInput) => requireClient().chat.send(input),
+    onSuccess: (_message, input) => {
+      setText((current) => (current === input.text ? "" : current));
+      setAnswering(null);
+    },
+  });
   if (floorId === null) {
     return <p className="p-3 text-xs text-gray-400">Add a project (floor) first.</p>;
   }
-  const floor = snapshot.projects.get(floorId);
-  const boss = bossOf(snapshot, floorId);
-  const messages = snapshot.chat.filter((m) => m.projectId === floorId).slice(-200);
-  const questions = openQuestions(snapshot, floorId);
+  const floor = projects.get(floorId);
+  const boss = bossOf({ agents, agentsByProject }, floorId);
+  const messages = chatOf({ chat }, floorId).slice(-200);
+  const questions = openQuestions(tasks, agents, floorId);
   const question = questions.find((q) => q.taskId === answering);
 
-  const send = (): void => {
-    const client = getClient();
+  const submit = (): void => {
     const body = text.trim();
-    if (client === null || body === "" || sending) {
+    if (body === "" || send.isPending) {
       return;
     }
-    const input =
+    send.mutate(
       question === undefined
         ? { text: body, projectId: floorId }
-        : { text: body, taskId: question.taskId };
-    setSending(true);
-    client.chat.send(input).then(
-      () => {
-        setText((current) => (current === text ? "" : current));
-        setAnswering(null);
-        setSending(false);
-        setError(null);
-      },
-      (failure: unknown) => {
-        setSending(false);
-        setError(failure instanceof Error ? failure.message : String(failure));
-      },
+        : { text: body, taskId: question.taskId },
     );
   };
 
@@ -112,7 +117,7 @@ export function ChatPanel(): React.JSX.Element {
         Chat with <span className="text-gray-200">{boss?.name ?? "the boss"}</span>
         {floor === undefined ? "" : ` · floor ${floor.name}`}
       </div>
-      <Messages messages={messages} snapshot={snapshot} />
+      <Messages messages={messages} agents={agents} />
       {questions.length > 0 ? (
         <div className="border-t border-line bg-amber-950/40 p-2 text-xs">
           {questions.map((q) => (
@@ -135,8 +140,10 @@ export function ChatPanel(): React.JSX.Element {
         </div>
       ) : null}
       <div className="border-t border-line p-2">
-        {error === null ? null : (
-          <p className="mb-2 rounded bg-red-950/70 px-2 py-1 text-xs text-red-200">{error}</p>
+        {send.error === null ? null : (
+          <p className="mb-2 rounded bg-red-950/70 px-2 py-1 text-xs text-red-200">
+            {errorMessage(send.error)}
+          </p>
         )}
         <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
           {question === undefined ? (
@@ -159,7 +166,7 @@ export function ChatPanel(): React.JSX.Element {
         <textarea
           aria-label="Message to the selected floor"
           maxLength={20_000}
-          disabled={sending}
+          disabled={send.isPending}
           className="h-16 w-full resize-none rounded bg-panel p-2 outline-none"
           placeholder={
             question === undefined
@@ -173,7 +180,7 @@ export function ChatPanel(): React.JSX.Element {
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
-              send();
+              submit();
             }
           }}
         />

@@ -1,19 +1,19 @@
-import type {
-  Agent,
-  AgentId,
-  ChatMessage,
-  HoDelegateInput,
-  NewEvent,
-  ProjectId,
-  Task,
-  TaskId,
+import {
+  type Agent,
+  type AgentId,
+  type ChatMessage,
+  compact,
+  type HoDelegateInput,
+  type NewEvent,
+  type ProjectId,
+  type Task,
+  type TaskId,
 } from "@ho/protocol";
 import { conflict, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { err, ok } from "../result.ts";
-import { titleFromText } from "./chat.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
-import { bossOf, findAgentByRef, note } from "./shared.ts";
+import { bossOf, findAgentByRef, note, titleFromText } from "./shared.ts";
 
 /**
  * The boss creates work for his floor (source: delegation). Only a boss delegates, only within his own
@@ -43,18 +43,18 @@ export function delegateTask(
   const task: Task = {
     id: ctx.ids.task(),
     projectId: project.id,
-    ...(parentTaskId === undefined ? {} : { parentId: parentTaskId }),
+    ...compact({ parentId: parentTaskId }),
     kind: "work",
     title: input.title,
     brief: input.brief,
     status: assignee === undefined ? "inbox" : "assigned",
-    ...(assignee === undefined ? {} : { assigneeId: assignee.id }),
+    ...compact({ assigneeId: assignee?.id }),
     reviewRounds: 0,
     notes: [],
     source: {
       kind: "delegation",
       byAgentId: boss.id,
-      ...(parentTaskId === undefined ? {} : { parentTaskId }),
+      ...compact({ parentTaskId }),
     },
     artifacts: {},
     priority: input.priority ?? "normal",
@@ -157,7 +157,7 @@ export function postAgentMessage(
     projectId: agent.projectId,
     author: { kind: "agent", agentId },
     text,
-    ...(taskId === undefined ? {} : { taskId }),
+    ...compact({ taskId }),
     at: ctx.now,
   };
   return ok({

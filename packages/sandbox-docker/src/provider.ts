@@ -1,3 +1,4 @@
+import { errorMessage } from "@ho/protocol";
 import type {
   SandboxHandle,
   SandboxProvider,
@@ -22,7 +23,32 @@ const CPU_NANOS = 1_000_000_000;
 
 export type DockerProviderOptions = { socket?: string; platform?: string };
 
-const containerConfig = (spec: SandboxSpec) => ({
+type ContainerCreateBody = {
+  Image: string;
+  Cmd: string[];
+  User: string;
+  WorkingDir: string;
+  Env: string[];
+  Labels: Record<string, string>;
+  HostConfig: {
+    NetworkMode: string;
+    ExtraHosts: string[];
+    Binds: string[];
+    Mounts: { Type: string; Source: string; Target: string; ReadOnly: boolean }[];
+    Tmpfs: Record<string, string>;
+    CapDrop: string[];
+    SecurityOpt: string[];
+    ReadonlyRootfs: boolean;
+    Memory: number;
+    MemorySwap: number;
+    LogConfig: { Type: string; Config: Record<string, string> };
+    NanoCpus: number;
+    PidsLimit: number;
+    Init: boolean;
+  };
+};
+
+const containerConfig = (spec: SandboxSpec): ContainerCreateBody => ({
   Image: spec.image,
   Cmd: [...spec.cmd],
   User: spec.user,
@@ -74,13 +100,22 @@ async function runToCompletion(
     controller.abort();
   }, timeoutMs);
   try {
-    await api.raw("POST", `/containers/${id}/start`);
+    await api.raw("POST", `/containers/${encodeURIComponent(id)}/start`);
     const { StatusCode } = Wait.parse(
-      await (await api.raw("POST", `/containers/${id}/wait`, undefined, controller.signal)).json(),
+      await (
+        await api.raw(
+          "POST",
+          `/containers/${encodeURIComponent(id)}/wait`,
+          undefined,
+          controller.signal,
+        )
+      ).json(),
     );
     const logs = demux(
       new Uint8Array(
-        await (await api.raw("GET", `/containers/${id}/logs?stdout=1&stderr=1`)).arrayBuffer(),
+        await (
+          await api.raw("GET", `/containers/${encodeURIComponent(id)}/logs?stdout=1&stderr=1`)
+        ).arrayBuffer(),
       ),
     );
     return { exitCode: StatusCode, ...logs, durationMs: performance.now() - started };
@@ -99,7 +134,7 @@ export function createDockerProvider(options: DockerProviderOptions = {}): Sandb
         const v = await api.json(Version, "GET", "/version");
         return { ok: true, version: v.Version, apiVersion: v.ApiVersion, os: v.Os, arch: v.Arch };
       } catch (error) {
-        return { ok: false, message: error instanceof Error ? error.message : String(error) };
+        return { ok: false, message: errorMessage(error) };
       }
     },
     ensureImage: async (spec, onProgress) => {
@@ -129,12 +164,12 @@ export function createDockerProvider(options: DockerProviderOptions = {}): Sandb
       return { name };
     },
     removeVolume: async (ref: VolumeRef) => {
-      await api.maybe("DELETE", `/volumes/${ref.name}?force=1`);
+      await api.maybe("DELETE", `/volumes/${encodeURIComponent(ref.name)}?force=1`);
     },
     start: async (spec) => {
       const id = await createContainer(api, spec);
       try {
-        await api.raw("POST", `/containers/${id}/start`);
+        await api.raw("POST", `/containers/${encodeURIComponent(id)}/start`);
       } catch (error) {
         await removeContainer(api, id);
         throw error;
@@ -143,7 +178,10 @@ export function createDockerProvider(options: DockerProviderOptions = {}): Sandb
     },
     stop: async (handle, graceSeconds = 5) => {
       try {
-        await api.raw("POST", `/containers/${handle.id}/stop?t=${String(graceSeconds)}`);
+        await api.raw(
+          "POST",
+          `/containers/${encodeURIComponent(handle.id)}/stop?t=${String(graceSeconds)}`,
+        );
       } catch (error) {
         // 304: already stopped; 404: already gone.
         if (!(error instanceof DockerApiError && (error.status === 304 || error.status === 404))) {
@@ -158,7 +196,7 @@ export function createDockerProvider(options: DockerProviderOptions = {}): Sandb
     logs: async (handle, tail = 200) => {
       const res = await api.raw(
         "GET",
-        `/containers/${handle.id}/logs?stdout=1&stderr=1&tail=${String(tail)}`,
+        `/containers/${encodeURIComponent(handle.id)}/logs?stdout=1&stderr=1&tail=${String(tail)}`,
       );
       return demux(new Uint8Array(await res.arrayBuffer()));
     },

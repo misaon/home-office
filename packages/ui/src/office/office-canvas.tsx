@@ -1,4 +1,4 @@
-import type { AgentId } from "@ho/protocol";
+import { type AgentId, errorMessage } from "@ho/protocol";
 import * as sim from "@ho/sim";
 import { useEffect, useRef } from "react";
 import { useUi } from "../store.ts";
@@ -21,9 +21,11 @@ export function OfficeCanvas(): React.JSX.Element {
     const state: {
       scene: OfficeScene | null;
       disposed: boolean;
+      unsubscribe: (() => void) | null;
     } = {
       scene: null,
       disposed: false,
+      unsubscribe: null,
     };
     const onVisibility = (): void => {
       if (state.scene === null) {
@@ -62,29 +64,42 @@ export function OfficeCanvas(): React.JSX.Element {
       };
       // Dev console handle: the bridge, the sprite library, the scene and the simulation's intents.
       if (process.env.NODE_ENV === "development") {
-        Object.assign(window, { __ho: { bridge, sprites, scene: created, sim } });
+        Object.assign(window, { __ho: { bridge, sprites, scene: created, sim, store: useUi } });
       }
-      created.app.ticker.add((ticker) => {
+      const drawFrame = (dtMs: number): void => {
         try {
-          bridge.tick(ticker.deltaMS);
+          bridge.tick(dtMs);
           created.syncFloors(bridge.world);
           created.showFloor(bridge.world, useUi.getState().floorId);
-          created.update(bridge.world, ticker.deltaMS, nameOf, useUi.getState().selectedAgentId);
+          created.update(bridge.world, dtMs, nameOf, useUi.getState().selectedAgentId);
         } catch (error) {
-          useUi.getState().setError(error instanceof Error ? error.message : String(error));
+          useUi.getState().setError(errorMessage(error));
         }
+      };
+      created.app.ticker.add((ticker) => {
+        drawFrame(ticker.deltaMS);
       });
+      const stillFrame = (): void => {
+        if (isDisposed() || !document.hidden) {
+          return;
+        }
+        drawFrame(0);
+        created.app.render();
+      };
+      state.unsubscribe = useUi.subscribe(stillFrame);
+      stillFrame();
       document.addEventListener("visibilitychange", onVisibility);
       onVisibility();
     })().catch((error: unknown) => {
       if (!isDisposed()) {
-        useUi.getState().setError(error instanceof Error ? error.message : String(error));
+        useUi.getState().setError(errorMessage(error));
       }
       reportError(error);
     });
     return () => {
       state.disposed = true;
       bridge.setWatching(false);
+      state.unsubscribe?.();
       document.removeEventListener("visibilitychange", onVisibility);
       state.scene?.destroy();
     };

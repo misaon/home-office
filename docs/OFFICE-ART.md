@@ -1,5 +1,13 @@
 # Office art: approved base, integration and deliveries
 
+This document is the office plan and the sprite keys it needs. The **contract every sprite file must
+satisfy** — directories, frame naming (`<name>_f<N>.png`), the eight character animations and their
+facings, footprints in cells, and the prompt rules for generating art — is
+[`assets/README.md`](../assets/README.md), and that file is load-bearing rather than descriptive: the
+`FRAME` regex in `scripts/lib/manifest.ts`, the category and animation rules in
+`scripts/lib/import-target.ts` and the manifest schema in `packages/ui/src/office/sprites.ts` all
+implement what it states. Change the rules there and in those three places together.
+
 ## Approved reference
 
 The owner approved [office-base-v1.png](../assets/reference/office-base-v1.png) on 2026-09-06 as the visual base

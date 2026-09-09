@@ -7,10 +7,11 @@
       "electrobun/main": ["./.hutch/devkit/api/sdks/main/index.ts"],
       "electrobun/view": ["./.hutch/devkit/api/browser/index.ts"]
     },
-    // The Electrobun devkit is typechecked as source through `paths`; it does not satisfy these flags.
+    "tsBuildInfoFile": "../../.tscache/apps-desktop.tsbuildinfo",
+    // The Electrobun devkit is typechecked as source through `paths`. Measured 2026-09-09: it breaks these
+    // two flags in 15 and 1 places, all inside .hutch/devkit and none in apps/desktop/src. Declaration-only
+    // emit for the devkit (which would keep it out of this program) fails with TS4094 on its own source.
     "exactOptionalPropertyTypes": false,
-    "noPropertyAccessFromIndexSignature": false,
-    "noUncheckedIndexedAccess": false,
     "noImplicitReturns": false
   },
   "include": ["src", "electrobun.config.ts", "hutch.config.ts"]

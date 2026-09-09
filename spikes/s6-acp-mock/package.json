@@ -7,6 +7,7 @@
     "@agentclientprotocol/sdk": "catalog:",
     "@ho/core": "workspace:*",
     "@ho/protocol": "workspace:*",
+    "@ho/runner": "workspace:*",
     "@ho/runtime-acp": "workspace:*"
   }
 }

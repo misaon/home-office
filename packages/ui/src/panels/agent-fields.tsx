@@ -1,4 +1,5 @@
-import { AuthKind, EffortLevel, PROVIDERS, ProviderId } from "@ho/protocol";
+import { defaultChoice } from "@ho/core";
+import { type AgentRole, AuthKind, EffortLevel, PROVIDERS, ProviderId } from "@ho/protocol";
 import { useState } from "react";
 
 export type Choice = { provider: ProviderId; auth: AuthKind; model: string; effort: EffortLevel };
@@ -8,6 +9,8 @@ const CUSTOM = "__custom__";
 type Props = {
   value: Choice;
   onChange: (next: Choice) => void;
+  /** The role the defaults of a provider switch should follow. */
+  role: AgentRole;
   /** Compact rows inside an existing agent card versus the wider "new agent" form. */
   dense?: boolean;
 };
@@ -17,20 +20,19 @@ type Props = {
  * offered, a provider switch resets model/auth/effort to that provider's defaults, and providers that accept
  * any model id get a free-text field behind "custom…".
  */
-export function ProviderModelFields({ value, onChange, dense = false }: Props): React.JSX.Element {
+export function ProviderModelFields({
+  value,
+  onChange,
+  role,
+  dense = false,
+}: Props): React.JSX.Element {
   const catalog = PROVIDERS[value.provider];
   const listed = catalog.models.some((m) => m.id === value.model);
   const [custom, setCustom] = useState(!listed && catalog.freeFormModels);
   const input = dense ? "rounded bg-ink px-1" : "rounded bg-panel px-1 py-1";
   const switchProvider = (provider: ProviderId): void => {
-    const next = PROVIDERS[provider];
     setCustom(false);
-    onChange({
-      provider,
-      auth: next.defaultAuth,
-      model: next.defaultModel,
-      effort: next.effortLevels.includes("medium") ? "medium" : (next.effortLevels[0] ?? "medium"),
-    });
+    onChange({ provider, ...defaultChoice(provider, role) });
   };
   return (
     <>

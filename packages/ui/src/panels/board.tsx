@@ -10,11 +10,18 @@ const COLUMNS: { status: TaskStatus[]; title: string }[] = [
   { status: ["done", "failed", "cancelled"], title: "Done" },
 ];
 
-function TaskCard({ task, snapshot }: { task: Task; snapshot: Snapshot }): React.JSX.Element {
+type CardProps = {
+  task: Task;
+  agents: Snapshot["agents"];
+  tasks: Snapshot["tasks"];
+  inbox: Snapshot["mail"];
+};
+
+function TaskCard({ task, agents, tasks, inbox }: CardProps): React.JSX.Element {
   const selectAgent = useUi((s) => s.selectAgent);
-  const assignee = task.assigneeId === undefined ? undefined : snapshot.agents.get(task.assigneeId);
-  const reviewer = task.reviewerId === undefined ? undefined : snapshot.agents.get(task.reviewerId);
-  const mail = mailForTask(snapshot, task);
+  const assignee = task.assigneeId === undefined ? undefined : agents.get(task.assigneeId);
+  const reviewer = task.reviewerId === undefined ? undefined : agents.get(task.reviewerId);
+  const mail = mailForTask({ tasks, mail: inbox }, task);
   return (
     <div className="rounded border border-line bg-panel p-2 text-xs">
       <div className="font-medium">{task.title}</div>
@@ -67,10 +74,13 @@ function TaskCard({ task, snapshot }: { task: Task; snapshot: Snapshot }): React
 
 /** The tasks of the selected floor by status; the floor tabs in the header pick the project. */
 export function BoardPanel(): React.JSX.Element {
-  const snapshot = useUi((s) => s.snapshot);
+  const projects = useUi((s) => s.snapshot.projects);
+  const allTasks = useUi((s) => s.snapshot.tasks);
+  const agents = useUi((s) => s.snapshot.agents);
+  const inbox = useUi((s) => s.snapshot.mail);
   const floorId = useUi((s) => s.floorId);
-  const floor = floorId === null ? undefined : snapshot.projects.get(floorId);
-  const tasks = [...snapshot.tasks.values()]
+  const floor = floorId === null ? undefined : projects.get(floorId);
+  const tasks = [...allTasks.values()]
     .filter((t) => t.projectId === floorId)
     .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return (
@@ -90,7 +100,7 @@ export function BoardPanel(): React.JSX.Element {
               </h3>
               <div className="space-y-1">
                 {items.slice(0, 30).map((t) => (
-                  <TaskCard key={t.id} task={t} snapshot={snapshot} />
+                  <TaskCard key={t.id} task={t} agents={agents} tasks={allTasks} inbox={inbox} />
                 ))}
               </div>
             </section>

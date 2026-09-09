@@ -26,6 +26,14 @@ function describe(live: LiveEvent): string {
   if (e.kind === "usage") {
     return "";
   }
+  if (e.kind === "context") {
+    const share =
+      e.windowTokens === 0
+        ? ""
+        : ` (${String(Math.round((e.usedTokens / e.windowTokens) * 100))}%)`;
+    const cost = e.cost === null ? "" : ` · ${e.cost.amount.toFixed(2)} ${e.cost.currency}`;
+    return `context ${fmt(e.usedTokens)}/${fmt(e.windowTokens)}${share}${cost}`;
+  }
   if (e.kind === "rate_limited") {
     return "rate limited";
   }
@@ -37,13 +45,13 @@ function describe(live: LiveEvent): string {
 
 function SessionBlock({
   session,
-  snapshot,
+  tasks,
 }: {
   session: Session;
-  snapshot: Snapshot;
+  tasks: Snapshot["tasks"];
 }): React.JSX.Element {
   const live = useUi((s) => s.live.get(session.id));
-  const task = snapshot.tasks.get(session.taskId);
+  const task = tasks.get(session.taskId);
   const events = (live ?? []).filter((l) => l.event.kind !== "usage").slice(-60);
   return (
     <section className="rounded border border-line bg-panel p-2 text-xs">
@@ -77,12 +85,15 @@ function SessionBlock({
 }
 
 export function InspectorPanel(): React.JSX.Element {
-  const snapshot = useUi((s) => s.snapshot);
+  const projects = useUi((s) => s.snapshot.projects);
+  const staff = useUi((s) => s.snapshot.agents);
+  const tasks = useUi((s) => s.snapshot.tasks);
+  const allSessions = useUi((s) => s.snapshot.sessions);
   const floorId = useUi((s) => s.floorId);
   const selected = useUi((s) => s.selectedAgentId);
   const selectAgent = useUi((s) => s.selectAgent);
-  const agent = selected === null ? undefined : snapshot.agents.get(selected);
-  const agents = [...snapshot.agents.values()]
+  const agent = selected === null ? undefined : staff.get(selected);
+  const agents = [...staff.values()]
     .filter((a) => a.projectId === floorId)
     .toSorted((a, b) => a.name.localeCompare(b.name));
   if (agent === undefined) {
@@ -110,11 +121,11 @@ export function InspectorPanel(): React.JSX.Element {
       </div>
     );
   }
-  const sessions = [...snapshot.sessions.values()]
+  const sessions = [...allSessions.values()]
     .filter((s) => s.agentId === agent.id)
     .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt))
     .slice(0, 8);
-  const floor = snapshot.projects.get(agent.projectId)?.name ?? agent.projectId;
+  const floor = projects.get(agent.projectId)?.name ?? agent.projectId;
   return (
     <div className="space-y-2 overflow-y-auto p-3 text-xs">
       <div>
@@ -130,7 +141,7 @@ export function InspectorPanel(): React.JSX.Element {
       </div>
       {sessions.length === 0 ? <p className="text-gray-400">No sessions yet.</p> : null}
       {sessions.map((s) => (
-        <SessionBlock key={s.id} session={s} snapshot={snapshot} />
+        <SessionBlock key={s.id} session={s} tasks={tasks} />
       ))}
     </div>
   );

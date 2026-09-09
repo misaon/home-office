@@ -1,10 +1,20 @@
-import { TaskId, TaskPriority, TaskStatus } from "@ho/protocol";
+import { type Command, subcommand } from "../command.ts";
+import { compact, TaskId, TaskPriority, TaskStatus } from "@ho/protocol";
 import { z } from "zod";
 import { parse, required, str } from "../args.ts";
 import { withClient } from "../client.ts";
-import { line, print } from "../output.ts";
+import { colour, line, print, result } from "../output.ts";
 import { findAgent, findProject } from "./lookup.ts";
-import { subcommand } from "./help.ts";
+
+const statusColour = (status: TaskStatus): string => {
+  if (status === "failed" || status === "blocked") {
+    return colour.bad(status);
+  }
+  if (status === "done") {
+    return colour.ok(status);
+  }
+  return status;
+};
 
 const taskId = (ref: string | undefined): TaskId => {
   if (ref === undefined) {
@@ -13,8 +23,8 @@ const taskId = (ref: string | undefined): TaskId => {
   return TaskId.parse(ref);
 };
 
-export async function task(args: readonly string[]): Promise<void> {
-  const { sub, rest } = subcommand(args, "task");
+async function task(args: readonly string[]): Promise<void> {
+  const { sub, rest } = subcommand(args, taskCommand);
   const parsed = parse(rest, [
     "project",
     "status",
@@ -33,10 +43,7 @@ export async function task(args: readonly string[]): Promise<void> {
         const statusRaw = str(parsed, "status");
         const status =
           statusRaw === undefined ? undefined : z.array(TaskStatus).parse(statusRaw.split(","));
-        const tasks = await client.tasks.list({
-          ...(projectId === undefined ? {} : { projectId }),
-          ...(status === undefined ? {} : { status }),
-        });
+        const tasks = await client.tasks.list(compact({ projectId, status }));
         for (const t of tasks) {
           const assignee = t.assigneeId === undefined ? "" : `  → ${t.assigneeId}`;
           line(`${t.id}  ${t.status.padEnd(11)}  ${t.priority.padEnd(6)}  ${t.title}${assignee}`);
@@ -52,14 +59,18 @@ export async function task(args: readonly string[]): Promise<void> {
             : (await findAgent(client, assigneeRef, projectId)).id;
         const brief = str(parsed, "brief");
         const priority = str(parsed, "priority");
-        print(
-          await client.tasks.create({
-            projectId,
-            title: required(parsed, "title"),
-            ...(brief === undefined ? {} : { brief }),
-            ...(assigneeId === undefined ? {} : { assigneeId }),
-            ...(priority === undefined ? {} : { priority: TaskPriority.parse(priority) }),
+        const created = await client.tasks.create({
+          projectId,
+          title: required(parsed, "title"),
+          ...compact({
+            brief,
+            assigneeId,
+            priority: TaskPriority.optional().parse(priority),
           }),
+        });
+        result(
+          `${colour.id(created.id)} ${created.status} ${created.priority} ${colour.bold(created.title)}`,
+          created,
         );
         return;
       }
@@ -75,18 +86,26 @@ export async function task(args: readonly string[]): Promise<void> {
         const current = await client.tasks.get({ id: taskId(idRef) });
         const agentId =
           agentRef === "none" ? null : (await findAgent(client, agentRef, current.projectId)).id;
-        print(await client.tasks.assign({ id: taskId(idRef), agentId }));
+        const assigned = await client.tasks.assign({ id: taskId(idRef), agentId });
+        result(
+          agentId === null
+            ? `${colour.id(assigned.id)} unassigned, now ${assigned.status}`
+            : `${colour.id(assigned.id)} assigned to ${agentRef}, now ${assigned.status}`,
+          assigned,
+        );
         return;
       }
       case "move": {
         const [idRef, status] = parsed.positionals;
         const reason = str(parsed, "reason");
-        print(
-          await client.tasks.transition({
-            id: taskId(idRef),
-            to: TaskStatus.parse(status),
-            ...(reason === undefined ? {} : { reason }),
-          }),
+        const moved = await client.tasks.transition({
+          id: taskId(idRef),
+          to: TaskStatus.parse(status),
+          ...compact({ reason }),
+        });
+        result(
+          `${colour.id(moved.id)} → ${statusColour(moved.status)}${reason === undefined ? "" : ` (${reason})`}`,
+          moved,
         );
         return;
       }
@@ -96,3 +115,16 @@ export async function task(args: readonly string[]): Promise<void> {
     }
   });
 }
+
+export const taskCommand: Command = {
+  name: "task",
+  summary: "the floor's work; move takes any status the state machine allows",
+  usage: [
+    "  ho task list [--project <project>] [--status a,b]",
+    "  ho task create --project <project> --title <text> [--brief <text>] [--assignee <agent>] [--priority normal]",
+    "  ho task show <task-id>",
+    "  ho task assign <task-id> <agent|none>",
+    "  ho task move <task-id> <status> [--reason <text>]",
+  ],
+  run: task,
+};

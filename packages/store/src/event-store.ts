@@ -17,8 +17,9 @@ type Subscriber = { filter: EventFilter | undefined; push: (event: StoredEvent) 
 
 type Row = typeof events.$inferSelect;
 
-const toStored = (row: Row): StoredEvent =>
-  StoredEvent.parse({
+/** Names the row a schema change has orphaned; without it a replay failure says only which field broke. */
+const toStored = (row: Row): StoredEvent => {
+  const parsed = StoredEvent.safeParse({
     seq: row.seq,
     id: row.id,
     type: row.type,
@@ -28,6 +29,14 @@ const toStored = (row: Row): StoredEvent =>
     ...(row.correlationId === null ? {} : { correlationId: row.correlationId }),
     ...(row.causationId === null ? {} : { causationId: row.causationId }),
   });
+  if (!parsed.success) {
+    throw new Error(
+      `stored event ${String(row.seq)} (${row.type}, ${row.at}) does not match the current schema`,
+      { cause: parsed.error },
+    );
+  }
+  return parsed.data;
+};
 
 const matches = (filter: EventFilter | undefined, event: StoredEvent): boolean =>
   filter?.types === undefined || filter.types.includes(event.type);
@@ -90,10 +99,7 @@ export function createSqliteEventStore(
         .limit(BATCH)
         .all();
       for (const row of rows) {
-        const event = toStored(row);
-        if (matches(filter, event)) {
-          yield event;
-        }
+        yield toStored(row);
         cursor = row.seq;
       }
       if (rows.length < BATCH) {

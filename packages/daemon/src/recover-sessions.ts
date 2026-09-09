@@ -1,4 +1,4 @@
-import { endSession, isSessionActive, type SandboxProvider, transitionTask } from "@ho/core";
+import { activeSessions, endSession, type SandboxProvider, transitionTask } from "@ho/core";
 import { LABELS } from "./images.ts";
 import type { Office } from "./office.ts";
 
@@ -6,9 +6,7 @@ export async function recoverSessions(office: Office, provider: SandboxProvider)
   const actor = { kind: "system" } as const;
   const reason =
     "daemon restarted before the session finished; inspect the task branch and resume explicitly";
-  const active = [...office.model.sessions.values()].filter((session) =>
-    isSessionActive(session.state),
-  );
+  const active = activeSessions(office.model);
   if (active.length === 0) {
     return;
   }
@@ -18,7 +16,7 @@ export async function recoverSessions(office: Office, provider: SandboxProvider)
   });
   for (const session of active) {
     for (const container of inventory.containers.filter((item) => item.sessionId === session.id)) {
-      const handle = { id: encodeURIComponent(container.name), name: container.name };
+      const handle = { id: container.name, name: container.name };
       await provider.stop(handle, 2);
       await provider.remove(handle);
     }

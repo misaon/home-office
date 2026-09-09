@@ -1,13 +1,13 @@
 import type { AgentId } from "@ho/protocol";
 import { facingTowards, type Point } from "./grid.ts";
-import { setEmotion } from "./intents.ts";
+import { adjacentFree, setEmotion } from "./intents.ts";
 import { pendingDeliveries, resumeSteps, setSteps, spawnActor, walkSteps } from "./actors.ts";
 import { type Actor, anchorOf, type Step, type World } from "./world.ts";
 
 const DROP_MS = 900;
 const PICKUP_MS = 800;
 const HANDOVER_MS = 1200;
-const MAILBOX_SPRITE = "furniture/mailbox";
+const MAILBOX_KEY = "mailbox";
 
 const mailboxAnchor = (
   world: World,
@@ -35,28 +35,21 @@ export function deliverMail(
   // The postman rides the elevator like everybody else (no explicit place → arrival queue).
   const postman = spawnActor(world, visitorId, sprite, floorId, { kind: "visitor" });
   setSteps(postman, [
-    ...walkSteps(world, postman, floorId, mailbox.at),
+    ...walkSteps(floorId, mailbox.at),
     { kind: "dwell", activity: "drop", facing: mailbox.facing, until: null, ms: DROP_MS },
     { kind: "emit", event: { kind: "mail_dropped", ref } },
-    ...walkSteps(world, postman, floorId, car),
+    ...walkSteps(floorId, car),
     { kind: "emit", event: { kind: "visitor_left", actorId: visitorId } },
   ]);
   return true;
 }
 
 const besides = (world: World, target: Actor): Point => {
-  const floor = world.floors.get(target.floorId);
   const at =
     target.hidden && target.home !== null
       ? (anchorOf(world, target.floorId, target.home.anchorId)?.at ?? target.tile)
       : target.tile;
-  const options: Point[] = [
-    { x: at.x - 1, y: at.y },
-    { x: at.x + 1, y: at.y },
-    { x: at.x, y: at.y + 1 },
-    { x: at.x, y: at.y - 1 },
-  ];
-  return options.find((p) => floor?.grid.isWalkable(p) === true) ?? at;
+  return adjacentFree(world, target.floorId, at, at);
 };
 
 /** Walk to the boss, hand the envelope over, emit `envelope_delivered`, then back to the desk or home. */
@@ -72,7 +65,7 @@ const handToBoss = (
   setSteps(courier, [
     ...pendingDeliveries(courier),
     ...before,
-    ...walkSteps(world, courier, boss.floorId, meet),
+    ...walkSteps(boss.floorId, meet),
     {
       kind: "dwell",
       activity: "handover",
@@ -103,7 +96,7 @@ export function fetchMail(
     return false;
   }
   const pickup: Step[] = [
-    ...walkSteps(world, courier, floorId, mailbox.at),
+    ...walkSteps(floorId, mailbox.at),
     { kind: "dwell", activity: "receive", facing: mailbox.facing, until: null, ms: PICKUP_MS },
   ];
   if (courierId === bossId) {
@@ -143,13 +136,5 @@ export function carryEnvelope(
 
 /** Mail counter art follows the pile: `full` while envelopes wait, `empty` otherwise. */
 export function setMailboxState(world: World, floorId: string, state: "empty" | "full"): void {
-  const floor = world.floors.get(floorId);
-  if (floor === undefined) {
-    return;
-  }
-  for (const item of floor.template.furniture) {
-    if (item.sprite === MAILBOX_SPRITE) {
-      item.animation = state;
-    }
-  }
+  world.floors.get(floorId)?.animationStates.set(MAILBOX_KEY, state);
 }

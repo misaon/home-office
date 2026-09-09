@@ -6,11 +6,13 @@ import {
   isSessionActive,
   membersOf,
   postAgentMessage,
+  sessionsOfAgent,
   setTaskArtifacts,
   submitReview,
 } from "@ho/core";
 import {
   type AgentId,
+  errorMessage,
   HoAskHumanInput,
   HoDelegateInput,
   HoHandoffInput,
@@ -27,6 +29,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { Logger } from "./logger.ts";
 import type { Office } from "./office.ts";
+import { VERSION } from "./version.ts";
 
 export type McpSessionContext = {
   sessionId: SessionId;
@@ -36,7 +39,12 @@ export type McpSessionContext = {
   mode: SessionMode;
 };
 
-type Entry = { ctx: McpSessionContext; replied: boolean; report: HoReportInput | null };
+type Entry = {
+  ctx: McpSessionContext;
+  replied: boolean;
+  report: HoReportInput | null;
+  server: McpServer | null;
+};
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: true };
 type Run = <T>(fn: () => Promise<T>) => Promise<ToolResult>;
 
@@ -123,14 +131,15 @@ function registerCommon(server: McpServer, office: Office, entry: Entry, run: Ru
     { description: "The team on this floor: names, roles, skill packs and current load." },
     () =>
       run(() => {
-        const active = [...office.model.sessions.values()].filter((s) => isSessionActive(s.state));
         return Promise.resolve(
           membersOf(office.model, ctx.projectId).map((a) => ({
             id: a.id,
             name: a.name,
             role: a.role,
             skills: a.skillPack,
-            activeSessions: active.filter((s) => s.agentId === a.id).length,
+            activeSessions: sessionsOfAgent(office.model, a.id).filter((s) =>
+              isSessionActive(s.state),
+            ).length,
           })),
         );
       }),
@@ -231,7 +240,7 @@ export class McpGateway {
 
   register(ctx: McpSessionContext): string {
     const token = Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toString("base64url");
-    this.#entries.set(token, { ctx, replied: false, report: null });
+    this.#entries.set(token, { ctx, replied: false, report: null, server: null });
     return token;
   }
 
@@ -255,9 +264,9 @@ export class McpGateway {
     if (entry === undefined) {
       return new Response("unauthorized", { status: 401 });
     }
-    const server = this.#build(entry);
+    entry.server ??= this.#build(entry);
     const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
-    await server.connect(transport);
+    await entry.server.connect(transport);
     try {
       return await transport.handleRequest(req);
     } finally {
@@ -266,12 +275,12 @@ export class McpGateway {
   }
 
   #build(entry: Entry): McpServer {
-    const server = new McpServer({ name: "home-office", version: "0.1.0" });
+    const server = new McpServer({ name: "home-office", version: VERSION });
     const run: Run = async (fn) => {
       try {
         return text(await fn());
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = errorMessage(error);
         this.#log.warn({ sessionId: entry.ctx.sessionId, err: message }, "mcp tool rejected");
         return { content: [{ type: "text", text: message }], isError: true };
       }

@@ -4,7 +4,8 @@ import type { CommandContext } from "./context.ts";
 /**
  * The boss every floor gets when it is created (D23): Andrew runs the floor from his office, plans the human's
  * requests and delegates them to the floor's staff — or does the work himself while the floor has nobody else.
- * Model and effort follow D12 (`opus` at `high`); everything is editable afterwards in Settings.
+ * Model follows D12 (`opus`); effort is `medium` because the boss triages and delegates rather than
+ * changing the repository (B33.4). Everything is editable afterwards in Settings.
  */
 export const DEFAULT_BOSS = {
   name: "Andrew",
@@ -12,7 +13,7 @@ export const DEFAULT_BOSS = {
   provider: "claude-code",
   auth: "subscription",
   model: "opus",
-  effort: "high",
+  effort: "medium",
   appearance: { spriteSet: "boss", gender: "male" },
   skillPack: "boss",
   basePrompt:

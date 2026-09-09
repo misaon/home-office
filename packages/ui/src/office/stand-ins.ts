@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
 import { CELL_PX, type PlanObject, type Surface } from "@ho/sim";
 import { Container, Graphics, Text } from "pixi.js";
 
@@ -43,7 +42,6 @@ export const label = (
 export const surfaceColor = (surface: Surface): number =>
   surface === "wood" ? PALETTE.wood : surface === "tile" ? PALETTE.tile : PALETTE.corridor;
 
-/** Floor fills per room and walls with a lit cap; glass cells are left to `glassWall`. Cached once per floor. */
 function desk(g: Graphics, f: PlanObject): void {
   const w = f.w * TILE;
   const h = f.h * TILE;
@@ -65,7 +63,6 @@ function desk(g: Graphics, f: PlanObject): void {
     .fill(0xf8deb0);
 }
 
-/** Geometric stand-in for an object whose sprite has not been delivered yet; keyed by the sprite name. */
 /** Stand-in shapes for decor and small props; false when `kind` is not one of them. */
 function decorStandIn(g: Graphics, kind: string, f: PlanObject, w: number, h: number): boolean {
   const cx = w / 2;
@@ -207,6 +204,7 @@ function furnitureStandIn(g: Graphics, kind: string, f: PlanObject, w: number, h
   return true;
 }
 
+/** Geometric stand-in for an object whose sprite has not been delivered yet; keyed by the sprite name. */
 export function standIn(f: PlanObject): Container {
   const root = new Container({ x: f.at.x * TILE, y: (f.at.y + (f.artOffsetY ?? 0)) * TILE });
   root.zIndex = (f.at.y + f.h) * TILE - (f.blocks ? 1 : 3);

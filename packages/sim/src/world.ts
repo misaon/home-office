@@ -85,6 +85,8 @@ export type Actor = {
   needs: Record<NeedKind, number>;
   emotion: { kind: Emotion; until: number | null } | null;
   idleUntil: number;
+  /** Per-actor offset on the blocked-walker wait, so two blocked walkers do not replan on the same frame. */
+  detourJitterMs: number;
 };
 
 export type ElevatorPhase = "closed" | "opening" | "open" | "closing";
@@ -113,6 +115,8 @@ export type Floor = {
   elevator: Elevator;
   /** Animation positions by sprite key (`elevator-doors` → door amount 0…1). */
   animations: Map<string, number>;
+  /** Named animation per sprite key (`mailbox` → `full`), published by the simulation. */
+  animationStates: Map<string, string>;
 };
 
 export type World = {
@@ -142,6 +146,7 @@ export function addFloor(world: World, template: FloorTemplate): void {
     reservations: new Map(),
     elevator: { queue: [], phase: "closed", amount: 0, passenger: null, nextAt: 0 },
     animations: new Map(),
+    animationStates: new Map(),
   });
 }
 

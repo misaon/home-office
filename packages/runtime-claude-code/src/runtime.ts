@@ -56,7 +56,6 @@ export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions = {}): Age
     capabilities: () => ({
       resume: true,
       structuredOutput: true,
-      images: true,
       effortLevels: ["low", "medium", "high", "xhigh", "max"],
     }),
     open: async (

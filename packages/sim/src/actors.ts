@@ -1,5 +1,5 @@
 import type { AgentId } from "@ho/protocol";
-import { type Point, samePoint } from "./grid.ts";
+import { key, manhattan, type Point, samePoint } from "./grid.ts";
 import {
   type Actor,
   type ActorKind,
@@ -13,6 +13,16 @@ import {
 
 /** How long the boss sits at his desk between two idle decisions. */
 const HOME_MS = 25_000;
+
+const JITTER_SPREAD_MS = 400;
+
+const jitterFor = (id: AgentId): number => {
+  let hash = 0;
+  for (const ch of id) {
+    hash = (hash * 31 + (ch.codePointAt(0) ?? 0)) % JITTER_SPREAD_MS;
+  }
+  return hash;
+};
 
 export function spawnActor(
   world: World,
@@ -53,6 +63,7 @@ export function spawnActor(
     },
     emotion: null,
     idleUntil: 0,
+    detourJitterMs: jitterFor(id),
   };
   world.actors.set(id, actor);
   if (arriving) {
@@ -67,10 +78,11 @@ export function removeActor(world: World, id: AgentId): void {
     return;
   }
   release(world, actor);
-  for (const floor of world.floors.values()) {
-    for (const [anchorId, owner] of floor.reservations) {
-      if (owner === id) {
-        floor.reservations.delete(anchorId);
+  for (const held of [actor.reservation, actor.home, actor.work]) {
+    if (held !== null) {
+      const floor = world.floors.get(held.floorId);
+      if (floor?.reservations.get(held.anchorId) === id) {
+        floor.reservations.delete(held.anchorId);
       }
     }
   }
@@ -108,27 +120,82 @@ export function settleAt(world: World, actor: Actor, anchorId: string): boolean 
 }
 
 /**
- * Cells other actors hold: where they stand, and — with `includeMoving` — the cell they are stepping into, so two
- * walkers never enter one cell together. Planning ignores walkers (they move on); stepping does not.
+ * Cells actors hold on one floor, counted once per tick: `standing` for actors who are not walking,
+ * `claimed` for walkers' current and next cell. Counts rather than sets, so one actor's own contribution can
+ * be taken back out without rebuilding anything.
+ */
+export type Occupancy = { standing: Map<number, number>; claimed: Map<number, number> };
+
+const NO_CELL = -1;
+
+const bump = (counts: Map<number, number>, at: Point): void => {
+  const k = key(at);
+  counts.set(k, (counts.get(k) ?? 0) + 1);
+};
+
+export const occupancyOf = (world: World): Map<string, Occupancy> => {
+  const floors = new Map<string, Occupancy>();
+  for (const actor of world.actors.values()) {
+    if (actor.hidden) {
+      continue;
+    }
+    const floor: Occupancy = floors.get(actor.floorId) ?? {
+      standing: new Map<number, number>(),
+      claimed: new Map<number, number>(),
+    };
+    floors.set(actor.floorId, floor);
+    if (actor.activity === "walk") {
+      bump(floor.claimed, actor.tile);
+      if (actor.moving !== null) {
+        bump(floor.claimed, actor.moving);
+      }
+    } else {
+      bump(floor.standing, actor.tile);
+    }
+  }
+  return floors;
+};
+
+/** The tick's index, built on first read: a tick in which nobody walks builds nothing. */
+export type OccupancyIndex = () => Map<string, Occupancy>;
+
+export const lazyOccupancy = (world: World): OccupancyIndex => {
+  let built: Map<string, Occupancy> | null = null;
+  return () => {
+    built ??= occupancyOf(world);
+    return built;
+  };
+};
+
+const without = (counts: Map<number, number>, at: number, own: number, alsoOwn: number): number =>
+  (counts.get(at) ?? 0) - (own === at ? 1 : 0) - (alsoOwn === at ? 1 : 0);
+
+/**
+ * Cells other actors hold, read from the tick's index: where they stand, and — with `includeMoving` — the
+ * cells they are stepping into, so two walkers never enter one cell together. Planning ignores walkers (they
+ * move on); stepping does not.
  */
 export const occupied = (
-  world: World,
+  index: OccupancyIndex,
   self: Actor,
   includeMoving = false,
 ): ((p: Point) => boolean) => {
-  const taken = new Set<number>();
-  for (const other of world.actors.values()) {
-    if (other.id === self.id || other.floorId !== self.floorId || other.hidden) {
-      continue;
-    }
-    if (other.activity !== "walk" || includeMoving) {
-      taken.add(other.tile.y * 4096 + other.tile.x);
-    }
-    if (includeMoving && other.moving !== null) {
-      taken.add(other.moving.y * 4096 + other.moving.x);
-    }
+  const floor = index().get(self.floorId);
+  if (floor === undefined) {
+    return () => false;
   }
-  return (p) => taken.has(p.y * 4096 + p.x);
+  const walking = self.activity === "walk";
+  const ownTile = key(self.tile);
+  const standingTile = walking ? NO_CELL : ownTile;
+  const claimedTile = walking ? ownTile : NO_CELL;
+  const claimedNext = walking && self.moving !== null ? key(self.moving) : NO_CELL;
+  return (p) => {
+    const at = key(p);
+    if (without(floor.standing, at, standingTile, NO_CELL) > 0) {
+      return true;
+    }
+    return includeMoving && without(floor.claimed, at, claimedTile, claimedNext) > 0;
+  };
 };
 
 export function nearestWalkable(world: World, floorId: string, target: Point): Point {
@@ -136,21 +203,27 @@ export function nearestWalkable(world: World, floorId: string, target: Point): P
   if (floor === undefined || floor.grid.isWalkable(target)) {
     return target;
   }
-  for (let r = 1; r < 6; r += 1) {
-    for (let dy = -r; dy <= r; dy += 1) {
-      for (let dx = -r; dx <= r; dx += 1) {
-        const p = { x: target.x + dx, y: target.y + dy };
-        if (floor.grid.isWalkable(p)) {
-          return p;
+  for (let radius = 1; radius < 6; radius += 1) {
+    const ring: Point[] = [];
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) === radius) {
+          ring.push({ x: target.x + dx, y: target.y + dy });
         }
       }
+    }
+    const nearest = ring
+      .filter((p) => floor.grid.isWalkable(p))
+      .toSorted((a, b) => manhattan(a, target) - manhattan(b, target))[0];
+    if (nearest !== undefined) {
+      return nearest;
     }
   }
   return target;
 }
 
 /** A walk to a point on the actor's floor. */
-export const walkSteps = (_world: World, _actor: Actor, floorId: string, to: Point): Step[] => [
+export const walkSteps = (floorId: string, to: Point): Step[] => [
   { kind: "walk", floorId, to, path: null },
 ];
 
@@ -176,7 +249,7 @@ export function resumeSteps(world: World, actor: Actor): Step[] {
 export function homeSteps(world: World, actor: Actor): Step[] {
   if (actor.home === null) {
     const spot = world.rng.pick(freeAnchors(world, actor.floorId, "wander", actor.kind));
-    return spot === undefined ? [] : walkSteps(world, actor, actor.floorId, spot.at);
+    return spot === undefined ? [] : walkSteps(actor.floorId, spot.at);
   }
   const anchor = anchorOf(world, actor.home.floorId, actor.home.anchorId);
   if (anchor === undefined) {

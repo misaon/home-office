@@ -1,52 +1,39 @@
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { getClient, requireClient } from "../rpc.ts";
+import { errorMessage, formatBytes } from "@ho/protocol";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { resourcesQuery } from "../queries.ts";
+import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
-
-const mb = (bytes: number | null): string =>
-  bytes === null ? "–" : `${(bytes / 1_000_000).toFixed(bytes < 10_000_000 ? 1 : 0)} MB`;
 
 export function ResourcesPanel(): React.JSX.Element {
   const connection = useUi((s) => s.connection);
   const query = useQuery({
-    queryKey: ["resources"],
-    queryFn: ({ signal }) => requireClient().resources.inventory(undefined, { signal }),
+    ...resourcesQuery,
     enabled: connection === "online",
     refetchInterval: 30_000,
   });
   const inventory = query.data ?? null;
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
-  const prune = (): void => {
-    const client = getClient();
-    if (client === null) {
-      return;
-    }
-    setBusy(true);
-    client.system.gc().then(
-      (result) => {
-        setNote(
-          `removed ${String(result.containers.length)} containers, ${String(result.volumes.length)} volumes, ${String(result.images.length)} images`,
-        );
-        setBusy(false);
-        void query.refetch();
-      },
-      (error: unknown) => {
-        setNote(error instanceof Error ? error.message : String(error));
-        setBusy(false);
-      },
-    );
-  };
+  const prune = useMutation({
+    mutationFn: () => requireClient().system.gc(),
+    onSuccess: () => query.refetch(),
+  });
+  const note =
+    prune.error !== null
+      ? errorMessage(prune.error)
+      : prune.data === undefined
+        ? null
+        : `removed ${String(prune.data.containers.length)} containers, ${String(prune.data.volumes.length)} volumes, ${String(prune.data.images.length)} images`;
   return (
     <div className="space-y-3 overflow-y-auto p-3 text-xs">
       <div className="flex items-center gap-2">
         <button
           type="button"
           className="rounded bg-panel px-2 py-1 hover:bg-line disabled:opacity-50"
-          disabled={busy}
-          onClick={prune}
+          disabled={prune.isPending}
+          onClick={() => {
+            prune.mutate();
+          }}
         >
-          {busy ? "Pruning…" : "Prune now"}
+          {prune.isPending ? "Pruning…" : "Prune now"}
         </button>
         <button
           type="button"
@@ -66,8 +53,9 @@ export function ResourcesPanel(): React.JSX.Element {
         <>
           <div className="text-gray-300">
             {String(inventory.snapshot.containers)} containers ·{" "}
-            {String(inventory.snapshot.volumes)} volumes ({mb(inventory.snapshot.volumesBytes)}) ·
-            images {mb(inventory.snapshot.imagesBytes)}
+            {String(inventory.snapshot.volumes)} volumes (
+            {formatBytes(inventory.snapshot.volumesBytes)}) · images{" "}
+            {formatBytes(inventory.snapshot.imagesBytes)}
           </div>
           <section>
             <h3 className="mb-1 text-[11px] tracking-wide text-gray-400 uppercase">Containers</h3>
@@ -88,7 +76,7 @@ export function ResourcesPanel(): React.JSX.Element {
               <div key={v.name} className="flex justify-between border-t border-line py-0.5">
                 <span className="truncate font-mono">{v.name}</span>
                 <span className="text-gray-400">
-                  {v.kind} · {mb(v.sizeBytes)}
+                  {v.kind} · {formatBytes(v.sizeBytes)}
                 </span>
               </div>
             ))}

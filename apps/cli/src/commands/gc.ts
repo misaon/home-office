@@ -1,7 +1,8 @@
+import type { Command } from "../command.ts";
 import { withClient } from "../client.ts";
 import { line } from "../output.ts";
 
-export async function gc(): Promise<void> {
+async function gc(): Promise<void> {
   await withClient(async (client) => {
     const report = await client.system.gc();
     line(
@@ -12,3 +13,10 @@ export async function gc(): Promise<void> {
     }
   });
 }
+
+export const gcCommand: Command = {
+  name: "gc",
+  summary: "remove stopped sandboxes, expired volumes and dangling images",
+  usage: ["  ho gc"],
+  run: gc,
+};

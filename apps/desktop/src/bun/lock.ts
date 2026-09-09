@@ -1,12 +1,5 @@
-import { lock } from "proper-lockfile";
+import { acquireSingleInstanceLock, type LockRelease } from "@ho/daemon";
 
-export async function acquireLock(path: string): Promise<(() => Promise<void>) | null> {
-  try {
-    return await lock(path, { realpath: false, stale: 30_000 });
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ELOCKED") {
-      return null;
-    }
-    throw error;
-  }
+export async function acquireLock(path: string): Promise<LockRelease | null> {
+  return acquireSingleInstanceLock(`${path}.lock`);
 }

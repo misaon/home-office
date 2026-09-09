@@ -1,9 +1,10 @@
-import type { IntakePolicy, IntakeStatus, Project } from "@ho/protocol";
-import { useEffect, useState } from "react";
-import { getClient } from "../rpc.ts";
+import { errorMessage, type IntakePolicy, type IntakeStatus, type Project } from "@ho/protocol";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { intakeStatusQuery } from "../queries.ts";
+import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
 
-const describe = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 const when = (iso: string | null): string =>
   iso === null ? "never" : new Date(iso).toLocaleTimeString();
 
@@ -119,35 +120,29 @@ type Props = { project: Project };
  */
 export function IntakeSettings({ project }: Props): React.JSX.Element {
   const connection = useUi((s) => s.connection);
-  const [status, setStatus] = useState<IntakeStatus | null>(null);
+  const queries = useQueryClient();
+  const all = useQuery({ ...intakeStatusQuery, enabled: connection === "online" });
+  const status: IntakeStatus | null =
+    all.data?.find((entry) => entry.projectId === project.id) ?? null;
   const [labels, setLabels] = useState(project.intake.labels.join(", "));
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const invalidateStatus = (): Promise<void> =>
+    queries.invalidateQueries({ queryKey: intakeStatusQuery.queryKey });
 
-  const refreshStatus = (): void => {
-    getClient()
-      ?.intake.status()
-      .then(
-        (all) => {
-          setStatus(all.find((s) => s.projectId === project.id) ?? null);
-        },
-        () => null,
-      );
-  };
-  useEffect(refreshStatus, [connection, project.id, project.intake.enabled]);
-
+  const save = useMutation({
+    mutationFn: (patch: Partial<IntakePolicy>) =>
+      requireClient().projects.update({
+        id: project.id,
+        patch: { intake: { ...project.intake, ...patch } },
+      }),
+    onSuccess: invalidateStatus,
+  });
+  const poll = useMutation({
+    mutationFn: () => requireClient().intake.poll({ projectId: project.id }),
+    onSuccess: invalidateStatus,
+  });
+  const failure = save.error ?? poll.error;
   const update = (patch: Partial<IntakePolicy>): void => {
-    getClient()
-      ?.projects.update({ id: project.id, patch: { intake: { ...project.intake, ...patch } } })
-      .then(
-        () => {
-          setError(null);
-        },
-        (e: unknown) => {
-          setError(describe(e));
-        },
-      );
+    save.mutate(patch);
   };
   const saveLabels = (): void => {
     const parsed = labels
@@ -158,30 +153,13 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
       update({ labels: parsed });
     }
   };
-  const pollNow = (): void => {
-    const client = getClient();
-    if (client === null || busy) {
-      return;
-    }
-    setBusy(true);
-    setMessage(null);
-    client.intake.poll({ projectId: project.id }).then(
-      ([result]) => {
-        setBusy(false);
-        setError(null);
-        setMessage(
-          result === undefined
-            ? "nothing polled"
-            : `received ${String(result.received)}, already known ${String(result.duplicates)}${result.dryRun.length === 0 ? "" : `; dry run would take: ${result.dryRun.join("; ")}`}`,
-        );
-        refreshStatus();
-      },
-      (e: unknown) => {
-        setBusy(false);
-        setError(describe(e));
-      },
-    );
-  };
+  const polled = poll.data?.[0];
+  const message =
+    poll.data === undefined
+      ? null
+      : polled === undefined
+        ? "nothing polled"
+        : `received ${String(polled.received)}, already known ${String(polled.duplicates)}${polled.dryRun.length === 0 ? "" : `; dry run would take: ${polled.dryRun.join("; ")}`}`;
 
   const { intake } = project;
   return (
@@ -200,10 +178,12 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
         <button
           type="button"
           className="rounded bg-line px-2 py-0.5 disabled:opacity-50"
-          disabled={busy}
-          onClick={pollNow}
+          disabled={poll.isPending}
+          onClick={() => {
+            poll.mutate();
+          }}
         >
-          {busy ? "Polling…" : "Poll now"}
+          {poll.isPending ? "Polling…" : "Poll now"}
         </button>
       </div>
       <IntakeFields
@@ -215,7 +195,7 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
       />
       <IntakeHealth status={status} />
       {message === null ? null : <p className="text-emerald-300">{message}</p>}
-      {error === null ? null : <p className="text-red-400">{error}</p>}
+      {failure === null ? null : <p className="text-red-400">{errorMessage(failure)}</p>}
     </div>
   );
 }

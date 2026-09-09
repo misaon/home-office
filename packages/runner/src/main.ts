@@ -1,7 +1,9 @@
 // ho-runner: PID 1 inside an agent sandbox. Dials the daemon's runner gateway over WebSocket with a
 // one-time token, then relays exactly one child process (stdin/stdout lines/stderr/exit). The agent's
 // credentials arrive over this channel and only ever live in the child's environment.
-import { type FromRunner, RUNNER_ENV, RUNNER_PATH, ToRunner } from "@ho/protocol";
+import { compact, errorMessage } from "@ho/protocol";
+import { type FromRunner, RUNNER_ENV, RUNNER_PATH, ToRunner } from "@ho/protocol/runner";
+import { pumpLines, pumpText } from "./pump.ts";
 
 const gateway = Bun.env[RUNNER_ENV.gateway];
 const token = Bun.env[RUNNER_ENV.token];
@@ -25,7 +27,7 @@ const send = (message: FromRunner): void => {
   ws.send(JSON.stringify(message));
 };
 const reportError = (error: unknown): void => {
-  send({ type: "error", message: error instanceof Error ? error.message : String(error) });
+  send({ type: "error", message: errorMessage(error) });
 };
 // FileSink operations may return a promise when the pipe is backed up; never leave it floating.
 const settle = (result: number | Promise<number>): void => {
@@ -36,45 +38,6 @@ const settle = (result: number | Promise<number>): void => {
 
 type Child = Bun.Subprocess<"pipe", "pipe", "pipe">;
 let child: Child | undefined;
-
-async function pumpLines(
-  stream: ReadableStream<Uint8Array>,
-  onLine: (line: string) => void,
-): Promise<void> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    if (buffer.length > 1024 * 1024) {
-      child?.kill("SIGKILL");
-      throw new Error("agent output line exceeds 1 MiB");
-    }
-    let newline = buffer.indexOf("\n");
-    while (newline >= 0) {
-      onLine(buffer.slice(0, newline));
-      buffer = buffer.slice(newline + 1);
-      newline = buffer.indexOf("\n");
-    }
-  }
-  buffer += decoder.decode();
-  if (buffer.length > 0) {
-    onLine(buffer);
-  }
-}
-
-async function pumpText(
-  stream: ReadableStream<Uint8Array>,
-  onText: (text: string) => void,
-): Promise<void> {
-  const decoder = new TextDecoder();
-  for await (const chunk of stream) {
-    onText(decoder.decode(chunk, { stream: true }));
-  }
-  const remaining = decoder.decode();
-  if (remaining !== "") {
-    onText(remaining);
-  }
-}
 
 async function relayExit(proc: Child, output: Promise<unknown>): Promise<void> {
   const code = await proc.exited;
@@ -97,13 +60,17 @@ function spawnChild(
     stdout: "pipe",
     stderr: "pipe",
     env: { ...Bun.env, [RUNNER_ENV.token]: undefined, [RUNNER_ENV.gateway]: undefined, ...env },
-    ...(cwd === undefined ? {} : { cwd }),
+    ...compact({ cwd }),
   });
   child = proc;
   send({ type: "spawned", pid: proc.pid });
-  const stdout = pumpLines(proc.stdout, (line) => {
-    send({ type: "stdout", line });
-  }).catch(reportError);
+  const stdout = pumpLines(
+    proc.stdout,
+    (line) => {
+      send({ type: "stdout", line });
+    },
+    () => child?.kill("SIGKILL"),
+  ).catch(reportError);
   const stderr = pumpText(proc.stderr, (text) => {
     send({ type: "stderr", text });
   }).catch(reportError);

@@ -1,7 +1,7 @@
 > Historical planning snapshot from 2026-09-06/07, retained for provenance. Some completed checkboxes
 > describe targets that were never implemented or have since changed. Do not use commands, versions,
 > security guarantees or benchmarks here as current facts. See [current plan](../PLAN.md),
-> [architecture](../ARCHITECTURE.md) and [audit](../audit/2026-09.md).
+> [architecture](../ARCHITECTURE.md) and [audit](AUDIT-2026-09.md).
 
 # Home Office — Implementation Plan
 

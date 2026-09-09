@@ -1,14 +1,17 @@
+import type { Command } from "../command.ts";
+import { formatBytes } from "@ho/protocol";
 import { withClient } from "../client.ts";
-import { line } from "../output.ts";
+import { jsonOutput, line, print } from "../output.ts";
 
-const mb = (bytes: number | null): string =>
-  bytes === null ? "?" : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-
-export async function resources(): Promise<void> {
+async function resources(): Promise<void> {
   await withClient(async (client) => {
     const inv = await client.resources.inventory();
+    if (jsonOutput()) {
+      print(inv);
+      return;
+    }
     line(
-      `containers=${String(inv.snapshot.containers)} volumes=${String(inv.snapshot.volumes)} (${mb(inv.snapshot.volumesBytes)}) images=${mb(inv.snapshot.imagesBytes)}`,
+      `containers=${String(inv.snapshot.containers)} volumes=${String(inv.snapshot.volumes)} (${formatBytes(inv.snapshot.volumesBytes)}) images=${formatBytes(inv.snapshot.imagesBytes)}`,
     );
     for (const c of inv.containers) {
       line(
@@ -17,8 +20,15 @@ export async function resources(): Promise<void> {
     }
     for (const v of inv.volumes) {
       line(
-        `volume    ${v.name.padEnd(30)} ${mb(v.sizeBytes).padStart(10)} ${v.kind.padEnd(14)} ${v.createdAt ?? "?"}${v.sessionId === null ? "" : `  session=${v.sessionId.slice(-8)}`}`,
+        `volume    ${v.name.padEnd(30)} ${formatBytes(v.sizeBytes).padStart(10)} ${v.kind.padEnd(14)} ${v.createdAt ?? "?"}${v.sessionId === null ? "" : `  session=${v.sessionId.slice(-8)}`}`,
       );
     }
   });
 }
+
+export const resourcesCommand: Command = {
+  name: "resources",
+  summary: "containers and volumes the office owns, with sizes",
+  usage: ["  ho resources"],
+  run: resources,
+};

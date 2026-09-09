@@ -5,13 +5,8 @@ import {
   type RunnerChannel,
   type RunnerLine,
 } from "@ho/core";
-import {
-  FromRunner,
-  RUNNER_PATH,
-  type RunnerHello,
-  type SessionId,
-  type ToRunner,
-} from "@ho/protocol";
+import { compact, type SessionId } from "@ho/protocol";
+import { FromRunner, RUNNER_PATH, type RunnerHello, type ToRunner } from "@ho/protocol/runner";
 import type { Logger } from "./logger.ts";
 
 export type RunnerConnection = { hello: RunnerHello; channel: RunnerChannel; close: () => void };
@@ -144,7 +139,7 @@ export class RunnerGateway {
               type: "spawn",
               argv: [...argv],
               env: { ...env },
-              ...(cwd === undefined ? {} : { cwd }),
+              ...compact({ cwd }),
             });
             return spawned.promise.finally(() => {
               clearTimeout(timer);

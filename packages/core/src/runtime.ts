@@ -14,7 +14,6 @@ export type { RuntimeErrorCode, RuntimeEvent } from "@ho/protocol";
 export type RuntimeCapabilities = {
   resume: boolean;
   structuredOutput: boolean;
-  images: boolean;
   effortLevels: readonly EffortLevel[];
 };
 

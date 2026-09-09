@@ -14,6 +14,9 @@ type Waiter = {
  * the boss's status post when finished work walks back to him. Without viewers, or after the timeout,
  * nothing waits.
  */
+/** Envelopes remembered per task; only the newest matter, so the oldest are dropped. */
+const DELIVERED_LIMIT = 512;
+
 export class OfficeGate {
   readonly #timeoutMs: number;
   readonly #delivered = new Map<TaskId, string>();
@@ -28,6 +31,17 @@ export class OfficeGate {
 
   get viewers(): number {
     return this.#viewers;
+  }
+
+  #remember(taskId: TaskId, at: string): void {
+    this.#delivered.delete(taskId);
+    this.#delivered.set(taskId, at);
+    for (const oldest of this.#delivered.keys()) {
+      if (this.#delivered.size <= DELIVERED_LIMIT) {
+        break;
+      }
+      this.#delivered.delete(oldest);
+    }
   }
 
   /** Registers a viewer; the returned function unregisters it. When the last viewer leaves, nobody waits. */
@@ -47,7 +61,7 @@ export class OfficeGate {
 
   /** The office reports that the envelope for this task reached its recipient. */
   delivered(taskId: TaskId, at: string): void {
-    this.#delivered.set(taskId, at);
+    this.#remember(taskId, at);
     this.#log.info({ taskId }, "envelope delivered by the office");
     this.#release((w) => w.taskId === taskId && at >= w.since);
   }
@@ -74,7 +88,7 @@ export class OfficeGate {
         { taskId: task.id },
         "office animation timed out; starting the session anyway",
       );
-      this.#delivered.set(task.id, now);
+      this.#remember(task.id, now);
       return false;
     }
     return true;

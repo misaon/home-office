@@ -1,4 +1,5 @@
 // Home Office desktop main process (Bun inside Electrobun): runs @ho/daemon in-process and shows the office
+import { errorMessage } from "@ho/protocol";
 // UI the daemon serves. Native concerns only live here (window, menu, dialogs, external links, quitting);
 // everything else goes through the same oRPC contract the browser UI and the CLI use.
 import { resolveHome } from "@ho/daemon";
@@ -12,9 +13,6 @@ import { widenPath } from "./path.ts";
 
 const STOP_TIMEOUT_MS = 20_000;
 const TOKEN_KEY = "ho.token";
-
-const describe = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
 
 const fatal = async (message: string, detail: string): Promise<never> => {
   await Utils.showMessageBox({ type: "error", title: "Home Office", message, detail });
@@ -96,7 +94,7 @@ async function main(): Promise<void> {
     await release();
     await fatal(
       "The office could not start.",
-      `${describe(error)}\n\nLogs: ${logFile}\nIs another Home Office or \`ho daemon\` using port 47800?`,
+      `${errorMessage(error)}\n\nLogs: ${logFile}\nIs another Home Office or \`ho daemon\` using port 47800?`,
     );
     return;
   }
@@ -165,5 +163,5 @@ async function main(): Promise<void> {
 try {
   await main();
 } catch (error) {
-  await fatal("Home Office hit an unexpected error.", describe(error));
+  await fatal("Home Office hit an unexpected error.", errorMessage(error));
 }

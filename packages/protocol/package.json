@@ -4,10 +4,14 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./runner": "./src/runner.ts"
   },
   "dependencies": {
     "@orpc/contract": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "type-fest": "catalog:"
   }
 }

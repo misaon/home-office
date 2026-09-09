@@ -1,5 +1,11 @@
 import { bossOf, postAgentMessage } from "@ho/core";
-import type { Agent, StoredEvent, Task, TaskStatus } from "@ho/protocol";
+import {
+  type Agent,
+  errorMessage,
+  type StoredEvent,
+  type Task,
+  type TaskStatus,
+} from "@ho/protocol";
 import type { Logger } from "./logger.ts";
 import type { Office } from "./office.ts";
 import type { OfficeGate } from "./office-gate.ts";
@@ -87,10 +93,7 @@ export function startBossVoice(
     await office
       .execute(SYSTEM, (m, ctx) => postAgentMessage(m, boss.id, text, taskId, ctx))
       .catch((error: unknown) => {
-        log.warn(
-          { err: error instanceof Error ? error.message : String(error) },
-          "boss status message failed",
-        );
+        log.warn({ err: errorMessage(error) }, "boss status message failed");
       });
   };
   const onCreated = async (task: Task): Promise<void> => {
@@ -117,22 +120,17 @@ export function startBossVoice(
     if (task === undefined || boss === undefined) {
       return;
     }
-    const text = statusLine(office.model, boss, task, event.payload.to, event.payload.reason);
+    const { to, reason } = event.payload;
+    const text = statusLine(office.model, boss, task, to, reason);
     if (text === null) {
       return;
     }
-    if (walksBack(boss, task, event.payload.to)) {
+    if (walksBack(boss, task, to)) {
       await gate.waitFor(task.id, event.at);
     }
     // Artifacts (branch, PR) land right after the status change; re-read so the line carries them.
     const fresh = office.model.tasks.get(task.id) ?? task;
-    await say(
-      boss,
-      event.payload.to === "done"
-        ? `${quote(fresh)} is done.${outcome(fresh, event.payload.reason)}`
-        : text,
-      task.id,
-    );
+    await say(boss, statusLine(office.model, boss, fresh, to, reason) ?? text, task.id);
   };
   const pending = new Set<Promise<void>>();
   const track = (work: Promise<void>): void => {

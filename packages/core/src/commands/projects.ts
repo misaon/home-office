@@ -1,10 +1,11 @@
-import type {
-  Agent,
-  NewEvent,
-  Project,
-  ProjectCreateInput,
-  ProjectId,
-  ProjectUpdateInput,
+import {
+  type Agent,
+  compact,
+  type NewEvent,
+  type Project,
+  type ProjectCreateInput,
+  type ProjectId,
+  type ProjectUpdateInput,
 } from "@ho/protocol";
 import { conflict, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
@@ -12,8 +13,8 @@ import { err, ok } from "../result.ts";
 import { isTerminal } from "../tasks/transitions.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
 import { bossFor, copyOf } from "./office-defaults.ts";
-import { isSessionActive } from "./sessions.ts";
-import { membersOf } from "./shared.ts";
+import { activeSessionOfTask } from "./sessions.ts";
+import { membersOf, tasksOf } from "./shared.ts";
 
 const nameTaken = (model: ReadModel, name: string, except?: ProjectId): boolean =>
   [...model.projects.values()].some(
@@ -91,7 +92,7 @@ export function updateProject(
   if (input.patch.repo !== undefined && !sameRepo(current.repo, input.patch.repo)) {
     return err(conflict("a floor's repository cannot change; create a new floor"));
   }
-  const project: Project = { ...current, ...definedOnly(input.patch), updatedAt: ctx.now };
+  const project: Project = { ...current, ...compact(input.patch), updatedAt: ctx.now };
   return ok({
     events: [{ type: "project.updated", actor: ctx.actor, payload: { project } }],
     value: project,
@@ -108,17 +109,12 @@ export function removeProject(
   if (current === undefined) {
     return err(notFound("project", id));
   }
-  const tasks = [...model.tasks.values()].filter((t) => t.projectId === id);
+  const tasks = tasksOf(model, id);
   const open = tasks.filter((t) => !isTerminal(t.status)).length;
   if (open > 0) {
     return err(conflict(`project has ${String(open)} open task(s); finish or cancel them first`));
   }
-  const taskIds = new Set(tasks.map((task) => task.id));
-  if (
-    [...model.sessions.values()].some(
-      (session) => taskIds.has(session.taskId) && isSessionActive(session.state),
-    )
-  ) {
+  if (tasks.some((task) => activeSessionOfTask(model, task.id) !== undefined)) {
     return err(conflict("project has active sessions"));
   }
   const events: NewEvent[] = [
@@ -131,12 +127,3 @@ export function removeProject(
   ];
   return ok({ events, value: id });
 }
-
-/** Drops `undefined` values so a partial patch never erases fields under exactOptionalPropertyTypes. */
-export const definedOnly = <T extends object>(
-  patch: T,
-): { [K in keyof T]: Exclude<T[K], undefined> } => {
-  const entries = Object.entries(patch).filter(([, v]) => v !== undefined);
-  /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.fromEntries cannot express the mapped type */
-  return Object.fromEntries(entries) as { [K in keyof T]: Exclude<T[K], undefined> };
-};

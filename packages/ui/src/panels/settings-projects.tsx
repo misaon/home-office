@@ -1,6 +1,6 @@
-import type { Project } from "@ho/protocol";
-import { useState } from "react";
-import { getClient } from "../rpc.ts";
+import { errorMessage, type Project } from "@ho/protocol";
+import { useMutation } from "@tanstack/react-query";
+import { requireClient } from "../rpc.ts";
 import { sortedFloors, useUi } from "../store.ts";
 import { IntakeSettings } from "./settings-intake.tsx";
 
@@ -8,34 +8,35 @@ const describeRepo = (p: Project): string => (p.repo.kind === "local" ? p.repo.p
 
 /** The floors: one per project, numbered by creation. Adding one goes through the add-project dialog. */
 export function ProjectsSettings(): React.JSX.Element {
-  const snapshot = useUi((s) => s.snapshot);
+  const projects = useUi((s) => s.snapshot.projects);
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
-  const [error, setError] = useState<string | null>(null);
-  const fail = (e: unknown): void => {
-    setError(e instanceof Error ? e.message : String(e));
-  };
-
-  const togglePr = (p: Project): void => {
-    const mode = p.publish.mode === "branch" ? "pull-request" : "branch";
-    getClient()
-      ?.projects.update({ id: p.id, patch: { publish: { ...p.publish, mode } } })
-      .catch(fail);
-  };
-
-  const remove = (p: Project): void => {
+  const togglePr = useMutation({
+    mutationFn: (p: Project) =>
+      requireClient().projects.update({
+        id: p.id,
+        patch: {
+          publish: { ...p.publish, mode: p.publish.mode === "branch" ? "pull-request" : "branch" },
+        },
+      }),
+  });
+  const remove = useMutation({
+    mutationFn: (p: Project) => requireClient().projects.remove({ id: p.id }),
+  });
+  const failure = togglePr.error ?? remove.error;
+  const confirmRemove = (p: Project): void => {
     if (
       window.confirm(
         `Remove floor ${p.name} with its boss and staff? Tasks and history stay in the log.`,
       )
     ) {
-      getClient()?.projects.remove({ id: p.id }).catch(fail);
+      remove.mutate(p);
     }
   };
 
   return (
     <section className="space-y-2">
       <h3 className="text-[11px] tracking-wide text-gray-400 uppercase">Floors (projects)</h3>
-      {sortedFloors(snapshot).map((p, i) => (
+      {sortedFloors(projects).map((p, i) => (
         <div key={p.id} className="rounded border border-line bg-panel p-2">
           <div className="flex items-center justify-between">
             <span className="font-medium">
@@ -47,7 +48,7 @@ export function ProjectsSettings(): React.JSX.Element {
                 type="button"
                 className="text-gray-300 hover:underline"
                 onClick={() => {
-                  togglePr(p);
+                  togglePr.mutate(p);
                 }}
               >
                 delivery: {p.publish.mode}
@@ -56,7 +57,7 @@ export function ProjectsSettings(): React.JSX.Element {
                 type="button"
                 className="text-red-300 hover:underline"
                 onClick={() => {
-                  remove(p);
+                  confirmRemove(p);
                 }}
               >
                 remove
@@ -78,7 +79,7 @@ export function ProjectsSettings(): React.JSX.Element {
       >
         Add a project (floor)
       </button>
-      {error === null ? null : <span className="ml-2 text-red-400">{error}</span>}
+      {failure === null ? null : <span className="ml-2 text-red-400">{errorMessage(failure)}</span>}
     </section>
   );
 }

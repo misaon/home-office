@@ -62,7 +62,7 @@ export type FloorTemplate = {
   floor: (string | null)[];
   /** Wall cells (impassable). */
   walls: Uint8Array;
-  furniture: Furniture[];
+  furniture: readonly Readonly<Furniture>[];
   anchors: Anchor[];
 };
 

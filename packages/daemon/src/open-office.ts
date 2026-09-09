@@ -7,7 +7,7 @@ import { Office } from "./office.ts";
 const DB_FILE = "ho.db";
 
 export type Opened = {
-  database: ReturnType<typeof openDatabase>;
+  database: Awaited<ReturnType<typeof openDatabase>>;
   store: ReturnType<typeof createSqliteEventStore>;
   office: Office;
 };
@@ -20,14 +20,14 @@ export async function openOffice(
   log: Logger,
 ): Promise<Opened> {
   const path = join(home, DB_FILE);
-  const database = openDatabase(path, { migrationsDir });
+  const database = await openDatabase(path, { migrationsDir });
   const store = createSqliteEventStore(database.db, { ids, clock });
   try {
     return { database, store, office: await Office.open(store, clock, log) };
   } catch (error) {
     database.close();
     throw new Error(
-      "Cannot replay the event log; database preserved. Restore or migrate it before starting.",
+      `Cannot replay the event log; ${path} is preserved and untouched. Restore it from a backup, or — if the events predate a schema change and are expendable — move ${DB_FILE}, ${DB_FILE}-wal and ${DB_FILE}-shm aside and start with an empty log.`,
       { cause: error },
     );
   }

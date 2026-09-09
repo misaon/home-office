@@ -1,5 +1,5 @@
 import { githubRepoFromUrl } from "@ho/core";
-import type { Project, Task, TaskArtifacts } from "@ho/protocol";
+import { compact, type Project, type Task, type TaskArtifacts } from "@ho/protocol";
 import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
 
 const run = async (argv: readonly string[], cwd?: string): Promise<string> => {
@@ -8,7 +8,7 @@ const run = async (argv: readonly string[], cwd?: string): Promise<string> => {
     stderr: "pipe",
     timeout: 120_000,
     env: { ...Bun.env, GH_PROMPT_DISABLED: "1", GIT_TERMINAL_PROMPT: "0" },
-    ...(cwd === undefined ? {} : { cwd }),
+    ...compact({ cwd }),
   });
   const [stdout, stderr, code] = await Promise.all([
     new Response(proc.stdout).text(),
@@ -59,6 +59,7 @@ export async function deliver(
     args.push("--draft");
   }
   let cwd: string | undefined;
+  let target: string[] = [];
   if (project.repo.kind === "local") {
     cwd = project.repo.path;
   } else {
@@ -66,10 +67,9 @@ export async function deliver(
     if (repo === null) {
       throw new Error("pull requests need a GitHub URL");
     }
-    args.push("--repo", repo);
+    target = ["--repo", repo];
+    args.push(...target);
   }
-  const target =
-    project.repo.kind === "local" ? [] : ["--repo", githubRepoFromUrl(project.repo.url) ?? ""];
   const existing = await run(
     [
       "gh",

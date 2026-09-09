@@ -9,7 +9,7 @@ import type {
   Task,
 } from "@ho/protocol";
 import { notFound } from "../errors.ts";
-import type { ReadModel } from "../model/read-model.ts";
+import { mailSourceKey, type ReadModel } from "../model/read-model.ts";
 import type { IntakeItem } from "../ports.ts";
 import { err, ok } from "../result.ts";
 import type { CommandContext, CommandResult } from "./context.ts";
@@ -35,14 +35,14 @@ const mailTitle = (item: IntakeItem): string =>
   `Issue #${item.externalId}: ${item.title}`.slice(0, TITLE_MAX);
 
 export const findMail = (
-  model: ReadModel,
+  model: Pick<ReadModel, "mail" | "mailBySource">,
   projectId: ProjectId,
   connector: MailConnector,
   externalId: string,
-): MailItem | undefined =>
-  [...model.mail.values()].find(
-    (m) => m.projectId === projectId && m.connector === connector && m.externalId === externalId,
-  );
+): MailItem | undefined => {
+  const id = model.mailBySource.get(mailSourceKey(projectId, connector, externalId));
+  return id === undefined ? undefined : model.mail.get(id);
+};
 
 export type ReceivedMail = { mail: MailItem; task: Task | null; duplicate: boolean };
 

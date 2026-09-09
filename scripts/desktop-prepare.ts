@@ -1,5 +1,5 @@
 // Assembles everything the desktop app bundles besides its own main process: the office UI, sprites, image
-// build contexts (with the compiled ho-runner and role skill packs), database migrations and the app icon.
+// build contexts (with the bundled ho-runner and role skill packs), database migrations and the app icon.
 // Output: apps/desktop/resources/ho (mirrors the repository paths @ho/daemon resolves) and
 // apps/desktop/icon.iconset. Both are git-ignored; `bun run desktop:dev|build` runs this first.
 import { $ } from "bun";
@@ -39,12 +39,12 @@ await cp(at("images/agent"), resolve(out, "images/agent"), {
 await cp(at("packages/agent-kit/plugins"), resolve(out, "images/agent/plugins"), {
   recursive: true,
 });
-const runner = resolve(out, "images/agent/bin/ho-runner");
+const runner = resolve(out, "images/agent/bin/ho-runner.js");
 await mkdir(resolve(out, "images/agent/bin"), { recursive: true });
-await $`bun build --compile --minify --target=bun-linux-arm64-musl ${at("packages/runner/src/main.ts")} --outfile ${runner}`
+await $`bun build --target=bun --minify ${at("packages/runner/src/main.ts")} --outfile ${runner}`
   .cwd(root)
   .quiet();
-say("image contexts assembled (ho-runner compiled for linux/arm64 musl)");
+say("image contexts assembled (ho-runner bundled for the image's own Bun)");
 
 // 3. Database migrations.
 await cp(at("packages/store/drizzle"), resolve(out, "packages/store/drizzle"), { recursive: true });

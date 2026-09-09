@@ -1,6 +1,5 @@
-/* eslint-disable unicorn/no-array-fill-with-reference-type -- Pixi Graphics.fill takes a FillStyle, not an Array value. */
 import {
-  type Actor,
+  key as cellKey,
   type OfficePlan,
   type PlanDoor,
   type PlanObject,
@@ -33,36 +32,52 @@ const FRAME_MS = 120;
 /** Full travel of a proximity-driven animation (elevator doors), forward and back. */
 const NEAR_MS = 700;
 
-const inRect = (p: { x: number; y: number }, rect: PlanRect): boolean =>
-  p.x >= rect.x && p.x < rect.x + rect.w && p.y >= rect.y && p.y < rect.y + rect.h;
-
 /**
- * True when an actor is about to pass through the rect: they stand in it, or one of the next LOOKAHEAD_CELLS
- * cells of their current walk leads into it. Walking past a door does not open it.
+ * Cells the floor's actors stand on or are about to walk through — the next LOOKAHEAD_CELLS of a walk, so
+ * walking *past* a door does not open it. Collected once per frame into a reused set.
  */
-const anyoneHeading = (people: readonly Actor[], rect: PlanRect): boolean =>
-  people.some((a) => {
-    if (inRect(a.tile, rect)) {
-      return true;
+const collectHeadings = (world: World, floorId: string, into: Set<number>): void => {
+  into.clear();
+  for (const actor of world.actors.values()) {
+    if (actor.floorId !== floorId || actor.hidden) {
+      continue;
     }
-    const step = a.steps[0];
+    into.add(cellKey(actor.tile));
+    const step = actor.steps[0];
     const path = step?.kind === "walk" ? (step.path ?? []) : [];
     for (let index = 0; index < Math.min(path.length, LOOKAHEAD_CELLS); index += 1) {
       const point = path[index];
-      if (point !== undefined && inRect(point, rect)) {
+      if (point !== undefined) {
+        into.add(cellKey(point));
+      }
+    }
+  }
+};
+
+const anyoneHeading = (headings: ReadonlySet<number>, rect: PlanRect): boolean => {
+  for (let y = rect.y; y < rect.y + rect.h; y += 1) {
+    for (let x = rect.x; x < rect.x + rect.w; x += 1) {
+      if (headings.has(cellKey({ x, y }))) {
         return true;
       }
     }
-    return false;
-  });
+  }
+  return false;
+};
 
 /** Moves `amount` toward `target` at a fixed speed; returns the new value. */
 const approach = (amount: number, target: number, dtMs: number, travelMs: number): number =>
   amount + Math.sign(target - amount) * Math.min(Math.abs(target - amount), dtMs / travelMs);
 
+const FURNITURE_PREFIX = "furniture/";
+
 /** Frames of the object's current animation, falling back to its single `static` frame. */
-const framesOf = (sprites: SpriteLibrary, item: PlanObject): Texture[] | undefined =>
-  sprites.frames(item.sprite, item.animation) ?? sprites.frames(item.sprite, "static");
+const framesOf = (
+  sprites: SpriteLibrary,
+  item: PlanObject,
+  animation = item.animation,
+): Texture[] | undefined =>
+  sprites.frames(item.sprite, animation) ?? sprites.frames(item.sprite, "static");
 
 const DOOR_MS = 220;
 const LOOKAHEAD_CELLS = 4;
@@ -129,32 +144,37 @@ export function createPlanView(
     });
   root.addChild(floor, objects);
 
+  const headings = new Set<number>();
   const update = (world: World, dtMs: number): void => {
-    const people = [...world.actors.values()].filter((a) => a.floorId === template.id && !a.hidden);
+    collectHeadings(world, template.id, headings);
+    const floorState = world.floors.get(template.id);
     for (const view of views) {
-      if (view.animation !== view.item.animation) {
+      const key = view.item.sprite.slice(FURNITURE_PREFIX.length);
+      const animation = floorState?.animationStates.get(key) ?? view.item.animation;
+      if (view.animation !== animation) {
         // State change (mailbox empty → full): swap to the new animation's frames, restart its clock.
-        const frames = framesOf(sprites, view.item);
+        const frames = framesOf(sprites, view.item, animation);
         const texture = frames?.[0];
         if (frames !== undefined && texture !== undefined) {
           view.frames = frames;
           view.frame = 0;
           view.timeMs = 0;
           view.sprite.texture = texture;
-          view.animation = view.item.animation;
+          view.animation = animation;
         }
       }
       if (view.frames.length > 1) {
         let frame = view.frame;
         if (view.item.playback === "sim") {
           // The simulation owns this animation (elevator doors): 0 closed … 1 open.
-          const amount =
-            world.floors
-              .get(template.id)
-              ?.animations.get(view.item.sprite.slice("furniture/".length)) ?? 0;
+          const amount = floorState?.animations.get(key) ?? 0;
           frame = Math.round(amount * (view.frames.length - 1));
         } else if (view.item.playback === "near") {
-          const target = anyoneHeading(people, { ...view.item.at, w: view.item.w, h: view.item.h })
+          const target = anyoneHeading(headings, {
+            ...view.item.at,
+            w: view.item.w,
+            h: view.item.h,
+          })
             ? 1
             : 0;
           view.amount = approach(view.amount, target, dtMs, NEAR_MS);
@@ -173,7 +193,7 @@ export function createPlanView(
     }
     for (const door of doors) {
       const { spec } = door;
-      const target = anyoneHeading(people, spec) ? 1 : 0;
+      const target = anyoneHeading(headings, spec) ? 1 : 0;
       const amount = approach(door.amount, target, dtMs, DOOR_MS);
       if (door.amount !== amount) {
         door.amount = amount;
@@ -187,7 +207,6 @@ export function createPlanView(
   return { root, objects, width: template.width * TILE, height: template.height * TILE, update };
 }
 
-/** Sliding leaves retract toward the jambs; the threshold stays walkable regardless (visual only). */
 /**
  * Art sits with its bottom-left corner on the footprint's bottom-left cell; art declared by its own width (chairs)
  * or height (plants) is centred on the footprint instead. A wrong size is scaled to the contract size and reported.
@@ -216,6 +235,7 @@ function artSprite(item: PlanObject, texture: Texture, report: (issue: string) =
   return sprite;
 }
 
+/** Sliding leaves retract toward the jambs; the threshold stays walkable regardless (visual only). */
 function drawDoor({ graphic: g, spec: d, amount }: DoorView): void {
   const w = d.w * TILE;
   const h = d.h * TILE;

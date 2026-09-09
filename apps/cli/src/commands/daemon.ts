@@ -1,9 +1,10 @@
+import type { Command } from "../command.ts";
 import { startDaemon } from "@ho/daemon";
 import { parse } from "../args.ts";
 import { line } from "../output.ts";
 
 /** Runs the daemon in the foreground; `--ui` also prints where the office UI is served (token stays in daemon.json). */
-export async function daemon(args: readonly string[]): Promise<void> {
+async function daemon(args: readonly string[]): Promise<void> {
   const parsed = parse(args, [], ["ui"]);
   const handle = await startDaemon();
   const { host, port, version } = handle.info;
@@ -12,7 +13,7 @@ export async function daemon(args: readonly string[]): Promise<void> {
     line(
       handle.config.ui.dir === null
         ? "office UI: not served (build it with `bun run ui:build`)"
-        : `office UI: http://${host}:${String(port)}/ — the token is in daemon.json (0600); \`ho ui\` opens the UI with it`,
+        : `office UI: served on ${host}:${String(port)}, but the page needs this launch's token — run \`ho ui\` to open it, or \`ho ui --print\` for the URL. Opening http://${host}:${String(port)}/ without the token shows an empty office.`,
     );
   }
   const shutdown = (): void => {
@@ -24,3 +25,10 @@ export async function daemon(args: readonly string[]): Promise<void> {
     // Keep the process alive until a signal arrives.
   });
 }
+
+export const daemonCommand: Command = {
+  name: "daemon",
+  summary: "run the daemon in the foreground (--ui also prints the office URL)",
+  usage: ["  ho daemon [--ui]"],
+  run: daemon,
+};

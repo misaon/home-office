@@ -1,3 +1,4 @@
+import { errorMessage } from "@ho/protocol";
 import { existsSync, renameSync, watch as fsWatch } from "node:fs";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -64,7 +65,7 @@ if (watch) {
     }
     timer = setTimeout(() => {
       pending = pending.then(build).catch((error: unknown) => {
-        process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+        process.stderr.write(`${errorMessage(error)}\n`);
       });
     }, 150);
   };

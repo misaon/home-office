@@ -1,3 +1,4 @@
+import { errorMessage } from "@ho/protocol";
 import {
   createChannel,
   type RuntimeSession,
@@ -7,7 +8,7 @@ import {
 } from "@ho/core";
 import type { OfficeConnection } from "./connection.ts";
 import { newTurn, stopToEvent, updateToEvents } from "./events.ts";
-import { describe, isAuthRequired, type Negotiated } from "./negotiate.ts";
+import { isAuthRequired, type Negotiated } from "./negotiate.ts";
 import type { AcpPreset } from "./presets.ts";
 
 export function createPrompt(
@@ -52,7 +53,7 @@ export function createPrompt(
           events.push(event);
         }
       } catch (error) {
-        events.push({ kind: "error", code: "process_exit", message: describe(error) });
+        events.push({ kind: "error", code: "process_exit", message: errorMessage(error) });
         events.close();
       }
     });
@@ -90,7 +91,7 @@ export function createPrompt(
           events.push({
             kind: "error",
             code: isAuthRequired(error) ? "authentication_failed" : "process_exit",
-            message: describe(error),
+            message: errorMessage(error),
           });
         },
       )

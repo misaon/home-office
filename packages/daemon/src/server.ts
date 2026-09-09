@@ -1,4 +1,7 @@
+import { ORPCError, onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/bun-ws";
+import { errorMessage } from "@ho/protocol";
+import { timingSafeEqual } from "node:crypto";
 import type { Logger } from "./logger.ts";
 import type { RpcContext } from "./rpc/context.ts";
 import { router } from "./rpc/router.ts";
@@ -37,6 +40,15 @@ const presentedToken = (req: Request): { token: string; viaProtocol: boolean } |
     : { token: match.slice(PROTOCOL_PREFIX.length), viaProtocol: true };
 };
 
+const encoder = new TextEncoder();
+
+/** Constant-time comparison: the daemon token is the one credential that grants full RPC access. */
+const sameToken = (presented: string, expected: string): boolean => {
+  const a = encoder.encode(presented);
+  const b = encoder.encode(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+};
+
 const ASSETS_PREFIX = "/assets/";
 
 /** The office UI bundle at `/` and sprite files at `/assets/`; both are read-only and unauthenticated (no data). */
@@ -48,12 +60,25 @@ function serveUi(options: ServerOptions, pathname: string): Promise<Response> | 
       : serveStatic(assetsDir, pathname.slice(ASSETS_PREFIX.length - 1), null);
   }
   return dir === null
-    ? new Response("not found", { status: 404 })
+    ? new Response(
+        "this build carries no office UI bundle; use the desktop app or run the daemon from a source checkout",
+        { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } },
+      )
     : serveStatic(dir, pathname, "index.html");
 }
 
 export function startServer(options: ServerOptions): { port: number; stop: () => Promise<void> } {
-  const handler = new RPCHandler(router);
+  const handler = new RPCHandler(router, {
+    interceptors: [
+      onError((error) => {
+        if (error instanceof ORPCError && error.code !== "INTERNAL_SERVER_ERROR") {
+          options.log.debug({ code: error.code, err: error.message }, "rpc call rejected");
+          return;
+        }
+        options.log.error({ err: errorMessage(error) }, "rpc call failed");
+      }),
+    ],
+  });
   const server = Bun.serve<SocketData>({
     hostname: options.host,
     port: options.port,
@@ -83,7 +108,7 @@ export function startServer(options: ServerOptions): { port: number; stop: () =>
         return serveUi(options, url.pathname);
       }
       const presented = presentedToken(req);
-      if (presented === null || presented.token !== options.token) {
+      if (presented === null || !sameToken(presented.token, options.token)) {
         options.log.warn({ ip: srv.requestIP(req)?.address }, "rejected rpc connection");
         return new Response("unauthorized", { status: 401 });
       }

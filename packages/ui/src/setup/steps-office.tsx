@@ -1,25 +1,21 @@
-import type { ChatMessageId, ProjectId, TaskId } from "@ho/protocol";
+import { chatOf } from "@ho/core";
+import { type ChatMessageId, errorMessage, type ProjectId, type TaskId } from "@ho/protocol";
+import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { getClient } from "../rpc.ts";
+import { requireClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
 import type { StepStatus } from "./status.ts";
-import { describeError, Step } from "./step.tsx";
+import { Step } from "./step.tsx";
 
 const HELLO =
   "Hello! This is the first-run check of Home Office. Reply with one short sentence confirming you are online; do not delegate anything.";
 
 type Sent = { messageId: ChatMessageId; taskId: TaskId | null; at: string };
 
-const replyTo = (snapshot: Snapshot, sent: Sent, floorId: ProjectId): boolean | string => {
-  const reply = snapshot.chat.find(
-    (m) =>
-      m.projectId === floorId &&
-      m.author.kind === "agent" &&
-      m.taskId === sent.taskId &&
-      m.at >= sent.at,
-  );
-  return reply === undefined ? false : reply.text;
-};
+const replyTo = (snapshot: Snapshot, sent: Sent, floorId: ProjectId): string | null =>
+  chatOf(snapshot, floorId).find(
+    (m) => m.author.kind === "agent" && m.taskId === sent.taskId && m.at >= sent.at,
+  )?.text ?? null;
 
 function smokeStatus(
   snapshot: Snapshot,
@@ -36,8 +32,8 @@ function smokeStatus(
       : { state: "todo", text: "finish the steps above first" };
   }
   const reply = replyTo(snapshot, sent, floorId);
-  if (typeof reply === "string") {
-    const answered = snapshot.chat.find((m) => m.text === reply)?.at ?? sent.at;
+  if (reply !== null) {
+    const answered = chatOf(snapshot, floorId).find((m) => m.text === reply)?.at ?? sent.at;
     return {
       state: "ok",
       text: `the boss answered in ${String(Math.round((new Date(answered).getTime() - new Date(sent.at).getTime()) / 1000))} s`,
@@ -68,32 +64,23 @@ export function SmokeStep({
   ready: boolean;
 }): React.JSX.Element {
   const floorId = useUi((s) => s.floorId);
-  const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<Sent | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const status = smokeStatus(snapshot, sent, ready, floorId);
   const boss = [...snapshot.agents.values()].find(
     (a) => a.role === "boss" && a.projectId === floorId,
   );
+  const hello = useMutation({
+    mutationFn: (projectId: ProjectId) => requireClient().chat.send({ text: HELLO, projectId }),
+    onSuccess: ({ message, task }) => {
+      setSent({ messageId: message.id, taskId: task?.id ?? null, at: message.at });
+    },
+  });
   const send = (): void => {
-    const client = getClient();
-    if (client === null || floorId === null || sending) {
-      return;
+    if (floorId !== null && !hello.isPending) {
+      hello.mutate(floorId);
     }
-    setSending(true);
-    client.chat.send({ text: HELLO, projectId: floorId }).then(
-      ({ message, task }) => {
-        setSending(false);
-        setSent({ messageId: message.id, taskId: task?.id ?? null, at: message.at });
-        setError(null);
-      },
-      (e: unknown) => {
-        setSending(false);
-        setError(describeError(e));
-      },
-    );
   };
-  const reply = sent === null || floorId === null ? false : replyTo(snapshot, sent, floorId);
+  const reply = sent === null || floorId === null ? null : replyTo(snapshot, sent, floorId);
   return (
     <Step index={4} title="Smoke test" status={status}>
       <div className="space-y-1">
@@ -102,21 +89,24 @@ export function SmokeStep({
           starts, Claude Code signs in with your token and the reply lands in Chat. Expect 20–60
           seconds and a few hundred tokens on {boss?.model ?? "the boss's model"}.
         </p>
-        {typeof reply === "string" ? (
+        {reply !== null ? (
           <blockquote className="rounded bg-ink p-2 text-gray-200">{reply}</blockquote>
         ) : (
           <button
             type="button"
             className="rounded bg-accent px-2 py-1 text-black disabled:opacity-50"
             disabled={
-              sending || !ready || floorId === null || (sent !== null && status.state === "unknown")
+              hello.isPending ||
+              !ready ||
+              floorId === null ||
+              (sent !== null && status.state === "unknown")
             }
             onClick={send}
           >
             {sent === null ? "Say hello" : "Try again"}
           </button>
         )}
-        {error === null ? null : <p className="text-red-400">{error}</p>}
+        {hello.error === null ? null : <p className="text-red-400">{errorMessage(hello.error)}</p>}
       </div>
     </Step>
   );

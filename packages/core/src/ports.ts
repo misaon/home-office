@@ -4,6 +4,7 @@ import type {
   MailItem,
   NewEvent,
   Project,
+  SecretKeyName,
   StoredEvent,
 } from "@ho/protocol";
 
@@ -30,15 +31,10 @@ export type EventStore = {
   lastSeq: () => Promise<number>;
 };
 
-export type SecretKey =
-  | "anthropic-oauth-token"
-  | "anthropic-api-key"
-  | "daemon-token"
-  | (string & {});
 export type SecretStore = {
-  get: (key: SecretKey) => Promise<string | null>;
-  set: (key: SecretKey, value: string) => Promise<void>;
-  delete: (key: SecretKey) => Promise<void>;
+  get: (key: SecretKeyName) => Promise<string | null>;
+  set: (key: SecretKeyName, value: string) => Promise<void>;
+  delete: (key: SecretKeyName) => Promise<void>;
 };
 
 /** What a connector found at the source; the body goes into the task brief. */

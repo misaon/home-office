@@ -1,5 +1,12 @@
-import { acknowledgeMail, type IntakeConnector, receiveMail, type ReceivedMail } from "@ho/core";
 import {
+  acknowledgeMail,
+  findMail,
+  type IntakeConnector,
+  receiveMail,
+  type ReceivedMail,
+} from "@ho/core";
+import {
+  errorMessage,
   GITHUB_ISSUES_CONNECTOR,
   type IntakePollResult,
   type IntakeStatus,
@@ -78,10 +85,10 @@ export class IntakeService {
         if (event.type.startsWith("project.")) {
           this.#reschedule();
         } else if (event.type === "task.created") {
-          await this.#tell(delegationAck(this.#office.model, event.payload.task));
+          void this.#track(this.#tell(delegationAck(this.#office.model, event.payload.task)));
         } else if (event.type === "task.status_changed") {
           const { taskId, to, reason } = event.payload;
-          await this.#tell(outcomeAck(this.#office.model, taskId, to, reason));
+          void this.#track(this.#tell(outcomeAck(this.#office.model, taskId, to, reason)));
         }
       }
     })().catch((error: unknown) => {
@@ -183,7 +190,11 @@ export class IntakeService {
   }
 
   #poll(project: Project): Promise<IntakePollResult> {
-    const pending = this.#pollProject(project).finally(() => {
+    return this.#track(this.#pollProject(project));
+  }
+
+  #track<T>(work: Promise<T>): Promise<T> {
+    const pending = work.finally(() => {
       this.#pending.delete(pending);
     });
     this.#pending.add(pending);
@@ -206,14 +217,9 @@ export class IntakeService {
     try {
       const items = await connector.poll(project, this.#controller.signal);
       state.lastPollAt = this.#office.clock.now().toISOString();
-      const known = new Set(
-        [...this.#office.model.mail.values()]
-          .filter((m) => m.projectId === project.id)
-          .map((m) => m.externalId),
-      );
       for (const item of items) {
         this.#controller.signal.throwIfAborted();
-        if (known.has(item.externalId)) {
+        if (findMail(this.#office.model, project.id, connector.id, item.externalId) !== undefined) {
           result.duplicates += 1;
           continue;
         }
@@ -228,7 +234,6 @@ export class IntakeService {
           result.duplicates += 1;
           continue;
         }
-        known.add(item.externalId);
         result.received += 1;
         state.received += 1;
         this.#log.info(
@@ -244,7 +249,7 @@ export class IntakeService {
       state.lastDryRun = result.dryRun;
       state.lastError = null;
     } catch (error) {
-      state.lastError = error instanceof Error ? error.message : String(error);
+      state.lastError = errorMessage(error);
       this.#log.warn({ projectId: project.id, err: state.lastError }, "intake poll failed");
     } finally {
       state.polling = false;
@@ -269,10 +274,7 @@ export class IntakeService {
       }
       await connector.acknowledge(project, mail, last, this.#controller.signal);
     } catch (error) {
-      this.#log.warn(
-        { err: error instanceof Error ? error.message : String(error) },
-        `${ack.outcome} acknowledgement failed`,
-      );
+      this.#log.warn({ err: errorMessage(error) }, `${ack.outcome} acknowledgement failed`);
     }
   }
 }

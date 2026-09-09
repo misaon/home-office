@@ -1,4 +1,5 @@
 import {
+  type AgentRole,
   type AuthKind,
   type EffortLevel,
   PROVIDERS,
@@ -16,13 +17,37 @@ export type AgentChoice = {
   effort: EffortLevel;
 };
 
-/** The catalog's defaults for a provider; effort falls back to `medium` where the CLI has no knob. */
-export const defaultChoice = (provider: ProviderId): Omit<AgentChoice, "provider"> => {
+/**
+ * Effort a new agent starts at, by what the role actually does: the agents that change the repository think
+ * hard, triage and errands do not. `xhigh` and `max` stay a deliberate per-agent choice in Settings.
+ */
+const EFFORT_BY_ROLE: Readonly<Record<AgentRole, EffortLevel>> = {
+  boss: "medium",
+  worker: "high",
+  reviewer: "high",
+  clerk: "low",
+};
+
+/** Claude Code aliases per role (D12); other providers start from their catalog default. */
+const CLAUDE_MODEL_BY_ROLE: Readonly<Record<AgentRole, string>> = {
+  boss: "opus",
+  worker: "sonnet",
+  reviewer: "sonnet",
+  clerk: "haiku",
+};
+
+/** The catalog's defaults for a provider and role; both fall back to the provider's own defaults. */
+export const defaultChoice = (
+  provider: ProviderId,
+  role: AgentRole = "worker",
+): Omit<AgentChoice, "provider"> => {
   const p = PROVIDERS[provider];
+  const wanted = EFFORT_BY_ROLE[role];
+  const model = provider === "claude-code" ? CLAUDE_MODEL_BY_ROLE[role] : p.defaultModel;
   return {
     auth: p.defaultAuth,
-    model: p.defaultModel,
-    effort: p.effortLevels.includes("medium") ? "medium" : (p.effortLevels[0] ?? "medium"),
+    model: p.models.some((m) => m.id === model) || p.freeFormModels ? model : p.defaultModel,
+    effort: p.effortLevels.includes(wanted) ? wanted : (p.effortLevels[0] ?? "medium"),
   };
 };
 

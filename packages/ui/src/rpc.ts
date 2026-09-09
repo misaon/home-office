@@ -1,3 +1,4 @@
+import { HANDSHAKE_TIMEOUT_MS, waitForOpen } from "@ho/core";
 import type { Contract } from "@ho/protocol";
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/websocket";
@@ -35,42 +36,26 @@ export function requireClient(): Client {
   return current;
 }
 
-export function connect(token: string): Promise<{ client: Client; socket: WebSocket }> {
-  return new Promise((resolve, reject) => {
-    const scheme = window.location.protocol === "https:" ? "wss" : "ws";
-    const socket = new WebSocket(`${scheme}://${window.location.host}/rpc`, [
-      `${PROTOCOL_PREFIX}${token}`,
-    ]);
-    const cleanup = (): void => {
-      clearTimeout(deadline);
-      socket.removeEventListener("open", open);
-      socket.removeEventListener("error", fail);
-      socket.removeEventListener("close", fail);
-    };
-    const fail = (): void => {
-      cleanup();
-      socket.close();
-      reject(new Error("the daemon refused the connection or timed out"));
-    };
-    const open = (): void => {
-      cleanup();
-      const link = new RPCLink({ websocket: socket });
-      const client: Client = createORPCClient(link);
-      current = client;
-      socket.addEventListener(
-        "close",
-        () => {
-          if (current === client) {
-            current = null;
-          }
-        },
-        { once: true },
-      );
-      resolve({ client, socket });
-    };
-    const deadline = setTimeout(fail, 10_000);
-    socket.addEventListener("open", open);
-    socket.addEventListener("error", fail);
-    socket.addEventListener("close", fail);
-  });
+export async function connect(token: string): Promise<{ client: Client; socket: WebSocket }> {
+  const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+  const socket = new WebSocket(`${scheme}://${window.location.host}/rpc`, [
+    `${PROTOCOL_PREFIX}${token}`,
+  ]);
+  await waitForOpen(
+    socket,
+    AbortSignal.timeout(HANDSHAKE_TIMEOUT_MS),
+    "the daemon refused the connection or timed out",
+  );
+  const client: Client = createORPCClient(new RPCLink({ websocket: socket }));
+  current = client;
+  socket.addEventListener(
+    "close",
+    () => {
+      if (current === client) {
+        current = null;
+      }
+    },
+    { once: true },
+  );
+  return { client, socket };
 }
