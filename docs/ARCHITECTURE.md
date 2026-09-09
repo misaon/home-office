@@ -22,6 +22,11 @@ arrive in a spawn message and enter that child's environment. The runner token i
 child. A separate short-lived git-bridge container copies a repository into a Docker task volume and
 publishes its result branch back to the host. Agent containers never mount the host repository.
 
+Agents currently have no Docker/Compose tooling or engine socket; nested project containers are not
+supported. The [task-engine plan](plans/2026-09-09-task-container-engine.md), researched 2026-09-09,
+proposes an optional VM-backed environment with a private engine. This is future work, not a change to
+the container boundary described here.
+
 Native host dialogs are a daemon port, not a UI capability. The same UI bundle runs in the Electrobun
 webview and in a plain browser, so `system.pickDirectory` asks the daemon, and the daemon holds a
 `DirectoryPicker`: the desktop app injects an open panel owned by its own window through `startDaemon`,

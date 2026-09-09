@@ -1396,3 +1396,65 @@ knip clean · ui: 3 files, 1123 KiB
 Not covered: the desktop app's own `Utils.openFileDialog` panel (it needs the packaged Electrobun app,
 where the daemon runs in-process and receives the native picker), and a folder actually chosen in the
 dialog rather than dismissed.
+
+## 2026-09-09 — Task container engine research and implementation plan
+
+Documentation-only task. Inspected the current Docker provider, session provisioning/lifecycle,
+runner gateway, git bridge, startup and GC; primary online sources and their dates are linked in
+`docs/plans/2026-09-09-task-container-engine.md`. Proposed a private Docker Engine behind a VM
+boundary, evaluating Docker Sandboxes before a Lima fallback. No runtime installed or launched.
+
+Local prerequisite discovery (no output for `limactl` or `sbx`):
+
+```text
+$ command -v docker; command -v limactl; command -v sbx; uname -m
+/usr/local/bin/docker
+arm64
+```
+
+The semantic-search service returned HTTP 404 to the explorer; direct source inspection was used.
+The absence of nested Docker support is a source finding, not a measured Compose failure.
+
+Documentation formatting:
+
+```text
+$ bunx --no-install oxfmt docs/plans/2026-09-09-task-container-engine.md docs/PLAN.md docs/STACK.md docs/ARCHITECTURE.md
+Finished in 114ms on 4 files using 12 threads.
+```
+
+Full repository check, exit code 0:
+
+```text
+$ bun run check
+$ bun run typecheck && bun run lint && bun run fmt:check && bun run knip && bun run ui:build
+$ bun run scripts/typecheck.ts
+✔ apps/cli/tsconfig.json
+✔ apps/desktop/tsconfig.json
+✔ packages/core/tsconfig.json
+✔ packages/daemon/tsconfig.json
+✔ packages/intake-github/tsconfig.json
+✔ packages/protocol/tsconfig.json
+✔ packages/runner/tsconfig.json
+✔ packages/runtime-acp/tsconfig.json
+✔ packages/runtime-claude-code/tsconfig.json
+✔ packages/sandbox-docker/tsconfig.json
+✔ packages/secrets/tsconfig.json
+✔ packages/sim/tsconfig.json
+✔ packages/store/tsconfig.json
+✔ packages/ui/tsconfig.json
+✔ spikes/s6-acp-mock/tsconfig.json
+✔ tsconfig.json
+$ oxlint --type-aware --deny-warnings
+$ oxfmt --check
+Checking formatting...
+
+All matched files use the correct format.
+Finished in 394ms on 313 files using 12 threads.
+$ knip
+$ bun run scripts/ui-build.ts
+ui: 3 files, 1015 KiB → /Users/ondrejmisak/WebstormProjects/home-office/packages/ui/dist
+```
+
+`git diff --check` also exited 0 without output. Runtime compatibility, Compose execution, VM
+isolation/limits and performance remain unverified acceptance gates in the plan. No tests or code
+comments were added. Existing untracked `layouts/` content was outside this task.

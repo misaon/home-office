@@ -33,6 +33,13 @@ not evidence that every original acceptance target was achieved.
 
 These items are not implemented merely because an older plan described them in a completed phase.
 
+**Proposed 2026-09-09 — Docker Compose inside tasks:** add an opt-in private Docker Engine behind a
+per-environment VM boundary, retaining the restricted container backend for ordinary tasks. Evaluate
+Docker Sandboxes first, with Lima/VZ as the fallback if the integration gates fail. The
+[implementation plan](plans/2026-09-09-task-container-engine.md) covers current code, current vendor
+capabilities, workspace publication, networking, quotas, recovery and acceptance. No backend has been
+implemented or runtime compatibility demonstrated by this research task.
+
 | Priority | Work                                            | Completion evidence                                                                                                                                                                                                                                                                                                                                                               |
 | -------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | High     | Reliable source acknowledgements                | Persistent retry outbox, idempotent comments and recovery after a daemon restart                                                                                                                                                                                                                                                                                                  |

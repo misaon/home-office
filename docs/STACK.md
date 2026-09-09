@@ -105,6 +105,22 @@ No tests were added in the September 2026 audits at the owner's request; a test 
 decision. Existing checks and verification spikes may be run. Code signing/notarization, new terminal UI,
 remote hosting and automatic merging are not implemented.
 
+## Proposed task container engine
+
+Researched 2026-09-09. The [Compose implementation plan](plans/2026-09-09-task-container-engine.md)
+proposes a second, VM-backed execution environment with a private Docker Engine. Keep the current
+direct Docker adapter for existing sandboxes and the trusted git bridge. First evaluate Docker
+Sandboxes `sbx` 0.42.1 (released 2026-09-07); its custom kits are experimental, and HO
+runner/image/publication compatibility is not yet verified. It is a proprietary optional external
+runtime requiring Docker sign-in, not a new installed dependency or an automatic replacement for the
+MIT application. Lima/VZ with Docker is the fallback candidate. Artifact/image pins and measured
+compatibility are required before adoption. Sources read 2026-09-09:
+[releases](https://docs.docker.com/ai/sandboxes/release-notes/),
+[kits](https://docs.docker.com/ai/sandboxes/customize/kits/),
+[license](https://github.com/docker/sbx-releases),
+[installation](https://docs.docker.com/ai/sandboxes/install/),
+[Lima VZ](https://lima-vm.io/docs/config/vmtype/vz/).
+
 ## Primary references
 
 - [Bun install](https://bun.com/docs/pm/cli/install), [isolated workspaces](https://bun.com/docs/pm/isolated-installs), [secrets](https://bun.com/docs/runtime/secrets).
