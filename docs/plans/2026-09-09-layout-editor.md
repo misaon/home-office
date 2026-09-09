@@ -231,3 +231,30 @@ wall rules    a window off a wall: "a window is mounted on a wall"; on the wall:
               a plant on a wall: "furniture cannot stand in a wall"
 arrows        3 for one doorway and two desks (the meeting table and the plant have no direction)
 ```
+
+## The owner's notes, 2026-09-09 (fifth pass): doors
+
+Reported: doors had no arrow, could not be placed, and the right button did not turn them in space. Two
+real causes, measured on the owner's own office (`layouts/base.json`, 142 wall runs):
+
+1. **The footprint ignored the facing.** The door's orientation was guessed from the neighbouring cells,
+   so the right button changed only the arrow while the shape stayed put — and at a junction the guess
+   was wrong. A doorway now lies across the way it opens: facing north or south it spans four cells of a
+   horizontal wall, east or west four cells of a vertical one, exactly like a piece of furniture turning.
+2. **The doorway started at the click.** Anywhere in the last three cells of a wall run there was no
+   room left, and the click was refused:
+
+```
+a door starting at the click fits on 329 of 381 wall cells (86%)
+one allowed to slide back over the click fits on 379 of 381 (99%)
+```
+
+It now slides along the wall, preferring the position centred on the click, and the ghost shows the
+position it will actually take.
+
+Driven on the owner's office in a browser: loading Base gave 0 doors; a click at the very end of the top
+wall (59,0) placed one at 56,0 (it used to be refused); a right click turned the tool to facing `w`; a
+click on the vertical wall at (11,4) placed the second. The arrow reads
+`{"x":21,"y":0.5,"dx":0,"dy":1}` for a 4×1 door at 19,0 — centred, pointing the way it opens.
+
+The pale blue region in the owner's plan was not a bug: 28 of their 142 wall runs are `glass`.

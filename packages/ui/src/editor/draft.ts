@@ -90,13 +90,6 @@ const indices = (draft: Draft, rect: Rect): number[] => {
   return out;
 };
 
-const isWall = (draft: Draft, x: number, y: number): boolean =>
-  x >= 0 &&
-  y >= 0 &&
-  x < draft.width &&
-  y < draft.height &&
-  draft.wall[y * draft.width + x] !== null;
-
 const copy = (draft: Draft): Draft => ({
   ...draft,
   wall: [...draft.wall],
@@ -105,12 +98,34 @@ const copy = (draft: Draft): Draft => ({
   objects: [...draft.objects],
 });
 
-/** A doorway follows the wall it is cut into: along the run if there is one, downwards otherwise. */
-const doorRect = (draft: Draft, at: Rect): Rect => {
-  const horizontal = isWall(draft, at.x - 1, at.y) || isWall(draft, at.x + 1, at.y);
-  return horizontal
-    ? { x: at.x, y: at.y, w: DOOR_SPAN, h: 1 }
-    : { x: at.x, y: at.y, w: 1, h: DOOR_SPAN };
+/**
+ * A doorway lies across the way it opens: swinging north or south it spans four cells of a horizontal
+ * wall, swinging east or west four cells of a vertical one — the right button turns it, exactly like a
+ * piece of furniture. It is then slid along that wall until all four cells sit on it, preferring the
+ * position centred on the click: a click three cells from the end of a wall still cuts a door, which is
+ * what makes the tool usable on a real drawing.
+ */
+const doorRect = (draft: Draft, at: Rect, kinds: Kinds): Rect => {
+  const vertical = turned(kinds.facing);
+  const along = vertical ? at.y : at.x;
+  const rectAt = (start: number): Rect =>
+    vertical
+      ? { x: at.x, y: start, w: 1, h: DOOR_SPAN }
+      : { x: start, y: at.y, w: DOOR_SPAN, h: 1 };
+  const onWall = (rect: Rect): boolean =>
+    indices(draft, rect).length === DOOR_SPAN &&
+    indices(draft, rect).every((i) => draft.wall[i] !== null);
+  // Centred on the click first, then sliding back towards the start of the wall.
+  const centred = along - Math.floor((DOOR_SPAN - 1) / 2);
+  for (const start of [centred, centred - 1, along, along - (DOOR_SPAN - 1)]) {
+    const rect = rectAt(start);
+    if (onWall(rect)) {
+      return rect;
+    }
+  }
+  // Nothing fits: keep the fallback on the map, so the refusal names the wall rather than the edge.
+  const limit = (vertical ? draft.height : draft.width) - DOOR_SPAN;
+  return rectAt(Math.min(Math.max(centred, 0), Math.max(limit, 0)));
 };
 
 const footprint = (at: Rect, kinds: Kinds): Rect => {
@@ -134,7 +149,7 @@ export const ghostAt = (
   kinds: Kinds,
 ): Rect =>
   tool === "door"
-    ? doorRect(draft, { ...at, w: 1, h: 1 })
+    ? doorRect(draft, { ...at, w: 1, h: 1 }, kinds)
     : footprint({ ...at, w: 1, h: 1 }, kinds);
 
 /** Paints with the active tool. Doors need wall to cut through; furniture needs the room to be free. */
@@ -150,14 +165,17 @@ export function paint(draft: Draft, tool: Tool, rect: Rect, kinds: Kinds): Paint
     }
     return { next, note: null };
   }
-  const box = tool === "door" ? doorRect(draft, rect) : footprint(rect, kinds);
+  const box = tool === "door" ? doorRect(draft, rect, kinds) : footprint(rect, kinds);
   if (!inside(draft, box)) {
     return { next: draft, note: "does not fit on the map" };
   }
   const covered = indices(draft, box);
   if (tool === "door") {
     if (!covered.every((i) => draft.wall[i] !== null)) {
-      return { next: draft, note: `a doorway needs ${String(DOOR_SPAN)} wall cells in a row` };
+      return {
+        next: draft,
+        note: `a doorway needs ${String(DOOR_SPAN)} wall cells in a row — the right button turns it`,
+      };
     }
     next.doors = [
       ...draft.doors.filter((door) => !overlaps(door, box)),
