@@ -164,6 +164,13 @@ wall and a blocking object are impassable and an object that does not block clea
 door). Later rectangles win over earlier ones, so a layout reads top-down. Several layouts can coexist
 and a floor picks one by id; there is no builder, because the player never places anything.
 
+Offices are drawn in an **internal editor** that exists in development builds only — `ui-build.ts`
+resolves its module to a stub for production, so the shipped bundle carries none of it. It paints walls,
+rooms and doors on the grid and saves `layouts/<id>.json` through the daemon, which reads that directory
+back and answers `available: false` where there is no repository to write into. The JSON stores what a
+cell _is_ — a wall material, a room kind, a door kind — never a colour, so art added later applies to
+offices drawn today.
+
 The view draws ground, floors, room tint, the grid, walls, objects and then one dot per character.
 The grid is always visible — one hairline of one colour on every cell boundary, the map's outer edge
 included — and the camera zooms

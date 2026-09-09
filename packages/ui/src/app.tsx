@@ -1,5 +1,6 @@
 import type { ProjectId } from "@ho/protocol";
 import { useDevReload } from "./dev-reload.ts";
+import { EditorOverlay } from "./editor/overlay.tsx";
 import { OfficeCanvas } from "./office/office-canvas.tsx";
 import { AddProjectModal } from "./panels/add-project.tsx";
 import { BoardPanel } from "./panels/board.tsx";
@@ -9,7 +10,12 @@ import { ResourcesPanel } from "./panels/resources.tsx";
 import { SettingsPanel } from "./panels/settings.tsx";
 import { UsagePanel } from "./panels/usage.tsx";
 import { SetupOverlay, useSetupAutoOpen } from "./setup/overlay.tsx";
+import { useState } from "react";
 import { type Panel, sortedFloors, useUi } from "./store.ts";
+
+/** The office editor is an internal tool: this is replaced by a constant at build time, so a production
+ * bundle contains neither the branch nor the import. */
+const DEV = process.env.NODE_ENV === "development";
 
 const PANELS: { id: Panel; label: string }[] = [
   { id: "chat", label: "Chat" },
@@ -82,7 +88,7 @@ function FloorTabs({ floorId }: { floorId: ProjectId | null }): React.JSX.Elemen
 }
 
 /** Before the first project: a black screen with one button. Setup stays reachable in the corner. */
-function EmptyOffice(): React.JSX.Element {
+function EmptyOffice({ openEditor }: { openEditor: () => void }): React.JSX.Element {
   const connection = useUi((s) => s.connection);
   const replayed = useUi((s) => s.replayed);
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
@@ -116,12 +122,20 @@ function EmptyOffice(): React.JSX.Element {
         >
           Setup
         </button>
+        {DEV ? (
+          <button type="button" className="hover:text-gray-300" onClick={openEditor}>
+            Editor
+          </button>
+        ) : null}
       </div>
     </div>
   );
 }
 
 export function App(): React.JSX.Element {
+  const [editor, setEditor] = useState(
+    () => DEV && new URLSearchParams(window.location.search).has("editor"),
+  );
   const panel = useUi((s) => s.panel);
   const selectPanel = useUi((s) => s.selectPanel);
   const connection = useUi((s) => s.connection);
@@ -130,12 +144,19 @@ export function App(): React.JSX.Element {
   const setSetupOpen = useUi((s) => s.setSetupOpen);
   useSetupAutoOpen();
   useDevReload();
+  const openEditor = (): void => {
+    setEditor(true);
+  };
+  const closeEditor = (): void => {
+    setEditor(false);
+  };
   if (!hasFloors) {
     return (
       <div className="relative h-full">
         <SetupOverlay />
         <AddProjectModal />
-        <EmptyOffice />
+        <EmptyOffice openEditor={openEditor} />
+        {DEV && editor ? <EditorOverlay onClose={closeEditor} /> : null}
       </div>
     );
   }
@@ -143,6 +164,7 @@ export function App(): React.JSX.Element {
     <div className="relative flex h-full">
       <SetupOverlay />
       <AddProjectModal />
+      {DEV && editor ? <EditorOverlay onClose={closeEditor} /> : null}
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-4 border-b border-line bg-panel px-4 py-2.5">
           <span className="shrink-0 font-semibold tracking-wide">Home Office</span>
@@ -151,9 +173,19 @@ export function App(): React.JSX.Element {
             title={CONNECTION_TEXT[connection]}
           />
           <FloorTabs floorId={floorId} />
+          {DEV ? (
+            <button
+              type="button"
+              className="ml-auto shrink-0 rounded-md border border-line px-3 py-1.5 text-xs text-gray-300 hover:bg-line"
+              title="Internal office editor (development builds only)"
+              onClick={openEditor}
+            >
+              Editor
+            </button>
+          ) : null}
           <button
             type="button"
-            className="ml-auto shrink-0 rounded-md border border-line px-3 py-1.5 text-xs text-gray-300 hover:bg-line"
+            className={`${DEV ? "" : "ml-auto "}shrink-0 rounded-md border border-line px-3 py-1.5 text-xs text-gray-300 hover:bg-line`}
             title="Docker, images, token, smoke test"
             onClick={() => {
               setSetupOpen(true);

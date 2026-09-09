@@ -124,6 +124,10 @@ export const router = base.router({
       id: await context.office.execute(HUMAN, (m, ctx) => removeProject(m, input.id, ctx)),
     })),
   },
+  layouts: {
+    list: base.layouts.list.handler(({ context }) => context.layouts.list()),
+    save: base.layouts.save.handler(({ input, context }) => context.layouts.save(input)),
+  },
   agents: {
     list: base.agents.list.handler(({ input, context }) =>
       [...context.office.model.agents.values()].filter(

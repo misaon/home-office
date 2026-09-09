@@ -12,6 +12,7 @@ import {
 } from "./domain.ts";
 import { StoredEvent } from "./events.ts";
 import { IntakePollResult, IntakeStatus } from "./intake.ts";
+import { LayoutSaved, LayoutStore, OfficeLayout } from "./office-layout.ts";
 import { SecretKeyName } from "./providers.ts";
 import { AgentId, ProjectId, TaskId } from "./ids.ts";
 import { Doctor, LiveEvent, ResourceInventory } from "./runtime-events.ts";
@@ -90,6 +91,14 @@ export const contract = {
     create: base.input(ProjectCreateInput).output(Project),
     update: base.input(ProjectUpdateInput).output(Project),
     remove: base.input(z.object({ id: ProjectId })).output(z.object({ id: ProjectId })),
+  },
+  /**
+   * The internal office editor's store: offices drawn by hand, kept as JSON in the repository. A daemon
+   * with no repository to write into reports `available: false` rather than failing.
+   */
+  layouts: {
+    list: base.output(LayoutStore),
+    save: base.input(OfficeLayout).output(LayoutSaved),
   },
   agents: {
     list: base.input(AgentListInput).output(z.array(Agent)),

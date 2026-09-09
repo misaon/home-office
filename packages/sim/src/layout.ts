@@ -1,3 +1,4 @@
+import type { OfficeLayout } from "@ho/protocol";
 import type { Material, TileMap } from "./cells.ts";
 import type { Facing, Point } from "./grid.ts";
 import type { Anchor, FloorTemplate } from "./templates.ts";
@@ -29,6 +30,35 @@ export type Layout = {
   objects: readonly LayoutObject[];
   anchors: readonly Anchor[];
 };
+
+/**
+ * A drawn office as the compiler's input: the whole map is floor, walls and rooms map across, and every
+ * door becomes a non-blocking object on its wall cell — which is what makes that cell passable.
+ */
+export const layoutFromOffice = (office: OfficeLayout): Layout => ({
+  id: office.id,
+  name: office.name,
+  width: office.width,
+  height: office.height,
+  floors: [{ at: { x: 0, y: 0 }, w: office.width, h: office.height, material: "office" }],
+  walls: office.walls.map((r) => ({
+    at: { x: r.x, y: r.y },
+    w: r.w,
+    h: r.h,
+    material: r.material,
+  })),
+  rooms: office.rooms.map((r) => ({ at: { x: r.x, y: r.y }, w: r.w, h: r.h, room: r.room })),
+  objects: office.doors.map((door, i) => ({
+    id: `door-${String(i + 1)}`,
+    kind: door.kind,
+    at: { x: door.x, y: door.y },
+    w: 1,
+    h: 1,
+    facing: "s",
+    blocks: false,
+  })),
+  anchors: [],
+});
 
 type Layers = {
   floor: (Material | null)[];

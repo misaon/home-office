@@ -76,6 +76,12 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-09 — Owner task: the internal office editor — A development-only editor (walls, rooms, doors,
+  eraser) that saves `layouts/<id>.json` through a daemon store, with the JSON keeping semantic ids so
+  art added later applies to offices drawn now. The production bundle is stubbed at build time and
+  verified by grepping it. Decisions and the measured round trip in
+  [the editor plan](plans/2026-09-09-layout-editor.md).
+
 - 2026-09-09 — Owner task: the grid system of the map — Prison Architect's mechanics were read from its
   wiki before anything was written (tile as the atom, walls occupying whole cells, rooms as a painted
   designation), and the owner settled the decisions, the load-bearing one being that **layouts are

@@ -2,6 +2,8 @@ import type { SandboxProvider, SecretStore } from "@ho/core";
 import type { RepoInspection, RepoInspectInput, UsageSummary } from "@ho/protocol";
 import type { DaemonConfig } from "../config.ts";
 import { type DirectoryPicker, osascriptDirectoryPicker } from "../host-dialog.ts";
+import { createLayoutStore, type LayoutStoreAdapter } from "../layouts.ts";
+import type { Logger } from "../logger.ts";
 import { ensureImages, type ImageStatus, imageStatus, neededVariants } from "../images.ts";
 import { buildsImages, type Resources } from "../paths.ts";
 import { inspectRepo } from "../repo-inspect.ts";
@@ -30,6 +32,8 @@ export type RpcContext = {
   inspectRepo: (input: RepoInspectInput) => Promise<RepoInspection>;
   /** The host's directory dialog: a native panel in the desktop app, osascript for a daemon on its own. */
   pickDirectory: DirectoryPicker;
+  /** Offices drawn in the internal editor, as JSON in the repository. */
+  layouts: LayoutStoreAdapter;
 };
 
 export type RpcContextDeps = Pick<
@@ -46,6 +50,7 @@ export type RpcContextDeps = Pick<
   | "gc"
 > & {
   resources: Resources;
+  log: Logger;
   /** Absent when nothing native is available; the daemon then shows its own dialog. */
   pickDirectory: DirectoryPicker | undefined;
 };
@@ -54,6 +59,7 @@ export type RpcContextDeps = Pick<
 export const createRpcContext = ({
   resources,
   pickDirectory,
+  log,
   ...deps
 }: RpcContextDeps): RpcContext => ({
   ...deps,
@@ -64,4 +70,7 @@ export const createRpcContext = ({
   imageContexts: buildsImages(resources),
   usage: (sinceHours) => Promise.resolve(usageSummary(deps.office, sinceHours)),
   inspectRepo,
+  layouts: createLayoutStore(resources.layoutsDir, (file, reason) => {
+    log.warn({ file, reason }, "office layout ignored");
+  }),
 });

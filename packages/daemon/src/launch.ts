@@ -101,6 +101,7 @@ export async function launchDaemon(
       startedAt,
       gc: jobs.gcOnce,
       pickDirectory: options.pickDirectory,
+      log,
     }),
   });
   cleanup.defer(() => server.stop());

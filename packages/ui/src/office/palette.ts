@@ -9,6 +9,9 @@ export const FLOOR_DEFAULT = 0xffffff;
 export const WALL: Readonly<Record<string, number>> = { wall: 0x2b3140, glass: 0x8fb8c9 };
 export const WALL_DEFAULT = 0x2b3140;
 
+export const DOOR: Readonly<Record<string, number>> = { door: 0xb07d4a, "glass-door": 0x7fb4c9 };
+export const DOOR_DEFAULT = 0xb07d4a;
+
 export const OBJECT_FILL = 0xb9bfca;
 export const OBJECT_EDGE = 0x8b93a1;
 

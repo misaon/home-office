@@ -18,7 +18,8 @@ export function resolveToken(): string | null {
   const fromHash = fragment.get("token");
   if (fromHash !== null && fromHash !== "") {
     window.sessionStorage.setItem(TOKEN_KEY, fromHash);
-    window.history.replaceState(null, "", window.location.pathname);
+    // The search survives: only the fragment carried the token.
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     return fromHash;
   }
   return window.sessionStorage.getItem(TOKEN_KEY);
