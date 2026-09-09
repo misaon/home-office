@@ -1339,6 +1339,37 @@ after   Create floor  color rgb(0, 0, 0)        background rgb(255, 209, 102)
         1 home-office color rgb(0, 0, 0)        background rgb(255, 209, 102)
 ```
 
+### "Not Found" under the input, found by the owner
+
+The owner clicked the folder icon against the daemon that was already running in a terminal and got
+`Not Found` under the field and no dialog. The daemon and the UI bundle deploy separately — the daemon
+serves the bundle from disk, so `bun run ui:build` gives a running daemon a UI newer than itself:
+
+```
+$ curl -s http://127.0.0.1:47800/health   → {"ok":true}   started 11:57 local (pid 82774)
+$ git log -1 --format=%ad 2fcaa24          → 12:39 local   (the commit that adds system.pickDirectory)
+```
+
+Reproduced in the browser against that same daemon (`Repository folder / Not Found`), which is oRPC's
+`NOT_FOUND` for a procedure the router does not have. The message now says what to do, and the check is
+structural rather than `instanceof` — the error crosses a WebSocket and its class need not be the one
+the bundle imported:
+
+```
+before  Repository folder / Not Found
+after   Repository folder / This daemon is older than the office and cannot open a folder dialog —
+        restart it, reload, or type the path.
+```
+
+Verified in both directions: the sentence above on the 11:57 daemon, and on a daemon built from this
+branch the same click spawns the panel —
+
+```
+$ pgrep -fl osascript
+80823 osascript -e on run argv -e set chosen to choose folder with prompt (item 1 of argv) …
+      -- Choose the repository folder
+```
+
 ### Checks
 
 ```

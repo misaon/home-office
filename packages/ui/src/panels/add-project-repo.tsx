@@ -126,6 +126,16 @@ const hintFor = (kind: Source, text: string, { result, busy }: Inspecting): Hint
     : { text: result.message, tone: "error" };
 };
 
+/**
+ * A daemon older than the UI bundle it serves has no `system.pickDirectory`, and oRPC answers a bare
+ * "Not Found" that explains nothing. Checked structurally, not with `instanceof`: the error crosses a
+ * WebSocket and its class need not be the one this bundle imported.
+ */
+const pickFailure = (error: unknown): string =>
+  typeof error === "object" && error !== null && "code" in error && error.code === "NOT_FOUND"
+    ? "This daemon is older than the office and cannot open a folder dialog — restart it, reload, or type the path."
+    : errorMessage(error);
+
 type FieldProps = { draft: Draft; setDraft: (draft: Draft) => void; hint: Hint };
 
 /** The local path, with the host's own directory dialog behind the folder button. */
@@ -143,7 +153,7 @@ function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
   });
   const unavailable =
     pick.error !== null
-      ? errorMessage(pick.error)
+      ? pickFailure(pick.error)
       : pick.data?.status === "unavailable"
         ? pick.data.message
         : null;
