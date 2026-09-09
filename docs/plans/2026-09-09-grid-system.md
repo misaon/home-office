@@ -22,12 +22,12 @@ over: foundations, planning, budgets and every build tool — those exist for a 
 
 ## Owner decisions
 
-| Decision       | Chosen                                                                                                                                                                                                                                                | Rejected                                                                                                                                                                                 |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Walls          | A wall occupies a whole cell, as in Prison Architect                                                                                                                                                                                                  | Walls on cell edges (cheaper floor space, but a second geometry to model and un-PA-like)                                                                                                 |
-| Map and camera | The map **is** the office, fixed at 50×34 cells — a shade wider than the pane on a maximised 1920×1080 window, so the width is what limits it — and it fits without scrolling; the wheel still zooms and dragging still pans, for looking at one room | A large 100×70 map with the office as a patch inside it (built first, then withdrawn by the owner — it left the floor standing in an empty field); a medium map with zoom but no panning |
-| Grid           | Always visible: one hairline of one colour on every cell boundary (a stronger line every 8 cells was built first and the owner asked for it uniform)                                                                                                  | Only while a tool is active (there are no tools — the grid is the map's own structure)                                                                                                   |
-| Authoring      | **Layouts are written in code**, several of them, selectable                                                                                                                                                                                          | A player-facing builder with placement tools (explicitly not wanted)                                                                                                                     |
+| Decision       | Chosen                                                                                                                                                                                                                                     | Rejected                                                                                                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Walls          | A wall occupies a whole cell, as in Prison Architect                                                                                                                                                                                       | Walls on cell edges (cheaper floor space, but a second geometry to model and un-PA-like)                                                                                                 |
+| Map and camera | The map **is** the office, fixed at 60×34 cells — wider than any of the panes real windows leave, so the width always sets the fit — and it fits without scrolling; the wheel still zooms and dragging still pans, for looking at one room | A large 100×70 map with the office as a patch inside it (built first, then withdrawn by the owner — it left the floor standing in an empty field); a medium map with zoom but no panning |
+| Grid           | Always visible: one hairline of one colour on every cell boundary (a stronger line every 8 cells was built first and the owner asked for it uniform)                                                                                       | Only while a tool is active (there are no tools — the grid is the map's own structure)                                                                                                   |
+| Authoring      | **Layouts are written in code**, several of them, selectable                                                                                                                                                                               | A player-facing builder with placement tools (explicitly not wanted)                                                                                                                     |
 
 ## The model
 
@@ -71,25 +71,27 @@ the next instruction; this step only has to make placing them a matter of data.
 `bun run check` passes. Read out of the live scene in a browser against a running daemon:
 
 ```
-map      50 x 34 cells   ratio 1.471      world 1200 x 816 px
-layers   floor 1700  wall 0  object 0  room 0        (1700 = every cell of the map)
+map      60 x 34 cells   ratio 1.765      world 1440 x 816 px
+layers   floor 2040  wall 0  object 0  room 0        (2040 = every cell of the map)
 blocked  0                                           (no void and no walls yet: all of it walkable)
-anchors  29, none off the map
+anchors  29 at x 6..52, none off the map
 ```
 
 The shipped `Camera` was then run against the panes real windows leave (width minus the 440 px panel,
 height minus the 53 px bar):
 
 ```
-1920x1080 maximised   pane 1480x1027  ratio 1.441  →  29.6 px/cell,  0 px per side,  10 px top+bottom
-1920x1055 (menu bar)  pane 1480x1002  ratio 1.477  →  29.5 px/cell,  3 px per side,   0 top+bottom
-1440x900 window       pane 1000x 847  ratio 1.181  →  20.0 px/cell,  0 px per side,  84 px top+bottom
-2560x1440 maximised   pane 2120x1387  ratio 1.528  →  40.8 px/cell, 40 px per side,   0 top+bottom
+1920x1080 maximised   pane 1480x1027  ratio 1.441  →  24.7 px/cell,  0 px per side,  94 px top+bottom
+1920x1055 (menu bar)  pane 1480x1002  ratio 1.477  →  24.7 px/cell,  0 px per side,  82 px top+bottom
+1440x900 window       pane 1000x 847  ratio 1.181  →  16.7 px/cell,  0 px per side, 140 px top+bottom
+2560x1440 maximised   pane 2120x1387  ratio 1.528  →  35.3 px/cell,  0 px per side,  93 px top+bottom
 ```
 
-The floor went 40×34 → 48×34 → 50×34 as the owner watched it in their own window: 40 columns left
-136 px of margin per side on a maximised 1920 × 1080, 48 left 15, and 50 leaves none — the width now
-limits the fit, so losing height to a menu bar or dock cannot bring the side margins back.
+The floor went 40×34 → 48×34 → 50×34 → 60×34 as the owner watched it in their own window: 40 columns
+left 136 px of margin per side on a maximised 1920 × 1080, 48 left 15, 50 left none, and the last five
+columns per side were asked for on top of that. Every column beyond the pane's own ratio comes out of
+the cell size and reappears as margin above and below — 24.7 px per cell and 94 px of it now. Adding
+seven rows (60×41) would close that gap; the owner has the numbers and the height is theirs to call.
 
 The camera was driven directly against that pane:
 

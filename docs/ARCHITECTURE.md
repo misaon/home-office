@@ -150,13 +150,12 @@ the rooms, the furniture and the whole sprite pipeline are gone. What the map is
 after Prison Architect and verified against its wiki: the square cell is the atom, and **a wall is the
 content of a cell rather than an edge**, so a 4×4 room needs a 6×6 outline.
 
-**The map is the office, and its size is fixed at 50×34 cells.** The pane's ratio grows with the
-window, because the 440 px panel and the 53 px bar are fixed, so the floor is cut a shade wider than the
-pane a maximised 1920 × 1080 window leaves (1480 × 1027 px, ratio 1.441 against the floor's 1.471). The
-floor is therefore limited by the pane's width, not its height: 29.6 px per cell, no margin at the
-sides, ten pixels above and below, and nothing to scroll. Other windows centre the floor and show the
-difference as margin (84 px top and bottom in a 1440 × 900 window, 40 px per side on a maximised
-2560 × 1440). An office is a `Layout`
+**The map is the office, and its size is fixed at 60×34 cells.** The pane's ratio grows with the
+window, because the 440 px panel and the 53 px bar are fixed; the floor at 1.765 is wider than any of
+those panes, so its width is always what limits the fit and the sides are always flush. On a maximised
+1920 × 1080 window (a 1480 × 1027 px pane) that is 24.7 px per cell with 94 px of margin above and
+below, and nothing to scroll. The margin is the price of a floor whose size is fixed in cells: the
+owner asked for the extra width knowing it comes out of the height. An office is a `Layout`
 **written in code** (`packages/sim/src/layouts.ts`):
 rectangles of floor, of wall and of room designation, objects with a cell footprint, and the anchors its
 characters use. `compileLayout` paints those declarations into a `TileMap` — four per-cell layers
