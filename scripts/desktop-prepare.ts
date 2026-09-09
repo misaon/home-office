@@ -1,5 +1,5 @@
-// Assembles everything the desktop app bundles besides its own main process: the office UI, sprites, image
-// build contexts (with the bundled ho-runner and role skill packs), database migrations and the app icon.
+// Assembles everything the desktop app bundles besides its own main process: the office UI, image build
+// contexts (with the bundled ho-runner and role skill packs), database migrations and the app icon.
 // Output: apps/desktop/resources/ho (mirrors the repository paths @ho/daemon resolves) and
 // apps/desktop/icon.iconset. Both are git-ignored; `bun run desktop:dev|build` runs this first.
 import { $ } from "bun";
@@ -19,13 +19,10 @@ const say = (text: string): void => {
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 
-// 1. Office UI bundle and sprite manifest.
+// 1. Office UI bundle.
 await $`bun run ${at("scripts/ui-build.ts")}`.cwd(root);
-await $`bun run ${at("scripts/assets-manifest.ts")}`.cwd(root);
 await cp(at("packages/ui/dist"), resolve(out, "packages/ui/dist"), { recursive: true });
-await cp(at("assets/src"), resolve(out, "assets/src"), { recursive: true });
-await cp(at("assets/dist"), resolve(out, "assets/dist"), { recursive: true });
-say("ui bundle and sprites copied");
+say("ui bundle copied");
 
 // 2. Image build contexts: Dockerfiles as in the repository, plus the runner binary and skill packs the
 //    daemon would otherwise produce at build time (the packaged app has neither sources nor `bun`).

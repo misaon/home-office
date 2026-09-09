@@ -2,14 +2,13 @@ import { bossOf, createIdFactory, isSessionActive, RECEPTIONIST } from "@ho/core
 import type { AgentId, LiveEvent, Session, StoredEvent, Task, TaskId } from "@ho/protocol";
 import {
   assignWork,
-  auditOffice,
   carryEnvelope,
   createWorld,
   emotionFor,
+  type FloorTemplate,
   handoff,
   idleBehaviour,
-  type OfficePlan,
-  officePlan,
+  planeTemplate,
   receive,
   releaseWork,
   removeActor,
@@ -36,9 +35,7 @@ const QUESTION_PREFIX = "question:";
  */
 export class Bridge {
   readonly world = createWorld("home-office");
-  /** Layout problems found once at start (unreachable seats, blocked doors); empty for a sound plan. */
-  readonly layoutIssues: readonly string[];
-  readonly #plans = new Map<string, OfficePlan>();
+  readonly #templates = new Map<string, FloorTemplate>();
   /** The receptionist of every floor (an office character, never an agent). */
   readonly #receptionists = new Map<string, AgentId>();
   #client: Client | null = null;
@@ -61,7 +58,6 @@ export class Bridge {
   #accumulator = 0;
 
   constructor() {
-    this.layoutIssues = auditOffice(officePlan()).issues;
     this.#mail = new MailFlow(
       this.world,
       () => this.#ids.agent(),
@@ -72,14 +68,14 @@ export class Bridge {
     );
   }
 
-  /** The plan of a floor (every floor shares the approved layout under its own id). */
-  planFor(floorId: string): OfficePlan {
-    let plan = this.#plans.get(floorId);
-    if (plan === undefined) {
-      plan = officePlan(floorId);
-      this.#plans.set(floorId, plan);
+  /** The floor of a project: the same blank plane under its own id. */
+  templateFor(floorId: string): FloorTemplate {
+    let template = this.#templates.get(floorId);
+    if (template === undefined) {
+      template = planeTemplate(floorId);
+      this.#templates.set(floorId, template);
     }
-    return plan;
+    return template;
   }
 
   /** Name shown above an actor: the agent's, or the office character's. */
@@ -124,9 +120,9 @@ export class Bridge {
   syncFromModel(): void {
     syncRoster({
       world: this.world,
-      planFor: (floorId) => this.planFor(floorId),
+      templateFor: (floorId) => this.templateFor(floorId),
       forgetFloor: (floorId) => {
-        this.#plans.delete(floorId);
+        this.#templates.delete(floorId);
       },
       receptionists: this.#receptionists,
       newId: () => this.#ids.agent(),

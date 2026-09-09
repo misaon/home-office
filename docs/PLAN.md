@@ -41,7 +41,7 @@ These items are not implemented merely because an older plan described them in a
 | Medium   | Volume retention based on last use              | Recently used old volumes survive; active volumes remain protected; explicit discard behavior                                                                                                                                                                                                                                                                                     |
 | Medium   | Egress policy                                   | Per-project destinations and a verified proxy/firewall boundary compatible with provider/package traffic                                                                                                                                                                                                                                                                          |
 | Medium   | Browser/native accessibility and sustained load | Representative multi-floor use, resize/keyboard flows, stable RAM/CPU over a long run                                                                                                                                                                                                                                                                                             |
-| Medium   | Missing art                                     | Delivered receptionist/character sets and missing furniture; preserve originals and verify imports against the reference                                                                                                                                                                                                                                                          |
+| —        | ~~Missing art~~                                 | **Superseded 2026-09-09: the office is being designed from scratch.** Every sprite, room and piece of furniture was deleted at the owner's instruction; a floor is a bare plane and characters are dots. The new mechanic and its visuals arrive as owner instructions — see [the rebuild plan](plans/2026-09-09-office-from-scratch.md)                                          |
 | —        | ~~Agent image size~~                            | **Decided 2026-09-09: not doing it.** Measured, the browser costs ~1.06 GB of the 1.69 GB image (1.22 GB vs 158 MB for the same layer without chromium and fonts) — but it is stored once for all four provider targets, `browser.enabled` defaults to true, and `chromium-headless-shell` would save only ~150 MB. Evidence and the two alternatives in `audit/AUDIT.md` (B24.1) |
 | Later    | Remote operation                                | Authenticated TLS transport and clear host/container networking; no plaintext remote bind                                                                                                                                                                                                                                                                                         |
 | Later    | Platform expansion and signing                  | Verified installer/runtime on each target, plus signing/notarization when available                                                                                                                                                                                                                                                                                               |
@@ -75,6 +75,13 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 ([ADR 003](../audit/adr/003-sprite-pipeline.md)).
 
 ## Audit log
+
+- 2026-09-09 — Owner task: the office starts again from scratch — All art (306 PNGs, 48 MB), the sprite
+  pipeline (`assets/`, the three `assets:*` scripts and their libraries) and the approved layout (rooms,
+  furniture, doors, glazing, decor, the plan audit) were deleted at the owner's instruction. A floor is
+  now a bare 48×28 walkable plane with named spots and the renderer draws a white surface with one dot
+  per character; the movement, needs, reservations and envelope choreography stayed. Evidence and the
+  next steps in [the rebuild plan](plans/2026-09-09-office-from-scratch.md).
 
 - 2026-09-09 — Owner task: the add-project dialog and an airier UI — A native directory picker behind
   the folder icon (`system.pickDirectory` with a `DirectoryPicker` port: the desktop app's own open

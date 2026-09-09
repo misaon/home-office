@@ -26,7 +26,7 @@ kept as history and is not evidence about the current tree.
 | Client state              | Zustand 5.0.15, TanStack Query 5.102.8                | Event projection and abortable cached RPC queries                                                                            |
 | Styling / build           | Tailwind CSS 4.3.3, bun-plugin-tailwind 0.1.2         | CSS and HTML-entry UI builds                                                                                                 |
 | Rendering                 | PixiJS 8.20.1                                         | Sprite batching, static floor textures and animated office rendering                                                         |
-| Image processing          | Sharp 0.35.4                                          | PNG decoding/encoding and validated sprite imports                                                                           |
+| Image processing          | Sharp 0.35.4                                          | PNG encoding for the desktop app icon                                                                                        |
 | Pathfinding queue         | TinyQueue 3.0.0                                       | Heap for the simulation's weighted A* search                                                                                 |
 | Agent protocols           | ACP SDK 1.4.0, MCP SDK 1.30.0                         | Provider sessions and scoped office tools                                                                                    |
 | Secrets                   | `Bun.secrets`, atomic file fallback                   | Keychain / libsecret / Credential Manager, chosen by whether the host store answers; no secret ever in a subprocess argument |

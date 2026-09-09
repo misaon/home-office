@@ -49,9 +49,6 @@
     "fmt:check": "oxfmt --check",
     "knip": "knip",
     "setup": "git config core.hooksPath .githooks",
-    "assets:manifest": "bun run scripts/assets-manifest.ts",
-    "assets:import": "bun run scripts/assets-import.ts",
-    "assets:placeholders": "bun run scripts/assets-placeholders.ts",
     "ui:build": "bun run scripts/ui-build.ts",
     "ui:watch": "bun run scripts/ui-build.ts --watch",
     "desktop:prepare": "bun run scripts/desktop-prepare.ts",
@@ -61,7 +58,6 @@
   },
   "devDependencies": {
     "@ho/protocol": "workspace:*",
-    "@ho/sim": "workspace:*",
     "@types/bun": "catalog:",
     "bun-plugin-tailwind": "catalog:",
     "knip": "catalog:",
@@ -69,8 +65,7 @@
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "sharp": "catalog:",
-    "typescript": "catalog:",
-    "zod": "catalog:"
+    "typescript": "catalog:"
   },
   "overrides": {
     "esbuild": "0.28.2"

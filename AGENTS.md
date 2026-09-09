@@ -20,15 +20,15 @@ containers, and an Electrobun desktop app that renders them as a pixel-art offic
 --deny-warnings`, `oxfmt --check`, `knip`, and the office UI build. Must pass before every commit;
   `bun run setup` installs the git hook that enforces it.
 - `bun run fmt` — format everything with oxfmt.
-- `bun run ui:watch` — rebuild the office UI on change (the page reloads itself); `bun run assets:manifest` after adding sprites.
+- `bun run ui:watch` — rebuild the office UI on change (the page reloads itself).
 - `bun run desktop:dev` / `bun run desktop:build` — Electrobun app via Hutch (`apps/desktop`; resources assembled by `bun run desktop:prepare`).
 
 ## Layout
 
 `apps/*` (desktop, cli) · `packages/*` (protocol, core, store, daemon, sandbox-docker, runner,
 runtime-claude-code, runtime-acp, intake-github, sim, ui, secrets, agent-kit) · `images/*` (Dockerfiles) ·
-`spikes/*` (verification harnesses) · `assets/` (approved reference + sprites) · `docs/` (incl.
-`OFFICE-ART.md` for the office plan and sprite keys) · `audit/` (the audit record). Package scope is
+`spikes/*` (verification harnesses) · `docs/` (incl. `plans/` for the current task) · `audit/` (the
+audit record). Package scope is
 `@ho/*`; sources are executed as TypeScript, with a build step only for the webview bundle, the sandbox
 runner bundle and release binaries.
 

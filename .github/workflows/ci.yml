@@ -39,7 +39,6 @@ jobs:
             npm audit --omit=dev --prefix "$directory"
           done
       - run: bun run ui:build
-      - run: bun run assets:manifest
       - run: bun build --compile apps/cli/src/main.ts --outfile /tmp/ho
       - run: bun build --target=bun --minify packages/runner/src/main.ts --outfile /tmp/ho-runner.js
       - name: Smoke test the daemon

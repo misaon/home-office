@@ -1,6 +1,4 @@
 import { Bridge } from "./bridge.ts";
-import { SpriteLibrary } from "./sprites.ts";
 
-/** One simulation and one sprite library per page; React components and the sync loop share them. */
+/** One simulation per page; React components and the sync loop share it. */
 export const bridge = new Bridge();
-export const sprites = new SpriteLibrary();

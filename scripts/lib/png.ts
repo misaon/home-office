@@ -40,17 +40,3 @@ export const encodePng = (img: Rgba): Promise<Buffer> =>
   sharp(img.data, { raw: { width: img.width, height: img.height, channels: 4 } })
     .png({ compressionLevel: 9 })
     .toBuffer();
-
-export async function decodePng(bytes: Uint8Array): Promise<Rgba> {
-  const image = sharp(bytes, { limitInputPixels: 4096 * 4096, failOn: "warning" });
-  const metadata = await image.metadata();
-  if (metadata.format !== "png") {
-    throw new Error("expected a PNG image");
-  }
-  const { data, info } = await image
-    .toColourspace("srgb")
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  return { width: info.width, height: info.height, data };
-}

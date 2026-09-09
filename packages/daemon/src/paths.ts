@@ -18,8 +18,6 @@ export type Resources = {
   pluginsSource: string | null;
   /** Built office UI (index.html + chunks); null disables serving. */
   uiDir: string | null;
-  /** Sprite sources and manifest (`assets/`); null disables serving. */
-  assetsDir: string | null;
   /** Drizzle migrations; null uses the store package's own folder (development). */
   migrationsDir: string | null;
 };
@@ -45,7 +43,6 @@ export function resolveResources(root: string = defaultResourcesRoot()): Resourc
     runnerEntry: existsSync(runnerEntry) ? runnerEntry : null,
     pluginsSource: existsSync(pluginsSource) ? pluginsSource : null,
     uiDir: whenPresent(at("packages/ui/dist"), "index.html"),
-    assetsDir: whenPresent(at("assets"), "dist/manifest.json"),
     migrationsDir: whenPresent(at("packages/store/drizzle"), "meta/_journal.json"),
   };
 }

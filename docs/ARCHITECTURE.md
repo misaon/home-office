@@ -48,7 +48,7 @@ The simulation is a visual projection. It controls envelope timing while a viewe
 | `packages/intake-github`       | Host `gh` issue polling and acknowledgement adapter                                 |
 | `packages/runner`              | The in-sandbox relay: one child process, stdio framing and bounded buffers          |
 | `packages/secrets`             | OS credential store via `Bun.secrets`, with an atomic owner-only file fallback      |
-| `packages/sim`                 | Pure office layout, movement, reservations, needs and envelope choreography         |
+| `packages/sim`                 | Pure plane, movement, reservations, needs and envelope choreography                 |
 | `packages/ui`                  | React panels, Zustand projection, TanStack Query requests and Pixi rendering        |
 | `packages/agent-kit`           | Role skill packs copied into provider images                                        |
 | `scripts`                      | Checked build, desktop, sprite-import and manifest tooling                          |
@@ -143,14 +143,15 @@ image contains both browser MCP servers, but sessions expose Playwright by defau
 enables Chrome DevTools as well. `browser.enabled=false` removes browser tools from sessions. Browser
 profiles, config and caches are temporary. No egress allowlist or CONNECT proxy is implemented.
 
-## Simulation, sprites and UI
+## Simulation and UI
 
-The layout is pure data in `packages/sim`: rooms, collision cells, furniture, anchors and elevator state.
-Every project uses an independent instance of the plan. `CELL_PX` defines the rendering/import scale;
-art dimensions and layer alignment are documented in [OFFICE-ART.md](OFFICE-ART.md) and
-[assets/README.md](../assets/README.md). Original art is preserved separately from imported PNG frames.
-Sharp handles image encoding/decoding. Manifests use content-derived revisions and report missing keys;
-missing furniture renders geometric stand-ins.
+**The office is being designed again from scratch (2026-09-09, at the owner's instruction).** The art,
+the rooms, the furniture and the whole sprite pipeline are gone; what remains is the movement. A floor is
+a bare walkable plane of 48×28 cells (`packages/sim/src/plane.ts`) carrying only named spots — the lift,
+the reception, a boss desk, twelve seats, coffee/restroom/smoke/relax/sleep and a handful of stroll
+targets — and the renderer draws a white surface with one dot per character. `CELL_PX` is now just the
+unit positions are expressed in. The next mechanic is specified per the owner's instructions; until then
+do not reintroduce art.
 
 Movement uses a weighted grid A* with a TinyQueue heap, clearance and turn costs, plus explicit actor
 reservations. Needs and seeded RNG drive idle behavior. Plan steps describe walking, dwelling, emitting

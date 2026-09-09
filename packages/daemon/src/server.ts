@@ -49,16 +49,9 @@ const sameToken = (presented: string, expected: string): boolean => {
   return a.length === b.length && timingSafeEqual(a, b);
 };
 
-const ASSETS_PREFIX = "/assets/";
-
-/** The office UI bundle at `/` and sprite files at `/assets/`; both are read-only and unauthenticated (no data). */
+/** The office UI bundle at `/`: read-only and unauthenticated (it carries no data). */
 function serveUi(options: ServerOptions, pathname: string): Promise<Response> | Response {
-  const { dir, assetsDir } = options.context.config.ui;
-  if (pathname.startsWith(ASSETS_PREFIX)) {
-    return assetsDir === null
-      ? new Response("not found", { status: 404 })
-      : serveStatic(assetsDir, pathname.slice(ASSETS_PREFIX.length - 1), null);
-  }
+  const { dir } = options.context.config.ui;
   return dir === null
     ? new Response(
         "this build carries no office UI bundle; use the desktop app or run the daemon from a source checkout",

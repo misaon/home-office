@@ -2,7 +2,8 @@ import { RECEPTIONIST } from "@ho/core";
 import { type AgentId, compact, type ProjectId } from "@ho/protocol";
 import {
   addFloor,
-  type OfficePlan,
+  type FloorTemplate,
+  RECEPTION_ANCHOR,
   removeActor,
   removeFloor,
   settleAt,
@@ -11,25 +12,23 @@ import {
 } from "@ho/sim";
 import { model } from "../store.ts";
 
-const RECEPTION_ANCHOR = "reception-staff";
-
-/** What the roster sync needs from the bridge: the world, the plans, Lola's ids and fresh ids. */
+/** What the roster sync needs from the bridge: the world, the floors, Lola's ids and fresh ids. */
 export type RosterHost = {
   world: World;
-  planFor: (floorId: string) => OfficePlan;
+  templateFor: (floorId: string) => FloorTemplate;
   forgetFloor: (floorId: string) => void;
   receptionists: Map<string, AgentId>;
   newId: () => AgentId;
 };
 
-/** Adds a floor for a project (the shared plan under the project's id) with Lola behind the reception counter. */
+/** Adds a floor for a project (the same plane under the project's id) with Lola at the reception spot. */
 function ensureFloor(host: RosterHost, floorId: ProjectId): void {
   if (host.world.floors.has(floorId)) {
     return;
   }
-  const plan = host.planFor(floorId);
-  addFloor(host.world, plan.template);
-  const counter = plan.template.anchors.find((a) => a.id === RECEPTION_ANCHOR);
+  const template = host.templateFor(floorId);
+  addFloor(host.world, template);
+  const counter = template.anchors.find((a) => a.id === RECEPTION_ANCHOR);
   if (counter !== undefined) {
     const id = host.newId();
     const lola = spawnActor(host.world, id, `characters/${RECEPTIONIST.spriteSet}`, floorId, {
@@ -54,7 +53,7 @@ function spawnAgent(
     spawnActor(host.world, id, sprite, floorId, { kind: "staff" });
     return;
   }
-  const desk = host.planFor(floorId).template.anchors.find((a) => a.kind === "boss-desk");
+  const desk = host.templateFor(floorId).anchors.find((a) => a.kind === "boss-desk");
   const actor = spawnActor(host.world, id, sprite, floorId, {
     kind: "boss",
     ...compact({ at: desk?.at }),

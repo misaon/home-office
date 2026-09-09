@@ -100,6 +100,7 @@ type UiState = {
   /** The floor (project) shown in the office and the side panels; null until the first project exists. */
   floorId: ProjectId | null;
   addProjectOpen: boolean;
+  /** Character sets the office can draw. Empty while the office is a blank plane of dots. */
   spriteSets: string[];
   /** The first-run checklist (Docker, images, token, smoke test). */
   setupOpen: boolean;
@@ -110,7 +111,6 @@ type UiState = {
   selectAgent: (agentId: AgentId | null) => void;
   selectFloor: (floorId: ProjectId | null) => void;
   setAddProjectOpen: (open: boolean) => void;
-  setSpriteSets: (sets: string[]) => void;
   setSetupOpen: (open: boolean) => void;
 };
 
@@ -146,9 +146,6 @@ export const useUi = create<UiState>()((set) => ({
   },
   setAddProjectOpen: (addProjectOpen) => {
     set({ addProjectOpen });
-  },
-  setSpriteSets: (spriteSets) => {
-    set({ spriteSets });
   },
   setSetupOpen: (setupOpen) => {
     set({ setupOpen });

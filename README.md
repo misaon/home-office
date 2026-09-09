@@ -14,7 +14,7 @@ bun install --frozen-lockfile
 bun run desktop:dev
 ```
 
-The desktop command prepares the UI, sprites and runner, installs a checksum-pinned Hutch toolchain in
+The desktop command prepares the UI and runner, installs a checksum-pinned Hutch toolchain in
 `.tools`, and starts the app. Create a project/floor, then use Setup to check Docker, build required
 images and configure provider credentials. Each new floor has a boss; hire more staff in Settings.
 Claude subscription users obtain a token with `claude setup-token`. Other providers use their API keys
@@ -29,7 +29,6 @@ Release tags are stable `vX.Y.Z` tags on commits reachable from `main`.
 bun run devkit
 bun run check
 bun run ui:build
-bun run assets:manifest
 bun run apps/cli/src/main.ts daemon --ui
 ```
 
@@ -51,6 +50,5 @@ none; `secrets.store` in `config.json` (`auto`, `os` or `file`) overrides that c
 - [Stack choices and framework assessment](docs/STACK.md)
 - [Current plan and remaining work](docs/PLAN.md)
 - [Engineering conventions](docs/CONVENTIONS.md)
-- [Sprite import contract](assets/README.md) and [office art](docs/OFFICE-ART.md)
 - [The September 2026 deep audit](audit/AUDIT.md) — findings, coverage matrix, verification transcripts
   and six ADRs; [an earlier audit report](docs/history/AUDIT-2026-09.md) is kept as history
