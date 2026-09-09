@@ -26,7 +26,7 @@ kept as history and is not evidence about the current tree.
 | Client state              | Zustand 5.0.15, TanStack Query 5.102.8                | Event projection and abortable cached RPC queries                                                                            |
 | Styling / build           | Tailwind CSS 4.3.3, bun-plugin-tailwind 0.1.2         | CSS and HTML-entry UI builds                                                                                                 |
 | Rendering                 | PixiJS 8.20.1                                         | Sprite batching, static floor textures and animated office rendering                                                         |
-| Image processing          | Sharp 0.35.4                                          | PNG decoding/encoding and validated sprite imports                                                                           |
+| Image processing          | Sharp 0.35.4                                          | PNG encoding for the desktop app icon                                                                                        |
 | Pathfinding queue         | TinyQueue 3.0.0                                       | Heap for the simulation's weighted A* search                                                                                 |
 | Agent protocols           | ACP SDK 1.4.0, MCP SDK 1.30.0                         | Provider sessions and scoped office tools                                                                                    |
 | Secrets                   | `Bun.secrets`, atomic file fallback                   | Keychain / libsecret / Credential Manager, chosen by whether the host store answers; no secret ever in a subprocess argument |
@@ -104,6 +104,22 @@ vulnerabilities in their locked npm trees. That is not a comprehensive OS-image 
 No tests were added in the September 2026 audits at the owner's request; a test phase needs a new owner
 decision. Existing checks and verification spikes may be run. Code signing/notarization, new terminal UI,
 remote hosting and automatic merging are not implemented.
+
+## Proposed task container engine
+
+Researched 2026-09-09. The [Compose implementation plan](plans/2026-09-09-task-container-engine.md)
+proposes a second, VM-backed execution environment with a private Docker Engine. Keep the current
+direct Docker adapter for existing sandboxes and the trusted git bridge. First evaluate Docker
+Sandboxes `sbx` 0.42.1 (released 2026-09-07); its custom kits are experimental, and HO
+runner/image/publication compatibility is not yet verified. It is a proprietary optional external
+runtime requiring Docker sign-in, not a new installed dependency or an automatic replacement for the
+MIT application. Lima/VZ with Docker is the fallback candidate. Artifact/image pins and measured
+compatibility are required before adoption. Sources read 2026-09-09:
+[releases](https://docs.docker.com/ai/sandboxes/release-notes/),
+[kits](https://docs.docker.com/ai/sandboxes/customize/kits/),
+[license](https://github.com/docker/sbx-releases),
+[installation](https://docs.docker.com/ai/sandboxes/install/),
+[Lima VZ](https://lima-vm.io/docs/config/vmtype/vz/).
 
 ## Primary references
 

@@ -1,4 +1,9 @@
-import type { RepoInspection, RepoInspectInput, RepoSource } from "@ho/protocol";
+import {
+  REPO_BRANCH_LIMIT,
+  type RepoInspection,
+  type RepoInspectInput,
+  type RepoSource,
+} from "@ho/protocol";
 import { stat } from "node:fs/promises";
 import { basename } from "node:path";
 
@@ -22,6 +27,15 @@ const git = async (args: readonly string[]): Promise<{ ok: boolean; out: string;
 const nameFromUrl = (url: string): string => {
   const last = url.replace(/\/+$/u, "").split(/[/:]/u).at(-1) ?? "project";
   return last.replace(/\.git$/u, "") || "project";
+};
+
+/** The default branch first, then every other name git reported once, without `origin/` or `HEAD`. */
+const ordered = (defaultBranch: string, names: readonly string[]): string[] => {
+  const cleaned = names
+    .map((name) => name.trim().replace(/^origin\//u, ""))
+    .filter((name) => name !== "" && name !== "HEAD" && name !== "origin")
+    .toSorted((a, b) => a.localeCompare(b));
+  return [...new Set([defaultBranch, ...cleaned])].slice(0, REPO_BRANCH_LIMIT);
 };
 
 /** `origin/HEAD` when the checkout tracks a remote, else the current branch, else `main`. */
@@ -50,24 +64,40 @@ async function inspectLocal(path: string): Promise<RepoInspection> {
     };
   }
   const repo: RepoSource = { kind: "local", path: top.out };
+  const defaultBranch = await localDefaultBranch(top.out);
+  const refs = await git([
+    "-C",
+    top.out,
+    "for-each-ref",
+    "--format=%(refname:short)",
+    "refs/heads",
+    "refs/remotes/origin",
+  ]);
   return {
     ok: true,
     name: basename(top.out),
-    defaultBranch: await localDefaultBranch(top.out),
+    defaultBranch,
+    branches: ordered(defaultBranch, refs.ok ? refs.out.split("\n") : []),
     repo,
   };
 }
 
+/** One `ls-remote` reports both the symbolic HEAD and every head, so the branch list costs no extra round trip. */
 async function inspectRemote(url: string): Promise<RepoInspection> {
-  const probe = await git(["ls-remote", "--symref", url, "HEAD"]);
+  const probe = await git(["ls-remote", "--symref", url, "HEAD", "refs/heads/*"]);
   if (!probe.ok) {
     return { ok: false, message: `cannot reach ${url} (${probe.err || "git ls-remote failed"})` };
   }
   const match = /^ref: refs\/heads\/(\S+)\tHEAD$/mu.exec(probe.out);
+  const defaultBranch = match?.[1] ?? "main";
+  const heads = [...probe.out.matchAll(/^\S+\trefs\/heads\/(.+)$/gmu)].map(
+    ([, name]) => name ?? "",
+  );
   return {
     ok: true,
     name: nameFromUrl(url),
-    defaultBranch: match?.[1] ?? "main",
+    defaultBranch,
+    branches: ordered(defaultBranch, heads),
     repo: { kind: "git", url },
   };
 }

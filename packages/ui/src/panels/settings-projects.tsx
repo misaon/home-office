@@ -1,5 +1,6 @@
 import { errorMessage, type Project } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
+import { Button, Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { sortedFloors, useUi } from "../store.ts";
 import { IntakeSettings } from "./settings-intake.tsx";
@@ -34,16 +35,15 @@ export function ProjectsSettings(): React.JSX.Element {
   };
 
   return (
-    <section className="space-y-2">
-      <h3 className="text-[11px] tracking-wide text-gray-400 uppercase">Floors (projects)</h3>
+    <Section title="Floors (projects)">
       {sortedFloors(projects).map((p, i) => (
-        <div key={p.id} className="rounded border border-line bg-panel p-2">
+        <div key={p.id} className="space-y-1.5 rounded-md border border-line bg-panel p-3">
           <div className="flex items-center justify-between">
             <span className="font-medium">
               <span className="text-gray-400">{String(i + 1)} · </span>
               {p.name}
             </span>
-            <span className="flex gap-2 text-[11px]">
+            <span className="flex gap-3 text-xs">
               <button
                 type="button"
                 className="text-gray-300 hover:underline"
@@ -64,22 +64,21 @@ export function ProjectsSettings(): React.JSX.Element {
               </button>
             </span>
           </div>
-          <div className="truncate font-mono text-[10px] text-gray-400">
+          <div className="truncate font-mono text-2xs text-gray-400">
             {describeRepo(p)} · {p.defaultBranch}
           </div>
           <IntakeSettings project={p} />
         </div>
       ))}
-      <button
-        type="button"
-        className="rounded bg-accent px-2 py-1 text-black"
+      <Button
+        variant="primary"
         onClick={() => {
           setAddProjectOpen(true);
         }}
       >
         Add a project (floor)
-      </button>
-      {failure === null ? null : <span className="ml-2 text-red-400">{errorMessage(failure)}</span>}
-    </section>
+      </Button>
+      {failure === null ? null : <span className="ml-3 text-red-400">{errorMessage(failure)}</span>}
+    </Section>
   );
 }

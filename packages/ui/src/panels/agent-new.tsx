@@ -10,6 +10,7 @@ import {
 import { defaultChoice } from "@ho/core";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
+import { Button } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
 import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
@@ -68,9 +69,9 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
     }
   };
   return (
-    <div className="grid grid-cols-2 gap-1 rounded border border-dashed border-line p-2 text-[11px]">
+    <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-md border border-dashed border-line p-4 text-xs">
       <input
-        className="col-span-2 rounded bg-panel px-2 py-1"
+        className="col-span-2 rounded-md border border-line bg-ink px-3 py-2"
         placeholder="Name"
         value={draft.name}
         onChange={(e) => {
@@ -78,7 +79,7 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
         }}
       />
       <select
-        className="rounded bg-panel px-1 py-1"
+        className="rounded-md border border-line bg-ink px-2 py-1.5"
         value={draft.role}
         onChange={(e) => {
           const role = AgentRole.parse(e.target.value);
@@ -101,7 +102,7 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
         }}
       />
       <select
-        className="rounded bg-panel px-1 py-1"
+        className="rounded-md border border-line bg-ink px-2 py-1.5"
         value={draft.spriteSet}
         onChange={(e) => {
           setDraft({ ...draft, spriteSet: e.target.value });
@@ -112,7 +113,7 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
         ))}
       </select>
       <select
-        className="rounded bg-panel px-1 py-1"
+        className="rounded-md border border-line bg-ink px-2 py-1.5"
         value={draft.gender}
         onChange={(e) => {
           setDraft({ ...draft, gender: Gender.parse(e.target.value) });
@@ -123,21 +124,18 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
         ))}
       </select>
       <textarea
-        className="col-span-2 h-14 rounded bg-panel px-2 py-1"
+        className="col-span-2 h-20 resize-none rounded-md border border-line bg-ink px-3 py-2"
         placeholder="Base prompt (persona, habits, constraints)"
         value={draft.basePrompt}
         onChange={(e) => {
           setDraft({ ...draft, basePrompt: e.target.value });
         }}
       />
-      <button
-        type="button"
-        className="rounded bg-accent px-2 py-1 text-black disabled:opacity-50"
-        disabled={create.isPending}
-        onClick={add}
-      >
-        Add agent
-      </button>
+      <div className="col-span-2 flex justify-end">
+        <Button variant="primary" disabled={create.isPending} onClick={add}>
+          Add agent
+        </Button>
+      </div>
       {create.error === null ? null : (
         <p className="col-span-2 text-red-400">{errorMessage(create.error)}</p>
       )}

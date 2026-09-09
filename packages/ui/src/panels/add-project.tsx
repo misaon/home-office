@@ -1,17 +1,19 @@
-import {
-  type Agent,
-  type AgentId,
-  errorMessage,
-  type RepoInspection,
-  REPO_URL_FORMS,
-  repoSourceOf,
-} from "@ho/protocol";
+import { type Agent, type AgentId, errorMessage } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useEffectEvent, useState } from "react";
-import { type Client, getClient, requireClient } from "../rpc.ts";
+import { useState } from "react";
+import { Button, Section } from "../kit/controls.tsx";
+import { Modal } from "../kit/modal.tsx";
+import { type Client, requireClient } from "../rpc.ts";
 import { type Snapshot, sortedFloors, useUi } from "../store.ts";
+import {
+  type Draft,
+  Details,
+  RepoFields,
+  typedIn,
+  useRepoInspection,
+} from "./add-project-repo.tsx";
 
-const INSPECT_DEBOUNCE_MS = 600;
+const EMPTY: Draft = { kind: "local", path: "", url: "", name: "", branch: "", imports: new Set() };
 
 type Group = { floor: string; agents: Agent[] };
 
@@ -23,71 +25,6 @@ const importable = (projects: Snapshot["projects"], agents: Snapshot["agents"]):
       agents: [...agents.values()].filter((a) => a.projectId === p.id && a.role !== "boss"),
     }))
     .filter((g) => g.agents.length > 0);
-
-type Inspecting = { result: RepoInspection | null; busy: boolean };
-
-/** Asks the daemon about the typed repository once the typing pauses; `onFound` fills in name and branch. */
-function useRepoInspection(
-  source: string,
-  onFound: (result: Extract<RepoInspection, { ok: true }>) => void,
-): Inspecting {
-  const [state, setState] = useState<Inspecting & { source: string }>({
-    source: "",
-    result: null,
-    busy: false,
-  });
-  const found = useEffectEvent(onFound);
-  useEffect(() => {
-    if (source === "") {
-      return undefined;
-    }
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      const client = getClient();
-      if (client === null) {
-        return;
-      }
-      setState({ source, result: null, busy: true });
-      client.projects.inspect({ repo: repoSourceOf(source) }).then(
-        (result) => {
-          if (!cancelled) {
-            setState({ source, result, busy: false });
-            if (result.ok) {
-              found(result);
-            }
-          }
-        },
-        (e: unknown) => {
-          if (!cancelled) {
-            setState({ source, result: { ok: false, message: errorMessage(e) }, busy: false });
-          }
-        },
-      );
-    }, INSPECT_DEBOUNCE_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [source]);
-  return state.source === source ? state : { result: null, busy: source !== "" };
-}
-
-const inspectionText = (source: string, { result, busy }: Inspecting): string => {
-  if (source === "") {
-    return `a directory on this machine, or ${REPO_URL_FORMS}`;
-  }
-  if (result === null && !busy) {
-    return " ";
-  }
-  if (busy) {
-    return "checking with git…";
-  }
-  return result === null
-    ? " "
-    : result.ok
-      ? `git repository · default branch ${result.defaultBranch}`
-      : result.message;
-};
 
 function ImportPicker({
   groups,
@@ -102,23 +39,23 @@ function ImportPicker({
     return null;
   }
   return (
-    <fieldset>
-      <legend className="text-gray-400">Import characters from other floors</legend>
-      <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded bg-ink p-2">
+    <Section title="Import characters from other floors">
+      <div className="max-h-44 space-y-3 overflow-y-auto rounded-md border border-line bg-ink p-3">
         {groups.map((g) => (
-          <div key={g.floor}>
-            <div className="text-[10px] tracking-wide text-gray-500 uppercase">{g.floor}</div>
+          <div key={g.floor} className="space-y-1">
+            <div className="text-2xs tracking-widest text-gray-500 uppercase">{g.floor}</div>
             {g.agents.map((a) => (
-              <label key={a.id} className="flex items-center gap-2 py-0.5">
+              <label key={a.id} className="flex items-center gap-2.5 py-1">
                 <input
                   type="checkbox"
+                  className="accent-accent"
                   checked={imports.has(a.id)}
                   onChange={() => {
                     toggle(a.id);
                   }}
                 />
-                <span>{a.name}</span>
-                <span className="text-gray-500">
+                <span className="text-xs">{a.name}</span>
+                <span className="text-2xs text-gray-500">
                   {a.role} · {a.model}/{a.effort}
                 </span>
               </label>
@@ -126,49 +63,14 @@ function ImportPicker({
           </div>
         ))}
       </div>
-    </fieldset>
-  );
-}
-
-type Draft = { source: string; name: string; branch: string; imports: Set<AgentId> };
-const EMPTY: Draft = { source: "", name: "", branch: "", imports: new Set() };
-
-function NameBranchFields({
-  draft,
-  setDraft,
-}: {
-  draft: Draft;
-  setDraft: (draft: Draft) => void;
-}): React.JSX.Element {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      <label className="block">
-        <span className="text-gray-400">Floor name</span>
-        <input
-          className="mt-1 w-full rounded bg-ink px-2 py-1"
-          value={draft.name}
-          onChange={(e) => {
-            setDraft({ ...draft, name: e.target.value });
-          }}
-        />
-      </label>
-      <label className="block">
-        <span className="text-gray-400">Default branch</span>
-        <input
-          className="mt-1 w-full rounded bg-ink px-2 py-1 font-mono"
-          value={draft.branch}
-          onChange={(e) => {
-            setDraft({ ...draft, branch: e.target.value });
-          }}
-        />
-      </label>
-    </div>
+    </Section>
   );
 }
 
 /**
- * The add-project dialog (D23): a repository path or URL, checked by the daemon (git, name, default branch),
- * optional characters imported from other floors, and Create. The new floor gets its own Andrew and Lola.
+ * The add-project dialog (D23): a folder chosen on this machine or a git URL, checked by the daemon
+ * (git, name, branches), optional characters imported from other floors, and Create. The new floor
+ * gets its own Andrew and Lola.
  */
 export function AddProjectModal(): React.JSX.Element | null {
   const open = useUi((s) => s.addProjectOpen);
@@ -186,8 +88,7 @@ export function AddProjectModal(): React.JSX.Element | null {
       setDraft(EMPTY);
     },
   });
-  const source = open ? draft.source.trim() : "";
-  const inspecting = useRepoInspection(source, (found) => {
+  const inspecting = useRepoInspection(draft.kind, open ? typedIn(draft) : "", (found) => {
     // Fill what the user has not typed themselves.
     setDraft((d) => ({
       ...d,
@@ -205,17 +106,13 @@ export function AddProjectModal(): React.JSX.Element | null {
     create.reset();
   };
   const canCreate =
-    !create.isPending &&
-    !inspecting.busy &&
-    source !== "" &&
-    draft.name.trim() !== "" &&
-    inspection?.ok === true;
+    !create.isPending && !inspecting.busy && draft.name.trim() !== "" && inspection?.ok === true;
   const submit = (): void => {
     if (inspection?.ok === true) {
       create.mutate({
         name: draft.name.trim(),
         repo: inspection.repo,
-        defaultBranch: draft.branch.trim() === "" ? inspection.defaultBranch : draft.branch.trim(),
+        defaultBranch: draft.branch === "" ? inspection.defaultBranch : draft.branch,
         importAgentIds: [...draft.imports],
       });
     }
@@ -228,56 +125,31 @@ export function AddProjectModal(): React.JSX.Element | null {
     setDraft({ ...draft, imports });
   };
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 p-6 text-xs">
-      <div className="w-full max-w-lg space-y-3 rounded-lg border border-line bg-panel p-4 shadow-2xl">
-        <header>
-          <h2 className="text-base font-semibold">Add a project (floor)</h2>
-          <p className="text-gray-400">
-            Every project is a floor of the office with its own boss, Andrew, and Lola at the
-            reception. Point it at a git repository on this machine or at a git URL.
-          </p>
-        </header>
-        <label className="block">
-          <span className="text-gray-400">Repository path or URL</span>
-          <input
-            className="mt-1 w-full rounded bg-ink px-2 py-1 font-mono"
-            placeholder="/Users/you/projects/app or git@github.com:org/repo.git"
-            value={draft.source}
-            onChange={(e) => {
-              setDraft({ ...draft, source: e.target.value, name: "", branch: "" });
-            }}
-          />
-          <span className="mt-1 block text-[11px] text-gray-400">
-            {inspectionText(source, inspecting)}
-          </span>
-        </label>
-        <NameBranchFields draft={draft} setDraft={setDraft} />
-        <ImportPicker
-          groups={importable(projects, agents)}
-          imports={draft.imports}
-          toggle={toggle}
-        />
-        {create.error === null ? null : (
-          <p className="rounded bg-red-950/70 px-2 py-1 text-red-200">
-            {errorMessage(create.error)}
-          </p>
-        )}
-        <div className="flex justify-end gap-2">
-          <button type="button" className="rounded bg-line px-3 py-1" onClick={close}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="rounded bg-accent px-3 py-1 font-semibold text-black disabled:opacity-40"
-            disabled={!canCreate}
-            onClick={() => {
-              submit();
-            }}
-          >
-            {create.isPending ? "Creating…" : "Create"}
-          </button>
-        </div>
-      </div>
-    </div>
+    <Modal
+      title="Add a project (floor)"
+      description="Every project is a floor of the office with its own boss, Andrew, and Lola at the reception. Point it at a git repository on this machine or at a git URL."
+      onClose={close}
+      footer={
+        <>
+          {create.error === null ? null : (
+            <p className="mr-auto text-xs text-red-300">{errorMessage(create.error)}</p>
+          )}
+          <Button onClick={close}>Cancel</Button>
+          <Button variant="primary" disabled={!canCreate} onClick={submit}>
+            {create.isPending ? "Creating…" : "Create floor"}
+          </Button>
+        </>
+      }
+    >
+      <Section title="Repository">
+        <RepoFields draft={draft} setDraft={setDraft} inspecting={inspecting} />
+      </Section>
+      <Details
+        draft={draft}
+        setDraft={setDraft}
+        branches={inspection?.ok === true ? inspection.branches : []}
+      />
+      <ImportPicker groups={importable(projects, agents)} imports={draft.imports} toggle={toggle} />
+    </Modal>
   );
 }

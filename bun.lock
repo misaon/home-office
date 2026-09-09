@@ -6,7 +6,6 @@
       "name": "home-office",
       "devDependencies": {
         "@ho/protocol": "workspace:*",
-        "@ho/sim": "workspace:*",
         "@types/bun": "catalog:",
         "bun-plugin-tailwind": "catalog:",
         "knip": "catalog:",
@@ -15,7 +14,6 @@
         "oxlint-tsgolint": "catalog:",
         "sharp": "catalog:",
         "typescript": "catalog:",
-        "zod": "catalog:",
       },
     },
     "apps/cli": {
@@ -166,7 +164,6 @@
         "pixi.js": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "zod": "catalog:",
         "zustand": "catalog:",
       },
       "devDependencies": {

@@ -12,6 +12,7 @@ import {
 } from "./domain.ts";
 import { StoredEvent } from "./events.ts";
 import { IntakePollResult, IntakeStatus } from "./intake.ts";
+import { LayoutSaved, LayoutStore, OfficeLayout } from "./office-layout.ts";
 import { SecretKeyName } from "./providers.ts";
 import { AgentId, ProjectId, TaskId } from "./ids.ts";
 import { Doctor, LiveEvent, ResourceInventory } from "./runtime-events.ts";
@@ -22,6 +23,8 @@ import {
   AgentUpdateInput,
   ChatHistoryInput,
   ChatSendInput,
+  DirectoryPick,
+  DirectoryPickInput,
   EventsSubscribeInput,
   Health,
   ProjectCreateInput,
@@ -67,6 +70,11 @@ export const contract = {
     doctor: base.output(Doctor),
     /** Builds (or refreshes) the agent and git-bridge images, streaming build output. */
     buildImages: base.output(eventIterator(z.object({ line: z.string() }))),
+    /**
+     * Opens the host's native directory dialog and reports what was chosen. The office UI is served over
+     * HTTP to both the desktop window and a browser, so the dialog belongs to the host side of the RPC.
+     */
+    pickDirectory: base.input(DirectoryPickInput).output(DirectoryPick),
     /** Removes stopped sandboxes, expired task volumes and dangling images. */
     gc: base.output(
       z.object({
@@ -83,6 +91,14 @@ export const contract = {
     create: base.input(ProjectCreateInput).output(Project),
     update: base.input(ProjectUpdateInput).output(Project),
     remove: base.input(z.object({ id: ProjectId })).output(z.object({ id: ProjectId })),
+  },
+  /**
+   * The internal office editor's store: offices drawn by hand, kept as JSON in the repository. A daemon
+   * with no repository to write into reports `available: false` rather than failing.
+   */
+  layouts: {
+    list: base.output(LayoutStore),
+    save: base.input(OfficeLayout).output(LayoutSaved),
   },
   agents: {
     list: base.input(AgentListInput).output(z.array(Agent)),

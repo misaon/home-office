@@ -1,253 +1,249 @@
 import "pixi.js/unsafe-eval";
 import type { AgentId } from "@ho/protocol";
-import type { Actor, Floor, World } from "@ho/sim";
-import { Application, Container, Sprite, Text, type Texture } from "pixi.js";
-import { fitScale, type SpriteLibrary } from "./sprites.ts";
-import { TILE } from "./stand-ins.ts";
+import { type Actor, CELL_PX, type FloorTemplate, type World } from "@ho/sim";
+import { Application, Container, Graphics } from "pixi.js";
+import { Camera } from "./camera.ts";
+import { DOT, DOT_EDGE, DOT_SELECTED } from "./palette.ts";
+import { floorTiles, gridLines } from "./tiles.ts";
 
-/** Character canvas: two cells wide (D21); a set delivered at another width is scaled by width, bubbles to one cell. */
-const CHARACTER_W = 2 * TILE;
-const LABEL_STYLE = {
-  fontFamily: "monospace",
-  fontSize: Math.round(TILE * 0.4),
-  fill: "#ffffff",
-  stroke: { color: "#000000", width: 2 },
+/**
+ * An employee is two cells across — 50 cm at roughly 25 cm per cell, the same as the chair they sit on
+ * and the doorway they walk through. Movement itself is still one cell at a time: a two-by-two body is
+ * not yet what the path search reserves.
+ */
+const DOT_RADIUS = CELL_PX;
+/** How far the pointer may travel before a click counts as a drag instead of a selection. */
+const DRAG_SLOP_PX = 4;
+const WHEEL_STEP = 1.15;
+/** Views kept built while floors are switched. */
+const FLOOR_CACHE = 2;
+
+type DotView = { shape: Graphics; selected: boolean };
+type FloorView = { tiles: Container; template: FloorTemplate };
+
+const paint = (shape: Graphics, selected: boolean): void => {
+  shape
+    .clear()
+    .circle(0, 0, DOT_RADIUS)
+    .fill(selected ? DOT_SELECTED : DOT)
+    .stroke({ color: DOT_EDGE, width: 1 });
 };
 
-/** Placeholder set for characters whose own set has not been delivered yet (the receptionist until hers lands). */
-const FALLBACK_SET = "characters/agent-a";
-
-/** What a floor renderer hands the scene: static layers plus the sorted layer actors join. */
-export type FloorView = {
-  root: Container;
-  /** Y-sorted layer for furniture and characters. */
-  objects: Container;
-  width: number;
-  height: number;
-  /** Per-frame hook for animated pieces (doors, object states). */
-  update?: (world: World, dtMs: number) => void;
-};
-export type FloorRenderer = (floorId: string, floor: Floor) => FloorView;
-
-type ActorView = { root: Container; body: Sprite; bubble: Sprite; label: Text; floorId: string };
-
-/** PixiJS view of the office: floor views from the renderer, z-sorted characters with bubbles and names. */
+/**
+ * PixiJS view of the map: the grid of cells a layout is compiled into, whatever that layout fills them
+ * with, and one dot per character. Zoom with the wheel, drag to pan; nothing here places anything —
+ * layouts are written in code.
+ */
 export class OfficeScene {
   readonly app = new Application();
-  readonly #sprites: SpriteLibrary;
-  readonly #render: FloorRenderer;
-  readonly #stage = new Container();
+  readonly camera = new Camera();
+  readonly #world = new Container();
+  readonly #tiles = new Container();
+  readonly #dots = new Map<AgentId, DotView>();
   readonly #floors = new Map<string, FloorView>();
-  readonly #actors = new Map<AgentId, ActorView>();
-  #current: string | null = null;
+  #grid = new Graphics();
+  #gridScale = 0;
+  #floorId: string | null = null;
   #host: HTMLElement | null = null;
   #observer: ResizeObserver | null = null;
+  #drag: { x: number; y: number; moved: boolean } | null = null;
   onSelect: (agentId: AgentId | null) => void = () => undefined;
-
-  constructor(sprites: SpriteLibrary, render: FloorRenderer) {
-    this.#sprites = sprites;
-    this.#render = render;
-  }
 
   async init(host: HTMLElement): Promise<void> {
     this.#host = host;
     await this.app.init({
-      background: "#0f1115",
+      background: "#ffffff",
       width: Math.max(1, host.clientWidth),
       height: Math.max(1, host.clientHeight),
-      antialias: false,
-      roundPixels: true,
+      antialias: true,
       preference: "webgl",
-      // Device pixels, not CSS pixels: on a Retina display the art is sampled once, not upscaled by the browser.
       resolution: window.devicePixelRatio,
       autoDensity: true,
     });
     this.app.ticker.maxFPS = 30;
     host.append(this.app.canvas);
-    this.app.stage.addChild(this.#stage);
+    this.app.stage.addChild(this.#world);
+    this.#world.addChild(this.#tiles, this.#grid);
     this.app.stage.eventMode = "static";
     this.app.stage.on("pointertap", () => {
-      this.onSelect(null);
-    });
-    // The canvas follows the pane's width; its height is decided per frame by the floor (see #fit).
-    this.#observer = new ResizeObserver(() => {
-      const current = this.#current === null ? undefined : this.#floors.get(this.#current);
-      if (current !== undefined) {
-        this.#fit(current);
+      if (this.#drag?.moved !== true) {
+        this.onSelect(null);
       }
+    });
+    this.camera.setViewport(this.app.screen.width, this.app.screen.height);
+    this.#listen(this.app.canvas);
+    this.#observer = new ResizeObserver(() => {
+      this.#resize();
     });
     this.#observer.observe(host);
   }
 
   destroy(): void {
     this.#observer?.disconnect();
-    this.#actors.clear();
+    this.#dots.clear();
     this.#floors.clear();
     this.app.destroy(true, { children: true });
   }
 
-  /** Drops the views of floors that no longer exist; views are built lazily when a floor is first shown. */
-  syncFloors(world: World): void {
-    for (const [id, view] of this.#floors) {
-      if (!world.floors.has(id)) {
-        this.#dropFloor(id, view);
+  /** Wheel zooms around the cursor; dragging pans. Native listeners: the map is one surface, not widgets. */
+  #listen(canvas: HTMLCanvasElement): void {
+    canvas.addEventListener(
+      "wheel",
+      (event) => {
+        event.preventDefault();
+        const box = canvas.getBoundingClientRect();
+        this.camera.zoomBy(
+          event.deltaY < 0 ? WHEEL_STEP : 1 / WHEEL_STEP,
+          event.clientX - box.left,
+          event.clientY - box.top,
+        );
+        this.#applyCamera();
+      },
+      { passive: false },
+    );
+    canvas.addEventListener("pointerdown", (event) => {
+      this.#drag = { x: event.clientX, y: event.clientY, moved: false };
+      canvas.setPointerCapture(event.pointerId);
+    });
+    canvas.addEventListener("pointermove", (event) => {
+      const drag = this.#drag;
+      if (drag === null) {
+        return;
       }
+      const dx = event.clientX - drag.x;
+      const dy = event.clientY - drag.y;
+      if (!drag.moved && Math.abs(dx) + Math.abs(dy) < DRAG_SLOP_PX) {
+        return;
+      }
+      drag.moved = true;
+      drag.x = event.clientX;
+      drag.y = event.clientY;
+      this.camera.panBy(dx, dy);
+      this.#applyCamera();
+      canvas.style.cursor = "grabbing";
+    });
+    for (const kind of ["pointerup", "pointercancel"]) {
+      canvas.addEventListener(kind, () => {
+        canvas.style.cursor = "";
+        // The tap handler runs after this, so the flag has to outlive the release for one turn.
+        setTimeout(() => {
+          this.#drag = null;
+        }, 0);
+      });
     }
   }
 
-  #dropFloor(id: string, view: FloorView): void {
-    for (const [agentId, actor] of this.#actors) {
-      if (actor.floorId === id) {
-        this.#actors.delete(agentId);
-      }
-    }
-    view.root.destroy({ children: true });
-    this.#floors.delete(id);
-    if (this.#current === id) {
-      this.#current = null;
-    }
-  }
-
-  showFloor(world: World, id: string | null): void {
-    if (this.#current === id) {
-      return;
-    }
-    this.#current = id;
-    const floor = id === null ? undefined : world.floors.get(id);
-    if (id !== null && floor !== undefined) {
-      const view = this.#floors.get(id) ?? this.#render(id, floor);
-      this.#floors.delete(id);
-      this.#floors.set(id, view);
-      this.#stage.addChild(view.root);
-      this.#fit(view);
-    }
-    for (const [floorId, view] of this.#floors) {
-      view.root.visible = floorId === id;
-    }
-    while (this.#floors.size > 2) {
-      const oldest = this.#floors.entries().next();
-      if (oldest.done !== true) {
-        this.#dropFloor(...oldest.value);
-      }
-    }
-  }
-
-  /**
-   * Camera: the floor always spans the pane's full width, uniformly scaled and never cropped. When the scaled
-   * floor is taller than the pane the canvas grows and the pane scrolls; when it is shorter it sits centred.
-   */
-  #fit(view: FloorView): void {
+  #resize(): void {
     const host = this.#host;
     if (host === null || host.clientWidth === 0) {
       return;
     }
-    const width = host.clientWidth;
-    const scale = width / view.width;
-    const floorHeight = Math.ceil(view.height * scale);
-    const height = Math.max(host.clientHeight, floorHeight);
-    if (this.app.screen.width !== width || this.app.screen.height !== height) {
-      this.app.renderer.resize(width, height);
-      this.app.stage.hitArea = this.app.screen;
-    }
-    this.#stage.scale.set(scale);
-    this.#stage.position.set(0, Math.floor((height - floorHeight) / 2));
+    this.app.renderer.resize(host.clientWidth, host.clientHeight);
+    this.app.stage.hitArea = this.app.screen;
+    this.camera.setViewport(host.clientWidth, host.clientHeight);
+    this.#applyCamera();
   }
 
-  #ensureActor(actor: Actor, name: string): ActorView {
-    const existing = this.#actors.get(actor.id);
+  #applyCamera(): void {
+    const { scale } = this.camera;
+    this.#world.scale.set(scale);
+    this.#world.position.set(
+      Math.round(-this.camera.offsetX * scale),
+      Math.round(-this.camera.offsetY * scale),
+    );
+    if (this.#gridScale !== scale) {
+      this.#drawGrid();
+    }
+  }
+
+  #drawGrid(): void {
+    const view = this.#floorId === null ? undefined : this.#floors.get(this.#floorId);
+    if (view === undefined) {
+      return;
+    }
+    const { scale } = this.camera;
+    this.#gridScale = scale;
+    const next = gridLines(view.template.map, scale);
+    this.#grid.destroy();
+    this.#grid = next;
+    this.#world.addChild(next);
+  }
+
+  /** Which floor's map and characters are shown; its tiles are built once and kept while it is in use. */
+  showFloor(template: FloorTemplate | null): void {
+    const id = template?.id ?? null;
+    if (this.#floorId === id) {
+      return;
+    }
+    this.#floorId = id;
+    if (template !== null) {
+      const view = this.#floors.get(template.id) ?? {
+        tiles: floorTiles(template),
+        template,
+      };
+      this.#floors.delete(template.id);
+      this.#floors.set(template.id, view);
+      this.#tiles.addChild(view.tiles);
+      this.camera.setMap(template.map.width, template.map.height);
+      this.camera.fit();
+      this.#gridScale = 0;
+      this.#applyCamera();
+    }
+    for (const [floorId, view] of this.#floors) {
+      view.tiles.visible = floorId === id;
+    }
+    while (this.#floors.size > FLOOR_CACHE) {
+      const oldest = this.#floors.entries().next();
+      if (oldest.done !== true) {
+        const [floorId, view] = oldest.value;
+        view.tiles.destroy({ children: true });
+        this.#floors.delete(floorId);
+      }
+    }
+  }
+
+  #ensureDot(actor: Actor): DotView {
+    const existing = this.#dots.get(actor.id);
     if (existing !== undefined) {
-      existing.label.text = name;
       return existing;
     }
-    const selectable = actor.kind === "boss" || actor.kind === "staff";
-    const root = new Container({
-      eventMode: selectable ? "static" : "none",
-      cursor: selectable ? "pointer" : "default",
-    });
-    const body = new Sprite();
-    body.anchor.set(0.5, 1);
-    const bubble = new Sprite({ visible: false });
-    bubble.anchor.set(0.5, 1);
-    const label = new Text({ text: name, style: LABEL_STYLE, resolution: 4, y: 1 });
-    label.anchor.set(0.5, 0);
-    root.addChild(body, bubble, label);
-    root.on("pointertap", (e) => {
+    const shape = new Graphics({ eventMode: "static", cursor: "pointer" });
+    paint(shape, false);
+    shape.on("pointertap", (e) => {
       e.stopPropagation();
-      this.onSelect(actor.id);
+      if (this.#drag?.moved !== true) {
+        this.onSelect(actor.id);
+      }
     });
-    const view: ActorView = { root, body, bubble, label, floorId: "" };
-    this.#actors.set(actor.id, view);
+    this.#world.addChild(shape);
+    const view: DotView = { shape, selected: false };
+    this.#dots.set(actor.id, view);
     return view;
   }
 
-  #placeActor(actor: Actor, view: ActorView, selected: boolean): void {
-    if (view.floorId !== actor.floorId) {
-      view.root.removeFromParent();
-      const floor = this.#floors.get(actor.floorId);
-      // A floor not rendered yet has no layer to join; try again once it is shown.
-      if (floor !== undefined) {
-        floor.objects.addChild(view.root);
-        view.floorId = actor.floorId;
-      }
-    }
-    view.root.visible = !actor.hidden && actor.floorId === this.#current;
-    // A sitter facing south sits north of the desk: drawn one cell lower, the desk covers the legs (as painted).
-    const sink = actor.activity === "type" && actor.facing === "s" ? TILE : 0;
-    view.root.position.set(
-      Math.round(actor.pos.x * TILE + TILE / 2),
-      Math.round(actor.pos.y * TILE + TILE + sink),
-    );
-    view.root.zIndex = actor.pos.y * TILE + TILE;
-    const clip =
-      this.#sprites.clip(actor.sprite, actor.activity, actor.facing) ??
-      this.#sprites.clip(FALLBACK_SET, actor.activity, actor.facing);
-    if (clip !== null) {
-      const frame = Math.floor(actor.animTime / clip.frameMs) % clip.textures.length;
-      const texture = clip.textures[frame];
-      if (texture !== undefined && view.body.texture !== texture) {
-        view.body.texture = texture;
-      }
-      const size = fitScale(view.body.texture.width, CHARACTER_W);
-      view.body.scale.set(clip.flip ? -size : size, size);
-      // The bubble floats just above the head, whatever the set's height.
-      view.bubble.y = -(view.body.height + 2);
-    }
-    const emotion = actor.emotion?.kind ?? null;
-    const bubbleTexture: Texture | undefined =
-      emotion === null ? undefined : this.#sprites.frames(`bubbles/${emotion}`, "static")?.[0];
-    view.bubble.visible = bubbleTexture !== undefined;
-    if (bubbleTexture !== undefined && view.bubble.texture !== bubbleTexture) {
-      view.bubble.texture = bubbleTexture;
-      view.bubble.scale.set(fitScale(bubbleTexture.height, TILE));
-    }
-    view.label.style.fill = selected ? "#ffd166" : "#ffffff";
-  }
-
-  /** Called every frame with the current world; cheap when nothing moved. */
-  update(
-    world: World,
-    dtMs: number,
-    names: (id: AgentId) => string,
-    selected: AgentId | null,
-  ): void {
-    const current = this.#current === null ? undefined : this.#floors.get(this.#current);
-    if (current !== undefined) {
-      current.update?.(world, dtMs);
-    }
+  /** Called every frame with the current world: one dot per visible character of the shown floor. */
+  update(world: World, selected: AgentId | null): void {
     for (const actor of world.actors.values()) {
-      if (actor.floorId !== this.#current || actor.hidden) {
-        const view = this.#actors.get(actor.id);
+      const view = this.#dots.get(actor.id);
+      if (actor.floorId !== this.#floorId || actor.hidden) {
         if (view !== undefined) {
-          view.root.visible = false;
+          view.shape.visible = false;
         }
         continue;
       }
-      this.#placeActor(actor, this.#ensureActor(actor, names(actor.id)), actor.id === selected);
+      const dot = view ?? this.#ensureDot(actor);
+      dot.shape.visible = true;
+      dot.shape.position.set((actor.pos.x + 0.5) * CELL_PX, (actor.pos.y + 0.5) * CELL_PX);
+      const isSelected = actor.id === selected;
+      if (dot.selected !== isSelected) {
+        dot.selected = isSelected;
+        paint(dot.shape, isSelected);
+      }
     }
-    for (const [id, view] of this.#actors) {
+    for (const [id, view] of this.#dots) {
       if (!world.actors.has(id)) {
-        view.root.destroy({ children: true });
-        this.#actors.delete(id);
+        view.shape.destroy();
+        this.#dots.delete(id);
       }
     }
   }

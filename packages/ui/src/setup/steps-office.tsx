@@ -2,6 +2,7 @@ import { chatOf } from "@ho/core";
 import { type ChatMessageId, errorMessage, type ProjectId, type TaskId } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
+import { Button } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
 import type { StepStatus } from "./status.ts";
@@ -83,18 +84,19 @@ export function SmokeStep({
   const reply = sent === null || floorId === null ? null : replyTo(snapshot, sent, floorId);
   return (
     <Step index={4} title="Smoke test" status={status}>
-      <div className="space-y-1">
-        <p className="text-gray-300">
+      <div className="space-y-3">
+        <p className="leading-relaxed text-gray-300">
           Sends a hello to {boss?.name ?? "the boss"} of the selected floor: the first sandbox
           starts, Claude Code signs in with your token and the reply lands in Chat. Expect 20–60
           seconds and a few hundred tokens on {boss?.model ?? "the boss's model"}.
         </p>
         {reply !== null ? (
-          <blockquote className="rounded bg-ink p-2 text-gray-200">{reply}</blockquote>
+          <blockquote className="rounded-md border border-line bg-ink p-3 leading-relaxed text-gray-200">
+            {reply}
+          </blockquote>
         ) : (
-          <button
-            type="button"
-            className="rounded bg-accent px-2 py-1 text-black disabled:opacity-50"
+          <Button
+            variant="primary"
             disabled={
               hello.isPending ||
               !ready ||
@@ -104,7 +106,7 @@ export function SmokeStep({
             onClick={send}
           >
             {sent === null ? "Say hello" : "Try again"}
-          </button>
+          </Button>
         )}
         {hello.error === null ? null : <p className="text-red-400">{errorMessage(hello.error)}</p>}
       </div>

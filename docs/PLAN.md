@@ -33,6 +33,13 @@ not evidence that every original acceptance target was achieved.
 
 These items are not implemented merely because an older plan described them in a completed phase.
 
+**Proposed 2026-09-09 — Docker Compose inside tasks:** add an opt-in private Docker Engine behind a
+per-environment VM boundary, retaining the restricted container backend for ordinary tasks. Evaluate
+Docker Sandboxes first, with Lima/VZ as the fallback if the integration gates fail. The
+[implementation plan](plans/2026-09-09-task-container-engine.md) covers current code, current vendor
+capabilities, workspace publication, networking, quotas, recovery and acceptance. No backend has been
+implemented or runtime compatibility demonstrated by this research task.
+
 | Priority | Work                                            | Completion evidence                                                                                                                                                                                                                                                                                                                                                               |
 | -------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | High     | Reliable source acknowledgements                | Persistent retry outbox, idempotent comments and recovery after a daemon restart                                                                                                                                                                                                                                                                                                  |
@@ -41,7 +48,7 @@ These items are not implemented merely because an older plan described them in a
 | Medium   | Volume retention based on last use              | Recently used old volumes survive; active volumes remain protected; explicit discard behavior                                                                                                                                                                                                                                                                                     |
 | Medium   | Egress policy                                   | Per-project destinations and a verified proxy/firewall boundary compatible with provider/package traffic                                                                                                                                                                                                                                                                          |
 | Medium   | Browser/native accessibility and sustained load | Representative multi-floor use, resize/keyboard flows, stable RAM/CPU over a long run                                                                                                                                                                                                                                                                                             |
-| Medium   | Missing art                                     | Delivered receptionist/character sets and missing furniture; preserve originals and verify imports against the reference                                                                                                                                                                                                                                                          |
+| —        | ~~Missing art~~                                 | **Superseded 2026-09-09: the office is being designed from scratch.** Every sprite, room and piece of furniture was deleted at the owner's instruction; a floor is a bare plane and characters are dots. The new mechanic and its visuals arrive as owner instructions — see [the rebuild plan](plans/2026-09-09-office-from-scratch.md)                                          |
 | —        | ~~Agent image size~~                            | **Decided 2026-09-09: not doing it.** Measured, the browser costs ~1.06 GB of the 1.69 GB image (1.22 GB vs 158 MB for the same layer without chromium and fonts) — but it is stored once for all four provider targets, `browser.enabled` defaults to true, and `chromium-headless-shell` would save only ~150 MB. Evidence and the two alternatives in `audit/AUDIT.md` (B24.1) |
 | Later    | Remote operation                                | Authenticated TLS transport and clear host/container networking; no plaintext remote bind                                                                                                                                                                                                                                                                                         |
 | Later    | Platform expansion and signing                  | Verified installer/runtime on each target, plus signing/notarization when available                                                                                                                                                                                                                                                                                               |
@@ -75,6 +82,36 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 ([ADR 003](../audit/adr/003-sprite-pipeline.md)).
 
 ## Audit log
+
+- 2026-09-09 — Owner task: the internal office editor — A development-only editor (walls, rooms, doors,
+  eraser) that saves `layouts/<id>.json` through a daemon store, with the JSON keeping semantic ids so
+  art added later applies to offices drawn now. The production bundle is stubbed at build time and
+  verified by grepping it. Decisions and the measured round trip in
+  [the editor plan](plans/2026-09-09-layout-editor.md).
+
+- 2026-09-09 — Owner task: the grid system of the map — Prison Architect's mechanics were read from its
+  wiki before anything was written (tile as the atom, walls occupying whole cells, rooms as a painted
+  designation), and the owner settled the decisions, the load-bearing one being that **layouts are
+  written in code, never built by the player**. The map is the office at a fixed 60×34 cells — wider
+  than any pane, so the width always sets the fit and the sides are flush — compiled from a `Layout` into four per-cell layers with a
+  derived collision mask, under an always-visible grid and a camera that zooms in to 64 px per cell and
+  cannot be pulled back past the whole floor. Sources, decisions
+  and the measured verification in [the grid plan](plans/2026-09-09-grid-system.md).
+
+- 2026-09-09 — Owner task: the office starts again from scratch — All art (306 PNGs, 48 MB), the sprite
+  pipeline (`assets/`, the three `assets:*` scripts and their libraries) and the approved layout (rooms,
+  furniture, doors, glazing, decor, the plan audit) were deleted at the owner's instruction. A floor is
+  now a bare 48×28 walkable plane with named spots and the renderer draws a white surface with one dot
+  per character; the movement, needs, reservations and envelope choreography stayed. Evidence and the
+  next steps in [the rebuild plan](plans/2026-09-09-office-from-scratch.md).
+
+- 2026-09-09 — Owner task: the add-project dialog and an airier UI — A native directory picker behind
+  the folder icon (`system.pickDirectory` with a `DirectoryPicker` port: the desktop app's own open
+  panel, `osascript` for a daemon on its own), a separate git-URL input behind a source switch, a
+  default-branch select filled from `projects.inspect`, and absolute spacing/text scales with shared
+  form primitives across the panels, settings, setup checklist and header. Plan and decisions in
+  [the task plan](plans/2026-09-09-add-project-and-ui-spacing.md), evidence in
+  [audit/VERIFICATION.md](../audit/VERIFICATION.md).
 
 - 2026-09-08 — Independent audit — Incremental commits cover state/security, simulation/assets,
   lifecycle/delivery, UI/build/CI, provider/Docker repairs, integration fixes and documentation.

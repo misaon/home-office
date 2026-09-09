@@ -1,4 +1,5 @@
 import { errorMessage } from "@ho/protocol";
+import type { BunPlugin } from "bun";
 import { existsSync, renameSync, watch as fsWatch } from "node:fs";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -7,6 +8,25 @@ import tailwind from "bun-plugin-tailwind";
 const root = resolve(import.meta.dir, "..");
 const outdir = resolve(root, "packages/ui/dist");
 const watch = Bun.argv.includes("--watch");
+
+/**
+ * The office editor is an internal tool. `NODE_ENV` alone only makes its branch unreachable — the
+ * bundler still carries the component — so a production build resolves the module to a stub and the
+ * editor's code never enters the graph. Verified by grepping the bundle, not by trusting tree shaking.
+ */
+const withoutEditor: BunPlugin = {
+  name: "ho-drop-editor",
+  setup(bundler) {
+    bundler.onResolve({ filter: /editor\/overlay\.tsx$/u }, () => ({
+      path: "ho-editor-omitted",
+      namespace: "ho-omitted",
+    }));
+    bundler.onLoad({ filter: /.*/u, namespace: "ho-omitted" }, () => ({
+      contents: "export const EditorOverlay = (): null => null;\n",
+      loader: "ts",
+    }));
+  },
+};
 
 async function build(): Promise<void> {
   const staging = await mkdtemp(resolve(root, "packages/ui/.build-"));
@@ -21,7 +41,7 @@ async function build(): Promise<void> {
       sourcemap: watch ? "inline" : "none",
       reactCompiler: true,
       naming: { asset: "[name]-[hash].[ext]", chunk: "[name]-[hash].[ext]", entry: "[name].[ext]" },
-      plugins: [tailwind],
+      plugins: watch ? [tailwind] : [tailwind, withoutEditor],
       define: { "process.env.NODE_ENV": JSON.stringify(watch ? "development" : "production") },
     });
     if (!result.success) {

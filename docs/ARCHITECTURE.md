@@ -22,6 +22,18 @@ arrive in a spawn message and enter that child's environment. The runner token i
 child. A separate short-lived git-bridge container copies a repository into a Docker task volume and
 publishes its result branch back to the host. Agent containers never mount the host repository.
 
+Agents currently have no Docker/Compose tooling or engine socket; nested project containers are not
+supported. The [task-engine plan](plans/2026-09-09-task-container-engine.md), researched 2026-09-09,
+proposes an optional VM-backed environment with a private engine. This is future work, not a change to
+the container boundary described here.
+
+Native host dialogs are a daemon port, not a UI capability. The same UI bundle runs in the Electrobun
+webview and in a plain browser, so `system.pickDirectory` asks the daemon, and the daemon holds a
+`DirectoryPicker`: the desktop app injects an open panel owned by its own window through `startDaemon`,
+and a daemon started on its own falls back to macOS `osascript`. A host without a dialog answers
+`unavailable`, which the office turns into "type the path" rather than an error. The prompt and starting
+directory are AppleScript `run argv` arguments, never script source.
+
 The simulation is a visual projection. It controls envelope timing while a viewer is present, with a
 30-second daemon timeout; it cannot determine task success, permissions or publication results.
 
@@ -41,7 +53,7 @@ The simulation is a visual projection. It controls envelope timing while a viewe
 | `packages/intake-github`       | Host `gh` issue polling and acknowledgement adapter                                 |
 | `packages/runner`              | The in-sandbox relay: one child process, stdio framing and bounded buffers          |
 | `packages/secrets`             | OS credential store via `Bun.secrets`, with an atomic owner-only file fallback      |
-| `packages/sim`                 | Pure office layout, movement, reservations, needs and envelope choreography         |
+| `packages/sim`                 | Pure plane, movement, reservations, needs and envelope choreography                 |
 | `packages/ui`                  | React panels, Zustand projection, TanStack Query requests and Pixi rendering        |
 | `packages/agent-kit`           | Role skill packs copied into provider images                                        |
 | `scripts`                      | Checked build, desktop, sprite-import and manifest tooling                          |
@@ -136,19 +148,71 @@ image contains both browser MCP servers, but sessions expose Playwright by defau
 enables Chrome DevTools as well. `browser.enabled=false` removes browser tools from sessions. Browser
 profiles, config and caches are temporary. No egress allowlist or CONNECT proxy is implemented.
 
-## Simulation, sprites and UI
+## Simulation and UI
 
-The layout is pure data in `packages/sim`: rooms, collision cells, furniture, anchors and elevator state.
-Every project uses an independent instance of the plan. `CELL_PX` defines the rendering/import scale;
-art dimensions and layer alignment are documented in [OFFICE-ART.md](OFFICE-ART.md) and
-[assets/README.md](../assets/README.md). Original art is preserved separately from imported PNG frames.
-Sharp handles image encoding/decoding. Manifests use content-derived revisions and report missing keys;
-missing furniture renders geometric stand-ins.
+**The office is being designed again from scratch (2026-09-09, at the owner's instruction).** The art,
+the rooms, the furniture and the whole sprite pipeline are gone. What the map is now is a grid, modelled
+after Prison Architect and verified against its wiki: the square cell is the atom, and **a wall is the
+content of a cell rather than an edge**, so a 4×4 room needs a 6×6 outline.
+
+**The map is the office, and its size is fixed at 60×34 cells.** The pane's ratio grows with the
+window, because the 440 px panel and the 53 px bar are fixed; the floor at 1.765 is wider than any of
+those panes, so its width is always what limits the fit and the sides are always flush. On a maximised
+1920 × 1080 window (a 1480 × 1027 px pane) that is 24.7 px per cell with 94 px of margin above and
+below, and nothing to scroll. The margin is the price of a floor whose size is fixed in cells: the
+owner asked for the extra width knowing it comes out of the height. An office is a `Layout`
+**written in code** (`packages/sim/src/layouts.ts`):
+rectangles of floor, of wall and of room designation, objects with a cell footprint, and the anchors its
+characters use. `compileLayout` paints those declarations into a `TileMap` — four per-cell layers
+(floor, wall, object, room) plus the `blocked` mask the collision `Grid` is derived from, where void, a
+wall and a blocking object are impassable and an object that does not block clears its cells (that is a
+door). Later rectangles win over earlier ones, so a layout reads top-down. Several layouts can coexist
+and a floor picks one by id; there is no builder, because the player never places anything.
+
+Offices are drawn in an **internal editor** that exists in development builds only — `ui-build.ts`
+resolves its module to a stub for production, so the shipped bundle carries none of it. It paints walls,
+rooms, doorways and furniture on the grid — the left button paints, the right button erases, the middle
+button or shift pans — and saves `layouts/<id>.json` through the daemon, which reads that directory back
+and answers `available: false` where there is no repository to write into. The JSON stores what a cell
+_is_ — a wall material, a room kind, a door kind, a furniture kind — never a colour, so art added later
+applies to offices drawn today, and the compiled map carries that kind per cell for exactly that reason.
+
+Footprints live in one table, `OBJECT_SPEC` in the protocol: cells across and down, whether the piece
+blocks movement, whether it mounts on a wall, and whether its direction matters. They are the owner's,
+at roughly 25 cm per cell and derived from the real pieces — a developer's desk 6×3, the boss's 8×4, a
+reception counter 10×3, a meeting table 12×5, the lift car 5×2 hung on a wall, chairs 2×2, a doorway
+1×2 — and an employee is 2×2, the same width as the chair they sit on and the doorway they pass. A piece
+that hangs on a wall puts its **back** row on the cell clicked and grows the way it faces, so a fitting
+sits in the wall and a lift car juts into the room. Movement is still one cell at a time: a two-by-two
+body is not yet what the path search reserves. Each of the eleven room kinds carries its own hue and is outlined in
+it — one cell edge wherever the room changes, so an L-shaped room reads as one room and the end of a
+room is visible through the faint tint. A room's name is drawn on the deepest cell of its area rather
+than the middle of its bounding box, so a corridor wrapped around other rooms still labels itself inside
+the corridor. Doors and furniture are placed by a click with their footprint shown first,
+a right click turns them a quarter and a right drag erases; walls and rooms are still dragged out.
+Prison Architect is coarser — its office desk and bed are 2×1, its chair and door 1×1 — because its tile
+is about a metre; the whole catalogue and its sources are in
+[the editor plan](plans/2026-09-09-layout-editor.md).
+
+The view draws ground, floors, room tint, the grid, walls, objects and then one dot per character.
+The grid is always visible — one hairline of one colour on every cell boundary, the map's outer edge
+included — and the camera zooms
+with the wheel around the cursor and pans by dragging, clamped so the map cannot be lost off-screen and
+centred when it is smaller than the pane. Zooming out has no bound of its own: it stops with the whole
+floor in view, because the floor is sized to fit. Zooming in reaches 64 px per cell, which puts a 6×6
+room across 384 px — that is what the camera is for. `CELL_PX` is the unit positions are
+expressed in, not an art density. Until the owner's next instruction, do not reintroduce art.
 
 Movement uses a weighted grid A* with a TinyQueue heap, clearance and turn costs, plus explicit actor
 reservations. Needs and seeded RNG drive idle behavior. Plan steps describe walking, dwelling, emitting
 handoff completion and leaving the office; queued envelope deliveries survive later intents. Each floor
 has its own elevator and animations. Simulation stepping is fixed and catch-up is bounded.
+
+Both scales the panels use are absolute, set once in `@theme`: `--spacing: 4px` and a px text ramp
+(`--text-2xs` 11px through `--text-base` 15px) with their own line heights. A rem scale hung off the
+13px root made `text-xs` render at 9.75px and `p-2` at 7px, which is why the panels looked glued
+together; the shared primitives in `packages/ui/src/kit` (`Field`, `Section`, `Button`, `Segmented`,
+`Modal`) carry the rhythm so a panel does not invent its own.
 
 Pixi renders at at most 30 fps and stops its ticker in a hidden document, but a hidden office is not a
 blank one. While the document is hidden the scene draws a still frame — the ticker's own four calls with

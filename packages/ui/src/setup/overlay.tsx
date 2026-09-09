@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { Button } from "../kit/controls.tsx";
 import { doctorQuery } from "../queries.ts";
 import { useUi } from "../store.ts";
 import { dockerStatus, imagesStatus, setupNeeded, tokenStatus } from "./status.ts";
@@ -64,22 +65,18 @@ export function SetupOverlay(): React.JSX.Element | null {
     setSetupOpen(false);
   };
   return (
-    <div className="absolute inset-0 z-20 flex items-start justify-center overflow-y-auto bg-ink/80 p-6 text-xs">
-      <div className="w-full max-w-2xl space-y-2">
-        <header className="flex items-center justify-between">
+    <div className="absolute inset-0 z-20 flex items-start justify-center overflow-y-auto bg-ink/85 p-8 text-xs">
+      <div className="w-full max-w-2xl space-y-4">
+        <header className="flex items-start justify-between gap-6">
           <div>
             <h2 className="text-base font-semibold">Set up your office</h2>
-            <p className="text-gray-400">
+            <p className="mt-2 leading-relaxed text-gray-400">
               Three things make the office work; the fourth is a hello to a floor’s boss.
             </p>
           </div>
-          <div className="flex gap-2">
-            <button type="button" className="rounded bg-line px-2 py-1" onClick={refresh}>
-              Re-check
-            </button>
-            <button type="button" className="rounded bg-line px-2 py-1" onClick={close}>
-              {ready ? "Close" : "Skip for now"}
-            </button>
+          <div className="flex shrink-0 gap-3">
+            <Button onClick={refresh}>Re-check</Button>
+            <Button onClick={close}>{ready ? "Close" : "Skip for now"}</Button>
           </div>
         </header>
         <DockerStep doctor={doctor} refresh={refresh} />

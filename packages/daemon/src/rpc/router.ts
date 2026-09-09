@@ -80,6 +80,9 @@ export const router = base.router({
     buildImages: base.system.buildImages.handler(({ context, signal }) =>
       linesFrom(context.buildImages, signal),
     ),
+    pickDirectory: base.system.pickDirectory.handler(({ input, context }) =>
+      context.pickDirectory(input),
+    ),
     gc: base.system.gc.handler(({ context }) => context.gc()),
   },
   usage: {
@@ -120,6 +123,10 @@ export const router = base.router({
     remove: base.projects.remove.handler(async ({ input, context }) => ({
       id: await context.office.execute(HUMAN, (m, ctx) => removeProject(m, input.id, ctx)),
     })),
+  },
+  layouts: {
+    list: base.layouts.list.handler(({ context }) => context.layouts.list()),
+    save: base.layouts.save.handler(({ input, context }) => context.layouts.save(input)),
   },
   agents: {
     list: base.agents.list.handler(({ input, context }) =>

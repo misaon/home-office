@@ -43,8 +43,6 @@ export const DaemonConfig = z.object({
     .object({
       /** Directory with the built office UI (index.html + chunks); null means the bundled default. */
       dir: z.string().min(1).nullable().default(null),
-      /** Directory with sprite sources and the manifest (`assets/`); null means the bundled default. */
-      assetsDir: z.string().min(1).nullable().default(null),
     })
     .prefault({}),
   /** Headless Chromium + Playwright/Chrome DevTools MCP inside work and review sessions (D15). */
@@ -77,7 +75,6 @@ export async function loadConfig(home: string, resources: Resources): Promise<Da
     ...config,
     ui: {
       dir: config.ui.dir ?? resources.uiDir,
-      assetsDir: config.ui.assetsDir ?? resources.assetsDir,
     },
   };
 }

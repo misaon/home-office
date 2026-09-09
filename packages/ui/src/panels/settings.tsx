@@ -4,7 +4,7 @@ import { TokenSettings } from "./settings-token.tsx";
 
 export function SettingsPanel(): React.JSX.Element {
   return (
-    <div className="space-y-4 overflow-y-auto p-3 text-xs">
+    <div className="h-full space-y-8 overflow-y-auto p-4 text-xs">
       <TokenSettings />
       <ProjectsSettings />
       <AgentsSettings />

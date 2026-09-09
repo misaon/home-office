@@ -1212,3 +1212,249 @@ ho.token = "stale-from-a-previous-launch" → "The daemon refused this page's to
 location.hash = "#token=<current>"       → the office loads, no reload, "Add a project (floor)"
 $ bun run check → typecheck 16/16 · oxlint clean · oxfmt · knip · ui 3 files, 1112 KiB
 ```
+
+## The add-project dialog and the airier UI (2026-09-09)
+
+The owner's task: a native directory picker behind an icon, a separate git-URL input, a branch select
+instead of a text field, and an airier UI. Plan and decisions in
+[docs/plans/2026-09-09-add-project-and-ui-spacing.md](../docs/plans/2026-09-09-add-project-and-ui-spacing.md).
+
+### What git actually answers, before the code assumed it
+
+```
+$ git for-each-ref --format='%(refname:short)' refs/heads refs/remotes/origin | head -20
+audit/deep-monorepo-audit-2026-09
+codex/monorepo-audit-2026-09
+codex/office-art-base
+feat/floors-andrew-lola
+feat/office-base-v1
+ho/add-contributing-md-04a0d2d4
+ho/task-01a0830f-d332-7601-b1e8-6447ced7a451
+…
+main
+origin
+origin/audit/deep-monorepo-audit-2026-09
+origin/main
+
+$ git ls-remote --symref https://github.com/misaon/home-office.git HEAD 'refs/heads/*'
+ref: refs/heads/main	HEAD
+29bcf5cb237325e3d6f58a4085834837928f2f8c	HEAD
+2c437d2891bc9747b13b5ba2097ebd1a0f82f396	refs/heads/audit/deep-monorepo-audit-2026-09
+fa035f9645eb942fcf086b9c7a7ebf567b462ce1	refs/heads/codex/monorepo-audit-2026-09
+83de20a293789e1aadf8fa2f034804c067c4e26c	refs/heads/feat/office-base-v1
+29bcf5cb237325e3d6f58a4085834837928f2f8c	refs/heads/main
+```
+
+One `ls-remote` carries the symbolic HEAD and every head, so the branch list costs no extra round trip.
+`origin`, `origin/HEAD` and the `origin/` prefix are dropped, the default branch goes first.
+
+### The AppleScript the daemon runs, checked before it was written into the fallback
+
+```
+$ osascript -e 'on run argv' -e 'return item 1 of argv' -e 'end run' -- hello
+hello
+$ osascript -e 'on run argv' -e 'return POSIX path of ((item 1 of argv) as POSIX file)' -e 'end run' -- /tmp
+/tmp
+$ osacompile -o /tmp/check.scpt -e 'on run argv' \
+    -e 'set chosen to choose folder with prompt (item 1 of argv) default location ((item 2 of argv) as POSIX file)' \
+    -e 'return POSIX path of chosen' -e 'end run'
+(exit 0 — compiles)
+```
+
+`--` ends option parsing and the arguments reach `run argv`, so the prompt and the starting directory
+are never part of the script source.
+
+### The office, driven in a browser against a live daemon
+
+An isolated daemon (`HO_HOME=<scratch>`, port 47810) serving the production UI bundle:
+
+```
+$ curl -s http://127.0.0.1:47810/health
+{"ok":true}
+```
+
+- Empty office → "Add a project (floor)" → the dialog opens with the source switch on "Folder on this
+  machine", the folder button beside the path, and the branch select disabled ("filled in once git
+  answers").
+- Typing `…/home-office/packages/ui` (a subdirectory, not the repository root): hint
+  `git repository · 13 branches`, floor name filled with `home-office`, and the select holds exactly
+  the 13 branches with `main` selected — `origin/*` duplicates removed, default first:
+  `["main","audit/deep-monorepo-audit-2026-09","codex/monorepo-audit-2026-09","codex/office-art-base","feat/add-project-picker-and-airier-ui","feat/floors-andrew-lola","feat/office-base-v1","ho/add-contributing-md-04a0d2d4","ho/task-01a0830f…","ho/task-01a08328…","ho/task-01a08341…","ho/task-01a08347…","ho/zjistit-hlavn-zpr-vu-dne-na-seznam-cz-zp-8b64a75d"]`
+- "Git URL" with `git@github.com:misaon/home-office.git` (git's scp shorthand, not a URL): hint
+  `git repository · 4 branches`, select `["main","audit/deep-monorepo-audit-2026-09","codex/monorepo-audit-2026-09","feat/office-base-v1"]`,
+  "Create floor" enabled.
+- `not-a-repo` in the same field: `Not a repository URL — use https://host/org/repo,
+ssh://git@host/org/repo or git@host:org/repo` in red, name and branch cleared, Create disabled, and
+  no request sent — the URL is rejected in the page, not by the daemon.
+- The folder button: the daemon spawned the dialog with the typed path as its starting location, and
+  the arguments are arguments —
+
+```
+$ ps -ww -o command -p $(pgrep -f osascript)
+osascript -e on run argv -e set chosen to choose folder with prompt (item 1 of argv) default location
+((item 2 of argv) as POSIX file) -e return POSIX path of chosen -e end run -- Choose the repository
+folder /Users/ondrejmisak/WebstormProjects/home-office/packages/ui
+```
+
+Dismissing it returned `cancelled`: the field kept what was typed and no error appeared.
+
+The panel itself was measured on its own, because an agent's sandboxed shell cannot reach the window
+server and the dialog opened there is dismissed for it after ten seconds:
+
+```
+$ osascript ... 'choose folder with prompt (item 1 of argv)' ...      (sandboxed shell)
+26:68: execution error: Operace byla zrusena uzivatelem. (-128)       10.2 s, exit 1
+
+$ bun run pick-probe.ts  →  osascriptDirectoryPicker({})              (no sandbox)
+{"status":"cancelled"} after 46171 ms
+```
+
+Outside the sandbox the panel stays up and waits — 46 seconds here, until it was dismissed — and the
+adapter turns AppleScript's `-128` into `cancelled` instead of an error. `picked`, the branch that
+writes the chosen path into the field, is the one case still unverified: it needs a person to press
+Choose.
+
+- "Create floor" created the floor; the office drew its plan, the header tab, Andrew in the chat panel
+  and the setup checklist.
+
+### White text on the accent buttons, found by the owner
+
+The airier pass added a form reset — `input, select, textarea, button { font: inherit; color: inherit }` —
+outside any `@layer`. Unlayered CSS outranks every layered utility, so `text-black` lost and the yellow
+buttons and the active floor tab drew near-white text on yellow. Tailwind's own preflight already carries
+that exact reset in `base`:
+
+```
+$ grep -o 'button,[^{]*{[^}]*}' packages/ui/dist/*.css
+button,input,select,optgroup,textarea{font:inherit;…;color:inherit;opacity:1;background-color:#0000;border-radius:0}
+```
+
+The duplicate is gone and the one rule worth keeping (a dropdown's platform-drawn list needs the office's
+ground stated) moved into `@layer base`. Measured in the browser after the rebuild:
+
+```
+before  Create floor  color rgb(230, 230, 230)  background rgb(255, 209, 102)
+        1 home-office color rgb(230, 230, 230)  background rgb(255, 209, 102)
+after   Create floor  color rgb(0, 0, 0)        background rgb(255, 209, 102)
+        1 home-office color rgb(0, 0, 0)        background rgb(255, 209, 102)
+```
+
+### "Not Found" under the input, found by the owner
+
+The owner clicked the folder icon against the daemon that was already running in a terminal and got
+`Not Found` under the field and no dialog. The daemon and the UI bundle deploy separately — the daemon
+serves the bundle from disk, so `bun run ui:build` gives a running daemon a UI newer than itself:
+
+```
+$ curl -s http://127.0.0.1:47800/health   → {"ok":true}   started 11:57 local (pid 82774)
+$ git log -1 --format=%ad 2fcaa24          → 12:39 local   (the commit that adds system.pickDirectory)
+```
+
+Reproduced in the browser against that same daemon (`Repository folder / Not Found`), which is oRPC's
+`NOT_FOUND` for a procedure the router does not have. The message now says what to do, and the check is
+structural rather than `instanceof` — the error crosses a WebSocket and its class need not be the one
+the bundle imported:
+
+```
+before  Repository folder / Not Found
+after   Repository folder / This daemon is older than the office and cannot open a folder dialog —
+        restart it, reload, or type the path.
+```
+
+Verified in both directions: the sentence above on the 11:57 daemon, and on a daemon built from this
+branch the same click spawns the panel —
+
+```
+$ pgrep -fl osascript
+80823 osascript -e on run argv -e set chosen to choose folder with prompt (item 1 of argv) …
+      -- Choose the repository folder
+```
+
+### The right panel could not scroll, found by the owner
+
+Settings, Agent, Usage and Resources are plain blocks of content with `overflow-y-auto`, but nothing
+constrained their height, so each grew to its content and the panel's `overflow-hidden` wrapper simply
+cut the rest off. The airier pass is what exposed it: the same content no longer fits. Measured in the
+browser at 1440×900, on the Settings panel, by toggling the added `h-full`:
+
+```
+without h-full   clientHeight 1738  scrollHeight 1738  scrollable false   (wrapper overflow: hidden)
+with    h-full   clientHeight  855  scrollHeight 1738  scrollable true    (scrollTop 400 sticks)
+```
+
+Chat and Board were already `flex h-full flex-col` with their own `flex-1` scroll area and were never
+affected; the four block panels now state `h-full` themselves.
+
+### Checks
+
+```
+$ bun run check
+✔ 16/16 tsconfig targets · oxlint --type-aware --deny-warnings clean · oxfmt 324 files
+knip clean · ui: 3 files, 1123 KiB
+```
+
+Not covered: the desktop app's own `Utils.openFileDialog` panel (it needs the packaged Electrobun app,
+where the daemon runs in-process and receives the native picker), and a folder actually chosen in the
+dialog rather than dismissed.
+
+## 2026-09-09 — Task container engine research and implementation plan
+
+Documentation-only task. Inspected the current Docker provider, session provisioning/lifecycle,
+runner gateway, git bridge, startup and GC; primary online sources and their dates are linked in
+`docs/plans/2026-09-09-task-container-engine.md`. Proposed a private Docker Engine behind a VM
+boundary, evaluating Docker Sandboxes before a Lima fallback. No runtime installed or launched.
+
+Local prerequisite discovery (no output for `limactl` or `sbx`):
+
+```text
+$ command -v docker; command -v limactl; command -v sbx; uname -m
+/usr/local/bin/docker
+arm64
+```
+
+The semantic-search service returned HTTP 404 to the explorer; direct source inspection was used.
+The absence of nested Docker support is a source finding, not a measured Compose failure.
+
+Documentation formatting:
+
+```text
+$ bunx --no-install oxfmt docs/plans/2026-09-09-task-container-engine.md docs/PLAN.md docs/STACK.md docs/ARCHITECTURE.md
+Finished in 114ms on 4 files using 12 threads.
+```
+
+Full repository check, exit code 0:
+
+```text
+$ bun run check
+$ bun run typecheck && bun run lint && bun run fmt:check && bun run knip && bun run ui:build
+$ bun run scripts/typecheck.ts
+✔ apps/cli/tsconfig.json
+✔ apps/desktop/tsconfig.json
+✔ packages/core/tsconfig.json
+✔ packages/daemon/tsconfig.json
+✔ packages/intake-github/tsconfig.json
+✔ packages/protocol/tsconfig.json
+✔ packages/runner/tsconfig.json
+✔ packages/runtime-acp/tsconfig.json
+✔ packages/runtime-claude-code/tsconfig.json
+✔ packages/sandbox-docker/tsconfig.json
+✔ packages/secrets/tsconfig.json
+✔ packages/sim/tsconfig.json
+✔ packages/store/tsconfig.json
+✔ packages/ui/tsconfig.json
+✔ spikes/s6-acp-mock/tsconfig.json
+✔ tsconfig.json
+$ oxlint --type-aware --deny-warnings
+$ oxfmt --check
+Checking formatting...
+
+All matched files use the correct format.
+Finished in 394ms on 313 files using 12 threads.
+$ knip
+$ bun run scripts/ui-build.ts
+ui: 3 files, 1015 KiB → /Users/ondrejmisak/WebstormProjects/home-office/packages/ui/dist
+```
+
+`git diff --check` also exited 0 without output. Runtime compatibility, Compose execution, VM
+isolation/limits and performance remain unverified acceptance gates in the plan. No tests or code
+comments were added. Existing untracked `layouts/` content was outside this task.

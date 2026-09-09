@@ -2,11 +2,8 @@ import { type AgentId, errorMessage } from "@ho/protocol";
 import * as sim from "@ho/sim";
 import { useEffect, useRef } from "react";
 import { useUi } from "../store.ts";
-import { createPlanView } from "./plan-view.ts";
-import { bridge, sprites } from "./runtime.ts";
+import { bridge } from "./runtime.ts";
 import { OfficeScene } from "./scene.ts";
-
-const nameOf = (id: AgentId): string => bridge.nameOf(id);
 
 export function OfficeCanvas(): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null);
@@ -40,19 +37,7 @@ export function OfficeCanvas(): React.JSX.Element {
     };
     const isDisposed = (): boolean => state.disposed;
     void (async () => {
-      await sprites.load();
-      if (isDisposed()) {
-        return;
-      }
-      useUi.getState().setSpriteSets(sprites.characterSets());
-      if (bridge.layoutIssues.length > 0) {
-        useUi.getState().setError(`office layout: ${bridge.layoutIssues.join("; ")}`);
-      }
-      const created = new OfficeScene(sprites, (floorId) =>
-        createPlanView(bridge.planFor(floorId), sprites, (issue) => {
-          useUi.getState().setError(`sprite: ${issue}`);
-        }),
-      );
+      const created = new OfficeScene();
       await created.init(element);
       if (isDisposed()) {
         created.destroy();
@@ -62,16 +47,16 @@ export function OfficeCanvas(): React.JSX.Element {
       created.onSelect = (agentId: AgentId | null) => {
         useUi.getState().selectAgent(agentId);
       };
-      // Dev console handle: the bridge, the sprite library, the scene and the simulation's intents.
+      // Dev console handle: the bridge, the scene and the simulation's intents.
       if (process.env.NODE_ENV === "development") {
-        Object.assign(window, { __ho: { bridge, sprites, scene: created, sim, store: useUi } });
+        Object.assign(window, { __ho: { bridge, scene: created, sim, store: useUi } });
       }
       const drawFrame = (dtMs: number): void => {
         try {
           bridge.tick(dtMs);
-          created.syncFloors(bridge.world);
-          created.showFloor(bridge.world, useUi.getState().floorId);
-          created.update(bridge.world, dtMs, nameOf, useUi.getState().selectedAgentId);
+          const floorId = useUi.getState().floorId;
+          created.showFloor(floorId === null ? null : bridge.templateFor(floorId));
+          created.update(bridge.world, useUi.getState().selectedAgentId);
         } catch (error) {
           useUi.getState().setError(errorMessage(error));
         }
@@ -106,7 +91,7 @@ export function OfficeCanvas(): React.JSX.Element {
   }, []);
 
   return (
-    <div className="relative h-full w-full overflow-x-hidden overflow-y-auto bg-ink">
+    <div className="relative h-full w-full overflow-hidden bg-white">
       <div ref={host} className="h-full w-full" />
       {lastError !== null ? (
         <div className="absolute inset-x-0 top-0 bg-red-900/80 px-3 py-1 font-mono text-xs text-red-100">
