@@ -25,18 +25,19 @@ export const Facing = z.enum(["n", "e", "s", "w"]);
 export type Facing = z.infer<typeof Facing>;
 
 /**
- * How many cells wide a door opening is. Prison Architect's door is one tile, but its tile is about a
- * metre; this grid is finer — a cell is roughly 25 cm — so four cells is a one-metre doorway.
+ * How many cells wide a door opening is: two, which at roughly 25 cm per cell is 50 cm — exactly one
+ * employee, who is two cells across. Narrow for a real door, and the owner's choice.
  */
-export const DOOR_SPAN = 4;
+export const DOOR_SPAN = 2;
 
 /**
  * Everything the editor can place. Footprints are in cells of roughly 25 cm, derived from the real
  * pieces: a developer's desk is 160 × 80 cm, a dining chair 45 × 45, a meeting table 300 × 120. `blocks`
  * is whether movement has to go around it — a chair is sat on, a window is looked through. `onWall`
- * pieces are mounted on a wall cell and leave it standing (unlike a door, which opens it), and `arrow`
- * marks the ones whose direction matters: which way a desk is faced, an air conditioner blows, a picture
- * looks.
+ * pieces hang on a wall and leave it standing (unlike a door, which opens it) — the row at their back,
+ * the side opposite the way they face, is what has to be wall, so a thin fitting sits in the wall while
+ * a lift car juts into the room. `arrow` marks the pieces whose direction matters: which way a desk is
+ * faced, an air conditioner blows, a picture looks, a lift opens.
  */
 export const ObjectKind = z.enum([
   "elevator",
@@ -78,8 +79,9 @@ export type ObjectSpec = {
 };
 
 export const OBJECT_SPEC: Readonly<Record<ObjectKind, ObjectSpec>> = {
-  // The lift car: where staff arrive on the floor. 1.5 × 1.5 m, walkable, facing the way it opens.
-  elevator: { w: 6, h: 6, blocks: false, onWall: false, arrow: true },
+  // The lift car: where staff arrive on the floor. It hangs on a wall as the fittings do, five cells
+  // along it and two deep, and is walked into.
+  elevator: { w: 5, h: 2, blocks: false, onWall: true, arrow: true },
   // Desks: 160 × 80 cm for the team, 200 × 90 for the boss, a 240 × 70 counter at reception.
   "desk-developer": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },
   "desk-qa": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },

@@ -5,7 +5,8 @@ import { Application, Container, Graphics, Text } from "pixi.js";
 import { Camera } from "../office/camera.ts";
 import { floorTiles, gridLines } from "../office/tiles.ts";
 import { arrowFor, arrowGraphic, arrowsOf } from "./arrows.ts";
-import { type Draft, draftLayout, ghostAt, type Kinds, type Rect, type Tool } from "./draft.ts";
+import { type Draft, ghostAt, type Kinds, type Rect, type Tool } from "./draft.ts";
+import { draftLayout } from "./office-file.ts";
 import { labelsOf } from "./labels.ts";
 
 const HOVER = 0x2b3140;

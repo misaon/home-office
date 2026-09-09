@@ -15,14 +15,13 @@ import {
   type Draft,
   emptyDraft,
   erase,
-  fromOffice,
   type Kinds,
   paint,
   rotate,
   slugify,
-  toOffice,
   type Tool,
 } from "./draft.ts";
+import { fromOffice, toOffice } from "./office-file.ts";
 import { EditorCanvas } from "./canvas.tsx";
 import { layoutsQuery, SavedOffices } from "./offices.tsx";
 

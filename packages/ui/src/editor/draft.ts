@@ -4,11 +4,9 @@ import {
   type Facing,
   OBJECT_SPEC,
   type ObjectKind,
-  type OfficeLayout,
   type RoomKind,
   type WallMaterial,
 } from "@ho/protocol";
-import { type Layout, layoutFromOffice } from "@ho/sim";
 
 /** What the editor paints with. Erasing is the right button, not a tool of its own. */
 export type Tool = "wall" | "room" | "door" | "object";
@@ -128,15 +126,43 @@ const doorRect = (draft: Draft, at: Rect, kinds: Kinds): Rect => {
   return rectAt(Math.min(Math.max(centred, 0), Math.max(limit, 0)));
 };
 
+/**
+ * Where a piece lands for a click. Furniture is anchored at the cell clicked; something mounted on a
+ * wall puts its **back** row on that cell and grows the way it faces, so clicking the wall hangs it
+ * there and a lift car juts into the room rather than into the wall.
+ */
 const footprint = (at: Rect, kinds: Kinds): Rect => {
   const size = OBJECT_SPEC[kinds.object];
   const sideways = turned(kinds.facing);
+  const w = sideways ? size.h : size.w;
+  const h = sideways ? size.w : size.h;
+  if (!size.onWall) {
+    return { x: at.x, y: at.y, w, h };
+  }
   return {
-    x: at.x,
-    y: at.y,
-    w: sideways ? size.h : size.w,
-    h: sideways ? size.w : size.h,
+    x: kinds.facing === "w" ? at.x - (w - 1) : at.x,
+    y: kinds.facing === "n" ? at.y - (h - 1) : at.y,
+    w,
+    h,
   };
+};
+
+/**
+ * The row at a piece's back — the side opposite the way it faces — and whether all of it is wall. A
+ * one-cell-deep fitting is entirely that row; a lift car five by two has its back row in the wall and
+ * the rest of it in the room.
+ */
+const backOnWall = (draft: Draft, box: Rect, facing: Facing): boolean => {
+  const back =
+    facing === "s"
+      ? { x: box.x, y: box.y, w: box.w, h: 1 }
+      : facing === "n"
+        ? { x: box.x, y: box.y + box.h - 1, w: box.w, h: 1 }
+        : facing === "e"
+          ? { x: box.x, y: box.y, w: 1, h: box.h }
+          : { x: box.x + box.w - 1, y: box.y, w: 1, h: box.h };
+  const row = indices(draft, back);
+  return row.length === back.w * back.h && row.every((i) => draft.wall[i] !== null);
 };
 
 /** Whether a rectangle sits on wall or against one — a doorway in the middle of a room touches none. */
@@ -191,8 +217,8 @@ export function paint(draft: Draft, tool: Tool, rect: Rect, kinds: Kinds): Paint
     return { next, note: touchesWall(draft, box) ? null : "this doorway touches no wall" };
   }
   const spec = OBJECT_SPEC[kinds.object];
-  if (spec.onWall && !covered.every((i) => draft.wall[i] !== null)) {
-    return { next: draft, note: `a ${kinds.object} is mounted on a wall` };
+  if (spec.onWall && !backOnWall(draft, box, kinds.facing)) {
+    return { next: draft, note: `${kinds.object} hangs on a wall — click the wall itself` };
   }
   if (!spec.onWall && covered.some((i) => draft.wall[i] !== null)) {
     return { next: draft, note: "furniture cannot stand in a wall" };
@@ -225,71 +251,3 @@ export function erase(draft: Draft, tool: Tool, rect: Rect): Painted {
   }
   return { next, note: null };
 }
-
-/** Runs of the same value in one row become one rectangle; a wall drawn as a line stays one line. */
-function* runs<T>(
-  values: readonly (T | null)[],
-  width: number,
-  height: number,
-): Generator<{ value: T; rect: Rect }> {
-  for (let y = 0; y < height; y += 1) {
-    let start = 0;
-    let current: T | null = null;
-    for (let x = 0; x <= width; x += 1) {
-      const value = x === width ? null : (values[y * width + x] ?? null);
-      if (value !== current) {
-        if (current !== null) {
-          yield { value: current, rect: { x: start, y, w: x - start, h: 1 } };
-        }
-        current = value;
-        start = x;
-      }
-    }
-  }
-}
-
-/** The draft as the JSON that gets saved. */
-export const toOffice = (draft: Draft): OfficeLayout => ({
-  id: draft.id,
-  name: draft.name,
-  width: draft.width,
-  height: draft.height,
-  walls: [...runs(draft.wall, draft.width, draft.height)].map(({ value, rect }) => ({
-    x: rect.x,
-    y: rect.y,
-    w: rect.w,
-    h: rect.h,
-    material: value,
-  })),
-  rooms: [...runs(draft.room, draft.width, draft.height)].map(({ value, rect }) => ({
-    x: rect.x,
-    y: rect.y,
-    w: rect.w,
-    h: rect.h,
-    room: value,
-  })),
-  doors: draft.doors.map((door) => ({ ...door })),
-  objects: draft.objects.map((object) => ({ ...object })),
-});
-
-/** A saved office back into a draft, so it can be edited again. */
-export function fromOffice(office: OfficeLayout): Draft {
-  const draft = emptyDraft(office.name, office.width, office.height);
-  draft.id = office.id;
-  for (const rect of office.walls) {
-    for (const i of indices(draft, rect)) {
-      draft.wall[i] = rect.material;
-    }
-  }
-  for (const rect of office.rooms) {
-    for (const i of indices(draft, rect)) {
-      draft.room[i] = rect.room;
-    }
-  }
-  draft.doors = office.doors.map((door) => ({ ...door }));
-  draft.objects = office.objects.map((object) => ({ ...object }));
-  return draft;
-}
-
-/** What the office renderer draws: the draft compiled exactly like a saved office would be. */
-export const draftLayout = (draft: Draft): Layout => layoutFromOffice(toOffice(draft));

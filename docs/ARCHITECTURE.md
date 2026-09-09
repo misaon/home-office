@@ -175,8 +175,11 @@ applies to offices drawn today, and the compiled map carries that kind per cell 
 Footprints live in one table, `OBJECT_SPEC` in the protocol: cells across and down, whether the piece
 blocks movement, whether it mounts on a wall, and whether its direction matters. They are the owner's,
 at roughly 25 cm per cell and derived from the real pieces — a developer's desk 6×3, the boss's 8×4, a
-reception counter 10×3, a meeting table 12×5, the lift car 6×6, chairs 2×2, a doorway 1×4 — and a
-character spans 1.8 cells. Each room kind carries its own hue, and a room's name is drawn on the
+reception counter 10×3, a meeting table 12×5, the lift car 5×2 hung on a wall, chairs 2×2, a doorway
+1×2 — and an employee is 2×2, the same width as the chair they sit on and the doorway they pass. A piece
+that hangs on a wall puts its **back** row on the cell clicked and grows the way it faces, so a fitting
+sits in the wall and a lift car juts into the room. Movement is still one cell at a time: a two-by-two
+body is not yet what the path search reserves. Each room kind carries its own hue, and a room's name is drawn on the
 deepest cell of its area rather than the middle of its bounding box, so a corridor wrapped around other
 rooms still labels itself inside the corridor. Doors and furniture are placed by a click with their footprint shown first,
 a right click turns them a quarter and a right drag erases; walls and rooms are still dragged out.

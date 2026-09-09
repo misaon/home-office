@@ -311,3 +311,32 @@ takes the deepest cell, which is inside the shape by construction.
 Room tints: reception `#e0a33c`, boss-office `#8b6fd0`, team-room `#4c8bf5`, meeting `#2fae9e`, kitchen
 `#e0603c`, restroom `#3cb4e0`, corridor `#9aa2b1`, terrace `#5fae4c` — eight distinct colours for eight
 kinds.
+
+## The owner's notes, 2026-09-09 (eighth pass)
+
+| Note                                  | Built                                                                                                       |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Doors down to 2×1                     | `DOOR_SPAN` 4 → **2** — 50 cm, exactly one employee wide                                                    |
+| An employee is 2×2 and walks in cells | The dot is two cells across (radius one cell), the width of the chair they sit on and the doorway they pass |
+| The lift hangs on a wall, 5×2         | `elevator` is `onWall`, 5×2, walkable — and wall-mounting learned to work on a one-cell wall                |
+
+### What "on a wall" had to become
+
+`onWall` meant _every_ cell of the footprint had to be wall, which is right for a 4×1 air conditioner
+but impossible for a 5×2 lift car on a wall one cell thick. A wall-mounted piece now puts the **row at
+its back** — the side opposite the way it faces — on the cell clicked, and grows in the facing
+direction:
+
+```
+lift 5x2, clicked on a horizontal wall at 8,5 opening south → placed 8,5 5x2
+                                             opening north → placed 8,4 5x2
+lift 5x2, clicked on a vertical wall at 5,10 opening east   → placed 5,10 2x5
+                                             opening west   → placed 4,10 2x5
+lift clicked out in the room                                → "elevator hangs on a wall — click the wall itself"
+air conditioning 4x1 on the wall at 14,5 blowing south      → placed unchanged
+doorway facing s → 2x1 · facing e → 1x2
+```
+
+Still open, and worth saying plainly: the simulation moves an actor one cell at a time, so a 2×2 body is
+not yet reserved by the path search. A two-cell doorway is exactly one employee wide, which only means
+something once the search knows the body's size — that is part of wiring a drawn office into a floor.
