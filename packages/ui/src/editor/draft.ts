@@ -139,6 +139,17 @@ const footprint = (at: Rect, kinds: Kinds): Rect => {
   };
 };
 
+/** Whether a rectangle sits on wall or against one — a doorway in the middle of a room touches none. */
+const touchesWall = (draft: Draft, rect: Rect): boolean => {
+  const around = {
+    x: rect.x - 1,
+    y: rect.y - 1,
+    w: rect.w + 2,
+    h: rect.h + 2,
+  };
+  return indices(draft, around).some((i) => draft.wall[i] !== null);
+};
+
 export type Painted = { next: Draft; note: string | null };
 
 /** The cells an object would take if it were placed here, so the cursor can show them before the click. */
@@ -171,17 +182,13 @@ export function paint(draft: Draft, tool: Tool, rect: Rect, kinds: Kinds): Paint
   }
   const covered = indices(draft, box);
   if (tool === "door") {
-    if (!covered.every((i) => draft.wall[i] !== null)) {
-      return {
-        next: draft,
-        note: `a doorway needs ${String(DOOR_SPAN)} wall cells in a row — the right button turns it`,
-      };
-    }
+    // A doorway either cuts into a wall or fills the opening left between two of them; both are how an
+    // office gets drawn, so the click always places one and only says when it touches no wall at all.
     next.doors = [
       ...draft.doors.filter((door) => !overlaps(door, box)),
       { ...box, kind: kinds.door, facing: kinds.facing },
     ];
-    return { next, note: null };
+    return { next, note: touchesWall(draft, box) ? null : "this doorway touches no wall" };
   }
   const spec = OBJECT_SPEC[kinds.object];
   if (spec.onWall && !covered.every((i) => draft.wall[i] !== null)) {

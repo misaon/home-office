@@ -258,3 +258,30 @@ click on the vertical wall at (11,4) placed the second. The arrow reads
 `{"x":21,"y":0.5,"dx":0,"dy":1}` for a 4×1 door at 19,0 — centred, pointing the way it opens.
 
 The pale blue region in the owner's plan was not a bug: 28 of their 142 wall runs are `glass`.
+
+## The owner's notes, 2026-09-09 (sixth pass): the doorway placeholder and openings
+
+Reported: the placeholder shows no arrow, and clicking a 4×1 doorway _between_ walls does nothing.
+
+The second is the important one. The office is drawn with **openings left in the walls** — the owner's
+own vertical wall reads `###########....#.................#` down its column — and a doorway was
+required to sit on four cells of wall, so a click into the opening was refused. A doorway now goes
+wherever it is clicked: over wall cells, which it opens, or into the gap between two walls, which is how
+an office is actually drawn. Only a doorway that touches no wall at all says so, as a note rather than a
+refusal. Every one of the 2040 cells now accepts the click.
+
+The placeholder draws the arrow too, so the direction is visible before the click:
+
+```
+facing n: ghost 10,12 4x1 → arrow at 12,12.5 pointing 0,-1
+facing e: ghost 11,11 1x4 → arrow at 11.5,13 pointing 1,0
+facing s: ghost 10,12 4x1 → arrow at 12,12.5 pointing 0,1
+facing w: ghost 11,11 1x4 → arrow at 11.5,13 pointing -1,0
+placed  : {"x":11,"y":11,"w":1,"h":4,"facing":"w"} → arrow {"x":11.5,"y":13,"dx":-1,"dy":0}
+```
+
+While chasing large grey triangles across the map in screenshots, the arrow was rebuilt as its own
+display object per arrow (a stem rectangle and a head polygon) rather than shapes appended to a shared
+`Graphics`. **The triangles turned out to be an artifact of a hidden Browser pane** — they did not change
+by a pixel across three different drawing implementations, which is what gave them away. Screenshots of
+a hidden pane cannot be trusted; the geometry above is measured instead.

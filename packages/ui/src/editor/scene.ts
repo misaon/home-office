@@ -1,9 +1,10 @@
 import "pixi.js/unsafe-eval";
+import { OBJECT_SPEC, type ObjectKind } from "@ho/protocol";
 import { CELL_PX, compileLayout, type FloorTemplate } from "@ho/sim";
 import { Application, Container, Graphics, Text } from "pixi.js";
 import { Camera } from "../office/camera.ts";
 import { floorTiles, gridLines } from "../office/tiles.ts";
-import { arrowsOf } from "./arrows.ts";
+import { arrowFor, arrowGraphic, arrowsOf } from "./arrows.ts";
 import { type Draft, draftLayout, ghostAt, type Kinds, type Rect, type Tool } from "./draft.ts";
 import { labelsOf } from "./labels.ts";
 
@@ -19,6 +20,10 @@ type Cell = { x: number; y: number };
 /** Doors and furniture have a footprint of their own, so they are placed by a click, not a drag. */
 const placesOnClick = (tool: Tool): boolean => tool === "door" || tool === "object";
 
+/** Whether what is in hand has a direction worth showing: a doorway always, furniture by its kind. */
+const turns = (tool: Tool, object: ObjectKind): boolean =>
+  tool === "door" || (tool === "object" && OBJECT_SPEC[object].arrow);
+
 /**
  * The editor's canvas: the draft compiled and drawn exactly as the office would draw it, with the cell
  * under the cursor outlined and the pending drag previewed. Dragging paints; shift, the middle button or
@@ -31,11 +36,11 @@ export class EditorScene {
   readonly #tiles = new Container();
   #grid = new Graphics();
   /** The whole preview layer is translucent, so its own fill stays a plain colour. */
-  readonly #preview = new Graphics({ alpha: PREVIEW_ALPHA });
+  readonly #preview = new Container({ alpha: PREVIEW_ALPHA });
   /** Names written across placed shapes; kept at a constant size whatever the zoom. */
   readonly #labels = new Container();
   /** Which way each placed piece is turned: a door swings, an air conditioner blows. */
-  readonly #arrows = new Graphics();
+  readonly #arrows = new Container();
   #tool: Tool = "wall";
   #kinds: Kinds | null = null;
   #hover: Cell | null = null;
@@ -106,27 +111,11 @@ export class EditorScene {
   }
 
   #drawArrows(draft: Draft): void {
-    this.#arrows.clear();
-    const size = CELL_PX * 0.9;
+    this.#arrows.removeChildren().forEach((child) => {
+      child.destroy();
+    });
     for (const arrow of arrowsOf(draft)) {
-      const x = arrow.x * CELL_PX;
-      const y = arrow.y * CELL_PX;
-      const dx = arrow.dx * size;
-      const dy = arrow.dy * size;
-      const head = [
-        x + dx,
-        y + dy,
-        x + dx / 2 - dy / 3,
-        y + dy / 2 + dx / 3,
-        x + dx / 2 + dy / 3,
-        y + dy / 2 - dx / 3,
-      ];
-      this.#arrows
-        .moveTo(x - dx / 2, y - dy / 2)
-        .lineTo(x + dx / 2, y + dy / 2)
-        .stroke({ color: ARROW, width: CELL_PX * 0.14 })
-        .poly(head)
-        .fill(ARROW);
+      this.#arrows.addChild(arrowGraphic(arrow, ARROW));
     }
   }
 
@@ -207,19 +196,31 @@ export class EditorScene {
     };
   }
 
+  #clearPreview(): void {
+    this.#preview.removeChildren().forEach((child) => {
+      child.destroy();
+    });
+  }
+
   #drawPreview(from: Cell | null, to: Cell | null): void {
-    this.#preview.clear();
+    this.#clearPreview();
     const colour = this.#erasing ? PREVIEW_ERASE : PREVIEW_ADD;
     if (to === null) {
       this.#apply();
       return;
     }
     const { x, y, w, h } = this.#pending(from, to);
+    const kinds = this.#kinds;
     const edge = { color: from === null ? HOVER : colour, width: 2 / this.camera.scale };
-    this.#preview
+    const box = new Graphics()
       .rect(x * CELL_PX, y * CELL_PX, w * CELL_PX, h * CELL_PX)
       .fill(colour)
       .stroke(edge);
+    this.#preview.addChild(box);
+    // The placeholder already shows which way the piece opens or faces.
+    if (!this.#erasing && kinds !== null && turns(this.#tool, kinds.object)) {
+      this.#preview.addChild(arrowGraphic(arrowFor({ x, y, w, h }, kinds.facing), HOVER));
+    }
     this.#apply();
   }
 
@@ -269,7 +270,7 @@ export class EditorScene {
       const to = this.#cellAt(event);
       this.#paintFrom = null;
       this.#panning = false;
-      this.#preview.clear();
+      this.#clearPreview();
       if (from !== null && to !== null) {
         const clicked = from.x === to.x && from.y === to.y;
         if (this.#erasing && clicked && placesOnClick(this.#tool)) {
@@ -289,7 +290,7 @@ export class EditorScene {
     });
     canvas.addEventListener("pointerleave", () => {
       this.#hover = null;
-      this.#preview.clear();
+      this.#clearPreview();
       this.#apply();
     });
   }
