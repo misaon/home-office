@@ -1139,3 +1139,57 @@ images job — ubuntu-24.04-arm, buildx with the GHA layer cache (A2.1, added in
 ```
 
 With this, all 42 rows of the coverage matrix read `OVĚŘENO` and none is `N/A`.
+
+## After the audit — B31.5, found by the owner (2026-09-09)
+
+The owner started the daemon against **their own** `~/.config/home-office` for the first time and got a
+dead end. Diagnosed on a copy of that database, never on the original:
+
+```
+$ (their real message)
+ho: Cannot replay the event log; database preserved. Restore or migrate it before starting.
+
+$ (replaying a copy, cause chain printed)
+[0] Error: Cannot replay the event log; database preserved. …
+[1] ZodError: payload.agent.projectId — Invalid input: expected string, received undefined
+
+$ (every stored event checked against the current schema)
+seq   2 agent.created        payload.agent.projectId: expected string, received undefined
+seq  14 project.created      payload.project.repo.kind: Invalid discriminator value. Expected 'local' | 'git'
+seq  15 chat.message_posted  payload.message.projectId: expected string, received undefined
+seq  16 agent.created        payload.agent.projectId: expected string, received undefined
+seq  17 chat.message_posted  payload.message.projectId: expected string, received undefined
+seq  31 chat.message_posted  payload.message.projectId: expected string, received undefined
+44 events, 6 do not parse under the current schema
+
+$ (what the log holds: a 2026-09-06 pre-D23 session)
+  1 project "home-office" repo={"kind":"local","path":"…/home-office"}
+  2 agent "Pam" role=worker provider=claude-code project=(none)
+  3 task "Add CONTRIBUTING.md"
+ 14 project "Office" repo={"kind":"none"}            # the pre-D23 Lobby
+ 16 agent "Ondra" role=boss provider=claude-code project=(none)
+ 18 task "Podívej se na web seznam.cz …"  → done
+ 24 task "Zjistit hlavní zprávu dne na Seznam.cz …" → done
+```
+
+After the fix, the same copy produces a diagnosis instead of a wall:
+
+```
+$ HO_HOME=<copy> ho daemon --ui
+ho: Cannot replay the event log; <home>/ho.db is preserved and untouched. Restore it from a backup, or —
+if the events predate a schema change and are expendable — move ho.db, ho.db-wal and ho.db-shm aside and
+start with an empty log.
+  caused by: stored event 2 (agent.created, 2026-09-06T08:57:53.477Z) does not match the current schema
+  caused by: Invalid input: expected string, received undefined
+  → at payload.agent.projectId
+```
+
+And a healthy start still works, unchanged:
+
+```
+$ HO_HOME=<fresh> ho daemon --ui
+{"level":30,…,"events":0,"lastSeq":-1,"msg":"read model rebuilt"}
+{"level":30,…,"host":"127.0.0.1","port":47800,"msg":"rpc server listening"}
+daemon 0.0.0-dev up 0 s since 2026-09-09T09:48:51.698Z
+$ bun run check → typecheck 16/16 · oxlint clean · oxfmt 317 files · knip clean · ui 3 files, 1112 KiB
+```

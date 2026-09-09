@@ -1402,6 +1402,57 @@ Dopad: Výkon: O(all mail ever) per poll, growing forever.
 Doporučení: Use one of the projection indexes from B4.1.
 Odhad: triviální
 
+### B31.5 – A database the schema has outgrown fails startup with the diagnosis thrown away
+
+Severita: high
+Kde: `packages/daemon/src/open-office.ts:24-32`, `packages/store/src/event-store.ts:20-30`, reached from `apps/cli/src/main.ts:9`
+Důkaz: Found by the owner, not by this audit, on the first attempt to start the daemon against **their own**
+state directory. The whole message was:
+
+```
+ho: Cannot replay the event log; database preserved. Restore or migrate it before starting.
+```
+
+Nothing else — no file, no event, no field, no recovery step. `openOffice` does attach the real error as
+`cause`, but `errorMessage()` returned only `error.message`, so the cause was discarded at the CLI, and
+`toStored()` in the store called `StoredEvent.parse` directly, so even the cause knew nothing about _which_
+stored row failed.
+
+The actual defect in that database, diagnosed by replaying a copy: **6 of 44 events predate D23** —
+`agent.created` and `chat.message_posted` without `projectId` (seq 2, 15, 16, 17, 31) and one
+`project.created` whose `repo.kind` is `"none"` (seq 14), from the pre-D23 "Lobby" design. D23 (2026-09-07)
+had handled exactly this by archiving such a log to `ho.db.bak-<timestamp>` and starting empty — "owner's
+decision, 2026-09-07" said the comment — and commit `bc8bdf2` (the _previous_ audit, 2026-09-08) removed
+that path in favour of refusing to start. Refusing is the better default; refusing **silently** is not.
+Dopad: Blocker plus data anxiety: the owner cannot start the product and cannot tell whether their data is
+corrupt, unsupported, or simply old. The docs' answer ("Unsupported historic event schemas require an
+explicit migration or restore") names no procedure, and nothing in the product performs either.
+Doporučení: Three changes, all done here.
+
+1. `toStored()` parses with `safeParse` and, on failure, throws `stored event <seq> (<type>, <at>) does not
+match the current schema` with the ZodError as cause — the row is named where it is read.
+2. `errorMessage()` walks the cause chain (depth 4, de-duplicated) and joins it with `caused by:`, so every
+   caller — CLI, UI, the daemon's RPC mapping — reports the diagnosis instead of the wrapper. This is the
+   same helper Wave 6 taught to render Zod issues, so a schema failure now prints its field path.
+3. The refusal names the file and the way out.
+
+The result, on a copy of the owner's own database:
+
+```
+ho: Cannot replay the event log; <home>/ho.db is preserved and untouched. Restore it from a backup, or —
+if the events predate a schema change and are expendable — move ho.db, ho.db-wal and ho.db-shm aside and
+start with an empty log.
+  caused by: stored event 2 (agent.created, 2026-09-06T08:57:53.477Z) does not match the current schema
+  caused by: Invalid input: expected string, received undefined
+  → at payload.agent.projectId
+```
+
+**Why this audit missed it, stated plainly:** every §7 verification ran with a fresh scratch `HO_HOME` —
+deliberately, to keep the owner's state untouched — so no wave ever replayed a log written by an older
+schema. A blind spot the method created: "the app starts" was only ever tested on a database this build had
+written itself. Worth remembering as a rule: _at least one start per audit against real, older state._
+Odhad: triviální (the fix), and it turns a dead end into a diagnosis
+
 ### B31.4 – Verified good: subprocess discipline and PATH widening
 
 Severita: —

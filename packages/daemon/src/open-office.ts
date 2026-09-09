@@ -27,7 +27,7 @@ export async function openOffice(
   } catch (error) {
     database.close();
     throw new Error(
-      "Cannot replay the event log; database preserved. Restore or migrate it before starting.",
+      `Cannot replay the event log; ${path} is preserved and untouched. Restore it from a backup, or — if the events predate a schema change and are expendable — move ${DB_FILE}, ${DB_FILE}-wal and ${DB_FILE}-shm aside and start with an empty log.`,
       { cause: error },
     );
   }
