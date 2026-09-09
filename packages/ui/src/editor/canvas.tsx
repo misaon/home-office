@@ -8,11 +8,13 @@ export function EditorCanvas({
   tool,
   kinds,
   onPaint,
+  onRotate,
 }: {
   draft: Draft;
   tool: Tool;
   kinds: Kinds;
   onPaint: (rect: Rect, erasing: boolean) => void;
+  onRotate: () => void;
 }): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<EditorScene | null>(null);
@@ -21,6 +23,7 @@ export function EditorCanvas({
   // The scene is built asynchronously, so it reads the callback through a ref: an effect that assigns it
   // would have run while the scene was still null, and the first drag would have gone nowhere.
   const handler = useRef(onPaint);
+  const turn = useRef(onRotate);
   useEffect(() => {
     latest.current = draft;
     scene.current?.setDraft(draft);
@@ -31,7 +34,8 @@ export function EditorCanvas({
   }, [tool, kinds]);
   useEffect(() => {
     handler.current = onPaint;
-  }, [onPaint]);
+    turn.current = onRotate;
+  }, [onPaint, onRotate]);
   useEffect(() => {
     const element = host.current;
     if (element === null) {
@@ -47,6 +51,9 @@ export function EditorCanvas({
       scene.current = created;
       created.onPaint = (rect, erasing) => {
         handler.current(rect, erasing);
+      };
+      created.onRotate = () => {
+        turn.current();
       };
       created.setTool(held.current.tool, held.current.kinds);
       created.setDraft(latest.current);

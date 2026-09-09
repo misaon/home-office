@@ -9,13 +9,39 @@ export const FLOOR_DEFAULT = 0xffffff;
 export const WALL: Readonly<Record<string, number>> = { wall: 0x2b3140, glass: 0x8fb8c9 };
 export const WALL_DEFAULT = 0x2b3140;
 
-/** Doors and furniture, by what they are. A sprite replaces the fill later; the id stays the same. */
+/**
+ * Doors and furniture, by what they are. These are placeholders until the art lands: the id in the
+ * layout never changes, so a sprite added later replaces the fill without touching a saved office.
+ */
 export const OBJECTS: Readonly<Record<string, number>> = {
   door: 0xb07d4a,
   "glass-door": 0x7fb4c9,
+  elevator: 0x6f7787,
+  "desk-developer": 0xa8825c,
+  "desk-qa": 0xa87c6f,
+  "desk-analyst": 0xa08f5c,
+  "desk-boss": 0x8a6a45,
+  "reception-counter": 0xb59a6a,
+  "meeting-table": 0x9c7f57,
+  "office-chair": 0x8b93a1,
+  "lounge-chair": 0x9c8ea6,
+  "dining-table": 0xb08a62,
+  "dining-chair": 0x9aa2b1,
+  "kitchen-counter": 0xbfc4cc,
+  fridge: 0xd6dae1,
+  "coffee-machine": 0x77808f,
+  grill: 0x5f6673,
+  "hot-tub": 0x6fb2c9,
+  bookcase: 0x8f6f4e,
   plant: 0x6f9e5a,
-  desk: 0xa8825c,
-  chair: 0x8b93a1,
+  picture: 0xc9a86f,
+  "air-conditioning": 0xcfd9e2,
+  window: 0xa8cfe0,
+  toilet: 0xe3e8ee,
+  sink: 0xdfe6ec,
+  "hand-dryer": 0xc3cad4,
+  bin: 0x7d848f,
+  "standing-ashtray": 0x6b7280,
 };
 
 export const OBJECT_FILL = 0xb9bfca;

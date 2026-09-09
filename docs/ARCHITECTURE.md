@@ -172,10 +172,15 @@ and answers `available: false` where there is no repository to write into. The J
 _is_ — a wall material, a room kind, a door kind, a furniture kind — never a colour, so art added later
 applies to offices drawn today, and the compiled map carries that kind per cell for exactly that reason.
 
-Footprints are the owner's, at roughly 25 cm per cell: a doorway is 1×4 laid along the wall it cuts, a
-desk 3×6 (rotatable to 6×3), a chair and a plant 2×2, and a character spans 1.8 cells. Prison Architect
-is coarser — its office desk and bed are 2×1, its chair and door 1×1 — because its tile is about a
-metre; the numbers and their sources are in [the editor plan](plans/2026-09-09-layout-editor.md).
+Footprints live in one table, `OBJECT_SPEC` in the protocol: cells across and down, whether the piece
+blocks movement, whether it mounts on a wall, and whether its direction matters. They are the owner's,
+at roughly 25 cm per cell and derived from the real pieces — a developer's desk 6×3, the boss's 8×4, a
+reception counter 10×3, a meeting table 12×5, chairs 2×2, a doorway 1×4 along the wall it cuts — and a
+character spans 1.8 cells. Doors and furniture are placed by a click with their footprint shown first,
+a right click turns them a quarter and a right drag erases; walls and rooms are still dragged out.
+Prison Architect is coarser — its office desk and bed are 2×1, its chair and door 1×1 — because its tile
+is about a metre; the whole catalogue and its sources are in
+[the editor plan](plans/2026-09-09-layout-editor.md).
 
 The view draws ground, floors, room tint, the grid, walls, objects and then one dot per character.
 The grid is always visible — one hairline of one colour on every cell boundary, the map's outer edge

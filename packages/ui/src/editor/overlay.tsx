@@ -1,7 +1,7 @@
 import {
   DoorKind,
   errorMessage,
-  OBJECT_SIZE,
+  OBJECT_SPEC,
   ObjectKind,
   type OfficeLayout,
   RoomKind,
@@ -18,6 +18,7 @@ import {
   fromOffice,
   type Kinds,
   paint,
+  rotate,
   slugify,
   toOffice,
   type Tool,
@@ -88,6 +89,7 @@ function Palette({
   setKinds: (kinds: Kinds) => void;
   tool: Tool;
 }): React.JSX.Element {
+  const sideways = kinds.facing === "e" || kinds.facing === "w";
   const options =
     tool === "wall"
       ? WallMaterial.options
@@ -96,7 +98,7 @@ function Palette({
         : tool === "door"
           ? DoorKind.options
           : ObjectKind.options;
-  const size = OBJECT_SIZE[kinds.object];
+  const spec = OBJECT_SPEC[kinds.object];
   return (
     <>
       <Field id="ho-editor-kind" label={KIND_LABEL[tool]}>
@@ -122,17 +124,20 @@ function Palette({
           ))}
         </select>
       </Field>
-      {tool === "object" ? (
+      {tool === "object" || tool === "door" ? (
         <div className="flex items-center gap-3">
           <Button
             onClick={() => {
-              setKinds({ ...kinds, rotated: !kinds.rotated });
+              setKinds(rotate(kinds));
             }}
           >
             Rotate
           </Button>
           <span className="font-mono text-2xs text-gray-400">
-            {kinds.rotated ? size.h : size.w} × {kinds.rotated ? size.w : size.h} cells
+            facing {kinds.facing}
+            {tool === "door"
+              ? ""
+              : ` · ${String(sideways ? spec.h : spec.w)} × ${String(sideways ? spec.w : spec.h)} cells${spec.onWall ? " · on a wall" : ""}`}
           </span>
         </div>
       ) : null}
@@ -155,15 +160,15 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
     wall: "wall",
     room: "team-room",
     door: "door",
-    object: "desk",
-    rotated: false,
+    object: "desk-developer",
+    facing: "s",
   });
   const [note, setNote] = useState<string | null>(null);
   // R rotates the piece being held, the way Prison Architect does, unless a field has the keyboard.
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (event.key.toLowerCase() === "r" && document.activeElement?.tagName !== "INPUT") {
-        setKinds((current) => ({ ...current, rotated: !current.rotated }));
+        setKinds(rotate);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -187,8 +192,8 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
           <Segmented value={tool} options={TOOLS} onChange={setTool} />
           <Palette kinds={kinds} setKinds={setKinds} tool={tool} />
           <p className="text-2xs leading-relaxed text-gray-500">
-            {tool === "object"
-              ? "Click to place; the outline shows what it will take. R rotates it."
+            {tool === "object" || tool === "door"
+              ? "Click to place; the outline shows what it will take. The right button turns it a quarter, and a right drag erases."
               : "Drag with the left button to paint, with the right button to erase what this tool paints."}{" "}
             The middle button or shift pans; the wheel zooms.
           </p>
@@ -215,6 +220,9 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
           draft={draft}
           tool={tool}
           kinds={kinds}
+          onRotate={() => {
+            setKinds(rotate);
+          }}
           onPaint={(rect, erasing) => {
             const result = erasing ? erase(draft, tool, rect) : paint(draft, tool, rect, kinds);
             setDraft(result.next);

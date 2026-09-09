@@ -20,28 +20,95 @@ export type WallMaterial = z.infer<typeof WallMaterial>;
 export const DoorKind = z.enum(["door", "glass-door"]);
 export type DoorKind = z.infer<typeof DoorKind>;
 
+/** Which way a piece is turned: the door swings, the desk is sat at, the air conditioner blows. */
+export const Facing = z.enum(["n", "e", "s", "w"]);
+export type Facing = z.infer<typeof Facing>;
+
 /**
  * How many cells wide a door opening is. Prison Architect's door is one tile, but its tile is about a
  * metre; this grid is finer — a cell is roughly 25 cm — so four cells is a one-metre doorway.
  */
 export const DOOR_SPAN = 4;
 
-/** Furniture the editor places. Sizes are the owner's, at roughly 25 cm per cell. */
-export const ObjectKind = z.enum(["plant", "desk", "chair"]);
+/**
+ * Everything the editor can place. Footprints are in cells of roughly 25 cm, derived from the real
+ * pieces: a developer's desk is 160 × 80 cm, a dining chair 45 × 45, a meeting table 300 × 120. `blocks`
+ * is whether movement has to go around it — a chair is sat on, a window is looked through. `onWall`
+ * pieces are mounted on a wall cell and leave it standing (unlike a door, which opens it), and `arrow`
+ * marks the ones whose direction matters: which way a desk is faced, an air conditioner blows, a picture
+ * looks.
+ */
+export const ObjectKind = z.enum([
+  "elevator",
+  "desk-developer",
+  "desk-qa",
+  "desk-analyst",
+  "desk-boss",
+  "reception-counter",
+  "meeting-table",
+  "office-chair",
+  "lounge-chair",
+  "dining-table",
+  "dining-chair",
+  "kitchen-counter",
+  "fridge",
+  "coffee-machine",
+  "grill",
+  "hot-tub",
+  "bookcase",
+  "plant",
+  "picture",
+  "air-conditioning",
+  "window",
+  "toilet",
+  "sink",
+  "hand-dryer",
+  "bin",
+  "standing-ashtray",
+]);
 export type ObjectKind = z.infer<typeof ObjectKind>;
 
-/** Footprint in cells, unrotated (`w` across, `h` down). Rotating an object swaps the two. */
-export const OBJECT_SIZE: Readonly<Record<ObjectKind, { w: number; h: number }>> = {
-  plant: { w: 2, h: 2 },
-  desk: { w: 3, h: 6 },
-  chair: { w: 2, h: 2 },
+export type ObjectSpec = {
+  /** Cells across and down, unrotated; rotating swaps them. */
+  w: number;
+  h: number;
+  blocks: boolean;
+  onWall: boolean;
+  arrow: boolean;
 };
 
-/** Whether movement has to go around it. A chair is sat on, so it does not block. */
-export const OBJECT_BLOCKS: Readonly<Record<ObjectKind, boolean>> = {
-  plant: true,
-  desk: true,
-  chair: false,
+export const OBJECT_SPEC: Readonly<Record<ObjectKind, ObjectSpec>> = {
+  // The lift car: where staff arrive on the floor. 2 × 2 m, walkable, and it faces the way it opens.
+  elevator: { w: 8, h: 8, blocks: false, onWall: false, arrow: true },
+  // Desks: 160 × 80 cm for the team, 200 × 90 for the boss, a 240 × 70 counter at reception.
+  "desk-developer": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },
+  "desk-qa": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },
+  "desk-analyst": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },
+  "desk-boss": { w: 8, h: 4, blocks: true, onWall: false, arrow: true },
+  "reception-counter": { w: 10, h: 3, blocks: true, onWall: false, arrow: true },
+  // 3 × 1.2 m of meeting table.
+  "meeting-table": { w: 12, h: 5, blocks: true, onWall: false, arrow: false },
+  "office-chair": { w: 2, h: 2, blocks: false, onWall: false, arrow: true },
+  "lounge-chair": { w: 3, h: 3, blocks: false, onWall: false, arrow: true },
+  "dining-table": { w: 6, h: 4, blocks: true, onWall: false, arrow: false },
+  "dining-chair": { w: 2, h: 2, blocks: false, onWall: false, arrow: true },
+  // A metre of kitchen run, 60 cm deep.
+  "kitchen-counter": { w: 4, h: 3, blocks: true, onWall: false, arrow: true },
+  fridge: { w: 3, h: 3, blocks: true, onWall: false, arrow: true },
+  "coffee-machine": { w: 2, h: 2, blocks: true, onWall: false, arrow: true },
+  grill: { w: 5, h: 2, blocks: true, onWall: false, arrow: true },
+  "hot-tub": { w: 8, h: 8, blocks: true, onWall: false, arrow: false },
+  bookcase: { w: 3, h: 2, blocks: true, onWall: false, arrow: true },
+  plant: { w: 2, h: 2, blocks: true, onWall: false, arrow: false },
+  // Mounted on a wall: the cell keeps its wall, the piece hangs on it.
+  picture: { w: 3, h: 1, blocks: false, onWall: true, arrow: true },
+  "air-conditioning": { w: 4, h: 1, blocks: false, onWall: true, arrow: true },
+  window: { w: 5, h: 1, blocks: false, onWall: true, arrow: false },
+  toilet: { w: 2, h: 3, blocks: true, onWall: false, arrow: true },
+  sink: { w: 2, h: 2, blocks: true, onWall: false, arrow: true },
+  "hand-dryer": { w: 1, h: 1, blocks: false, onWall: true, arrow: true },
+  bin: { w: 2, h: 2, blocks: true, onWall: false, arrow: false },
+  "standing-ashtray": { w: 1, h: 1, blocks: true, onWall: false, arrow: false },
 };
 
 /** The largest office the editor will write, in cells; the grid is drawn per cell, so this bounds the work. */
@@ -61,10 +128,10 @@ export const OfficeLayout = z.object({
   /** Walls fill whole cells, as in Prison Architect; a one-cell-wide rectangle is a line. */
   walls: z.array(LayoutRect.extend({ material: WallMaterial })).max(4000),
   rooms: z.array(LayoutRect.extend({ room: RoomKind })).max(4000),
-  /** A doorway spans wall cells and is what makes them passable; the rectangle carries its direction. */
-  doors: z.array(LayoutRect.extend({ kind: DoorKind })).max(1000),
-  /** Furniture, with the footprint it was placed at (rotation is already in `w`/`h`). */
-  objects: z.array(LayoutRect.extend({ kind: ObjectKind })).max(4000),
+  /** A doorway spans wall cells and opens them; `facing` is the way it swings. */
+  doors: z.array(LayoutRect.extend({ kind: DoorKind, facing: Facing })).max(1000),
+  /** Furniture at the footprint it was placed with (rotation is already in `w`/`h`) and the way it faces. */
+  objects: z.array(LayoutRect.extend({ kind: ObjectKind, facing: Facing })).max(4000),
 });
 export type OfficeLayout = z.infer<typeof OfficeLayout>;
 

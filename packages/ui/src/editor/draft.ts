@@ -1,7 +1,8 @@
 import {
   DOOR_SPAN,
   type DoorKind,
-  OBJECT_SIZE,
+  type Facing,
+  OBJECT_SPEC,
   type ObjectKind,
   type OfficeLayout,
   type RoomKind,
@@ -14,14 +15,22 @@ export type Tool = "wall" | "room" | "door" | "object";
 
 export type Rect = { x: number; y: number; w: number; h: number };
 
-/** What the palette is set to; the object's footprint comes from its kind, swapped when rotated. */
+/** What the palette is set to. The piece in hand faces this way, and its footprint turns with it. */
 export type Kinds = {
   wall: WallMaterial;
   room: RoomKind;
   door: DoorKind;
   object: ObjectKind;
-  rotated: boolean;
+  facing: Facing;
 };
+
+const TURN: Readonly<Record<Facing, Facing>> = { n: "e", e: "s", s: "w", w: "n" };
+
+/** A quarter turn: the piece in hand faces the next way round, and its footprint follows. */
+export const rotate = (kinds: Kinds): Kinds => ({ ...kinds, facing: TURN[kinds.facing] });
+
+/** Sideways facings lay the footprint on its side. */
+const turned = (facing: Facing): boolean => facing === "e" || facing === "w";
 
 /**
  * While drawing, walls and rooms are kept per cell — erasing a corner out of a rectangle is then a
@@ -35,8 +44,8 @@ export type Draft = {
   height: number;
   wall: (WallMaterial | null)[];
   room: (RoomKind | null)[];
-  doors: (Rect & { kind: DoorKind })[];
-  objects: (Rect & { kind: ObjectKind })[];
+  doors: (Rect & { kind: DoorKind; facing: Facing })[];
+  objects: (Rect & { kind: ObjectKind; facing: Facing })[];
 };
 
 const cells = <T>(count: number): (T | null)[] => Array.from({ length: count }, () => null);
@@ -104,21 +113,29 @@ const doorRect = (draft: Draft, at: Rect): Rect => {
     : { x: at.x, y: at.y, w: 1, h: DOOR_SPAN };
 };
 
-const footprint = (draft: Draft, at: Rect, kinds: Kinds): Rect => {
-  const size = OBJECT_SIZE[kinds.object];
+const footprint = (at: Rect, kinds: Kinds): Rect => {
+  const size = OBJECT_SPEC[kinds.object];
+  const sideways = turned(kinds.facing);
   return {
     x: at.x,
     y: at.y,
-    w: kinds.rotated ? size.h : size.w,
-    h: kinds.rotated ? size.w : size.h,
+    w: sideways ? size.h : size.w,
+    h: sideways ? size.w : size.h,
   };
 };
 
 export type Painted = { next: Draft; note: string | null };
 
 /** The cells an object would take if it were placed here, so the cursor can show them before the click. */
-export const ghostAt = (draft: Draft, at: { x: number; y: number }, kinds: Kinds): Rect =>
-  footprint(draft, { ...at, w: 1, h: 1 }, kinds);
+export const ghostAt = (
+  draft: Draft,
+  at: { x: number; y: number },
+  tool: Tool,
+  kinds: Kinds,
+): Rect =>
+  tool === "door"
+    ? doorRect(draft, { ...at, w: 1, h: 1 })
+    : footprint({ ...at, w: 1, h: 1 }, kinds);
 
 /** Paints with the active tool. Doors need wall to cut through; furniture needs the room to be free. */
 export function paint(draft: Draft, tool: Tool, rect: Rect, kinds: Kinds): Painted {
@@ -133,27 +150,32 @@ export function paint(draft: Draft, tool: Tool, rect: Rect, kinds: Kinds): Paint
     }
     return { next, note: null };
   }
-  const box = tool === "door" ? doorRect(draft, rect) : footprint(draft, rect, kinds);
+  const box = tool === "door" ? doorRect(draft, rect) : footprint(rect, kinds);
   if (!inside(draft, box)) {
     return { next: draft, note: "does not fit on the map" };
   }
+  const covered = indices(draft, box);
   if (tool === "door") {
-    if (!indices(draft, box).every((i) => draft.wall[i] !== null)) {
+    if (!covered.every((i) => draft.wall[i] !== null)) {
       return { next: draft, note: `a doorway needs ${String(DOOR_SPAN)} wall cells in a row` };
     }
     next.doors = [
       ...draft.doors.filter((door) => !overlaps(door, box)),
-      { ...box, kind: kinds.door },
+      { ...box, kind: kinds.door, facing: kinds.facing },
     ];
     return { next, note: null };
   }
-  if (indices(draft, box).some((i) => draft.wall[i] !== null)) {
+  const spec = OBJECT_SPEC[kinds.object];
+  if (spec.onWall && !covered.every((i) => draft.wall[i] !== null)) {
+    return { next: draft, note: `a ${kinds.object} is mounted on a wall` };
+  }
+  if (!spec.onWall && covered.some((i) => draft.wall[i] !== null)) {
     return { next: draft, note: "furniture cannot stand in a wall" };
   }
   if (draft.objects.some((object) => overlaps(object, box))) {
     return { next: draft, note: "something already stands there" };
   }
-  next.objects = [...draft.objects, { ...box, kind: kinds.object }];
+  next.objects = [...draft.objects, { ...box, kind: kinds.object, facing: kinds.facing }];
   return { next, note: null };
 }
 

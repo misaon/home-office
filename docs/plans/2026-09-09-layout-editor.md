@@ -182,3 +182,52 @@ scene, so the callback only arrived with the next re-render. It is now handed ov
 own initialisation, through a ref. And `bun run check` finishes with a production `ui:build`, which
 replaces the development bundle the editor lives in — the editor then vanishes until the watcher
 rebuilds. That trap is now written down in [AGENTS.md](../../AGENTS.md).
+
+## The owner's notes, 2026-09-09 (fourth pass)
+
+| Note                                                                                            | Built                                                                                                                                             |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The right button does not rotate the piece in hand                                              | It was bound to **R**, because "tlačítko" was read as a key. A **right click** now turns the piece a quarter; a right **drag** still erases       |
+| Doors work exactly like furniture, with an arrow through the middle showing which way they open | Doors are placed by a click with their footprint shown first, carry a `facing`, and draw the same arrow the directional furniture does            |
+| Twenty-six pieces of furniture, the plain office desk dropped                                   | `OBJECT_SPEC` in the protocol is the one table: footprint, whether it blocks movement, whether it mounts on a wall, whether its direction matters |
+
+### The catalogue, at roughly 25 cm per cell
+
+Sizes are derived from the real pieces and stated so they can be argued with. `walkable` means movement
+goes through it (a chair is sat on, a window looked through); `on-wall` pieces are mounted on a wall
+cell and leave the wall standing, unlike a door, which opens it.
+
+```
+elevator            8x8 walkable arrow      kitchen-counter     4x3 blocks arrow
+desk-developer      6x3 blocks arrow        fridge              3x3 blocks arrow
+desk-qa             6x3 blocks arrow        coffee-machine      2x2 blocks arrow
+desk-analyst        6x3 blocks arrow        grill               5x2 blocks arrow
+desk-boss           8x4 blocks arrow        hot-tub             8x8 blocks
+reception-counter  10x3 blocks arrow        bookcase            3x2 blocks arrow
+meeting-table      12x5 blocks              plant               2x2 blocks
+office-chair        2x2 walkable arrow      picture             3x1 walkable on-wall arrow
+lounge-chair        3x3 walkable arrow      air-conditioning    4x1 walkable on-wall arrow
+dining-table        6x4 blocks              window              5x1 walkable on-wall
+dining-chair        2x2 walkable arrow      toilet              2x3 blocks arrow
+                                            sink                2x2 blocks arrow
+                                            hand-dryer          1x1 walkable on-wall arrow
+                                            bin                 2x2 blocks
+                                            standing-ashtray    1x1 blocks
+```
+
+The elevator is the arrival point staff will spawn at; it is a piece of furniture for now, because a
+drawn office still has no anchors — wiring it to the simulation's spawn is the step that turns a drawn
+office into a floor.
+
+### Measured
+
+```
+catalogue     26 kinds; the plain "desk" is gone, the desks are per role
+rotation      facing s (6 × 3) → right click → w (3 × 6) → right click → n (6 × 3)
+right drag    erased the placed piece (1 → 0 furniture) and left the facing alone
+doors         a click on a wall placed one, a right click turned it n → e, a second click placed
+              another: "1 wall runs · 2 doors"
+wall rules    a window off a wall: "a window is mounted on a wall"; on the wall: placed;
+              a plant on a wall: "furniture cannot stand in a wall"
+arrows        3 for one doorway and two desks (the meeting table and the plant have no direction)
+```

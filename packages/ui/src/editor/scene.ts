@@ -3,16 +3,21 @@ import { CELL_PX, compileLayout, type FloorTemplate } from "@ho/sim";
 import { Application, Container, Graphics, Text } from "pixi.js";
 import { Camera } from "../office/camera.ts";
 import { floorTiles, gridLines } from "../office/tiles.ts";
+import { arrowsOf } from "./arrows.ts";
 import { type Draft, draftLayout, ghostAt, type Kinds, type Rect, type Tool } from "./draft.ts";
 import { labelsOf } from "./labels.ts";
 
 const HOVER = 0x2b3140;
+const ARROW = 0x394152;
 const LABEL = { fontFamily: "monospace", fontSize: 11, fill: 0x1f2430 } as const;
 const PREVIEW_ADD = 0x4c8bf5;
 const PREVIEW_ERASE = 0xe0525f;
 const PREVIEW_ALPHA = 0.28;
 
 type Cell = { x: number; y: number };
+
+/** Doors and furniture have a footprint of their own, so they are placed by a click, not a drag. */
+const placesOnClick = (tool: Tool): boolean => tool === "door" || tool === "object";
 
 /**
  * The editor's canvas: the draft compiled and drawn exactly as the office would draw it, with the cell
@@ -29,6 +34,8 @@ export class EditorScene {
   readonly #preview = new Graphics({ alpha: PREVIEW_ALPHA });
   /** Names written across placed shapes; kept at a constant size whatever the zoom. */
   readonly #labels = new Container();
+  /** Which way each placed piece is turned: a door swings, an air conditioner blows. */
+  readonly #arrows = new Graphics();
   #tool: Tool = "wall";
   #kinds: Kinds | null = null;
   #hover: Cell | null = null;
@@ -42,6 +49,8 @@ export class EditorScene {
   #panning = false;
   #pointer: Cell | null = null;
   onPaint: (rect: Rect, erase: boolean) => void = () => undefined;
+  /** A right click on a piece in hand turns it a quarter; only a right drag erases. */
+  onRotate: () => void = () => undefined;
 
   async init(host: HTMLElement): Promise<void> {
     this.#host = host;
@@ -57,7 +66,7 @@ export class EditorScene {
     this.app.ticker.stop();
     host.append(this.app.canvas);
     this.app.stage.addChild(this.#world);
-    this.#world.addChild(this.#tiles, this.#grid, this.#labels, this.#preview);
+    this.#world.addChild(this.#tiles, this.#grid, this.#arrows, this.#labels, this.#preview);
     this.camera.setViewport(this.app.screen.width, this.app.screen.height);
     this.#listen(this.app.canvas);
     this.#observer = new ResizeObserver(() => {
@@ -86,6 +95,7 @@ export class EditorScene {
       child.destroy({ children: true });
     });
     this.#tiles.addChild(floorTiles(this.#template));
+    this.#drawArrows(draft);
     this.#drawLabels(draft);
     this.camera.setMap(draft.width, draft.height);
     if (this.#gridScale === 0) {
@@ -93,6 +103,31 @@ export class EditorScene {
     }
     this.#gridScale = 0;
     this.#apply();
+  }
+
+  #drawArrows(draft: Draft): void {
+    this.#arrows.clear();
+    const size = CELL_PX * 0.9;
+    for (const arrow of arrowsOf(draft)) {
+      const x = arrow.x * CELL_PX;
+      const y = arrow.y * CELL_PX;
+      const dx = arrow.dx * size;
+      const dy = arrow.dy * size;
+      const head = [
+        x + dx,
+        y + dy,
+        x + dx / 2 - dy / 3,
+        y + dy / 2 + dx / 3,
+        x + dx / 2 + dy / 3,
+        y + dy / 2 - dx / 3,
+      ];
+      this.#arrows
+        .moveTo(x - dx / 2, y - dy / 2)
+        .lineTo(x + dx / 2, y + dy / 2)
+        .stroke({ color: ARROW, width: CELL_PX * 0.14 })
+        .poly(head)
+        .fill(ARROW);
+    }
   }
 
   #drawLabels(draft: Draft): void {
@@ -160,8 +195,8 @@ export class EditorScene {
   #pending(from: Cell | null, to: Cell): Rect {
     const draft = this.#draft;
     const kinds = this.#kinds;
-    if (this.#tool === "object" && !this.#erasing && draft !== null && kinds !== null) {
-      return ghostAt(draft, to, kinds);
+    if (placesOnClick(this.#tool) && !this.#erasing && draft !== null && kinds !== null) {
+      return ghostAt(draft, to, this.#tool, kinds);
     }
     const start = from ?? to;
     return {
@@ -236,12 +271,18 @@ export class EditorScene {
       this.#panning = false;
       this.#preview.clear();
       if (from !== null && to !== null) {
-        // Furniture is placed where the pointer was released, never as a dragged rectangle.
-        const rect =
-          this.#tool === "object" && !this.#erasing
-            ? { x: to.x, y: to.y, w: 1, h: 1 }
-            : this.#pending(from, to);
-        this.onPaint(rect, this.#erasing);
+        const clicked = from.x === to.x && from.y === to.y;
+        if (this.#erasing && clicked && placesOnClick(this.#tool)) {
+          // A right click turns the piece in hand; a right drag still erases the area.
+          this.onRotate();
+        } else {
+          // Doors and furniture are placed where the pointer was released, never dragged out.
+          const rect =
+            placesOnClick(this.#tool) && !this.#erasing
+              ? { x: to.x, y: to.y, w: 1, h: 1 }
+              : this.#pending(from, to);
+          this.onPaint(rect, this.#erasing);
+        }
       }
       this.#erasing = false;
       this.#apply();

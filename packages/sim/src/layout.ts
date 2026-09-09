@@ -1,4 +1,4 @@
-import { OBJECT_BLOCKS, type OfficeLayout } from "@ho/protocol";
+import { OBJECT_SPEC, type OfficeLayout } from "@ho/protocol";
 import type { Material, TileMap } from "./cells.ts";
 import type { Facing, Point } from "./grid.ts";
 import type { Anchor, FloorTemplate } from "./templates.ts";
@@ -55,7 +55,7 @@ export const layoutFromOffice = (office: OfficeLayout): Layout => ({
       at: { x: door.x, y: door.y },
       w: door.w,
       h: door.h,
-      facing: "s" as const,
+      facing: door.facing,
       blocks: false,
     })),
     ...office.objects.map((object, i) => ({
@@ -64,8 +64,9 @@ export const layoutFromOffice = (office: OfficeLayout): Layout => ({
       at: { x: object.x, y: object.y },
       w: object.w,
       h: object.h,
-      facing: "s" as const,
-      blocks: OBJECT_BLOCKS[object.kind],
+      facing: object.facing,
+      // A wall-mounted piece leaves its wall standing; the wall already blocks the cell.
+      blocks: OBJECT_SPEC[object.kind].blocks,
     })),
   ],
   anchors: [],
