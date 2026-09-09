@@ -40,15 +40,12 @@ canvas {
   image-rendering: pixelated;
 }
 
-/* Native controls inherit the office's own type and dark ground instead of the platform's. */
-input,
-select,
-textarea,
-button {
-  font: inherit;
-  color: inherit;
-}
-
-select option {
-  background: var(--color-ink);
+/* A dropdown's own list is drawn by the platform, so it needs the office's ground stated explicitly.
+   Everything else about native controls is already handled by Tailwind's base reset, and this belongs in
+   `base` for the same reason: unlayered rules outrank every utility, which is how `text-black` on the
+   accent buttons lost to a stray `color: inherit`. */
+@layer base {
+  select option {
+    background: var(--color-ink);
+  }
 }

@@ -1317,6 +1317,28 @@ Choose.
 - "Create floor" created the floor; the office drew its plan, the header tab, Andrew in the chat panel
   and the setup checklist.
 
+### White text on the accent buttons, found by the owner
+
+The airier pass added a form reset — `input, select, textarea, button { font: inherit; color: inherit }` —
+outside any `@layer`. Unlayered CSS outranks every layered utility, so `text-black` lost and the yellow
+buttons and the active floor tab drew near-white text on yellow. Tailwind's own preflight already carries
+that exact reset in `base`:
+
+```
+$ grep -o 'button,[^{]*{[^}]*}' packages/ui/dist/*.css
+button,input,select,optgroup,textarea{font:inherit;…;color:inherit;opacity:1;background-color:#0000;border-radius:0}
+```
+
+The duplicate is gone and the one rule worth keeping (a dropdown's platform-drawn list needs the office's
+ground stated) moved into `@layer base`. Measured in the browser after the rebuild:
+
+```
+before  Create floor  color rgb(230, 230, 230)  background rgb(255, 209, 102)
+        1 home-office color rgb(230, 230, 230)  background rgb(255, 209, 102)
+after   Create floor  color rgb(0, 0, 0)        background rgb(255, 209, 102)
+        1 home-office color rgb(0, 0, 0)        background rgb(255, 209, 102)
+```
+
 ### Checks
 
 ```
