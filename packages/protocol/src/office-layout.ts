@@ -106,14 +106,14 @@ export const OBJECT_SPEC: Readonly<Record<ObjectKind, ObjectSpec>> = {
   // The lift car: where staff arrive on the floor. It hangs on a wall as the fittings do, five cells
   // along it and two deep, and is walked into.
   elevator: { w: 5, h: 2, blocks: false, onWall: true, arrow: true },
-  // Desks: 160 × 80 cm for the team, 200 × 90 for the boss, a 240 × 70 counter at reception.
+  // Desks are one size, 160 × 80 cm, whatever the role; the reception counter is 2 × 0.5 m.
   "desk-developer": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },
   "desk-qa": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },
   "desk-analyst": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },
-  "desk-boss": { w: 8, h: 4, blocks: true, onWall: false, arrow: true },
-  "reception-counter": { w: 10, h: 3, blocks: true, onWall: false, arrow: true },
-  // 3 × 1.2 m of meeting table.
-  "meeting-table": { w: 12, h: 5, blocks: true, onWall: false, arrow: false },
+  "desk-boss": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },
+  "reception-counter": { w: 8, h: 2, blocks: true, onWall: false, arrow: true },
+  // 1.5 × 1 m of meeting table.
+  "meeting-table": { w: 6, h: 4, blocks: true, onWall: false, arrow: false },
   "office-chair": { w: 2, h: 2, blocks: false, onWall: false, arrow: true },
   "lounge-chair": { w: 3, h: 3, blocks: false, onWall: false, arrow: true },
   "dining-table": { w: 6, h: 4, blocks: true, onWall: false, arrow: false },

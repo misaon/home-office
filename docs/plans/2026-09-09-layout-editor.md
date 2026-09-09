@@ -398,3 +398,23 @@ old doorways      all 11 keep their 4×1 width; only new ones are 2 cells
 
 The lesson worth keeping: the schema is a boundary over the owner's own data, so a value that has been
 written to disk cannot simply be renamed in the enum.
+
+## The owner's notes, 2026-09-09 (tenth pass)
+
+| Note                                      | Built                                                                                                                              |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Quick search in the item palette          | A search field per tab, filtering by name, with a "4 of 26" count and a line when nothing matches; it empties when the tab changes |
+| Two columns instead of three              | `grid-cols-2` — 149 px per column in the 360 px sidebar, so the longer names fit on one line                                       |
+| The boss's desk is the size of the others | `desk-boss` 8×4 → **6×3**, the same 160 × 80 cm as the team's                                                                      |
+| The reception counter is shorter          | 10×3 → **8×2** (2 × 0.5 m)                                                                                                         |
+| A smaller meeting table                   | 12×5 → **6×4** (1.5 × 1 m)                                                                                                         |
+| Clear the rooms from the owner's office   | `layouts/base.json` keeps its 153 wall runs, 10 doorways and 11 pieces of furniture; its 110 room runs are gone                    |
+
+Measured in the browser: the office loads as `60 × 34 cells · 153 wall runs · 0 room runs · 10 doors ·
+11 furniture`; the grid reports `149px 149px`; searching "desk" leaves `desk-developer 6×3`,
+`desk-qa 6×3`, `desk-analyst 6×3`, `desk-boss 6×3` and the count `4 of 26`; "zzz" answers
+`nothing matches "zzz"`; and the field is empty again after switching to the Room tab, which lists 11.
+
+None of the owner's eleven placed pieces is one of the three that were resized (six developer desks, two
+QA, two analyst, one lift), so nothing in the file renders at a stale size — a saved piece keeps the
+footprint it was placed with.

@@ -78,7 +78,7 @@ const KIND_LABEL: Record<Tool, string> = {
   object: "Furniture",
 };
 
-/** Every choice of the active tool, three to a row, with a footprint where a piece has one. */
+/** Every choice of the active tool, two to a row, with a footprint where a piece has one. */
 function Choices({
   options,
   value,
@@ -91,7 +91,7 @@ function Choices({
   pick: (option: string) => void;
 }): React.JSX.Element {
   return (
-    <div className="grid grid-cols-3 gap-1.5">
+    <div className="grid grid-cols-2 gap-1.5">
       {options.map((option) => {
         const footprint = size(option);
         return (
@@ -137,8 +137,9 @@ function Palette({
   setKinds: (kinds: Kinds) => void;
   tool: Tool;
 }): React.JSX.Element {
+  const [search, setSearch] = useState("");
   const sideways = kinds.facing === "e" || kinds.facing === "w";
-  const options =
+  const all =
     tool === "wall"
       ? WallMaterial.options
       : tool === "room"
@@ -146,10 +147,31 @@ function Palette({
         : tool === "door"
           ? DoorKind.options
           : ObjectKind.options;
+  const needle = search.trim().toLowerCase();
+  const options = needle === "" ? all : all.filter((option) => option.includes(needle));
   const spec = OBJECT_SPEC[kinds.object];
   return (
     <>
-      <p className="text-2xs font-medium text-gray-400">{KIND_LABEL[tool]}</p>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-2xs font-medium text-gray-400">{KIND_LABEL[tool]}</p>
+        <span className="font-mono text-2xs text-gray-500">
+          {options.length === all.length
+            ? all.length
+            : `${String(options.length)} of ${String(all.length)}`}
+        </span>
+      </div>
+      <input
+        aria-label={`Search ${KIND_LABEL[tool]}`}
+        className={`${CONTROL} py-1.5 text-xs`}
+        placeholder="search…"
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+        }}
+      />
+      {options.length === 0 ? (
+        <p className="text-2xs text-gray-500">nothing matches “{search.trim()}”</p>
+      ) : null}
       <Choices
         options={options}
         value={kinds[tool]}
@@ -232,7 +254,7 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
         <OfficeFields draft={draft} setDraft={setDraft} />
         <Section title="Tool">
           <Tabs value={tool} options={TOOLS} onChange={setTool} />
-          <Palette kinds={kinds} setKinds={setKinds} tool={tool} />
+          <Palette key={tool} kinds={kinds} setKinds={setKinds} tool={tool} />
           <p className="text-2xs leading-relaxed text-gray-500">
             {tool === "object" || tool === "door"
               ? "Click to place; the outline shows what it will take. The right button turns it a quarter, and a right drag erases."
