@@ -1298,6 +1298,22 @@ folder /Users/ondrejmisak/WebstormProjects/home-office/packages/ui
 
 Dismissing it returned `cancelled`: the field kept what was typed and no error appeared.
 
+The panel itself was measured on its own, because an agent's sandboxed shell cannot reach the window
+server and the dialog opened there is dismissed for it after ten seconds:
+
+```
+$ osascript ... 'choose folder with prompt (item 1 of argv)' ...      (sandboxed shell)
+26:68: execution error: Operace byla zrusena uzivatelem. (-128)       10.2 s, exit 1
+
+$ bun run pick-probe.ts  →  osascriptDirectoryPicker({})              (no sandbox)
+{"status":"cancelled"} after 46171 ms
+```
+
+Outside the sandbox the panel stays up and waits — 46 seconds here, until it was dismissed — and the
+adapter turns AppleScript's `-128` into `cancelled` instead of an error. `picked`, the branch that
+writes the chosen path into the field, is the one case still unverified: it needs a person to press
+Choose.
+
 - "Create floor" created the floor; the office drew its plan, the header tab, Andrew in the chat panel
   and the setup checklist.
 
@@ -1310,5 +1326,5 @@ knip clean · ui: 3 files, 1123 KiB
 ```
 
 Not covered: the desktop app's own `Utils.openFileDialog` panel (it needs the packaged Electrobun app,
-where the daemon runs in-process and receives the native picker), and a real folder chosen in the
+where the daemon runs in-process and receives the native picker), and a folder actually chosen in the
 dialog rather than dismissed.
