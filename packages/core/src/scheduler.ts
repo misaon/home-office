@@ -7,6 +7,18 @@ export type SessionStart = { taskId: TaskId; agentId: AgentId; mode: SessionMode
 
 const PRIORITY_RANK = { high: 0, normal: 1, low: 2 } as const;
 
+/**
+ * A session whose project runs its own container engine occupies two slots: measured, the engine needs
+ * 2 GiB beside the sandbox's 3 GiB, and the supported host is one Docker VM with 7.75 GiB.
+ */
+const SERVICES_COST = 2;
+
+const costOf = (model: ReadModel, taskId: TaskId): number => {
+  const task = model.tasks.get(taskId);
+  const project = task === undefined ? undefined : model.projects.get(task.projectId);
+  return project?.services.enabled === true ? SERVICES_COST : 1;
+};
+
 const candidateOf = (task: Task): SessionStart | null => {
   if (task.status === "assigned" && task.assigneeId !== undefined) {
     return {
@@ -32,7 +44,8 @@ export function planSessionStarts(model: ReadModel, limits: SchedulerLimits): Se
   for (const session of active) {
     perAgent.set(session.agentId, (perAgent.get(session.agentId) ?? 0) + 1);
   }
-  let capacity = limits.maxConcurrentSessions - active.length;
+  let capacity =
+    limits.maxConcurrentSessions - active.reduce((sum, s) => sum + costOf(model, s.taskId), 0);
   const candidates = [...model.tasks.values()]
     .filter((t) => !busyTasks.has(t.id))
     .toSorted(
@@ -49,6 +62,11 @@ export function planSessionStarts(model: ReadModel, limits: SchedulerLimits): Se
     if (start === null) {
       continue;
     }
+    // A task that needs an engine waits for a free slot pair instead of blocking cheaper work behind it.
+    const cost = costOf(model, task.id);
+    if (cost > capacity) {
+      continue;
+    }
     const agent = model.agents.get(start.agentId);
     if (
       agent === undefined ||
@@ -58,7 +76,7 @@ export function planSessionStarts(model: ReadModel, limits: SchedulerLimits): Se
     }
     starts.push(start);
     perAgent.set(start.agentId, (perAgent.get(start.agentId) ?? 0) + 1);
-    capacity -= 1;
+    capacity -= cost;
   }
   return starts;
 }

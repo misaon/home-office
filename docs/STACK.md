@@ -60,6 +60,22 @@ base alone does not freeze every installed APK. Chromium, Node and npm come from
 branch. Bun 1.4.2 is installed from the official musl arm64 archive with an explicit checksum. RTK 0.48.0
 is compiled from source commit `fde0a8f185945556f51718de0f4c430bb62b3df6` using its Cargo lockfile.
 
+The agent image also carries `docker-cli` 29.5.3-r1, `docker-cli-compose` 5.1.4-r1 and
+`docker-cli-buildx` 0.34.1-r1 from the same Alpine 3.24 community branch (checked at
+[pkgs.alpinelinux.org](https://pkgs.alpinelinux.org/packages?name=docker-cli*&branch=v3.24&arch=aarch64)
+on 2026-09-09). They cost the image **170 MB**: the `claude-code` target measured 1.69 GB before and
+1.86 GB after, while `apk add --simulate` on bare Alpine reports 130.9 MiB in 20 packages — the
+simulation is the package payload, the image delta is what ships. They talk to a task's
+own engine, never to the host: that engine is the upstream `docker:29.8.0-dind-rootless` image pinned by
+its **linux/arm64 manifest digest**
+`sha256:19b6d666831cda38537c1fc60c76f32bd0f17c77f46d53b080d98b39e1f7cefb`, with `docker:29.8.0-dind`
+(`sha256:c9da39e3…`) for the rootful opt-in — digests read with `docker manifest inspect` on 2026-09-09.
+Both are pulled, not built: `startEngine` checks for the image by `name@digest` and pulls the readable
+`name:tag@digest` reference only when it is absent, because Engine 29.7.2 answers 404 to an image
+inspect that carries both a tag and a digest. The engine image is 549 MB on disk and its container is
+ready in 1–2 s; the reasoning and the rejected alternatives are in the
+[service-environment plan](plans/2026-09-09-task-service-environments.md).
+
 | Image target  | Installed provider                                          | Invocation                                       |
 | ------------- | ----------------------------------------------------------- | ------------------------------------------------ |
 | `claude-code` | Official Claude Code APK 2.1.263-r1                         | `claude -p` with stream-json input/output        |
@@ -104,22 +120,6 @@ vulnerabilities in their locked npm trees. That is not a comprehensive OS-image 
 No tests were added in the September 2026 audits at the owner's request; a test phase needs a new owner
 decision. Existing checks and verification spikes may be run. Code signing/notarization, new terminal UI,
 remote hosting and automatic merging are not implemented.
-
-## Proposed task container engine
-
-Researched 2026-09-09. The [Compose implementation plan](plans/2026-09-09-task-container-engine.md)
-proposes a second, VM-backed execution environment with a private Docker Engine. Keep the current
-direct Docker adapter for existing sandboxes and the trusted git bridge. First evaluate Docker
-Sandboxes `sbx` 0.42.1 (released 2026-09-07); its custom kits are experimental, and HO
-runner/image/publication compatibility is not yet verified. It is a proprietary optional external
-runtime requiring Docker sign-in, not a new installed dependency or an automatic replacement for the
-MIT application. Lima/VZ with Docker is the fallback candidate. Artifact/image pins and measured
-compatibility are required before adoption. Sources read 2026-09-09:
-[releases](https://docs.docker.com/ai/sandboxes/release-notes/),
-[kits](https://docs.docker.com/ai/sandboxes/customize/kits/),
-[license](https://github.com/docker/sbx-releases),
-[installation](https://docs.docker.com/ai/sandboxes/install/),
-[Lima VZ](https://lima-vm.io/docs/config/vmtype/vz/).
 
 ## Primary references
 

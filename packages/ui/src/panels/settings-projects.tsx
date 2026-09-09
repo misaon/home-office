@@ -4,6 +4,7 @@ import { Button, Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { sortedFloors, useUi } from "../store.ts";
 import { IntakeSettings } from "./settings-intake.tsx";
+import { ServicesSettings } from "./settings-services.tsx";
 
 const describeRepo = (p: Project): string => (p.repo.kind === "local" ? p.repo.path : p.repo.url);
 
@@ -68,6 +69,7 @@ export function ProjectsSettings(): React.JSX.Element {
             {describeRepo(p)} · {p.defaultBranch}
           </div>
           <IntakeSettings project={p} />
+          <ServicesSettings project={p} />
         </div>
       ))}
       <Button

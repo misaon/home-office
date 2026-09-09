@@ -6,8 +6,10 @@ import type { Logger } from "./logger.ts";
 
 const INTERVAL_MS = 30 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
-const VOLUME_KINDS = ["task-volume", "provider-state"] as const;
+const VOLUME_KINDS = ["task-volume", "provider-state", "engine-cache"] as const;
 const LEGACY_VOLUME_KINDS = ["claude-config"] as const;
+/** Runtime state of one session's engine: worth nothing once its containers are gone. */
+const TRANSIENT_VOLUME_KINDS = ["engine-socket"] as const;
 
 const merge = (a: PruneReport, b: PruneReport): PruneReport => ({
   containers: [...a.containers, ...b.containers],
@@ -23,7 +25,7 @@ async function collectGarbage(
   const managed = { [LABELS.managed]: "true" };
   const retention = config.retention.taskVolumeHours * HOUR_MS;
   let report: PruneReport = { containers: [], volumes: [], images: [] };
-  for (const kind of ["session", "bridge"]) {
+  for (const kind of ["session", "engine", "bridge"]) {
     report = merge(
       report,
       await provider.prune({ labels: { ...managed, [LABELS.kind]: kind }, kinds: ["containers"] }),
@@ -37,6 +39,12 @@ async function collectGarbage(
         olderThanMs: retention,
         kinds: ["volumes"],
       }),
+    );
+  }
+  for (const kind of TRANSIENT_VOLUME_KINDS) {
+    report = merge(
+      report,
+      await provider.prune({ labels: { ...managed, [LABELS.kind]: kind }, kinds: ["volumes"] }),
     );
   }
   report = merge(

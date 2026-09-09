@@ -76,6 +76,17 @@ export const Version = z.object({
 });
 export const Created = z.object({ Id: z.string() });
 export const Wait = z.object({ StatusCode: z.int() });
+/** Only what the engine readiness wait reads; `Health` is absent on containers without a healthcheck. */
+export const ContainerInspect = z.object({
+  State: z.object({
+    Running: z.boolean(),
+    ExitCode: z.int(),
+    OOMKilled: z.boolean(),
+    Error: z.string(),
+    Health: z.object({ Status: z.string() }).nullish(),
+  }),
+});
+export type ContainerInspect = z.infer<typeof ContainerInspect>;
 const ContainerSummary = z.object({
   Id: z.string(),
   Names: z.array(z.string()),

@@ -22,10 +22,17 @@ arrive in a spawn message and enter that child's environment. The runner token i
 child. A separate short-lived git-bridge container copies a repository into a Docker task volume and
 publishes its result branch back to the host. Agent containers never mount the host repository.
 
-Agents currently have no Docker/Compose tooling or engine socket; nested project containers are not
-supported. The [task-engine plan](plans/2026-09-09-task-container-engine.md), researched 2026-09-09,
-proposes an optional VM-backed environment with a private engine. This is future work, not a change to
-the container boundary described here.
+A project can ask for **task services**, and then a session gets a second container: its own container
+engine (`docker:29.8.0-dind-rootless`, digest-pinned), so the repository's own `docker-compose.yml` runs
+as written. The engine joins the sandbox's network namespace, which is what makes a published port answer
+on `127.0.0.1` inside the sandbox, and the task volume is mounted at the same path (`/work`) in both, which
+is what makes a relative bind mount in a Compose file resolve. The sandbox reaches the engine through a
+`docker.sock` in a shared tmpfs volume owned by the sandbox user; the daemon's own socket still never
+appears in a sandbox, and one task's engine cannot see another's containers. The engine's memory limit is
+the whole environment's limit, because nested containers share its cgroup. It is off unless the owner
+enables it per project, and a session that has it costs two of the daemon's session slots. The design,
+the alternatives and the measurements are in the
+[service-environment plan](plans/2026-09-09-task-service-environments.md).
 
 Native host dialogs are a daemon port, not a UI capability. The same UI bundle runs in the Electrobun
 webview and in a plain browser, so `system.pickDirectory` asks the daemon, and the daemon holds a
@@ -255,6 +262,16 @@ those live-log limits. Source reload polling is only present in development UI b
   only through a volume the network-less git-bridge populates. The git-bridge itself runs with
   `network: "none"`. Tightening egress would mean an egress proxy on `ho-agents` with a per-provider host
   allowlist; that is a project of its own and is not implemented.
+- **Accepted risk — the task engine runs `--privileged`.** A project with task services enabled gets a
+  container Docker itself describes as "not a securely sandboxed process". In the default `rootless` mode
+  the flag only lifts seccomp, AppArmor and the mount masks: dockerd runs as uid 1000 inside a user
+  namespace, no process in the container runs as root, and the VM's block devices stay unreadable to it.
+  In `rootful` mode the statement is stronger and the owner opts into it per project: a successful escape
+  is root inside the Docker Desktop VM, and from there the host engine socket, every other task volume
+  and the VM's virtiofs shares are reachable. This is the widest boundary the application opens, which is
+  why it is off by default and per project. Compose `mem_limit` and `deploy.resources.limits` are accepted
+  and **silently not enforced** in rootless mode (measured: a nested container reports the engine's own
+  limit); the engine's limit is the real one, and a service that exceeds it takes the environment down.
 - The daemon token is compared in constant time, and `ho.db` (with its WAL and shm files) is written
   mode 0600; the state directory's mode is re-asserted at every start, not only when it is created.
 - Reads of the OS credential store are bounded at 5 seconds and say why they timed out — on macOS a build

@@ -1397,64 +1397,183 @@ Not covered: the desktop app's own `Utils.openFileDialog` panel (it needs the pa
 where the daemon runs in-process and receives the native picker), and a folder actually chosen in the
 dialog rather than dismissed.
 
-## 2026-09-09 — Task container engine research and implementation plan
+---
 
-Documentation-only task. Inspected the current Docker provider, session provisioning/lifecycle,
-runner gateway, git bridge, startup and GC; primary online sources and their dates are linked in
-`docs/plans/2026-09-09-task-container-engine.md`. Proposed a private Docker Engine behind a VM
-boundary, evaluating Docker Sandboxes before a Lima fallback. No runtime installed or launched.
+## Owner task 2026-09-09 — task service environments (`docker compose` inside a task)
 
-Local prerequisite discovery (no output for `limactl` or `sbx`):
+Machine: Docker Desktop 4.90.0, Engine 29.7.2 (client and server), API 1.55 (minimum 1.40),
+containerd v2.3.3, runc 1.4.3, storage driver `overlayfs`, kernel `7.0.12-linuxkit`, aarch64,
+12 CPU / 7.75 GiB in the VM, Compose v5.5.1 on the host.
 
-```text
-$ command -v docker; command -v limactl; command -v sbx; uname -m
-/usr/local/bin/docker
-arm64
+```
+$ docker info --format '{{.ServerVersion}} | driver={{.Driver}} | os={{.OperatingSystem}} | kernel={{.KernelVersion}} | arch={{.Architecture}} | cpus={{.NCPU}} | mem={{.MemTotal}}'
+29.7.2 | driver=overlayfs | os=Docker Desktop | kernel=7.0.12-linuxkit | arch=aarch64 | cpus=12 | mem=8319238144
+
+$ docker system df
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          56        6         40.97GB   27.41GB (66%)
+Containers      8         0         282.6kB   282.6kB (100%)
+Local Volumes   230       8         6.858GB   5.719GB (83%)
+Build Cache     292       0         34.86GB   18.05GB
 ```
 
-The semantic-search service returned HTTP 404 to the explorer; direct source inspection was used.
-The absence of nested Docker support is a source finding, not a measured Compose failure.
+### Image pins
 
-Documentation formatting:
-
-```text
-$ bunx --no-install oxfmt docs/plans/2026-09-09-task-container-engine.md docs/PLAN.md docs/STACK.md docs/ARCHITECTURE.md
-Finished in 114ms on 4 files using 12 threads.
+```
+$ docker manifest inspect docker:29.8.0-dind-rootless   # linux/arm64 entry
+arm64 digest: sha256:19b6d666831cda38537c1fc60c76f32bd0f17c77f46d53b080d98b39e1f7cefb
+$ docker manifest inspect docker:29.8.0-dind
+arm64 digest: sha256:c9da39e30475d7bf353436738239d02fb1c2a52a1c968322beccb6ec239707d8
 ```
 
-Full repository check, exit code 0:
+### Why the adapter checks for the image by `name@digest` and pulls by `name:tag@digest`
 
-```text
+Both forms were probed against the running engine. Inspect rejects a reference that carries a tag _and_
+a digest even when the image is present, which would have made every session re-pull:
+
+```
+$ curl -s -o /dev/null -w '%{http_code}\n' --unix-socket $SOCK http://docker/v1.44/images/<docker:29.8.0-dind-rootless@sha256:19b6…>/json
+404
+$ curl -s -o /dev/null -w '%{http_code}\n' --unix-socket $SOCK http://docker/v1.44/images/<docker@sha256:19b6…>/json
+200
+$ curl -s -X POST --unix-socket $SOCK 'http://docker/v1.44/images/create?fromImage=<docker:29.8.0-dind-rootless@sha256:19b6…>'
+{"status":"Digest: sha256:19b6d666831cda38537c1fc60c76f32bd0f17c77f46d53b080d98b39e1f7cefb"}
+{"status":"Status: Image is up to date for docker:29.8.0-dind-rootless@sha256:19b6…"}
+```
+
+### The rootless engine, and what it does not enforce
+
+```
+$ docker logs <engine> | tail -6
+level=warning msg="WARNING: Running in rootless-mode without cgroups. Systemd is required to enable cgroups in rootless-mode."
+level=info msg="Docker daemon" commit=3ce5872 containerd-snapshotter=true storage-driver=overlayfs version=29.8.0
+level=info msg="Daemon has completed initialization"
+level=info msg="API listen on /run/user/1000/docker.sock"
+```
+
+A Compose file's `mem_limit: 128m` is accepted and recorded, and is not applied — the cgroup file inside
+the service shows no limit of its own, only the engine's:
+
+```
+$ docker inspect <service> --format 'memory={{.HostConfig.Memory}}'
+memory=134217728
+$ docker exec <service> cat /sys/fs/cgroup/memory.max
+max
+```
+
+What _is_ enforced is the engine container's own limit, and it bounds every service at once. 1500 MB
+allocated inside a nested container of a 1 GiB engine killed the engine, not the service:
+
+```
+$ docker exec <sandbox> docker run --rm --shm-size=2g alpine:3.24 sh -c 'dd if=/dev/zero of=/dev/shm/blob bs=1M count=1500'
+error waiting for container: unexpected EOF
+$ docker inspect <engine> --format 'status={{.State.Status}} oom={{.State.OOMKilled}}'
+status=exited oom=true
+```
+
+The engine's memory floor was measured the same way: it does not start at 512 MB (containerd is killed
+during startup, `error="signal: killed"`), and starts at 768 MB. The default is 2 GiB.
+
+### Why the socket volume is a tmpfs volume and not a chowned one
+
+The plan's first design used a one-shot helper container to `chown` a plain volume. It fails, because
+every Home Office container runs with `CapDrop: ALL`, so even a root user in that container has no
+`CAP_CHOWN` — and `provider.run` reports the exit code that `prepareTaskEngine` had ignored:
+
+```
+$ docker logs <engine>
+error: attempting to run rootless dockerd but need writable HOME (/home/rootless) and XDG_RUNTIME_DIR (/run/user/1000) for user 1000
+```
+
+A tmpfs volume carries the ownership from its creation and needs no helper at all:
+
+```
+$ docker volume create --driver local --opt type=tmpfs --opt device=tmpfs --opt o=uid=1000,gid=1000,mode=0700,size=1m ho-tmpfs-probe
+$ docker run --rm -v ho-tmpfs-probe:/run/user/1000 alpine:3.24 ls -ld /run/user/1000
+drwx------    2 1000     1000            40 Sep  9 20:09 /run/user/1000
+$ docker run --rm --user 1000:1000 -v ho-tmpfs-probe:/run/user/1000 alpine:3.24 sh -c 'touch /run/user/1000/probe && echo ok'
+ok
+```
+
+### End to end, through the real adapter
+
+`prepareTaskEngine`, `startTaskEngine`, `createDockerProvider` and `prune` driven against real Docker,
+with a hardened stand-in for the agent container (uid 1000, `CapDrop: ALL`, `no-new-privileges`,
+read-only rootfs, tmpfs scratch) and a Compose file with `postgres:18-alpine`, a published port, a
+relative bind mount and a `mem_limit`:
+
+```
+$ bun verify-task-engine.ts
+health: { ok: true, version: "29.7.2", apiVersion: "1.55", os: "linux", arch: "arm64" }
+[     6 ms] prepareTaskEngine (volumes)
+[    96 ms] sandbox start (hardened stand-in)
+[   899 ms] startTaskEngine (create, pull check, ready)
+engine: ho-engine-erify0000001
+host socket visible to the sandbox? no
+engine reachable: 29.8.0
+[ 23863 ms] docker compose up --wait (postgres + a bind mount)
+bind mount: web-1  | same-path-bind-mount-works
+published port on the sandbox loopback: reachable
+mem_limit enforced inside? 2147483648
+engine memory usage: 184.2MiB / 2GiB
+[ 11276 ms] teardown (engine first, then sandbox)
+left behind: [] [ "ho-task-verify000001-engine(engine-cache)", "ho-task-verify000001-sock-y0000001(engine-socket)" ]
+gc of engine-socket volumes: [ "ho-task-verify000001-sock-y0000001" ]
+done
+```
+
+Read as gates: the sandbox never sees the host socket; the engine answers on the shared socket; an
+unmodified Compose file starts, its relative bind mount resolves (`same-path-bind-mount-works`) and its
+published port answers on the sandbox's own loopback; `mem_limit` reports the engine's 2 GiB rather than
+its own 128 MB; teardown leaves no container, and of the two volumes the per-task cache is kept by design
+while the socket volume is what the new GC scope collects.
+
+### Lifecycle coupling of the shared network namespace
+
+Stopping the namespace owner leaves the engine running but unrestartable, which is why teardown stops
+the engine first and restart reconciliation removes both:
+
+```
+$ docker stop <sandbox>; docker restart <engine>
+engine=exited err=cannot join network namespace of a non running container: container ho-spike-agent is exited
+```
+
+### The agent image's Docker CLI
+
+```
+$ docker run --rm alpine:3.24 apk add --no-cache --simulate docker-cli docker-cli-compose docker-cli-buildx | tail -4
+(2/4) Installing docker-cli (29.5.3-r1)
+(3/4) Installing docker-cli-buildx (0.34.1-r1)
+(4/4) Installing docker-cli-compose (5.1.4-r1)
+OK: 130.9 MiB in 20 packages
+```
+
+### Checks
+
+```
 $ bun run check
-$ bun run typecheck && bun run lint && bun run fmt:check && bun run knip && bun run ui:build
-$ bun run scripts/typecheck.ts
-✔ apps/cli/tsconfig.json
-✔ apps/desktop/tsconfig.json
-✔ packages/core/tsconfig.json
-✔ packages/daemon/tsconfig.json
-✔ packages/intake-github/tsconfig.json
-✔ packages/protocol/tsconfig.json
-✔ packages/runner/tsconfig.json
-✔ packages/runtime-acp/tsconfig.json
-✔ packages/runtime-claude-code/tsconfig.json
-✔ packages/sandbox-docker/tsconfig.json
-✔ packages/secrets/tsconfig.json
-✔ packages/sim/tsconfig.json
-✔ packages/store/tsconfig.json
-✔ packages/ui/tsconfig.json
-✔ spikes/s6-acp-mock/tsconfig.json
-✔ tsconfig.json
-$ oxlint --type-aware --deny-warnings
-$ oxfmt --check
-Checking formatting...
-
-All matched files use the correct format.
-Finished in 394ms on 313 files using 12 threads.
-$ knip
-$ bun run scripts/ui-build.ts
-ui: 3 files, 1015 KiB → /Users/ondrejmisak/WebstormProjects/home-office/packages/ui/dist
+✔ 16/16 tsconfig targets · oxlint --type-aware --deny-warnings clean · oxfmt 318 files
+knip clean · ui: 3 files, 1017 KiB
 ```
 
-`git diff --check` also exited 0 without output. Runtime compatibility, Compose execution, VM
-isolation/limits and performance remain unverified acceptance gates in the plan. No tests or code
-comments were added. Existing untracked `layouts/` content was outside this task.
+Not covered yet: a full agent session against a repository with a Compose file (needs the rebuilt agent
+image), and the restart-recovery path with an engine left behind by a killed daemon. Both are named as
+open gates in the plan.
+
+### The rebuilt agent image
+
+```
+$ docker build --platform linux/arm64 --target claude-code -t ho/agent-verify:claude-code images/agent
+build exit=0
+$ docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep ho/agent
+ho/agent-verify:claude-code 1.86GB      # with the Docker CLI
+ho/agent:dev                1.69GB      # the same target before it
+$ docker run --rm --user 1000:1000 --entrypoint sh ho/agent-verify:claude-code -c 'docker --version; docker compose version; docker buildx version; docker info 2>&1 | tail -1'
+Docker version 29.5.3, build d1c06ef6b41d88d76866aea43c246cd7c63d04fa
+Docker Compose version v5.1.4
+github.com/docker/buildx v0.34.1 e0b0e77d18d3379bc1e0d55f3b37de288d36fe47
+failed to connect to the docker API at unix:///var/run/docker.sock; check if the path is correct and if the daemon is running: dial unix /var/run/docker.sock: connect: no such file or directory
+```
+
+The image grows by 170 MB, not the 130.9 MiB `apk add --simulate` reports for the packages themselves,
+and the last line is the point: with no engine of its own, an agent's `docker` reaches nothing.

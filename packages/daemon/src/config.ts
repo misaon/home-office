@@ -4,6 +4,12 @@ import { join } from "node:path";
 import { z } from "zod";
 import type { Resources } from "./paths.ts";
 
+/** Pinned by the linux/arm64 manifest digest, verified with `docker manifest inspect` on 2026-09-09. */
+const ROOTLESS_ENGINE_IMAGE =
+  "docker:29.8.0-dind-rootless@sha256:19b6d666831cda38537c1fc60c76f32bd0f17c77f46d53b080d98b39e1f7cefb";
+const ROOTFUL_ENGINE_IMAGE =
+  "docker:29.8.0-dind@sha256:c9da39e30475d7bf353436738239d02fb1c2a52a1c968322beccb6ec239707d8";
+
 export const DaemonConfig = z.object({
   host: z.enum(["127.0.0.1", "::1", "localhost"]).default("127.0.0.1"),
   port: z.int().min(0).max(65535).default(47800),
@@ -50,6 +56,25 @@ export const DaemonConfig = z.object({
     .object({
       enabled: z.boolean().default(true),
       devtools: z.boolean().default(false),
+    })
+    .prefault({}),
+  /**
+   * The private container engine a task gets when its project asks for one. Images are pinned by the
+   * arm64 manifest digest, the only architecture the sandboxes support. Measured: the engine needs more
+   * than 768 MB to start at all, and its limit caps every service it runs, because nested containers
+   * share its cgroup.
+   */
+  services: z
+    .object({
+      /** Off here disables the feature for every project, whatever the project's own policy says. */
+      enabled: z.boolean().default(true),
+      image: z.string().min(1).default(ROOTLESS_ENGINE_IMAGE),
+      rootfulImage: z.string().min(1).default(ROOTFUL_ENGINE_IMAGE),
+      memoryMb: z.int().positive().default(2048),
+      cpus: z.number().positive().default(2),
+      pids: z.int().positive().default(2048),
+      /** Readiness after the container starts; measured at 1–2 s. The first image pull has its own budget. */
+      startTimeoutMs: z.int().positive().default(60_000),
     })
     .prefault({}),
   /** Chromium needs headroom: several processes and hundreds of threads count against the pids limit. */

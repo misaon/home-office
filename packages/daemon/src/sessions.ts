@@ -8,6 +8,7 @@ import {
   resumableSession,
   type RuntimeEvent,
   type SandboxProvider,
+  type TaskEngineProvider,
   type SecretStore,
   startSession,
   transitionTask,
@@ -29,14 +30,15 @@ import type { Logger } from "./logger.ts";
 import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
 import type { RunnerGateway } from "./runner-gateway.ts";
-import { provision, type Provisioned, runPrompt, type SessionContext } from "./session-run.ts";
+import { provision, type Provisioned, type SessionContext } from "./session-provision.ts";
+import { runPrompt } from "./session-run.ts";
 import { settle } from "./settle.ts";
 
 const SYSTEM = { kind: "system" } as const;
 
 export type SessionDeps = {
   office: Office;
-  provider: SandboxProvider;
+  provider: SandboxProvider & TaskEngineProvider;
   runtimes: Readonly<Record<ProviderId, AgentRuntime>>;
   gateway: RunnerGateway;
   mcp: McpGateway;
@@ -227,6 +229,11 @@ export class SessionManager {
       if (provisioned !== null) {
         provisioned.connection.close();
         mcp.unregister(provisioned.mcpToken);
+        // The engine goes first: stopping it lets dockerd signal the repository's own services.
+        if (provisioned.engine !== null) {
+          await provider.stopEngine(provisioned.engine).catch(() => null);
+          await provider.remove(provisioned.engine).catch(() => null);
+        }
         await provider.stop(provisioned.sandbox, 5).catch(() => null);
         await provider.remove(provisioned.sandbox).catch(() => null);
       }

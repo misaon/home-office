@@ -4,6 +4,7 @@ import type {
   SandboxProvider,
   SandboxRunResult,
   SandboxSpec,
+  TaskEngineProvider,
   VolumeRef,
 } from "@ho/core";
 import {
@@ -16,6 +17,7 @@ import {
   createDockerApi,
   demux,
 } from "./api.ts";
+import { startEngine, stopEngine } from "./engine.ts";
 import { inventory, prune, removeContainer, snapshot } from "./housekeeping.ts";
 import { buildImage, imageHash } from "./image.ts";
 
@@ -125,7 +127,9 @@ async function runToCompletion(
   }
 }
 
-export function createDockerProvider(options: DockerProviderOptions = {}): SandboxProvider {
+export function createDockerProvider(
+  options: DockerProviderOptions = {},
+): SandboxProvider & TaskEngineProvider {
   const api = createDockerApi(options.socket);
   return {
     id: "docker",
@@ -159,8 +163,12 @@ export function createDockerProvider(options: DockerProviderOptions = {}): Sandb
         });
       }
     },
-    createVolume: async (name, labels) => {
-      await api.raw("POST", "/volumes/create", { Name: name, Labels: { ...labels } });
+    createVolume: async (name, labels, driverOpts) => {
+      await api.raw("POST", "/volumes/create", {
+        Name: name,
+        Labels: { ...labels },
+        ...(driverOpts === undefined ? {} : { Driver: "local", DriverOpts: { ...driverOpts } }),
+      });
       return { name };
     },
     removeVolume: async (ref: VolumeRef) => {
@@ -193,6 +201,8 @@ export function createDockerProvider(options: DockerProviderOptions = {}): Sandb
       await removeContainer(api, handle.id);
     },
     run: (spec, timeoutMs = 120_000) => runToCompletion(api, spec, timeoutMs),
+    startEngine: (spec, readyTimeoutMs) => startEngine(api, spec, readyTimeoutMs),
+    stopEngine: (handle, graceSeconds) => stopEngine(api, handle, graceSeconds),
     logs: async (handle, tail = 200) => {
       const res = await api.raw(
         "GET",

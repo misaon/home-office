@@ -9,6 +9,7 @@ ARG BUN_SHA256=71760b6c8ea30623b81a4907cb815d48e2ea266f2e73e751534a44a0607950df
 RUN test "$TARGETARCH" = arm64 \
  && apk add --no-cache bash curl ca-certificates libgcc libstdc++ ripgrep git openssh-client \
       chromium nodejs npm ttf-dejavu ttf-liberation unzip \
+      docker-cli docker-cli-compose docker-cli-buildx \
  && adduser -D -u 1000 agent \
  && mkdir -p /work /home/agent/.config/rtk /home/agent/.cache /opt/ho/plugins /opt/ho/mcp \
  && chown -R agent:agent /work /home/agent

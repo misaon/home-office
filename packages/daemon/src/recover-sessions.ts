@@ -10,12 +10,13 @@ export async function recoverSessions(office: Office, provider: SandboxProvider)
   if (active.length === 0) {
     return;
   }
-  const inventory = await provider.inventory({
-    [LABELS.managed]: "true",
-    [LABELS.kind]: "session",
-  });
+  // A session's own engine is left behind the same way its sandbox is, and goes the same way.
+  const inventory = await provider.inventory({ [LABELS.managed]: "true" });
+  const abandoned = inventory.containers.filter(
+    (item) => item.kind === "session" || item.kind === "engine",
+  );
   for (const session of active) {
-    for (const container of inventory.containers.filter((item) => item.sessionId === session.id)) {
+    for (const container of abandoned.filter((item) => item.sessionId === session.id)) {
       const handle = { id: container.name, name: container.name };
       await provider.stop(handle, 2);
       await provider.remove(handle);
