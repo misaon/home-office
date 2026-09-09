@@ -13,7 +13,7 @@ async function daemon(args: readonly string[]): Promise<void> {
     line(
       handle.config.ui.dir === null
         ? "office UI: not served (build it with `bun run ui:build`)"
-        : `office UI: http://${host}:${String(port)}/ — the token is in daemon.json (0600); \`ho ui\` opens the UI with it`,
+        : `office UI: served on ${host}:${String(port)}, but the page needs this launch's token — run \`ho ui\` to open it, or \`ho ui --print\` for the URL. Opening http://${host}:${String(port)}/ without the token shows an empty office.`,
     );
   }
   const shutdown = (): void => {

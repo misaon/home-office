@@ -39,7 +39,9 @@ const CONNECTION_TEXT = {
   connecting: "Connecting to the daemon…",
   online: "Connected",
   offline: "Daemon offline — retrying…",
-  unauthorized: "No daemon token. Open the office with `ho ui`.",
+  unauthorized: "This page carries no daemon token. Run `ho ui` to open the office with it.",
+  rejected:
+    "The daemon refused this page's token — it mints a new one every launch. Run `ho ui` again to reconnect.",
 } as const;
 
 /** Floor tabs in the header: numbered by creation, the "+" adds a project (a new floor). */

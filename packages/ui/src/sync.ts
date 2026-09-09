@@ -106,7 +106,7 @@ export async function startSync(bridge: Bridge): Promise<void> {
       bridge.detach();
     } catch {
       if (await daemonAnswers()) {
-        useUi.getState().setConnection("unauthorized");
+        useUi.getState().setConnection("rejected");
         await nextLaunchUrl();
         continue;
       }

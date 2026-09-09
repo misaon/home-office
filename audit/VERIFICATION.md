@@ -1193,3 +1193,22 @@ $ HO_HOME=<fresh> ho daemon --ui
 daemon 0.0.0-dev up 0 s since 2026-09-09T09:48:51.698Z
 $ bun run check → typecheck 16/16 · oxlint clean · oxfmt 317 files · knip clean · ui 3 files, 1112 KiB
 ```
+
+### B6.8, also found by the owner (2026-09-09)
+
+`ho daemon --ui` printed `office UI: http://127.0.0.1:47800/ …`, the owner opened it, and the office said
+`No daemon token`. Reproduced and then fixed; all three paths checked in the browser against a real daemon:
+
+```
+$ ho daemon --ui       (before)  office UI: http://127.0.0.1:47800/ — the token is in daemon.json (0600); …
+$ ho daemon --ui       (after)   office UI: served on 127.0.0.1:47800, but the page needs this launch's
+                                 token — run `ho ui` to open it, or `ho ui --print` for the URL. Opening
+                                 http://127.0.0.1:47800/ without the token shows an empty office.
+
+sessionStorage empty, open /            → "This page carries no daemon token. Run `ho ui` to open the
+                                           office with it."
+ho.token = "stale-from-a-previous-launch" → "The daemon refused this page's token — it mints a new one
+                                           every launch. Run `ho ui` again to reconnect."   (one attempt)
+location.hash = "#token=<current>"       → the office loads, no reload, "Add a project (floor)"
+$ bun run check → typecheck 16/16 · oxlint clean · oxfmt · knip · ui 3 files, 1112 KiB
+```

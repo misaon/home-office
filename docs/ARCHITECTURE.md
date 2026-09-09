@@ -168,8 +168,10 @@ those live-log limits. Source reload polling is only present in development UI b
   request origins. Remote plaintext binding is rejected. There is no implemented remote TLS/server mode.
 - Desktop preload places the launch token in sessionStorage. CLI browser launch uses a URL fragment,
   removed immediately by the UI. `daemon.json` and file-backed secrets use atomic mode-0600 writes. A tab
-  whose token the daemon refuses does not retry: it asks `/health` once, says so, and waits for a fresh
-  launch URL, so a forgotten tab cannot fill the log with rejected connections.
+  whose token the daemon refuses does not retry: it asks `/health` once, distinguishes "no token" from
+  "token refused" — the token is minted per launch, so a tab that outlives a restart holds a stale one —
+  and waits for a fresh launch URL, so a forgotten tab cannot fill the log with rejected connections.
+  `ho daemon --ui` therefore names the command rather than printing a URL that would need the fragment.
 - Static files reject malformed/traversal/symlink escapes, carry security headers and revalidate mutable
   content. The RPC and runner connections use bounded payloads/queues, backpressure and startup deadlines.
 - Containers use non-root users, dropped capabilities, no-new-privileges, read-only rootfs, tmpfs,

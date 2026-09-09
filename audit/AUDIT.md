@@ -674,6 +674,37 @@ lines over the next 25 s; setting the current `#token=…` on the same tab — n
 "Connected" with the floor and chat restored.
 Odhad: triviální
 
+### B6.8 – `ho daemon --ui` prints a URL that cannot work, and one message blamed the wrong thing
+
+Severita: medium
+Kde: `apps/cli/src/commands/daemon.ts:12-18`, `packages/ui/src/app.tsx:38-43`, `packages/ui/src/sync.ts:94-100`
+Důkaz: Found by the owner on the first real start after Wave 7. `ho daemon --ui` printed
+
+```
+office UI: http://127.0.0.1:47800/ — the token is in daemon.json (0600); `ho ui` opens the UI with it
+```
+
+so the obvious thing to do — open the URL the daemon just printed — lands on a page with no token, and the
+office answers `No daemon token. Open the office with \`ho ui\`.`Reproduced exactly: with`sessionStorage`empty,`http://127.0.0.1:47800/` shows that line and nothing else. The line was also doing double duty
+after B6.7: a page whose token the daemon _refused_ (the token is minted per launch, so any tab that
+outlives a restart has a stale one) was told it had "no token", which is the one thing that was not true.
+Dopad: DX: the product advertises a dead end, and then misdiagnoses it. For a first-time start this is the
+first thing the owner sees.
+Doporučení: Stop printing a URL that needs a fragment the line does not contain — name the command instead
+— and split the two cases in the UI. Both done:
+
+- the daemon now prints `office UI: served on 127.0.0.1:47800, but the page needs this launch's token — run
+\`ho ui\` to open it, or \`ho ui --print\` for the URL. Opening http://127.0.0.1:47800/ without the token
+  shows an empty office.`The token itself stays out of that stream, which may be redirected to a file;`ho ui --print` remains the way to get the URL deliberately.
+- `connection: "rejected"` joins `"unauthorized"`, so a tab with no token reads "This page carries no
+  daemon token. Run \`ho ui\` to open the office with it." and a tab with a stale one reads "The daemon
+  refused this page's token — it mints a new one every launch. Run \`ho ui\` again to reconnect."
+
+Verified all three paths in the browser: no token → the first message; `ho.token` set to a stale value →
+the second, with one connection attempt and no retry loop (B6.7); pasting the current `#token=…` into that
+same tab → the office loads with no reload.
+Odhad: triviální
+
 ---
 
 ## B8, B13 — File and identifier naming

@@ -16,7 +16,7 @@ import type {
 import { create } from "zustand";
 
 export type Panel = "chat" | "board" | "inspector" | "usage" | "resources" | "settings";
-type Connection = "connecting" | "online" | "offline" | "unauthorized";
+type Connection = "connecting" | "online" | "offline" | "unauthorized" | "rejected";
 
 /** Immutable view of the read model for React: a collection keeps its identity until an event touches it. */
 export type Snapshot = {
