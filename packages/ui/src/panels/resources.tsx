@@ -24,7 +24,7 @@ export function ResourcesPanel(): React.JSX.Element {
         ? null
         : `removed ${String(prune.data.containers.length)} containers, ${String(prune.data.volumes.length)} volumes, ${String(prune.data.images.length)} images`;
   return (
-    <div className="space-y-5 overflow-y-auto p-4 text-xs">
+    <div className="h-full space-y-5 overflow-y-auto p-4 text-xs">
       <div className="flex flex-wrap items-center gap-3">
         <Button
           disabled={prune.isPending}

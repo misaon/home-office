@@ -98,7 +98,7 @@ export function InspectorPanel(): React.JSX.Element {
     .toSorted((a, b) => a.name.localeCompare(b.name));
   if (agent === undefined) {
     return (
-      <div className="p-4 text-xs">
+      <div className="h-full overflow-y-auto p-4 text-xs">
         <p className="mb-3 text-gray-400">Click a character in the office or pick an agent:</p>
         <ul className="space-y-2">
           {agents.map((a) => (
@@ -127,7 +127,7 @@ export function InspectorPanel(): React.JSX.Element {
     .slice(0, 8);
   const floor = projects.get(agent.projectId)?.name ?? agent.projectId;
   return (
-    <div className="space-y-4 overflow-y-auto p-4 text-xs">
+    <div className="h-full space-y-4 overflow-y-auto p-4 text-xs">
       <div className="space-y-1">
         <div className="text-base font-semibold">{agent.name}</div>
         <div className="text-gray-400">

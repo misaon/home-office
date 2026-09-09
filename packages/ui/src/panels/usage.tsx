@@ -54,7 +54,7 @@ export function UsagePanel(): React.JSX.Element {
   });
   const summary = query.data ?? null;
   return (
-    <div className="space-y-5 overflow-y-auto p-4">
+    <div className="h-full space-y-5 overflow-y-auto p-4">
       <div className="flex items-center gap-2.5 text-xs">
         <span className="text-gray-400">Window</span>
         {[24, 24 * 7, 0].map((h) => (

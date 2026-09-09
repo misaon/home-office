@@ -1370,6 +1370,21 @@ $ pgrep -fl osascript
       -- Choose the repository folder
 ```
 
+### The right panel could not scroll, found by the owner
+
+Settings, Agent, Usage and Resources are plain blocks of content with `overflow-y-auto`, but nothing
+constrained their height, so each grew to its content and the panel's `overflow-hidden` wrapper simply
+cut the rest off. The airier pass is what exposed it: the same content no longer fits. Measured in the
+browser at 1440×900, on the Settings panel, by toggling the added `h-full`:
+
+```
+without h-full   clientHeight 1738  scrollHeight 1738  scrollable false   (wrapper overflow: hidden)
+with    h-full   clientHeight  855  scrollHeight 1738  scrollable true    (scrollTop 400 sticks)
+```
+
+Chat and Board were already `flex h-full flex-col` with their own `flex-1` scroll area and were never
+affected; the four block panels now state `h-full` themselves.
+
 ### Checks
 
 ```
