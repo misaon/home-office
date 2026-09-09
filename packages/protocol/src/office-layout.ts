@@ -16,6 +16,17 @@ export const RoomKind = z.enum([
 ]);
 export type RoomKind = z.infer<typeof RoomKind>;
 
+/**
+ * Names that have been renamed since offices were first drawn. A saved office is data the owner made by
+ * hand; renaming a value in a closed list broke a file that already used it, so reading maps the old
+ * name and writing uses the new one.
+ */
+const RENAMED_ROOMS: Readonly<Record<string, RoomKind>> = { restroom: "toilets" };
+const StoredRoomKind = z.preprocess(
+  (value) => (typeof value === "string" ? (RENAMED_ROOMS[value] ?? value) : value),
+  RoomKind,
+);
+
 /** What a wall is made of. A material id, never a colour: the sprite that lands later replaces the fill. */
 export const WallMaterial = z.enum(["wall", "glass"]);
 export type WallMaterial = z.infer<typeof WallMaterial>;
@@ -71,6 +82,16 @@ export const ObjectKind = z.enum([
   "standing-ashtray",
 ]);
 export type ObjectKind = z.infer<typeof ObjectKind>;
+
+/** The same courtesy for furniture: the plain desk became the developer's, the chair an office chair. */
+const RENAMED_OBJECTS: Readonly<Record<string, ObjectKind>> = {
+  desk: "desk-developer",
+  chair: "office-chair",
+};
+const StoredObjectKind = z.preprocess(
+  (value) => (typeof value === "string" ? (RENAMED_OBJECTS[value] ?? value) : value),
+  ObjectKind,
+);
 
 export type ObjectSpec = {
   /** Cells across and down, unrotated; rotating swaps them. */
@@ -132,11 +153,11 @@ export const OfficeLayout = z.object({
   height: z.int().min(4).max(LAYOUT_MAX),
   /** Walls fill whole cells, as in Prison Architect; a one-cell-wide rectangle is a line. */
   walls: z.array(LayoutRect.extend({ material: WallMaterial })).max(4000),
-  rooms: z.array(LayoutRect.extend({ room: RoomKind })).max(4000),
+  rooms: z.array(LayoutRect.extend({ room: StoredRoomKind })).max(4000),
   /** A doorway spans wall cells and opens them; `facing` is the way it swings. */
   doors: z.array(LayoutRect.extend({ kind: DoorKind, facing: Facing })).max(1000),
   /** Furniture at the footprint it was placed with (rotation is already in `w`/`h`) and the way it faces. */
-  objects: z.array(LayoutRect.extend({ kind: ObjectKind, facing: Facing })).max(4000),
+  objects: z.array(LayoutRect.extend({ kind: StoredObjectKind, facing: Facing })).max(4000),
 });
 export type OfficeLayout = z.infer<typeof OfficeLayout>;
 

@@ -371,3 +371,30 @@ rooms       11 items: reception, boss-office, office-developers, office-qa, offi
             team-room, meeting, kitchen, toilets, corridor, terrace
 furniture   26 items, each with its footprint: "elevator 5×2 wall", "desk-developer 6×3", …
 ```
+
+## A file the owner had already drawn, broken by a rename (2026-09-09)
+
+Loading `base.json` failed with `Invalid option: expected one of "reception"|…|"terrace"`. Renaming the
+`restroom` room to `toilets` in the previous pass changed a value inside a closed list that the owner's
+own file already used — a saved office is data made by hand, and there was no migration for it.
+
+Reading now maps names that have been renamed, and writing uses the new one:
+
+```
+restroom → toilets            (the room)
+desk     → desk-developer     (the plain office desk that was dropped)
+chair    → office-chair
+```
+
+Measured on the owner's file:
+
+```
+parses            152 wall runs · 70 room runs · 11 doors
+rooms after read  boss-office 9 · corridor 14 · reception 6 · meeting 8 · kitchen 8 · terrace 17 · toilets 8
+labels            7 room areas
+saving writes     boss-office, corridor, kitchen, meeting, reception, terrace, toilets — no "restroom"
+old doorways      all 11 keep their 4×1 width; only new ones are 2 cells
+```
+
+The lesson worth keeping: the schema is a boundary over the owner's own data, so a value that has been
+written to disk cannot simply be renamed in the enum.
