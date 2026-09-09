@@ -4,10 +4,13 @@ import { z } from "zod";
 export const RoomKind = z.enum([
   "reception",
   "boss-office",
+  "office-developers",
+  "office-qa",
+  "office-analysts",
   "team-room",
   "meeting",
   "kitchen",
-  "restroom",
+  "toilets",
   "corridor",
   "terrace",
 ]);

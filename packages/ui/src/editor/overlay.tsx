@@ -9,7 +9,7 @@ import {
 } from "@ho/protocol";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Button, CONTROL, Field, Section, Segmented } from "../kit/controls.tsx";
+import { Button, CONTROL, Field, Section, Tabs } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import {
   type Draft,
@@ -73,12 +73,61 @@ function OfficeFields({
 
 const KIND_LABEL: Record<Tool, string> = {
   wall: "Material",
-  room: "Room type",
+  room: "Room",
   door: "Door",
   object: "Furniture",
 };
 
-/** The palette of the active tool, plus the footprint furniture will take. */
+/** Every choice of the active tool, three to a row, with a footprint where a piece has one. */
+function Choices({
+  options,
+  value,
+  size,
+  pick,
+}: {
+  options: readonly string[];
+  value: string;
+  size: (option: string) => string | null;
+  pick: (option: string) => void;
+}): React.JSX.Element {
+  return (
+    <div className="grid grid-cols-3 gap-1.5">
+      {options.map((option) => {
+        const footprint = size(option);
+        return (
+          <button
+            key={option}
+            type="button"
+            className={`rounded-md border px-2 py-1.5 text-left text-2xs leading-tight break-words transition ${
+              option === value
+                ? "border-accent/70 bg-line text-white"
+                : "border-line text-gray-400 hover:text-gray-100"
+            }`}
+            onClick={() => {
+              pick(option);
+            }}
+          >
+            {option}
+            {footprint === null ? null : (
+              <span className="mt-0.5 block font-mono text-gray-500">{footprint}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+const footprintOf = (option: string): string | null => {
+  const parsed = ObjectKind.safeParse(option);
+  if (!parsed.success) {
+    return null;
+  }
+  const spec = OBJECT_SPEC[parsed.data];
+  return `${String(spec.w)}×${String(spec.h)}${spec.onWall ? " wall" : ""}`;
+};
+
+/** The palette of the active tool, plus the footprint of what is in hand. */
 function Palette({
   kinds,
   setKinds,
@@ -100,29 +149,23 @@ function Palette({
   const spec = OBJECT_SPEC[kinds.object];
   return (
     <>
-      <Field id="ho-editor-kind" label={KIND_LABEL[tool]}>
-        <select
-          id="ho-editor-kind"
-          className={CONTROL}
-          value={kinds[tool]}
-          onChange={(e) => {
-            const next = e.target.value;
-            setKinds(
-              tool === "wall"
-                ? { ...kinds, wall: WallMaterial.parse(next) }
-                : tool === "room"
-                  ? { ...kinds, room: RoomKind.parse(next) }
-                  : tool === "door"
-                    ? { ...kinds, door: DoorKind.parse(next) }
-                    : { ...kinds, object: ObjectKind.parse(next) },
-            );
-          }}
-        >
-          {options.map((option) => (
-            <option key={option}>{option}</option>
-          ))}
-        </select>
-      </Field>
+      <p className="text-2xs font-medium text-gray-400">{KIND_LABEL[tool]}</p>
+      <Choices
+        options={options}
+        value={kinds[tool]}
+        size={tool === "object" ? footprintOf : () => null}
+        pick={(option) => {
+          setKinds(
+            tool === "wall"
+              ? { ...kinds, wall: WallMaterial.parse(option) }
+              : tool === "room"
+                ? { ...kinds, room: RoomKind.parse(option) }
+                : tool === "door"
+                  ? { ...kinds, door: DoorKind.parse(option) }
+                  : { ...kinds, object: ObjectKind.parse(option) },
+          );
+        }}
+      />
       {tool === "object" || tool === "door" ? (
         <div className="flex items-center gap-3">
           <Button
@@ -181,14 +224,14 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
   });
   return (
     <div className="absolute inset-0 z-40 flex bg-ink">
-      <aside className="flex w-[320px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-line p-5 text-xs">
+      <aside className="flex w-[360px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-line p-5 text-xs">
         <header className="flex items-center justify-between">
           <h2 className="text-base font-semibold">Office editor</h2>
           <Button onClick={onClose}>Close</Button>
         </header>
         <OfficeFields draft={draft} setDraft={setDraft} />
         <Section title="Tool">
-          <Segmented value={tool} options={TOOLS} onChange={setTool} />
+          <Tabs value={tool} options={TOOLS} onChange={setTool} />
           <Palette kinds={kinds} setKinds={setKinds} tool={tool} />
           <p className="text-2xs leading-relaxed text-gray-500">
             {tool === "object" || tool === "door"

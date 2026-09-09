@@ -100,6 +100,38 @@ export function Segmented<T extends string>({
   );
 }
 
+/** Tabs across the width: one row of choices where only the chosen one is underlined. */
+export function Tabs<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: readonly { value: T; label: string }[];
+  onChange: (value: T) => void;
+}): React.JSX.Element {
+  return (
+    <div className="flex border-b border-line">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          className={`flex-1 px-2 py-2.5 text-xs transition ${
+            option.value === value
+              ? "border-b-2 border-accent font-medium text-white"
+              : "text-gray-400 hover:text-gray-100"
+          }`}
+          onClick={() => {
+            onChange(option.value);
+          }}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** A section of a panel: an uppercase heading and its rows, separated from what comes before it. */
 export function Section({
   title,

@@ -51,13 +51,18 @@ export const OBJECT_EDGE = 0x8b93a1;
 export const ROOM: Readonly<Record<string, number>> = {
   reception: 0xe0a33c,
   "boss-office": 0x8b6fd0,
-  "team-room": 0x4c8bf5,
-  meeting: 0x2fae9e,
+  "office-developers": 0x4c8bf5,
+  "office-qa": 0x2fae9e,
+  "office-analysts": 0xd06fb0,
+  "team-room": 0x6f8fae,
+  meeting: 0xc9a227,
   kitchen: 0xe0603c,
-  restroom: 0x3cb4e0,
+  toilets: 0x3cb4e0,
   corridor: 0x9aa2b1,
   terrace: 0x5fae4c,
 };
+/** The tint is faint, so the same hue draws the room's own edge to show where it ends. */
+export const ROOM_EDGE_ALPHA = 0.75;
 export const ROOM_DEFAULT = 0x6f9bd8;
 /** Room designation is a tint over the floor, as Prison Architect's chessboard overlay is. */
 export const ROOM_ALPHA = 0.22;

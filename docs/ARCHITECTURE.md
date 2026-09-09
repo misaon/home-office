@@ -179,9 +179,11 @@ reception counter 10×3, a meeting table 12×5, the lift car 5×2 hung on a wall
 1×2 — and an employee is 2×2, the same width as the chair they sit on and the doorway they pass. A piece
 that hangs on a wall puts its **back** row on the cell clicked and grows the way it faces, so a fitting
 sits in the wall and a lift car juts into the room. Movement is still one cell at a time: a two-by-two
-body is not yet what the path search reserves. Each room kind carries its own hue, and a room's name is drawn on the
-deepest cell of its area rather than the middle of its bounding box, so a corridor wrapped around other
-rooms still labels itself inside the corridor. Doors and furniture are placed by a click with their footprint shown first,
+body is not yet what the path search reserves. Each of the eleven room kinds carries its own hue and is outlined in
+it — one cell edge wherever the room changes, so an L-shaped room reads as one room and the end of a
+room is visible through the faint tint. A room's name is drawn on the deepest cell of its area rather
+than the middle of its bounding box, so a corridor wrapped around other rooms still labels itself inside
+the corridor. Doors and furniture are placed by a click with their footprint shown first,
 a right click turns them a quarter and a right drag erases; walls and rooms are still dragged out.
 Prison Architect is coarser — its office desk and bed are 2×1, its chair and door 1×1 — because its tile
 is about a metre; the whole catalogue and its sources are in

@@ -1,5 +1,6 @@
 import { CELL_PX, type FloorTemplate, type TileMap } from "@ho/sim";
 import { Container, Graphics } from "pixi.js";
+import { roomOutline } from "./room-outline.ts";
 import {
   colourOf,
   FLOOR,
@@ -12,6 +13,7 @@ import {
   ROOM,
   ROOM_ALPHA,
   ROOM_DEFAULT,
+  ROOM_EDGE_ALPHA,
   WALL,
   WALL_DEFAULT,
 } from "./palette.ts";
@@ -55,6 +57,21 @@ const fillRuns = (
   }
 };
 
+/** The outline of every room, one cell edge at a time, in each room's own colour. */
+const roomEdges = (graphics: Graphics, map: TileMap): void => {
+  const width = CELL_PX * 0.09;
+  for (const edge of roomOutline(map)) {
+    graphics
+      .moveTo(edge.x1 * CELL_PX, edge.y1 * CELL_PX)
+      .lineTo(edge.x2 * CELL_PX, edge.y2 * CELL_PX)
+      .stroke({
+        color: colourOf(ROOM, edge.room, ROOM_DEFAULT),
+        alpha: ROOM_EDGE_ALPHA,
+        width,
+      });
+  }
+};
+
 /** The map's ground and, over it, the floors and room designations a layout declares. */
 const ground = (map: TileMap): Graphics => {
   const graphics = new Graphics()
@@ -62,6 +79,7 @@ const ground = (map: TileMap): Graphics => {
     .fill(GROUND);
   fillRuns(graphics, map.floor, map, (value) => colourOf(FLOOR, value, FLOOR_DEFAULT));
   fillRuns(graphics, map.room, map, (value) => colourOf(ROOM, value, ROOM_DEFAULT), ROOM_ALPHA);
+  roomEdges(graphics, map);
   return graphics;
 };
 

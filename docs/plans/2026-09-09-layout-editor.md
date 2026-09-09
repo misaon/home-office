@@ -340,3 +340,34 @@ doorway facing s → 2x1 · facing e → 1x2
 Still open, and worth saying plainly: the simulation moves an actor one cell at a time, so a 2×2 body is
 not yet reserved by the path search. A two-cell doorway is exactly one employee wide, which only means
 something once the search knows the body's size — that is part of wiring a drawn office into a floor.
+
+## The owner's notes, 2026-09-09 (ninth pass)
+
+| Note                                                      | Built                                                                                                          |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Rooms need a faint border so their end is visible         | Every cell edge where the room changes is drawn in the room's own hue, at 0.75 alpha and 0.09 of a cell wide   |
+| Rooms for toilets, QA, analysts and developers            | `restroom` became **toilets**, and `office-developers`, `office-qa`, `office-analysts` joined it: eleven kinds |
+| Tabs instead of buttons, and the items in a 3-column grid | The tool row is tabs; the kind picker is a grid of the items themselves, three to a row, with footprints       |
+
+### The outline, measured
+
+Drawing per cell edge rather than per rectangle is what makes an L-shaped room read as one room:
+
+```
+toilets 5x3 rectangle                            16 edges   = 2 × (5 + 3)
+office-qa, 6x3 plus 3x4 sharing three cells      26 edges   = 2 × (6 + 3) + 2 × (3 + 4) − 2 × 3
+office-developers 2x2                             8 edges
+```
+
+The shared edge between the two rectangles of the L is dropped, and no edge is degenerate. The geometry
+lives in `packages/ui/src/office/room-outline.ts`, free of Pixi, which is why it can be measured at all.
+
+### The palette, in the browser
+
+```
+tabs        Wall · Room · Door · Furniture
+grid        97.33px 97.33px 97.34px — three columns in a 360 px sidebar
+rooms       11 items: reception, boss-office, office-developers, office-qa, office-analysts,
+            team-room, meeting, kitchen, toilets, corridor, terrace
+furniture   26 items, each with its footprint: "elevator 5×2 wall", "desk-developer 6×3", …
+```
