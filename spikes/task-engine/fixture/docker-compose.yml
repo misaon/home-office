@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_PASSWORD: verify
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 1s
+      retries: 60
+  web:
+    image: alpine:3.24
+    command: ["sh", "-c", "cat /mnt/marker.txt && sleep 900"]
+    mem_limit: 128m
+    volumes:
+      - ./marker.txt:/mnt/marker.txt:ro

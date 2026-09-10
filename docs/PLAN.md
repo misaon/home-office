@@ -13,9 +13,11 @@ not evidence that every original acceptance target was achieved.
 - React/Pixi office, board, inspector, usage/resources/settings and first-run checklist.
 - Electrobun macOS arm64 packaging and unsigned release workflow.
 - Optional per-project **task services**: a private rootless container engine per session (rootful as an
-  opt-in), so a repository's own `docker-compose.yml` runs inside the sandbox. Measured end to end on
-  2026-09-09; the scheduler counts such a session as two slots. Two gates remain open — a full agent
-  session and the restart-recovery path — see [the plan](plans/2026-09-09-task-service-environments.md).
+  opt-in), so a repository's own `docker-compose.yml` runs inside the sandbox. The scheduler counts such
+  a session as two slots, and the session record says whether it got its engine. Every gate is measured,
+  including a real Claude Code worker that ran `docker compose up -d` on an unmodified repository and a
+  daemon killed while an engine was up; `bun run spike:task-engine` re-runs the lot. Plan and evidence:
+  [the plan](plans/2026-09-09-task-service-environments.md).
 - Earlier audit repairs: serialized state changes; safe replay failure; bounded channels and runtime
   shutdown; credential/storage/HTTP hardening; task publication ordering; restart reconciliation;
   bounded renderer caches and fixed-step simulation; Sharp image pipeline; shared UI query management;
@@ -91,6 +93,15 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
   would resolve on the wrong filesystem. Two of this plan's own instructions were corrected by
   measurement, both recorded beside the original claim. Decisions, survey and evidence in
   [the plan](plans/2026-09-09-task-service-environments.md).
+
+- 2026-09-10 — Owner task: closing the service-environment gates — All seven verification gates are now
+  measured. The last two needed a real daemon on a scratch state directory: a Claude Code worker ran the
+  repository's Compose file unchanged and verified postgres on `127.0.0.1:15432` itself, and a `kill -9`
+  while an engine was up left orphans that the restart removed while GC collected their socket volumes.
+  Added along the way: `Session.services` so the inspector, the CLI and the history say whether a session
+  had its engine; `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE`, without which Ryuk would look for a socket the
+  engine does not have (a real Testcontainers run now proves both variables); and `spikes/task-engine`,
+  the harness behind `bun run spike:task-engine`.
 
 - 2026-09-09 — Owner task: the internal office editor — A development-only editor (walls, rooms, doors,
   eraser) that saves `layouts/<id>.json` through a daemon store, with the JSON keeping semantic ids so

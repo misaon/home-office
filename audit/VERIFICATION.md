@@ -1577,3 +1577,116 @@ failed to connect to the docker API at unix:///var/run/docker.sock; check if the
 
 The image grows by 170 MB, not the 130.9 MiB `apk add --simulate` reports for the packages themselves,
 and the last line is the point: with no engine of its own, an agent's `docker` reaches nothing.
+
+---
+
+## Owner task 2026-09-10 — closing the service-environment gates
+
+### The harness, against the rebuilt agent image
+
+`bun run spike:task-engine --testcontainers` starts two tasks through the real adapter, with
+`ho/agent:dev` (1.86 GB, the image that now carries the Docker CLI) as the sandbox:
+
+```
+engine: {"ok":true,"version":"29.7.2","apiVersion":"1.55","os":"linux","arch":"arm64"}
+sandbox image: ho/agent:dev
+[     6 ms] task a: volumes
+[    93 ms] task a: sandbox
+[  1408 ms] task a: engine ready
+[ 10731 ms] compose up --wait (cold)
+PASS  compose up --wait succeeds
+PASS  a relative bind mount resolves — web-1  | same-path-bind-mount-works
+PASS  a published port answers on the sandbox loopback — reachable
+PASS  compose mem_limit is not enforced (the engine's own limit is) — memory.max=2147483648
+PASS  a warm start reuses the engine cache — 1696 ms without a pull
+[     6 ms] task b: volumes
+[    81 ms] task b: sandbox
+[  1514 ms] task b: engine ready
+PASS  the daemon's socket is absent from the sandbox
+PASS  another task's engine shows none of this task's containers — (empty)
+PASS  an unusable engine image fails legibly — pulling docker:no-such-tag-29.8.0-dind-rootless failed: docker POST /images/create?fromImage=docker%3Ano-such-tag-29.8.0…
+PASS  testcontainers works against the task engine — testcontainers host=localhost port=32769 tcp=connected
+testcontainers stopped its container
+[ 12435 ms] teardown
+containers left: none
+socket volumes collected: ho-task-spikeb-sock-56c483cb, ho-task-spikea-sock-d369f894
+
+9/9 checks passed
+```
+
+The Testcontainers line closes what the plan had left unverified: `TESTCONTAINERS_HOST_OVERRIDE` and
+`TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE` are the values testcontainers-node documents for a
+Docker-in-Docker setup, `getHost()` returns `localhost` as the topology requires, and Ryuk — which
+needs the socket path, not the default `/var/run/docker.sock` — reaped its container.
+
+### Gate 5 — a real agent session (daemon on a scratch state directory, port 47810)
+
+A scratch repository with the fixture Compose file became a floor with `services.enabled`, and a real
+Claude Code worker was assigned one task. What the CLI showed while it ran:
+
+```
+$ ho session list
+01a08a50-3550-7f94-bc62-4fd7c3899386  running    task=045d1bf8  agent=53d226a1  turns=0  0in/0out/0cache  services=ready
+$ docker ps -a --filter label=ho.managed=true --format '{{.Names}} {{.Status}} kind={{.Label "ho.kind"}}'
+ho-engine-4fd7c3899386 Up 11 seconds (healthy) kind=engine
+ho-session-4fd7c3899386 Up 11 seconds kind=session
+```
+
+The brief the provider actually received carried the services paragraph verbatim (read from the
+sandbox's process list), and the worker's own report, 9 turns later, is the gate:
+
+```
+Ran `docker compose up -d` on the repo's docker-compose.yml as-is (no changes needed, working tree
+already clean).
+
+Result: both services started successfully.
+- db (postgres:18-alpine): published on host port 15432, healthcheck reports "healthy". Verified
+  externally with `pg_isready -h 127.0.0.1 -p 15432 -U postgres` → "accepting connections", and
+  `docker exec repo-db-1 psql -U postgres -c 'select 1;'` → returned 1 row.
+- web (alpine:3.24): no published port (by design); it bind-mounts ./marker.txt read-only and cat's
+  it, printing "same-path-bind-mount-works" to logs, then sleeps 900s.
+```
+
+Task `done`, usage `18in/1414out/227829cache`. Nothing about the engine was explained to the model
+beyond that paragraph, and it used `127.0.0.1` for the published port on its own.
+
+### Gate 6 — a daemon killed while a session's engine was up
+
+The session was killed during provisioning, before the provider child spawns, so no tokens were spent:
+
+```
+$ kill -9 <daemon pid>   # fired the moment `docker ps --filter label=ho.kind=engine` had a name
+killed the daemon while ho-engine-6c29525769f5 was up
+  ho-engine-6c29525769f5   Up 4 seconds (health: starting)  kind=engine
+  ho-session-6c29525769f5  Exited (0) 4 seconds ago         kind=session
+```
+
+Restarting the daemon on the same state directory:
+
+```
+{"events": 33, "lastSeq": 33, "msg": "read model rebuilt"}
+{"types": ["session.ended"], "msg": "events appended"}
+{"types": ["task.status_changed"], "msg": "events appended"}
+{"host": "127.0.0.1", "port": 47810, "msg": "rpc server listening"}
+{"containers": [], "volumes": ["ho-task-8f05de9ac8a8-sock-525769f5", "ho-task-72cc045d1bf8-sock-c3899386"], "images": [], "msg": "garbage collected"}
+
+$ docker ps -a --filter label=ho.managed=true
+(nothing)
+$ ho task list --project svc
+01a08a50-354e…  done         Start the compose stack and report what answers
+01a08a55-4eaf…  blocked      Recovery gate: killed while its engine is up
+```
+
+Recovery removed the orphaned engine and its sandbox, ended the interrupted session, blocked its task
+for explicit resumption, and the new GC scope collected both orphaned socket volumes. A session whose
+provider cannot authenticate never reaches provisioning at all — `secret "anthropic-api-key" is
+missing` failed before any container was created — which is why the recovery gate had to be triggered
+inside the provisioning window.
+
+### Checks
+
+```
+$ bun run check
+✔ 16/16 tsconfig targets (17 with spikes/task-engine) · oxlint --type-aware --deny-warnings clean
+oxfmt clean · knip clean · ui: 3 files, 1018 KiB
+```

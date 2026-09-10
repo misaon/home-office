@@ -7,6 +7,7 @@ import {
   type Project,
   PROVIDERS,
   type Session,
+  type SessionServices,
   type Task,
 } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
@@ -96,6 +97,14 @@ const sandboxSpec = (
   },
   readonlyRootfs: true,
 });
+
+/** Absent means the project asks for no services; the brief and the session record share this answer. */
+export function sessionServicesOf(provisioned: Provisioned): SessionServices | undefined {
+  if (provisioned.engine !== null) {
+    return "ready";
+  }
+  return provisioned.engineFailure === null ? undefined : "failed";
+}
 
 /** Network, task volume with the floor's repository, sandbox with the runner, runner connection. */
 export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {

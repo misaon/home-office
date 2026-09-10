@@ -25,13 +25,15 @@ const socketVolumeFor = (taskVolume: string, sessionId: SessionId): string =>
   `${taskVolume}-sock-${sessionId.slice(-8)}`;
 
 /**
- * What a sandbox needs to use its engine. `TESTCONTAINERS_HOST_OVERRIDE` matters because Testcontainers
- * otherwise guesses the bridge gateway, while the engine's published ports land on this container's own
- * loopback — the engine shares its network namespace.
+ * What a sandbox needs to use its engine. The two Testcontainers variables are its documented answers
+ * for a Docker-in-Docker setup: the host is where published ports answer, which here is this container's
+ * own loopback because the engine shares its network namespace, and the socket override is the path
+ * Ryuk gets bind-mounted — the engine has no `/var/run/docker.sock` to offer it.
  */
 export const engineEnv = (mode: EngineMode): Record<string, string> => ({
   DOCKER_HOST: `unix://${socketPathFor(mode)}`,
   TESTCONTAINERS_HOST_OVERRIDE: "localhost",
+  TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: socketPathFor(mode),
 });
 
 /**

@@ -1,4 +1,5 @@
 // The private per-task container engine: a dind sibling that joins the sandbox's network namespace.
+import { errorMessage } from "@ho/protocol";
 import type { EngineMode, EngineSpec, SandboxHandle } from "@ho/core";
 import { ContainerInspect, Created, type DockerApi, DockerApiError } from "./api.ts";
 
@@ -82,12 +83,16 @@ const ensureImage = async (api: DockerApi, ref: string, timeoutMs: number): Prom
   if (found !== null) {
     return;
   }
-  const response = await api.raw(
-    "POST",
-    `/images/create?fromImage=${encodeURIComponent(ref)}`,
-    undefined,
-    AbortSignal.timeout(timeoutMs),
-  );
+  const response = await api
+    .raw(
+      "POST",
+      `/images/create?fromImage=${encodeURIComponent(ref)}`,
+      undefined,
+      AbortSignal.timeout(timeoutMs),
+    )
+    .catch((error: unknown) => {
+      throw new Error(`pulling ${ref} failed: ${errorMessage(error)}`);
+    });
   // The pull is a progress stream that answers 200 first and reports failure inside its own body.
   const body = await response.text();
   if (body.includes(`"errorDetail"`)) {

@@ -6,7 +6,8 @@
     "packages": [
       "apps/*",
       "packages/*",
-      "spikes/s6-acp-mock"
+      "spikes/s6-acp-mock",
+      "spikes/task-engine"
     ],
     "catalog": {
       "@agentclientprotocol/sdk": "1.4.0",
@@ -54,7 +55,8 @@
     "desktop:prepare": "bun run scripts/desktop-prepare.ts",
     "desktop:dev": "bun run desktop:prepare && bun run scripts/devkit.ts dev",
     "desktop:build": "bun run desktop:prepare && bun run scripts/devkit.ts build",
-    "devkit": "bun run scripts/devkit.ts"
+    "devkit": "bun run scripts/devkit.ts",
+    "spike:task-engine": "bun run spikes/task-engine/src/run.ts"
   },
   "devDependencies": {
     "@ho/protocol": "workspace:*",

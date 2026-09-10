@@ -10,7 +10,7 @@ import {
   workPrompt,
 } from "./prompts.ts";
 import { deliver } from "./publish.ts";
-import type { Provisioned, SessionContext } from "./session-provision.ts";
+import { type Provisioned, sessionServicesOf, type SessionContext } from "./session-provision.ts";
 import type { SessionDeps } from "./sessions.ts";
 
 const REPORT_MAX = 4000;
@@ -24,12 +24,14 @@ export type Outcome = {
 };
 
 const servicesStateOf = (provisioned: Provisioned): ServicesState => {
-  if (provisioned.engine !== null) {
+  const services = sessionServicesOf(provisioned);
+  if (services === "ready") {
     return { kind: "ready" };
   }
-  return provisioned.engineFailure === null
-    ? { kind: "off" }
-    : { kind: "failed", message: provisioned.engineFailure };
+  if (services === "failed") {
+    return { kind: "failed", message: provisioned.engineFailure ?? "unknown reason" };
+  }
+  return { kind: "off" };
 };
 
 const promptFor = (deps: SessionDeps, ctx: SessionContext, provisioned: Provisioned): string => {

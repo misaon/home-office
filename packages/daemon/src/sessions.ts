@@ -21,6 +21,7 @@ import {
   type Session,
   type SessionId,
   type SessionMode,
+  type SessionServices,
   type SessionState,
   type TaskId,
 } from "@ho/protocol";
@@ -30,7 +31,12 @@ import type { Logger } from "./logger.ts";
 import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
 import type { RunnerGateway } from "./runner-gateway.ts";
-import { provision, type Provisioned, type SessionContext } from "./session-provision.ts";
+import {
+  provision,
+  type Provisioned,
+  sessionServicesOf,
+  type SessionContext,
+} from "./session-provision.ts";
 import { runPrompt } from "./session-run.ts";
 import { settle } from "./settle.ts";
 
@@ -155,7 +161,12 @@ export class SessionManager {
   #state(
     sessionId: SessionId,
     state: SessionState,
-    extra: { runtimeSessionId?: string; sandboxId?: string; reason?: string } = {},
+    extra: {
+      runtimeSessionId?: string;
+      sandboxId?: string;
+      services?: SessionServices;
+      reason?: string;
+    } = {},
   ): Promise<Session> {
     return this.#deps.office.execute(SYSTEM, (m, ctx) =>
       changeSessionState(m, { sessionId, state, ...extra }, ctx),
@@ -190,7 +201,10 @@ export class SessionManager {
     try {
       const secretEnv = await secretEnvFor(secrets, ctx.agent);
       provisioned = await provision(this.#deps, ctx);
-      await this.#state(sessionId, "starting", { sandboxId: provisioned.sandbox.id });
+      await this.#state(sessionId, "starting", {
+        sandboxId: provisioned.sandbox.id,
+        ...compact({ services: sessionServicesOf(provisioned) }),
+      });
       log.info(
         {
           sessionId,

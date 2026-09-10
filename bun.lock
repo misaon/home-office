@@ -183,6 +183,15 @@
         "@ho/runtime-acp": "workspace:*",
       },
     },
+    "spikes/task-engine": {
+      "name": "@ho/spike-task-engine",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ho/core": "workspace:*",
+        "@ho/daemon": "workspace:*",
+        "@ho/sandbox-docker": "workspace:*",
+      },
+    },
   },
   "trustedDependencies": [
     "sharp",
@@ -316,6 +325,8 @@
     "@ho/sim": ["@ho/sim@workspace:packages/sim"],
 
     "@ho/spike-s6-acp-mock": ["@ho/spike-s6-acp-mock@workspace:spikes/s6-acp-mock"],
+
+    "@ho/spike-task-engine": ["@ho/spike-task-engine@workspace:spikes/task-engine"],
 
     "@ho/store": ["@ho/store@workspace:packages/store"],
 

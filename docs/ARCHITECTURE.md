@@ -30,8 +30,11 @@ is what makes a relative bind mount in a Compose file resolve. The sandbox reach
 `docker.sock` in a shared tmpfs volume owned by the sandbox user; the daemon's own socket still never
 appears in a sandbox, and one task's engine cannot see another's containers. The engine's memory limit is
 the whole environment's limit, because nested containers share its cgroup. It is off unless the owner
-enables it per project, and a session that has it costs two of the daemon's session slots. The design,
-the alternatives and the measurements are in the
+enables it per project, and a session that has it costs two of the daemon's session slots. Whether a
+session got its engine is part of the session record (`services`: `ready` or `failed`, absent when the
+project asks for none), so the inspector, the CLI and the history all say so; an engine that cannot
+start does not fail the session, it only tells the agent in its brief. The design, the alternatives and
+the measurements are in the
 [service-environment plan](plans/2026-09-09-task-service-environments.md).
 
 Native host dialogs are a daemon port, not a UI capability. The same UI bundle runs in the Electrobun

@@ -5,6 +5,7 @@ import {
   type Session,
   type SessionId,
   type SessionMode,
+  type SessionServices,
   type SessionState,
   type TaskId,
   type Usage,
@@ -136,6 +137,7 @@ export function changeSessionState(
     state: SessionState;
     runtimeSessionId?: string;
     sandboxId?: string;
+    services?: SessionServices;
     reason?: string;
   },
   ctx: CommandContext,

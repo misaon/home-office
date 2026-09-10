@@ -59,8 +59,15 @@ function SessionBlock({
         <span className="font-medium">
           {session.mode} · {task?.title ?? session.taskId}
         </span>
-        <span className={isSessionActive(session.state) ? "text-emerald-300" : "text-gray-400"}>
-          {session.state}
+        <span className="flex shrink-0 gap-2">
+          {session.services === undefined ? null : (
+            <span className={session.services === "ready" ? "text-sky-300" : "text-amber-300"}>
+              services: {session.services}
+            </span>
+          )}
+          <span className={isSessionActive(session.state) ? "text-emerald-300" : "text-gray-400"}>
+            {session.state}
+          </span>
         </span>
       </div>
       <div className="text-gray-400">{usageLine(session.usage)}</div>

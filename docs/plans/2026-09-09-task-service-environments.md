@@ -196,25 +196,36 @@ Items 1–7 are implemented; what each turned into, and what is deliberately lef
    limit with the engine in it), plus the config schema, GC kinds, restart reconciliation and the
    services sentence in the work and review prompts.
 5. **Image** — `docker-cli docker-cli-compose docker-cli-buildx` in the base stage of
-   `images/agent/Dockerfile`; `DOCKER_HOST` and `TESTCONTAINERS_HOST_OVERRIDE` come from the session spec,
-   not the image. `TESTCONTAINERS_HOST_OVERRIDE=localhost` is the documented value for this topology and
-   is **not yet verified against a real Testcontainers suite**.
-6. **UI** — a project setting toggle with the mode and its trade-off (`settings-services.tsx`). The
-   engine and its volumes need no UI work: the Resources panel renders whatever `ho.kind` a label says,
-   so `engine`, `engine-cache` and `engine-socket` appear there as they are. A per-session badge is
-   **left undone** — the prompt tells the agent and Resources tells the owner.
+   `images/agent/Dockerfile`. The session spec, not the image, carries `DOCKER_HOST` plus the two
+   variables Testcontainers documents for a Docker-in-Docker setup: `TESTCONTAINERS_HOST_OVERRIDE`
+   (where published ports answer — here the sandbox's own loopback) and
+   `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE` (the socket Ryuk is given, since the engine has no
+   `/var/run/docker.sock` to offer). **Verified with a real Testcontainers run** inside the sandbox:
+   `host=localhost port=32769 tcp=connected`, and Ryuk stopped the container afterwards.
+6. **UI** — a project setting toggle with the mode and its trade-off (`settings-services.tsx`), and a
+   per-session badge. The badge is event-sourced rather than live-only: `Session.services`
+   (`ready` | `failed`, absent for a project that asks for none) travels the path `sandboxId` already
+   travels, through `changeSessionState` and `session.state_changed`, so the inspector, `ho session
+list` and the history all show it. The engine and its volumes need no UI work of their own: the
+   Resources panel renders whatever `ho.kind` a label says.
 7. **Docs** — ARCHITECTURE (boundary, accepted risk), STACK (pinned engine images and Alpine packages),
    PLAN (implemented entry and audit log), `audit/VERIFICATION.md` (the measurements).
-8. **Spike** — **left undone.** The harness that produced the numbers below ran from a scratch directory
-   against the real modules. Making it a workspace member (`spikes/task-engine`) means a `package.json`,
-   a `tsconfig.json`, a root `workspaces` entry and a lockfile change; worth doing when the two open
-   gates are closed, so the harness covers them too.
+8. **Spike** — `spikes/task-engine`, a workspace member, run with `bun run spike:task-engine`
+   (`--testcontainers` adds the Testcontainers check, which installs the package inside the sandbox).
+   It starts two tasks the way the daemon does — the agent image when one is built, the upstream CLI
+   image otherwise — and prints one PASS/FAIL line per gate: compose up, the bind mount, the loopback
+   port, the unenforced `mem_limit`, a warm start, both halves of isolation, and a legibly failing
+   engine image. `spikes/*/fixture/**` is added to the lint ignore list, because a fixture that runs
+   inside a container depends on packages this repository does not install.
 
 ## Verification gates
 
-None of these is satisfied by reading the code. Gates 1–4 and 7 were measured on 2026-09-09 against
-the real adapter and a real engine; the transcript is in
-[audit/VERIFICATION.md](../../audit/VERIFICATION.md). Gates 5 and 6 need a full session and are open.
+None of these is satisfied by reading the code. **All seven were measured**, gates 1–4 and 7 on
+2026-09-09 and gates 5–6 on 2026-09-10, the last two through a real daemon on a scratch state
+directory: a real Claude Code worker ran `docker compose up -d` on an unmodified repository and
+verified postgres with `pg_isready -h 127.0.0.1 -p 15432` itself, and a `kill -9` while the engine was
+up left orphans that the restart removed. The transcripts are in
+[audit/VERIFICATION.md](../../audit/VERIFICATION.md).
 
 1. `bun run check` green, including the UI build.
 2. A real session against a repository with a `docker-compose.yml`: the agent runs

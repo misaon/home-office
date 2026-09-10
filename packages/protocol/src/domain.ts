@@ -260,6 +260,10 @@ export const MailItem = z.object({
 });
 export type MailItem = z.infer<typeof MailItem>;
 
+/** Whether this session got the private container engine its project asks for; absent means none. */
+export const SessionServices = z.enum(["ready", "failed"]);
+export type SessionServices = z.infer<typeof SessionServices>;
+
 export const Session = z.object({
   id: SessionId,
   taskId: TaskId,
@@ -268,6 +272,7 @@ export const Session = z.object({
   state: SessionState,
   runtimeSessionId: z.string().optional(),
   sandboxId: z.string().optional(),
+  services: SessionServices.optional(),
   /** Earlier session of the same task and agent whose conversation this one resumed. */
   resumedFrom: SessionId.optional(),
   usage: Usage,
