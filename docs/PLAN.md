@@ -82,6 +82,17 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-10 — Owner task: footprints, an outline around furniture, and two languages — Seven pieces
+  resized in `OBJECT_SPEC` (meeting and dining table 7×3, fridge 3×2, hot tub 5×5, bookcase 8×1, toilet
+  2×2, window 4×1), and ARCHITECTURE's stale copy of those numbers corrected to match the table it
+  should have been reading. Furniture is now inset and outlined at the weight rooms use, which is what
+  stops two desks that share a cell edge from reading as one: the old stroke was a world-unit hairline
+  that vanishes at the zoom a whole floor is seen at. The office also speaks Czech — chosen in Settings,
+  remembered in the browser, every panel, tooltip and the editor's own palette included, with room and
+  furniture names in the dictionaries while the office file keeps its slugs. Everything an agent reads
+  stays English. Decisions, the measurement and what the library cost are in
+  [the plan](plans/2026-09-10-footprints-borders-and-language.md).
+
 - 2026-09-09 — Owner task: `docker compose` inside a task — Eleven candidates were read from primary
   sources first (Docker Sandboxes `sbx` 0.42.1, rootful and rootless dind, sysbox, gVisor, rootless
   Podman, Apple `container` 1.0, Docker Offload, socket proxies, Dev Containers, Dagger container-use),

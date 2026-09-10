@@ -1,5 +1,6 @@
 import { errorMessage, type Project, type ServicesPolicy } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Segmented } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 
@@ -10,18 +11,17 @@ const MODES = [
   { value: "rootful", label: "rootful" },
 ] as const satisfies readonly { value: ServicesPolicy["mode"]; label: string }[];
 
-const NOTE: Record<ServicesPolicy["mode"], string> = {
-  rootless:
-    "The engine runs as a non-root user inside a user namespace. Per-service limits (mem_limit) are accepted but not enforced; the engine's own limit caps the whole environment.",
-  rootful:
-    "Full Compose fidelity, and a wider boundary: a successful escape from this engine is root inside the Docker VM.",
-};
+const NOTE = {
+  rootless: "settings.servicesRootless",
+  rootful: "settings.servicesRootful",
+} as const satisfies Record<ServicesPolicy["mode"], string>;
 
 /**
  * Whether this floor's tasks get their own container engine, so the repository's `docker-compose.yml`
  * runs inside the sandbox. A session with services occupies two of the daemon's session slots.
  */
 export function ServicesSettings({ project }: Props): React.JSX.Element {
+  const { t } = useTranslation();
   const save = useMutation({
     mutationFn: (patch: Partial<ServicesPolicy>) =>
       requireClient().projects.update({
@@ -41,7 +41,7 @@ export function ServicesSettings({ project }: Props): React.JSX.Element {
               save.mutate({ enabled: e.target.checked });
             }}
           />
-          Task services (own Docker engine)
+          {t("settings.services")}
         </label>
         {services.enabled ? (
           <Segmented
@@ -53,7 +53,7 @@ export function ServicesSettings({ project }: Props): React.JSX.Element {
           />
         ) : null}
       </div>
-      {services.enabled ? <p className="text-gray-400">{NOTE[services.mode]}</p> : null}
+      {services.enabled ? <p className="text-gray-400">{t(NOTE[services.mode])}</p> : null}
       {save.error === null ? null : <p className="text-red-400">{errorMessage(save.error)}</p>}
     </div>
   );

@@ -90,6 +90,10 @@ const walls = (map: TileMap): Graphics => {
   return graphics;
 };
 
+/** Enough of a gap that abutting pieces never merge, and an outline of the room edges' weight. */
+const OBJECT_INSET = CELL_PX * 0.08;
+const OBJECT_EDGE_WIDTH = CELL_PX * 0.09;
+
 /** One outlined rectangle per object footprint, coloured by what the object is. */
 const objects = (template: FloorTemplate): Graphics => {
   const graphics = new Graphics();
@@ -104,10 +108,18 @@ const objects = (template: FloorTemplate): Graphics => {
       seen.add(id);
       const box = footprint(map, id, x, y);
       const kind = map.objectKind[y * map.width + x] ?? "";
+      // Inset and outlined like a room, so two pieces sharing a cell edge — desks facing each other,
+      // a counter along a wall — read as two pieces and not as one. A world-unit hairline would
+      // vanish at the zoom the whole floor is seen at.
       graphics
-        .rect(box.x * CELL_PX, box.y * CELL_PX, box.w * CELL_PX, box.h * CELL_PX)
+        .rect(
+          box.x * CELL_PX + OBJECT_INSET,
+          box.y * CELL_PX + OBJECT_INSET,
+          box.w * CELL_PX - OBJECT_INSET * 2,
+          box.h * CELL_PX - OBJECT_INSET * 2,
+        )
         .fill(colourOf(OBJECTS, kind, OBJECT_FILL))
-        .stroke({ color: OBJECT_EDGE, width: 1 });
+        .stroke({ color: OBJECT_EDGE, width: OBJECT_EDGE_WIDTH });
     }
   }
   return graphics;

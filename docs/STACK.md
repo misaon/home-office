@@ -30,6 +30,7 @@ kept as history and is not evidence about the current tree.
 | Pathfinding queue         | TinyQueue 3.0.0                                       | Heap for the simulation's weighted A* search                                                                                 |
 | Agent protocols           | ACP SDK 1.4.0, MCP SDK 1.30.0                         | Provider sessions and scoped office tools                                                                                    |
 | Secrets                   | `Bun.secrets`, atomic file fallback                   | Keychain / libsecret / Credential Manager, chosen by whether the host store answers; no secret ever in a subprocess argument |
+| Localisation              | i18next 26.4.2, react-i18next 17.0.13                 | The office's own text in English and Czech, with typed keys; +93 KiB on the UI bundle (1018 → 1111 KiB)                      |
 | Types / CLI               | type-fest 5.9.0 (dev), yoctocolors 2.2.0              | One typed `compact()` helper instead of 62 spread guards; CLI colour gated on a TTY                                          |
 
 The root esbuild override to 0.28.2 removes the vulnerable Drizzle Kit transitive version. Check Drizzle
@@ -37,6 +38,15 @@ schema generation when changing it. The native secret API is experimental; retai
 backend as an operational fallback. Do not assume API compatibility with arbitrary Node tooling just
 because Bun executes TypeScript — `Bun.timingSafeEqual` does not exist in 1.4.2, for one, and the audit
 had to fall back to `node:crypto` for it.
+
+i18next and react-i18next were checked against the npm registry on 2026-09-10: i18next 26.4.2
+(published 2026-09-03, 66 releases in twelve months, MIT, no runtime dependencies, 19.7 M weekly) and
+react-i18next 17.0.13 (2026-09-01, 53 releases, MIT, 14.3 M weekly, `@babel/runtime` +
+`html-parse-stringify` + `use-sync-external-store`, repository last pushed 2026-09-03, not archived).
+Both accept `typescript ^5 || ^6 || ^7` and react `>= 16.8`. The owner chose them over a hand-written
+dictionary; the measured alternatives were Lingui at 10.4 kB and react-intl at ~20 kB min+gzip. Czech
+plural agreement rides on i18next's own `Intl.PluralRules` suffixes, so `board.tasks_one/_few/_many` say
+"5 úkolů" rather than "5 úkol".
 
 The office UI is built with Bun's `reactCompiler: true`, so components are memoised by the compiler.
 That is why the panels contain no hand-written `useCallback`/`useMemo`: adding them back would duplicate

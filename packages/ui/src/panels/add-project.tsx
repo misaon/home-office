@@ -1,6 +1,7 @@
 import { type Agent, type AgentId, errorMessage } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Section } from "../kit/controls.tsx";
 import { Modal } from "../kit/modal.tsx";
 import { type Client, requireClient } from "../rpc.ts";
@@ -35,11 +36,12 @@ function ImportPicker({
   imports: ReadonlySet<AgentId>;
   toggle: (id: AgentId) => void;
 }): React.JSX.Element | null {
+  const { t } = useTranslation();
   if (groups.length === 0) {
     return null;
   }
   return (
-    <Section title="Import characters from other floors">
+    <Section title={t("project.importAgents")}>
       <div className="max-h-44 space-y-3 overflow-y-auto rounded-md border border-line bg-ink p-3">
         {groups.map((g) => (
           <div key={g.floor} className="space-y-1">
@@ -73,6 +75,7 @@ function ImportPicker({
  * gets its own Andrew and Lola.
  */
 export function AddProjectModal(): React.JSX.Element | null {
+  const { t } = useTranslation();
   const open = useUi((s) => s.addProjectOpen);
   const setOpen = useUi((s) => s.setAddProjectOpen);
   const selectFloor = useUi((s) => s.selectFloor);
@@ -126,22 +129,22 @@ export function AddProjectModal(): React.JSX.Element | null {
   };
   return (
     <Modal
-      title="Add a project (floor)"
-      description="Every project is a floor of the office with its own boss, Andrew, and Lola at the reception. Point it at a git repository on this machine or at a git URL."
+      title={t("project.add")}
+      description={t("project.addDescription")}
       onClose={close}
       footer={
         <>
           {create.error === null ? null : (
             <p className="mr-auto text-xs text-red-300">{errorMessage(create.error)}</p>
           )}
-          <Button onClick={close}>Cancel</Button>
+          <Button onClick={close}>{t("common.cancel")}</Button>
           <Button variant="primary" disabled={!canCreate} onClick={submit}>
-            {create.isPending ? "Creating…" : "Create floor"}
+            {create.isPending ? t("project.creating") : t("project.create")}
           </Button>
         </>
       }
     >
-      <Section title="Repository">
+      <Section title={t("project.repository")}>
         <RepoFields draft={draft} setDraft={setDraft} inspecting={inspecting} />
       </Section>
       <Details

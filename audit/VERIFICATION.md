@@ -1690,3 +1690,80 @@ $ bun run check
 ✔ 16/16 tsconfig targets (17 with spikes/task-engine) · oxlint --type-aware --deny-warnings clean
 oxfmt clean · knip clean · ui: 3 files, 1018 KiB
 ```
+
+---
+
+## Owner task 2026-09-10 — footprints, the outline around furniture, and two languages
+
+### The footprints, read back from the palette
+
+The editor's palette shows every piece with the footprint `OBJECT_SPEC` gives it. In a real browser at
+1280×720, with the Furniture tool active:
+
+```
+Lift 5×2 wall        Developer's desk 6×3
+Tester's desk 6×3    Analyst's desk 6×3
+Boss's desk 6×3      Reception counter 8×2
+Meeting table 7×3    Office chair 2×2
+Lounge chair 3×3     Dining table 7×3
+```
+
+`grep` on the source for the other four: `fridge: { w: 3, h: 2 …`, `"hot-tub": { w: 5, h: 5 …`,
+`bookcase: { w: 8, h: 1 …`, `toilet: { w: 2, h: 2 …`, `window: { w: 4, h: 1 …`.
+
+### The outline
+
+Three developer's desks were placed, two of them sharing a vertical cell edge, and the canvas was
+zoomed in. Each desk draws as its own rectangle with a visible gap between neighbours; before the
+change the two adjacent desks were one continuous block, because the stroke was `width: 1` in world
+units and disappears under a pixel at the zoom a whole floor is seen at. The values now are
+`OBJECT_INSET = CELL_PX * 0.08` and `OBJECT_EDGE_WIDTH = CELL_PX * 0.09` — the same weight rooms use.
+
+### The language switch
+
+Settings shows a `JAZYK` / `LANGUAGE` section with `English | Čeština`. Clicking Čeština switched the
+running page with no reload; the accessibility tree afterwards (`read_page`, filter `interactive`):
+
+```
+button "Přidat projekt (nové podlaží)"
+button "Interní editor kanceláře (jen vývojové buildy)"
+button "Docker, image, token, kouřová zkouška"
+button "Chat"  button "Tabule"  button "Zaměstnanec"  button "Spotřeba"  button "Zdroje"  button "Nastavení"
+button "English"  button "Čeština"
+textbox "Token předplatného Claude" placeholder="vložte token"
+button "Uložit"  button "Zapomenout"
+textbox "Anthropic API klíč" placeholder="vložte token"
+```
+
+Tooltips, aria labels and placeholders came with it, which is what the `title=` and `aria-label=`
+entries above show. The editor, opened afterwards in the same page:
+
+```
+Editor kanceláře                                  Zavřít
+KANCELÁŘ   Název: Nová kancelář
+           Soubor: layouts/nova-kancelar.json     převzato z názvu
+           60 × 34 buněk · 0 úseků zdí · 0 úseků místností · 0 dveří · 0 nábytku
+NÁSTROJ    Zeď | Místnost | Dveře | Nábytek
+           Materiál: Cihla | Sklo
+           Tažením levým tlačítkem kreslíte, pravým mažete to, co tento nástroj kreslí.
+           Prostředním tlačítkem nebo shift posouvá; kolečko přibližuje.
+ULOŽENÉ KANCELÁŘE   Base base · 60×34   Uložit kancelář   Načíst kancelář z JSON souboru
+```
+
+and its palette: `Výtah 5×2 na zdi`, `Stůl vývojáře 6×3`, `Stůl testera 6×3`, `Stůl analytika 6×3`,
+`Stůl šéfa 6×3`, `Pult recepce 8×2`, `Jednací stůl 7×3`, `Kancelářská židle 2×2`, `Křeslo 3×3`,
+`Jídelní stůl 7×3`, `Jídelní židle 2×2`, `Kuchyňská linka 4×3`.
+
+`layouts/nova-kancelar.json` is also the evidence for the `slugify` repair: the same field read
+`layouts/nov-kancel.json` before the accents were decomposed rather than deleted with their letters.
+
+### Checks
+
+```
+$ bun run check
+✔ 17/17 tsconfig targets · oxlint --type-aware --deny-warnings clean · oxfmt clean · knip clean
+ui: 3 files, 1111 KiB   (1018 KiB before i18next and react-i18next)
+```
+
+The bundle cost of the owner's chosen library is that 93 KiB. Not covered: the provider images (nothing
+in them changed) and the packaged desktop shell.

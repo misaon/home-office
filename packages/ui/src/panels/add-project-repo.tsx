@@ -8,8 +8,10 @@ import {
   repoUrl,
   REPO_URL_FORMS,
 } from "@ho/protocol";
+import type { TFunction } from "i18next";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CONTROL, Field, FolderIcon, Segmented } from "../kit/controls.tsx";
 import { getClient, requireClient } from "../rpc.ts";
 
@@ -26,8 +28,8 @@ export type Draft = {
 };
 
 const SOURCES = [
-  { value: "local", label: "Folder on this machine" },
-  { value: "git", label: "Git URL" },
+  { value: "local", label: "project.sourceLocal" },
+  { value: "git", label: "project.sourceGit" },
 ] as const satisfies readonly { value: Source; label: string }[];
 
 /** What the user typed for the source that is currently selected. */
@@ -98,29 +100,28 @@ export function useRepoInspection(
 }
 
 type Hint = { text: string; tone: "muted" | "error" };
-
-const hintFor = (kind: Source, text: string, { result, busy }: Inspecting): Hint => {
+const hintFor = (kind: Source, text: string, { result, busy }: Inspecting, t: TFunction): Hint => {
   if (text === "") {
     return {
       text:
         kind === "local"
-          ? "The repository itself or any folder inside it."
-          : `Supported: ${REPO_URL_FORMS}`,
+          ? t("project.folderHint")
+          : t("project.urlHint", { forms: REPO_URL_FORMS }),
       tone: "muted",
     };
   }
   if (repoFrom(kind, text) === null) {
-    return { text: `Not a repository URL — use ${REPO_URL_FORMS}`, tone: "error" };
+    return { text: t("project.urlInvalid", { forms: REPO_URL_FORMS }), tone: "error" };
   }
   if (busy) {
-    return { text: "checking with git…", tone: "muted" };
+    return { text: t("project.checkingGit"), tone: "muted" };
   }
   if (result === null) {
     return { text: " ", tone: "muted" };
   }
   return result.ok
     ? {
-        text: `git repository · ${String(result.branches.length)} branch${result.branches.length === 1 ? "" : "es"}`,
+        text: t("project.gitRepo", { count: result.branches.length }),
         tone: "muted",
       }
     : { text: result.message, tone: "error" };
@@ -131,15 +132,16 @@ const hintFor = (kind: Source, text: string, { result, busy }: Inspecting): Hint
  * "Not Found" that explains nothing. Checked structurally, not with `instanceof`: the error crosses a
  * WebSocket and its class need not be the one this bundle imported.
  */
-const pickFailure = (error: unknown): string =>
-  typeof error === "object" && error !== null && "code" in error && error.code === "NOT_FOUND"
-    ? "This daemon is older than the office and cannot open a folder dialog — restart it, reload, or type the path."
-    : errorMessage(error);
+const isOldDaemon = (error: unknown): boolean =>
+  typeof error === "object" && error !== null && "code" in error && error.code === "NOT_FOUND";
+const pickFailure = (error: unknown, t: TFunction): string =>
+  isOldDaemon(error) ? t("project.oldDaemon") : errorMessage(error);
 
 type FieldProps = { draft: Draft; setDraft: (draft: Draft) => void; hint: Hint };
 
 /** The local path, with the host's own directory dialog behind the folder button. */
 function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
+  const { t } = useTranslation();
   const pick = useMutation({
     mutationFn: () =>
       requireClient().system.pickDirectory(
@@ -153,7 +155,7 @@ function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
   });
   const unavailable =
     pick.error !== null
-      ? pickFailure(pick.error)
+      ? pickFailure(pick.error, t)
       : pick.data?.status === "unavailable"
         ? pick.data.message
         : null;
@@ -168,7 +170,7 @@ function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
   return (
     <Field
       id="ho-repo-path"
-      label="Repository folder"
+      label={t("project.folder")}
       hint={unavailable ?? hint.text}
       tone={unavailable === null ? hint.tone : "error"}
     >
@@ -185,7 +187,7 @@ function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
         <button
           type="button"
           className="shrink-0 rounded-md border border-line bg-ink px-3 text-gray-400 transition hover:border-accent/60 hover:text-white disabled:opacity-40"
-          title="Choose a folder…"
+          title={t("project.chooseFolder")}
           disabled={pick.isPending}
           onClick={() => {
             pick.mutate();
@@ -199,8 +201,9 @@ function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
 }
 
 function UrlField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
+  const { t } = useTranslation();
   return (
-    <Field id="ho-repo-url" label="Git repository URL" hint={hint.text} tone={hint.tone}>
+    <Field id="ho-repo-url" label={t("project.url")} hint={hint.text} tone={hint.tone}>
       <input
         id="ho-repo-url"
         className={`${CONTROL} font-mono`}
@@ -224,12 +227,13 @@ export function RepoFields({
   setDraft: (draft: Draft) => void;
   inspecting: Inspecting;
 }): React.JSX.Element {
-  const hint = hintFor(draft.kind, typedIn(draft), inspecting);
+  const { t } = useTranslation();
+  const hint = hintFor(draft.kind, typedIn(draft), inspecting, t);
   return (
     <>
       <Segmented
         value={draft.kind}
-        options={SOURCES}
+        options={SOURCES.map(({ value, label }) => ({ value, label: t(label) }))}
         onChange={(kind) => {
           setDraft({ ...draft, kind, name: "", branch: "" });
         }}
@@ -253,15 +257,16 @@ export function Details({
   setDraft: (draft: Draft) => void;
   branches: readonly string[];
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const options =
     draft.branch === "" || branches.includes(draft.branch) ? branches : [draft.branch, ...branches];
   return (
     <div className="grid grid-cols-2 gap-5">
-      <Field id="ho-floor-name" label="Floor name">
+      <Field id="ho-floor-name" label={t("project.name")}>
         <input
           id="ho-floor-name"
           className={CONTROL}
-          placeholder="taken from the repository"
+          placeholder={t("project.nameHint")}
           value={draft.name}
           onChange={(e) => {
             setDraft({ ...draft, name: e.target.value });
@@ -270,8 +275,8 @@ export function Details({
       </Field>
       <Field
         id="ho-default-branch"
-        label="Default branch"
-        hint={options.length === 0 ? "filled in once git answers" : undefined}
+        label={t("project.branch")}
+        hint={options.length === 0 ? t("project.branchHint") : undefined}
       >
         <select
           id="ho-default-branch"

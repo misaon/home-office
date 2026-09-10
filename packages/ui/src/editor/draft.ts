@@ -52,6 +52,10 @@ const cells = <T>(count: number): (T | null)[] => Array.from({ length: count }, 
 export const slugify = (name: string): string => {
   const slug = name
     .toLowerCase()
+    // "Nová kancelář" is a file name too: the accents are decomposed and dropped so the letters they
+    // sit on survive, instead of the whole character going with them.
+    .normalize("NFD")
+    .replaceAll(/\p{Diacritic}/gu, "")
     .replaceAll(/[^a-z\d]+/gu, "-")
     .replaceAll(/^-+|-+$/gu, "")
     .slice(0, 64)
@@ -176,7 +180,17 @@ const touchesWall = (draft: Draft, rect: Rect): boolean => {
   return indices(draft, around).some((i) => draft.wall[i] !== null);
 };
 
-export type Painted = { next: Draft; note: string | null };
+/** Why a paint was refused: a dictionary key, and the piece it is about when the key names one. */
+export type Note = {
+  key:
+    | "editor.noteNoFit"
+    | "editor.noteNoWall"
+    | "editor.noteOnWall"
+    | "editor.noteInWall"
+    | "editor.noteOccupied";
+  name?: string;
+};
+export type Painted = { next: Draft; note: Note | null };
 
 /** The cells an object would take if it were placed here, so the cursor can show them before the click. */
 export const ghostAt = (
@@ -204,7 +218,7 @@ export function paint(draft: Draft, tool: Tool, rect: Rect, kinds: Kinds): Paint
   }
   const box = tool === "door" ? doorRect(draft, rect, kinds) : footprint(rect, kinds);
   if (!inside(draft, box)) {
-    return { next: draft, note: "does not fit on the map" };
+    return { next: draft, note: { key: "editor.noteNoFit" } };
   }
   const covered = indices(draft, box);
   if (tool === "door") {
@@ -214,17 +228,17 @@ export function paint(draft: Draft, tool: Tool, rect: Rect, kinds: Kinds): Paint
       ...draft.doors.filter((door) => !overlaps(door, box)),
       { ...box, kind: kinds.door, facing: kinds.facing },
     ];
-    return { next, note: touchesWall(draft, box) ? null : "this doorway touches no wall" };
+    return { next, note: touchesWall(draft, box) ? null : { key: "editor.noteNoWall" } };
   }
   const spec = OBJECT_SPEC[kinds.object];
   if (spec.onWall && !backOnWall(draft, box, kinds.facing)) {
-    return { next: draft, note: `${kinds.object} hangs on a wall — click the wall itself` };
+    return { next: draft, note: { key: "editor.noteOnWall", name: kinds.object } };
   }
   if (!spec.onWall && covered.some((i) => draft.wall[i] !== null)) {
-    return { next: draft, note: "furniture cannot stand in a wall" };
+    return { next: draft, note: { key: "editor.noteInWall" } };
   }
   if (draft.objects.some((object) => overlaps(object, box))) {
-    return { next: draft, note: "something already stands there" };
+    return { next: draft, note: { key: "editor.noteOccupied" } };
   }
   next.objects = [...draft.objects, { ...box, kind: kinds.object, facing: kinds.facing }];
   return { next, note: null };

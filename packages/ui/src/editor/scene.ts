@@ -1,13 +1,14 @@
 import "pixi.js/unsafe-eval";
 import { OBJECT_SPEC, type ObjectKind } from "@ho/protocol";
 import { CELL_PX, compileLayout, type FloorTemplate } from "@ho/sim";
-import { Application, Container, Graphics, Text } from "pixi.js";
+import { Application, Container, Graphics } from "pixi.js";
 import { Camera } from "../office/camera.ts";
 import { floorTiles, gridLines } from "../office/tiles.ts";
 import { arrowFor, arrowGraphic, arrowsOf } from "./arrows.ts";
 import { type Draft, ghostAt, type Kinds, type Rect, type Tool } from "./draft.ts";
 import { draftLayout } from "./office-file.ts";
-import { labelsOf } from "./labels.ts";
+import { kindNameOf, type KindName } from "../i18n/kinds.ts";
+import { drawLabels } from "./labels.ts";
 
 const HOVER = 0x2b3140;
 const ARROW = 0x394152;
@@ -48,6 +49,7 @@ export class EditorScene {
   #gridScale = 0;
   #template: FloorTemplate | null = null;
   #draft: Draft | null = null;
+  #kindName: KindName = kindNameOf("en");
   #host: HTMLElement | null = null;
   #observer: ResizeObserver | null = null;
   #paintFrom: Cell | null = null;
@@ -87,6 +89,15 @@ export class EditorScene {
   }
 
   /** The active tool and its palette: furniture is placed by a click, so its footprint is shown first. */
+  /** The office's language: the map's labels follow the panels. */
+  setKindName(name: KindName): void {
+    this.#kindName = name;
+    if (this.#draft !== null) {
+      this.#drawLabels(this.#draft);
+      this.#scaleLabels();
+    }
+  }
+
   setTool(tool: Tool, kinds: Kinds): void {
     this.#tool = tool;
     this.#kinds = kinds;
@@ -121,16 +132,7 @@ export class EditorScene {
   }
 
   #drawLabels(draft: Draft): void {
-    this.#labels.removeChildren().forEach((child) => {
-      child.destroy();
-    });
-    for (const label of labelsOf(draft)) {
-      const text = new Text({ text: label.text, style: LABEL, resolution: 3 });
-      text.anchor.set(0.5);
-      text.position.set(label.x * CELL_PX, label.y * CELL_PX);
-      this.#labels.addChild(text);
-    }
-    this.#scaleLabels();
+    drawLabels(this.#labels, draft, this.#kindName, LABEL, this.camera.scale);
   }
 
   /** Labels live in world space but must not grow with it, or a zoomed-in office is all text. */

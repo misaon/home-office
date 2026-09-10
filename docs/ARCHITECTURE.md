@@ -189,9 +189,11 @@ applies to offices drawn today, and the compiled map carries that kind per cell 
 
 Footprints live in one table, `OBJECT_SPEC` in the protocol: cells across and down, whether the piece
 blocks movement, whether it mounts on a wall, and whether its direction matters. They are the owner's,
-at roughly 25 cm per cell and derived from the real pieces — a developer's desk 6×3, the boss's 8×4, a
-reception counter 10×3, a meeting table 12×5, the lift car 5×2 hung on a wall, chairs 2×2, a doorway
-1×2 — and an employee is 2×2, the same width as the chair they sit on and the doorway they pass. A piece
+at roughly 25 cm per cell and derived from the real pieces — every desk 6×3, a reception counter 8×2, a
+meeting table and a dining table 7×3, a bookcase 8×1, a fridge 3×2, a hot tub 5×5, a toilet 2×2, a
+window 4×1, the lift car 5×2 hung on a wall, chairs 2×2, a doorway 1×2 — and an employee is 2×2, the
+same width as the chair they sit on and the doorway they pass. `OBJECT_SPEC` is the only place these
+numbers live; read it rather than this sentence when one has to be exact. A piece
 that hangs on a wall puts its **back** row on the cell clicked and grows the way it faces, so a fitting
 sits in the wall and a lift car juts into the room. Movement is still one cell at a time: a two-by-two
 body is not yet what the path search reserves. Each of the eleven room kinds carries its own hue and is outlined in
@@ -203,6 +205,11 @@ a right click turns them a quarter and a right drag erases; walls and rooms are 
 Prison Architect is coarser — its office desk and bed are 2×1, its chair and door 1×1 — because its tile
 is about a metre; the whole catalogue and its sources are in
 [the editor plan](plans/2026-09-09-layout-editor.md).
+
+Furniture is drawn inset by 0.08 of a cell and outlined at the weight the room edges use, which is
+what keeps two pieces that share a cell edge — desks facing each other, a counter along a wall — from
+reading as one shape. A world-unit hairline did that job before and disappeared at the zoom the whole
+floor is seen at.
 
 The view draws ground, floors, room tint, the grid, walls, objects and then one dot per character.
 The grid is always visible — one hairline of one colour on every cell boundary, the map's outer edge
@@ -217,6 +224,14 @@ Movement uses a weighted grid A* with a TinyQueue heap, clearance and turn costs
 reservations. Needs and seeded RNG drive idle behavior. Plan steps describe walking, dwelling, emitting
 handoff completion and leaving the office; queued envelope deliveries survive later intents. Each floor
 has its own elevator and animations. Simulation stepping is fixed and catch-up is bounded.
+
+The office speaks the viewer's language: English by default, Czech on request, chosen in Settings and
+remembered in that browser's `localStorage`. i18next holds the dictionaries and React reads them through
+`react-i18next`; the keys are typed, so a missing Czech string is a compile error rather than a blank
+label, and `cs.ts` is annotated as `typeof en` to force that. Room, furniture, door and wall names are
+part of the dictionaries, which is why the editor's palette reads "Jednací stůl" while the office file
+it writes still stores `meeting-table`. Everything an agent reads stays English whatever is chosen:
+briefs, prompts, the MCP tools, the CLI and the daemon's own log.
 
 Both scales the panels use are absolute, set once in `@theme`: `--spacing: 4px` and a px text ramp
 (`--text-2xs` 11px through `--text-base` 15px) with their own line heights. A rem scale hung off the

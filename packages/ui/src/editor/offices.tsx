@@ -1,6 +1,7 @@
 import { OfficeLayout } from "@ho/protocol";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, CONTROL, Field, Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
@@ -12,9 +13,10 @@ export const layoutsQuery = {
 
 /** Any office JSON, not only the ones already in the repository. */
 function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX.Element {
+  const { t } = useTranslation();
   const [problem, setProblem] = useState<string | null>(null);
   return (
-    <Field id="ho-editor-file" label="Load an office from a JSON file">
+    <Field id="ho-editor-file" label={t("editor.load")}>
       <input
         id="ho-editor-file"
         type="file"
@@ -31,7 +33,7 @@ function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX
               setProblem(null);
               load(parsed.data);
             } else {
-              setProblem(parsed.error.issues[0]?.message ?? "not an office layout");
+              setProblem(parsed.error.issues[0]?.message ?? t("editor.notALayout"));
             }
           });
         }}
@@ -56,16 +58,13 @@ export function SavedOffices({
   load: (office: OfficeLayout) => void;
   save: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const connection = useUi((s) => s.connection);
   const store = useQuery({ ...layoutsQuery, enabled: connection === "online" });
   const available = store.data?.available ?? false;
   return (
-    <Section title="Saved offices">
-      {available ? null : (
-        <p className="text-2xs text-amber-300">
-          This build has no repository to write into, so saving is unavailable.
-        </p>
-      )}
+    <Section title={t("editor.saved")}>
+      {available ? null : <p className="text-2xs text-amber-300">{t("editor.noRepo")}</p>}
       <div className="space-y-1">
         {(store.data?.layouts ?? []).map((office) => (
           <button
@@ -84,7 +83,7 @@ export function SavedOffices({
         ))}
       </div>
       <Button variant="primary" disabled={!available} onClick={save}>
-        Save office
+        {t("editor.saveOffice")}
       </Button>
       <LoadFile load={load} />
     </Section>

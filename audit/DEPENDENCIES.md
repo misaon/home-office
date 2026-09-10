@@ -162,3 +162,17 @@ All figures from the same registry sweep on 2026-09-08.
 **Added:** `type-fest` (dev, root — types only, erased at runtime), `yoctocolors` (`@ho/cli`).
 **Removed:** `proper-lockfile`, `@types/proper-lockfile`.
 **Bumped:** `knip` 6.34.0 → 6.35.0 and `@types/bun` 1.4.1 → 1.4.2 (Wave 5); `chrome-devtools-mcp` 1.8.0 → 1.9.0 in the sandbox MCP tree — recorded here after Wave 5 but only actually applied in Wave 7, when checking this line against the manifest found it still pinned to 1.8.0. The agent image was rebuilt for it and `npm audit` is clean.
+
+## Added 2026-09-10 — localisation
+
+Checked with the same requests as the sweep above, on 2026-09-10.
+
+| Package         | Pinned  | Latest  | Deprecated | Last publish | Weekly | Licence | Runtime deps | Verdict  |
+| --------------- | ------- | ------- | ---------- | ------------ | ------ | ------- | ------------ | -------- |
+| `i18next`       | 26.4.2  | 26.4.2  | no         | 2026-09-03   | 19.7 M | MIT     | 0            | **keep** |
+| `react-i18next` | 17.0.13 | 17.0.13 | no         | 2026-09-01   | 14.3 M | MIT     | 3            | **keep** |
+
+`react-i18next`'s three are `@babel/runtime`, `html-parse-stringify` (its `<Trans>` parser) and
+`use-sync-external-store`. `github.com/i18next/react-i18next`: not archived, last push 2026-09-03.
+Peer ranges cover this tree — `typescript ^5 || ^6 || ^7` against TypeScript 7.0.2, react `>= 16.8.0`
+against 19.2.8, and `i18next >= 26.2.0` against 26.4.2.

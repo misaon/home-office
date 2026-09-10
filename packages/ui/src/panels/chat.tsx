@@ -7,12 +7,20 @@ import {
   type TaskId,
 } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
+import type { TFunction } from "i18next";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { requireClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
 
-const authorName = (agents: Snapshot["agents"], message: ChatMessage): string =>
-  message.author.kind === "human" ? "You" : (agents.get(message.author.agentId)?.name ?? "agent");
+const authorName = (
+  agents: Snapshot["agents"],
+  message: ChatMessage,
+  translate: TFunction,
+): string =>
+  message.author.kind === "human"
+    ? translate("chat.you")
+    : (agents.get(message.author.agentId)?.name ?? translate("chat.agent"));
 
 type Question = { taskId: TaskId; title: string; text: string; asker: string };
 
@@ -21,6 +29,7 @@ const openQuestions = (
   tasks: Snapshot["tasks"],
   agents: Snapshot["agents"],
   floorId: ProjectId,
+  translate: TFunction,
 ): Question[] =>
   [...tasks.values()]
     .filter((t) => t.projectId === floorId && t.status === "blocked")
@@ -32,8 +41,8 @@ const openQuestions = (
       }
       const asker =
         question.author.kind === "agent"
-          ? (agents.get(question.author.agentId)?.name ?? "a colleague")
-          : "a colleague";
+          ? (agents.get(question.author.agentId)?.name ?? translate("chat.colleague"))
+          : translate("chat.colleague");
       return [{ taskId: t.id, title: t.title, text: question.text, asker }];
     });
 
@@ -44,6 +53,7 @@ function Messages({
   messages: readonly ChatMessage[];
   agents: Snapshot["agents"];
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const bottom = useRef<HTMLDivElement>(null);
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
@@ -64,7 +74,7 @@ function Messages({
           }`}
         >
           <div className="mb-1 text-2xs text-gray-400">
-            {authorName(agents, m)} · {new Date(m.at).toLocaleTimeString()}
+            {authorName(agents, m, t)} · {new Date(m.at).toLocaleTimeString()}
           </div>
           <div className="whitespace-pre-wrap">{m.text}</div>
         </div>
@@ -75,6 +85,7 @@ function Messages({
 }
 
 export function ChatPanel(): React.JSX.Element {
+  const { t } = useTranslation();
   const projects = useUi((s) => s.snapshot.projects);
   const agents = useUi((s) => s.snapshot.agents);
   const agentsByProject = useUi((s) => s.snapshot.agentsByProject);
@@ -91,12 +102,12 @@ export function ChatPanel(): React.JSX.Element {
     },
   });
   if (floorId === null) {
-    return <p className="p-4 text-xs text-gray-400">Add a project (floor) first.</p>;
+    return <p className="p-4 text-xs text-gray-400">{t("project.needFirst")}</p>;
   }
   const floor = projects.get(floorId);
   const boss = bossOf({ agents, agentsByProject }, floorId);
   const messages = chatOf({ chat }, floorId).slice(-200);
-  const questions = openQuestions(tasks, agents, floorId);
+  const questions = openQuestions(tasks, agents, floorId, t);
   const question = questions.find((q) => q.taskId === answering);
 
   const submit = (): void => {
@@ -114,8 +125,8 @@ export function ChatPanel(): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-line px-4 py-3 text-xs text-gray-400">
-        Chat with <span className="text-gray-200">{boss?.name ?? "the boss"}</span>
-        {floor === undefined ? "" : ` · floor ${floor.name}`}
+        {t("chat.with")} <span className="text-gray-200">{boss?.name ?? t("chat.theBoss")}</span>
+        {floor === undefined ? "" : t("chat.floorSuffix", { name: floor.name })}
       </div>
       <Messages messages={messages} agents={agents} />
       {questions.length > 0 ? (
@@ -132,7 +143,7 @@ export function ChatPanel(): React.JSX.Element {
               }}
             >
               <span className="text-amber-300">
-                ? {q.asker} on “{q.title}”
+                {t("chat.question", { asker: q.asker, title: q.title })}
               </span>
               <div className="mt-1 text-gray-300">{q.text}</div>
             </button>
@@ -147,10 +158,10 @@ export function ChatPanel(): React.JSX.Element {
         )}
         <div className="mb-2 flex items-center gap-3 text-xs text-gray-400">
           {question === undefined ? (
-            <span>To {boss?.name ?? "the boss"}</span>
+            <span>{t("chat.to", { name: boss?.name ?? t("chat.theBoss") })}</span>
           ) : (
             <>
-              <span>Answer to {question.asker}</span>
+              <span>{t("chat.answerTo", { name: question.asker })}</span>
               <button
                 type="button"
                 className="text-gray-300 hover:underline"
@@ -158,21 +169,17 @@ export function ChatPanel(): React.JSX.Element {
                   setAnswering(null);
                 }}
               >
-                cancel
+                {t("chat.cancelAnswer")}
               </button>
             </>
           )}
         </div>
         <textarea
-          aria-label="Message to the selected floor"
+          aria-label={t("chat.label")}
           maxLength={20_000}
           disabled={send.isPending}
           className="h-20 w-full resize-none rounded-md border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent/60"
-          placeholder={
-            question === undefined
-              ? "Ask the floor for something… (Enter to send, Shift+Enter for a new line)"
-              : "Your answer… (Enter to send)"
-          }
+          placeholder={question === undefined ? t("chat.placeholder") : t("chat.answerPlaceholder")}
           value={text}
           onChange={(e) => {
             setText(e.target.value);
