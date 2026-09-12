@@ -1,11 +1,12 @@
+import { useTranslation } from "react-i18next";
 import type { StepStatus } from "./status.ts";
 
-const BADGE: Record<StepStatus["state"], { label: string; className: string }> = {
-  ok: { label: "done", className: "bg-emerald-900/60 text-emerald-300" },
-  todo: { label: "to do", className: "bg-amber-900/60 text-amber-200" },
-  error: { label: "problem", className: "bg-red-900/60 text-red-200" },
-  unknown: { label: "…", className: "bg-line text-gray-300" },
-};
+const BADGE = {
+  ok: { label: "setup.done", className: "bg-emerald-900/60 text-emerald-300" },
+  todo: { label: "setup.todo", className: "bg-amber-900/60 text-amber-200" },
+  error: { label: "setup.problem", className: "bg-red-900/60 text-red-200" },
+  unknown: { label: null, className: "bg-line text-gray-300" },
+} as const satisfies Record<StepStatus["state"], { label: string | null; className: string }>;
 
 type Props = {
   index: number;
@@ -16,6 +17,7 @@ type Props = {
 
 /** One row of the setup checklist: number, title, state badge and the step's own controls. */
 export function Step({ index, title, status, children }: Props): React.JSX.Element {
+  const { t } = useTranslation();
   const badge = BADGE[status.state];
   return (
     <section className="rounded-md border border-line bg-panel p-4">
@@ -25,7 +27,7 @@ export function Step({ index, title, status, children }: Props): React.JSX.Eleme
         </span>
         <h3 className="flex-1 font-medium">{title}</h3>
         <span className={`rounded px-2 py-0.5 text-2xs tracking-wide uppercase ${badge.className}`}>
-          {badge.label}
+          {badge.label === null ? "…" : t(badge.label)}
         </span>
       </div>
       <p className="mt-2 pl-9 text-xs leading-relaxed text-gray-400">{status.text}</p>

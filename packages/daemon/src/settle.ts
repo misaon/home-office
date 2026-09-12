@@ -1,6 +1,7 @@
 import { fileReport, postAgentMessage, setTaskArtifacts, transitionTask } from "@ho/core";
 import type { TaskArtifacts } from "@ho/protocol";
-import { type Outcome, type Provisioned, publish, type SessionContext } from "./session-run.ts";
+import type { Provisioned, SessionContext } from "./session-provision.ts";
+import { type Outcome, publish } from "./session-run.ts";
 import type { SessionDeps } from "./sessions.ts";
 
 const SYSTEM = { kind: "system" } as const;

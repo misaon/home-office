@@ -1,6 +1,7 @@
 import type { UsageSummary } from "@ho/protocol";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
@@ -14,16 +15,17 @@ function Buckets({
   title: string;
   rows: UsageSummary["byAgent"];
 }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <Section title={title}>
       <table className="w-full text-left text-xs">
         <thead className="text-gray-500">
           <tr>
-            <th className="font-normal">name</th>
-            <th className="text-right font-normal">in</th>
-            <th className="text-right font-normal">out</th>
-            <th className="text-right font-normal">cache</th>
-            <th className="text-right font-normal">sessions</th>
+            <th className="font-normal">{t("usage.name")}</th>
+            <th className="text-right font-normal">{t("usage.in")}</th>
+            <th className="text-right font-normal">{t("usage.out")}</th>
+            <th className="text-right font-normal">{t("usage.cache")}</th>
+            <th className="text-right font-normal">{t("usage.sessions")}</th>
           </tr>
         </thead>
         <tbody>
@@ -43,6 +45,7 @@ function Buckets({
 }
 
 export function UsagePanel(): React.JSX.Element {
+  const { t } = useTranslation();
   const connection = useUi((s) => s.connection);
   const [hours, setHours] = useState(24);
   const query = useQuery({
@@ -56,7 +59,7 @@ export function UsagePanel(): React.JSX.Element {
   return (
     <div className="h-full space-y-5 overflow-y-auto p-4">
       <div className="flex items-center gap-2.5 text-xs">
-        <span className="text-gray-400">Window</span>
+        <span className="text-gray-400">{t("usage.window")}</span>
         {[24, 24 * 7, 0].map((h) => (
           <button
             key={h}
@@ -66,7 +69,7 @@ export function UsagePanel(): React.JSX.Element {
               setHours(h);
             }}
           >
-            {h === 0 ? "all" : h === 24 ? "24 h" : "7 d"}
+            {h === 0 ? t("usage.all") : h === 24 ? t("usage.day") : t("usage.week")}
           </button>
         ))}
       </div>
@@ -76,22 +79,22 @@ export function UsagePanel(): React.JSX.Element {
         </p>
       )}
       {summary === null ? (
-        <p className="text-xs text-gray-400">No data yet.</p>
+        <p className="text-xs text-gray-400">{t("usage.noData")}</p>
       ) : (
         <>
           <div className="leading-relaxed text-xs text-gray-300">
-            {String(summary.sessions)} sessions · {fmt(summary.totals.inputTokens)} in ·{" "}
-            {fmt(summary.totals.outputTokens)} out · {fmt(summary.totals.cacheReadTokens)} cache
-            read · {String(summary.rateLimitIncidents)} rate-limit incidents
+            {t("usage.totals", {
+              sessions: summary.sessions,
+              input: fmt(summary.totals.inputTokens),
+              output: fmt(summary.totals.outputTokens),
+              cache: fmt(summary.totals.cacheReadTokens),
+              limits: summary.rateLimitIncidents,
+            })}
           </div>
-          <Buckets title="By agent" rows={summary.byAgent} />
-          <Buckets title="By project" rows={summary.byProject} />
-          <Buckets title="By day" rows={summary.byDay} />
-          <p className="leading-relaxed text-xs text-gray-500">
-            Token counts come from Claude Code. OpenCode, Gemini CLI and Codex speak ACP, which
-            reports how full the context window is and the session&apos;s cost rather than a token
-            split — those arrive live and are shown per session in Agent.
-          </p>
+          <Buckets title={t("usage.byAgent")} rows={summary.byAgent} />
+          <Buckets title={t("usage.byProject")} rows={summary.byProject} />
+          <Buckets title={t("usage.byDay")} rows={summary.byDay} />
+          <p className="leading-relaxed text-xs text-gray-500">{t("usage.note")}</p>
         </>
       )}
     </div>

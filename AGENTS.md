@@ -24,6 +24,8 @@ containers, and an Electrobun desktop app that renders them as a pixel-art offic
   editor exists only in this build: open it from the header or with `?editor=1`. Note that `bun run
 check` ends with a production `ui:build`, which replaces that bundle — touch a UI file afterwards to
   get the development one back.
+- `bun run spike:task-engine [--testcontainers]` — verifies a task's private container engine against
+  real Docker (compose, bind mounts, the loopback port, isolation, a warm start); needs Docker running.
 - `bun run desktop:dev` / `bun run desktop:build` — Electrobun app via Hutch (`apps/desktop`; resources assembled by `bun run desktop:prepare`).
 
 ## Layout

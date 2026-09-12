@@ -8,6 +8,7 @@ import {
   resumableSession,
   type RuntimeEvent,
   type SandboxProvider,
+  type TaskEngineProvider,
   type SecretStore,
   startSession,
   transitionTask,
@@ -20,6 +21,7 @@ import {
   type Session,
   type SessionId,
   type SessionMode,
+  type SessionServices,
   type SessionState,
   type TaskId,
 } from "@ho/protocol";
@@ -29,14 +31,20 @@ import type { Logger } from "./logger.ts";
 import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
 import type { RunnerGateway } from "./runner-gateway.ts";
-import { provision, type Provisioned, runPrompt, type SessionContext } from "./session-run.ts";
+import {
+  provision,
+  type Provisioned,
+  sessionServicesOf,
+  type SessionContext,
+} from "./session-provision.ts";
+import { runPrompt } from "./session-run.ts";
 import { settle } from "./settle.ts";
 
 const SYSTEM = { kind: "system" } as const;
 
 export type SessionDeps = {
   office: Office;
-  provider: SandboxProvider;
+  provider: SandboxProvider & TaskEngineProvider;
   runtimes: Readonly<Record<ProviderId, AgentRuntime>>;
   gateway: RunnerGateway;
   mcp: McpGateway;
@@ -153,7 +161,12 @@ export class SessionManager {
   #state(
     sessionId: SessionId,
     state: SessionState,
-    extra: { runtimeSessionId?: string; sandboxId?: string; reason?: string } = {},
+    extra: {
+      runtimeSessionId?: string;
+      sandboxId?: string;
+      services?: SessionServices;
+      reason?: string;
+    } = {},
   ): Promise<Session> {
     return this.#deps.office.execute(SYSTEM, (m, ctx) =>
       changeSessionState(m, { sessionId, state, ...extra }, ctx),
@@ -188,7 +201,10 @@ export class SessionManager {
     try {
       const secretEnv = await secretEnvFor(secrets, ctx.agent);
       provisioned = await provision(this.#deps, ctx);
-      await this.#state(sessionId, "starting", { sandboxId: provisioned.sandbox.id });
+      await this.#state(sessionId, "starting", {
+        sandboxId: provisioned.sandbox.id,
+        ...compact({ services: sessionServicesOf(provisioned) }),
+      });
       log.info(
         {
           sessionId,
@@ -227,6 +243,11 @@ export class SessionManager {
       if (provisioned !== null) {
         provisioned.connection.close();
         mcp.unregister(provisioned.mcpToken);
+        // The engine goes first: stopping it lets dockerd signal the repository's own services.
+        if (provisioned.engine !== null) {
+          await provider.stopEngine(provisioned.engine).catch(() => null);
+          await provider.remove(provisioned.engine).catch(() => null);
+        }
         await provider.stop(provisioned.sandbox, 5).catch(() => null);
         await provider.remove(provisioned.sandbox).catch(() => null);
       }

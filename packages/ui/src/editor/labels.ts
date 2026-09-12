@@ -1,7 +1,10 @@
+import { CELL_PX } from "@ho/sim";
+import { type Container, Text, type TextStyleOptions } from "pixi.js";
+import type { KindName } from "../i18n/kinds.ts";
 import type { Draft } from "./draft.ts";
 
 /** A name written across the middle of a shape, in cell coordinates. */
-export type Label = { text: string; x: number; y: number };
+type Label = { text: string; x: number; y: number };
 
 type Component = { cells: number[]; kind: string };
 
@@ -91,19 +94,39 @@ function heart(draft: Draft, cells: readonly number[]): { x: number; y: number }
 }
 
 /** Every placed shape names itself, so a colour never has to be remembered. */
-export const labelsOf = (draft: Draft): Label[] => [
+const labelsOf = (draft: Draft, name: KindName): Label[] => [
   ...[...components(draft)].map(({ cells, kind }) => {
     const at = heart(draft, cells);
-    return { text: kind, x: at.x, y: at.y };
+    return { text: name("room", kind), x: at.x, y: at.y };
   }),
   ...draft.objects.map((object) => ({
-    text: object.kind,
+    text: name("object", object.kind),
     x: object.x + object.w / 2,
     y: object.y + object.h / 2,
   })),
   ...draft.doors.map((door) => ({
-    text: door.kind,
+    text: name("door", door.kind),
     x: door.x + door.w / 2,
     y: door.y + door.h / 2,
   })),
 ];
+
+/** Redraws the layer that names every shape, at a size the camera's zoom does not inflate. */
+export function drawLabels(
+  layer: Container,
+  draft: Draft,
+  name: KindName,
+  style: TextStyleOptions,
+  scale: number,
+): void {
+  layer.removeChildren().forEach((child) => {
+    child.destroy();
+  });
+  for (const label of labelsOf(draft, name)) {
+    const text = new Text({ text: label.text, style, resolution: 3 });
+    text.anchor.set(0.5);
+    text.position.set(label.x * CELL_PX, label.y * CELL_PX);
+    text.scale.set(1 / scale);
+    layer.addChild(text);
+  }
+}

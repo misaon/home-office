@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../kit/controls.tsx";
 import { doctorQuery } from "../queries.ts";
 import { useUi } from "../store.ts";
@@ -30,6 +31,7 @@ const dismiss = (): void => {
  * teams are not part of it: the empty office offers the first project itself.
  */
 export function useSetupAutoOpen(): void {
+  const { t } = useTranslation();
   const connection = useUi((s) => s.connection);
   const setSetupOpen = useUi((s) => s.setSetupOpen);
   const { data: doctor } = useQuery({
@@ -37,13 +39,14 @@ export function useSetupAutoOpen(): void {
     enabled: connection === "online" && !dismissed(),
   });
   useEffect(() => {
-    if (connection === "online" && !dismissed() && doctor !== undefined && setupNeeded(doctor)) {
+    if (connection === "online" && !dismissed() && doctor !== undefined && setupNeeded(doctor, t)) {
       setSetupOpen(true);
     }
-  }, [connection, doctor, setSetupOpen]);
+  }, [connection, doctor, setSetupOpen, t]);
 }
 
 export function SetupOverlay(): React.JSX.Element | null {
+  const { t } = useTranslation();
   const open = useUi((s) => s.setupOpen);
   const setSetupOpen = useUi((s) => s.setSetupOpen);
   const snapshot = useUi((s) => s.snapshot);
@@ -57,7 +60,7 @@ export function SetupOverlay(): React.JSX.Element | null {
   if (!open) {
     return null;
   }
-  const ready = [dockerStatus(doctor), imagesStatus(doctor), tokenStatus(doctor)].every(
+  const ready = [dockerStatus(doctor, t), imagesStatus(doctor, t), tokenStatus(doctor, t)].every(
     (s) => s.state === "ok",
   );
   const close = (): void => {
@@ -69,14 +72,12 @@ export function SetupOverlay(): React.JSX.Element | null {
       <div className="w-full max-w-2xl space-y-4">
         <header className="flex items-start justify-between gap-6">
           <div>
-            <h2 className="text-base font-semibold">Set up your office</h2>
-            <p className="mt-2 leading-relaxed text-gray-400">
-              Three things make the office work; the fourth is a hello to a floor’s boss.
-            </p>
+            <h2 className="text-base font-semibold">{t("setup.title")}</h2>
+            <p className="mt-2 leading-relaxed text-gray-400">{t("setup.intro")}</p>
           </div>
           <div className="flex shrink-0 gap-3">
-            <Button onClick={refresh}>Re-check</Button>
-            <Button onClick={close}>{ready ? "Close" : "Skip for now"}</Button>
+            <Button onClick={refresh}>{t("setup.recheck")}</Button>
+            <Button onClick={close}>{ready ? t("common.close") : t("setup.skip")}</Button>
           </div>
         </header>
         <DockerStep doctor={doctor} refresh={refresh} />

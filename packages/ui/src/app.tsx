@@ -11,20 +11,21 @@ import { SettingsPanel } from "./panels/settings.tsx";
 import { UsagePanel } from "./panels/usage.tsx";
 import { SetupOverlay, useSetupAutoOpen } from "./setup/overlay.tsx";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { type Panel, sortedFloors, useUi } from "./store.ts";
 
 /** The office editor is an internal tool: this is replaced by a constant at build time, so a production
  * bundle contains neither the branch nor the import. */
 const DEV = process.env.NODE_ENV === "development";
 
-const PANELS: { id: Panel; label: string }[] = [
-  { id: "chat", label: "Chat" },
-  { id: "board", label: "Board" },
-  { id: "inspector", label: "Agent" },
-  { id: "usage", label: "Usage" },
-  { id: "resources", label: "Resources" },
-  { id: "settings", label: "Settings" },
-];
+const PANELS = [
+  { id: "chat", label: "nav.chat" },
+  { id: "board", label: "nav.board" },
+  { id: "inspector", label: "nav.agent" },
+  { id: "usage", label: "nav.usage" },
+  { id: "resources", label: "nav.resources" },
+  { id: "settings", label: "nav.settings" },
+] as const satisfies readonly { id: Panel; label: string }[];
 
 const VIEWS: Record<Panel, () => React.JSX.Element> = {
   chat: ChatPanel,
@@ -41,17 +42,17 @@ function PanelBody({ panel }: { panel: Panel }): React.JSX.Element {
   return <View key={panel === "chat" || panel === "settings" ? floorId : panel} />;
 }
 
-const CONNECTION_TEXT = {
-  connecting: "Connecting to the daemon…",
-  online: "Connected",
-  offline: "Daemon offline — retrying…",
-  unauthorized: "This page carries no daemon token. Run `ho ui` to open the office with it.",
-  rejected:
-    "The daemon refused this page's token — it mints a new one every launch. Run `ho ui` again to reconnect.",
+const CONNECTION_KEY = {
+  connecting: "app.connecting",
+  online: "app.connected",
+  offline: "app.offline",
+  unauthorized: "app.noToken",
+  rejected: "app.rejected",
 } as const;
 
 /** Floor tabs in the header: numbered by creation, the "+" adds a project (a new floor). */
 function FloorTabs({ floorId }: { floorId: ProjectId | null }): React.JSX.Element {
+  const { t } = useTranslation();
   const projects = useUi((s) => s.snapshot.projects);
   const selectFloor = useUi((s) => s.selectFloor);
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
@@ -76,7 +77,7 @@ function FloorTabs({ floorId }: { floorId: ProjectId | null }): React.JSX.Elemen
       <button
         type="button"
         className="shrink-0 rounded-md bg-ink px-3 py-1.5 text-xs text-gray-300 hover:bg-line"
-        title="Add a project (a new floor)"
+        title={t("app.addProject")}
         onClick={() => {
           setAddProjectOpen(true);
         }}
@@ -89,6 +90,7 @@ function FloorTabs({ floorId }: { floorId: ProjectId | null }): React.JSX.Elemen
 
 /** Before the first project: a black screen with one button. Setup stays reachable in the corner. */
 function EmptyOffice({ openEditor }: { openEditor: () => void }): React.JSX.Element {
+  const { t } = useTranslation();
   const connection = useUi((s) => s.connection);
   const replayed = useUi((s) => s.replayed);
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
@@ -104,10 +106,10 @@ function EmptyOffice({ openEditor }: { openEditor: () => void }): React.JSX.Elem
             setAddProjectOpen(true);
           }}
         >
-          Add a project (floor)
+          {t("project.add")}
         </button>
       ) : (
-        <p className="text-sm text-gray-500">{CONNECTION_TEXT[connection]}</p>
+        <p className="text-sm text-gray-500">{t(CONNECTION_KEY[connection])}</p>
       )}
       <div className="absolute right-5 bottom-4 flex items-center gap-3 text-xs text-gray-500">
         <span
@@ -120,11 +122,11 @@ function EmptyOffice({ openEditor }: { openEditor: () => void }): React.JSX.Elem
             setSetupOpen(true);
           }}
         >
-          Setup
+          {t("app.setup")}
         </button>
         {DEV ? (
           <button type="button" className="hover:text-gray-300" onClick={openEditor}>
-            Editor
+            {t("app.editorButton")}
           </button>
         ) : null}
       </div>
@@ -133,6 +135,7 @@ function EmptyOffice({ openEditor }: { openEditor: () => void }): React.JSX.Elem
 }
 
 export function App(): React.JSX.Element {
+  const { t } = useTranslation();
   const [editor, setEditor] = useState(
     () => DEV && new URLSearchParams(window.location.search).has("editor"),
   );
@@ -170,28 +173,28 @@ export function App(): React.JSX.Element {
           <span className="shrink-0 font-semibold tracking-wide">Home Office</span>
           <span
             className={`h-2 w-2 shrink-0 rounded-full ${connection === "online" ? "bg-emerald-400" : "bg-red-400"}`}
-            title={CONNECTION_TEXT[connection]}
+            title={t(CONNECTION_KEY[connection])}
           />
           <FloorTabs floorId={floorId} />
           {DEV ? (
             <button
               type="button"
               className="ml-auto shrink-0 rounded-md border border-line px-3 py-1.5 text-xs text-gray-300 hover:bg-line"
-              title="Internal office editor (development builds only)"
+              title={t("app.editor")}
               onClick={openEditor}
             >
-              Editor
+              {t("app.editorButton")}
             </button>
           ) : null}
           <button
             type="button"
             className={`${DEV ? "" : "ml-auto "}shrink-0 rounded-md border border-line px-3 py-1.5 text-xs text-gray-300 hover:bg-line`}
-            title="Docker, images, token, smoke test"
+            title={t("app.setupSummary")}
             onClick={() => {
               setSetupOpen(true);
             }}
           >
-            Setup
+            {t("app.setup")}
           </button>
         </header>
         <div className="min-h-0 flex-1">
@@ -213,7 +216,7 @@ export function App(): React.JSX.Element {
                 selectPanel(p.id);
               }}
             >
-              {p.label}
+              {t(p.label)}
             </button>
           ))}
         </nav>

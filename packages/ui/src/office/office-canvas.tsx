@@ -1,11 +1,13 @@
 import { type AgentId, errorMessage } from "@ho/protocol";
 import * as sim from "@ho/sim";
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useUi } from "../store.ts";
 import { bridge } from "./runtime.ts";
 import { OfficeScene } from "./scene.ts";
 
 export function OfficeCanvas(): React.JSX.Element {
+  const { t } = useTranslation();
   const host = useRef<HTMLDivElement>(null);
   const connection = useUi((s) => s.connection);
   const lastError = useUi((s) => s.lastError);
@@ -101,10 +103,10 @@ export function OfficeCanvas(): React.JSX.Element {
       {connection !== "online" ? (
         <div className="absolute inset-x-0 bottom-0 bg-black/60 px-3 py-1 text-xs text-amber-200">
           {connection === "unauthorized"
-            ? "No daemon token. Open the office with `ho ui`."
+            ? t("app.noToken")
             : connection === "offline"
-              ? "Daemon offline — retrying…"
-              : "Connecting to the daemon…"}
+              ? t("app.offline")
+              : t("app.connecting")}
         </div>
       ) : null}
     </div>

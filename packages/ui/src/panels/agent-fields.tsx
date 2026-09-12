@@ -1,6 +1,7 @@
 import { defaultChoice } from "@ho/core";
 import { type AgentRole, AuthKind, EffortLevel, PROVIDERS, ProviderId } from "@ho/protocol";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export type Choice = { provider: ProviderId; auth: AuthKind; model: string; effort: EffortLevel };
 
@@ -18,7 +19,7 @@ type Props = {
 /**
  * Provider, auth, model and effort pickers driven by the provider catalog: only valid combinations are
  * offered, a provider switch resets model/auth/effort to that provider's defaults, and providers that accept
- * any model id get a free-text field behind "custom…".
+ * any model id get a free-text field behind "{t("common.custom")}".
  */
 export function ProviderModelFields({
   value,
@@ -26,6 +27,7 @@ export function ProviderModelFields({
   role,
   dense = false,
 }: Props): React.JSX.Element {
+  const { t } = useTranslation();
   const catalog = PROVIDERS[value.provider];
   const listed = catalog.models.some((m) => m.id === value.model);
   const [custom, setCustom] = useState(!listed && catalog.freeFormModels);
@@ -100,7 +102,7 @@ export function ProviderModelFields({
                 {m.label}
               </option>
             ))}
-            {catalog.freeFormModels ? <option value={CUSTOM}>custom…</option> : null}
+            {catalog.freeFormModels ? <option value={CUSTOM}>{t("common.custom")}</option> : null}
           </select>
         )}
       </label>

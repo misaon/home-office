@@ -30,6 +30,7 @@ kept as history and is not evidence about the current tree.
 | Pathfinding queue         | TinyQueue 3.0.0                                       | Heap for the simulation's weighted A* search                                                                                 |
 | Agent protocols           | ACP SDK 1.4.0, MCP SDK 1.30.0                         | Provider sessions and scoped office tools                                                                                    |
 | Secrets                   | `Bun.secrets`, atomic file fallback                   | Keychain / libsecret / Credential Manager, chosen by whether the host store answers; no secret ever in a subprocess argument |
+| Localisation              | i18next 26.4.2, react-i18next 17.0.13                 | The office's own text in English and Czech, with typed keys; +93 KiB on the UI bundle (1018 → 1111 KiB)                      |
 | Types / CLI               | type-fest 5.9.0 (dev), yoctocolors 2.2.0              | One typed `compact()` helper instead of 62 spread guards; CLI colour gated on a TTY                                          |
 
 The root esbuild override to 0.28.2 removes the vulnerable Drizzle Kit transitive version. Check Drizzle
@@ -37,6 +38,15 @@ schema generation when changing it. The native secret API is experimental; retai
 backend as an operational fallback. Do not assume API compatibility with arbitrary Node tooling just
 because Bun executes TypeScript — `Bun.timingSafeEqual` does not exist in 1.4.2, for one, and the audit
 had to fall back to `node:crypto` for it.
+
+i18next and react-i18next were checked against the npm registry on 2026-09-10: i18next 26.4.2
+(published 2026-09-03, 66 releases in twelve months, MIT, no runtime dependencies, 19.7 M weekly) and
+react-i18next 17.0.13 (2026-09-01, 53 releases, MIT, 14.3 M weekly, `@babel/runtime` +
+`html-parse-stringify` + `use-sync-external-store`, repository last pushed 2026-09-03, not archived).
+Both accept `typescript ^5 || ^6 || ^7` and react `>= 16.8`. The owner chose them over a hand-written
+dictionary; the measured alternatives were Lingui at 10.4 kB and react-intl at ~20 kB min+gzip. Czech
+plural agreement rides on i18next's own `Intl.PluralRules` suffixes, so `board.tasks_one/_few/_many` say
+"5 úkolů" rather than "5 úkol".
 
 The office UI is built with Bun's `reactCompiler: true`, so components are memoised by the compiler.
 That is why the panels contain no hand-written `useCallback`/`useMemo`: adding them back would duplicate
@@ -59,6 +69,22 @@ Dockerfile. Alpine's package repositories remain moving security-update channels
 base alone does not freeze every installed APK. Chromium, Node and npm come from that supported Alpine
 branch. Bun 1.4.2 is installed from the official musl arm64 archive with an explicit checksum. RTK 0.48.0
 is compiled from source commit `fde0a8f185945556f51718de0f4c430bb62b3df6` using its Cargo lockfile.
+
+The agent image also carries `docker-cli` 29.5.3-r1, `docker-cli-compose` 5.1.4-r1 and
+`docker-cli-buildx` 0.34.1-r1 from the same Alpine 3.24 community branch (checked at
+[pkgs.alpinelinux.org](https://pkgs.alpinelinux.org/packages?name=docker-cli*&branch=v3.24&arch=aarch64)
+on 2026-09-09). They cost the image **170 MB**: the `claude-code` target measured 1.69 GB before and
+1.86 GB after, while `apk add --simulate` on bare Alpine reports 130.9 MiB in 20 packages — the
+simulation is the package payload, the image delta is what ships. They talk to a task's
+own engine, never to the host: that engine is the upstream `docker:29.8.0-dind-rootless` image pinned by
+its **linux/arm64 manifest digest**
+`sha256:19b6d666831cda38537c1fc60c76f32bd0f17c77f46d53b080d98b39e1f7cefb`, with `docker:29.8.0-dind`
+(`sha256:c9da39e3…`) for the rootful opt-in — digests read with `docker manifest inspect` on 2026-09-09.
+Both are pulled, not built: `startEngine` checks for the image by `name@digest` and pulls the readable
+`name:tag@digest` reference only when it is absent, because Engine 29.7.2 answers 404 to an image
+inspect that carries both a tag and a digest. The engine image is 549 MB on disk and its container is
+ready in 1–2 s; the reasoning and the rejected alternatives are in the
+[service-environment plan](plans/2026-09-09-task-service-environments.md).
 
 | Image target  | Installed provider                                          | Invocation                                       |
 | ------------- | ----------------------------------------------------------- | ------------------------------------------------ |
@@ -104,22 +130,6 @@ vulnerabilities in their locked npm trees. That is not a comprehensive OS-image 
 No tests were added in the September 2026 audits at the owner's request; a test phase needs a new owner
 decision. Existing checks and verification spikes may be run. Code signing/notarization, new terminal UI,
 remote hosting and automatic merging are not implemented.
-
-## Proposed task container engine
-
-Researched 2026-09-09. The [Compose implementation plan](plans/2026-09-09-task-container-engine.md)
-proposes a second, VM-backed execution environment with a private Docker Engine. Keep the current
-direct Docker adapter for existing sandboxes and the trusted git bridge. First evaluate Docker
-Sandboxes `sbx` 0.42.1 (released 2026-09-07); its custom kits are experimental, and HO
-runner/image/publication compatibility is not yet verified. It is a proprietary optional external
-runtime requiring Docker sign-in, not a new installed dependency or an automatic replacement for the
-MIT application. Lima/VZ with Docker is the fallback candidate. Artifact/image pins and measured
-compatibility are required before adoption. Sources read 2026-09-09:
-[releases](https://docs.docker.com/ai/sandboxes/release-notes/),
-[kits](https://docs.docker.com/ai/sandboxes/customize/kits/),
-[license](https://github.com/docker/sbx-releases),
-[installation](https://docs.docker.com/ai/sandboxes/install/),
-[Lima VZ](https://lima-vm.io/docs/config/vmtype/vz/).
 
 ## Primary references
 

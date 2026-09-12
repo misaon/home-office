@@ -13,9 +13,11 @@
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "i18next": "catalog:",
     "pixi.js": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-i18next": "catalog:",
     "zustand": "catalog:"
   },
   "devDependencies": {

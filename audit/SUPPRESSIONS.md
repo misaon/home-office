@@ -14,6 +14,12 @@ that is only masking a rule we do not want is not listed here — the rule gets 
 | 5   | `packages/ui/src/office/stand-ins.ts:1`      | same, whole file                                                              | Reviewed in Wave 2 — see AUDIT.   |
 | 6   | `packages/ui/src/office/walls.ts:1`          | same, whole file                                                              | Reviewed in Wave 2 — see AUDIT.   |
 
+## Added 2026-09-10
+
+| #   | Where                              | Suppression                                                       | Assessment                                                                                                                                                        |
+| --- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 7   | `packages/ui/src/i18n/index.ts:47` | `oxlint-disable-next-line typescript/consistent-type-definitions` | i18next's typed keys are reached by augmenting its own `CustomTypeOptions` **interface**; a `type` cannot merge into an interface, so the rule cannot be met here |
+
 There are **no** `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck` or non-null assertions anywhere in
 the tracked source. Verified:
 

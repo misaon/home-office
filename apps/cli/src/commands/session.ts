@@ -10,8 +10,9 @@ async function session(args: readonly string[]): Promise<void> {
       case "list": {
         for (const s of await client.sessions.list({})) {
           const usage = `${String(s.usage.inputTokens)}in/${String(s.usage.outputTokens)}out/${String(s.usage.cacheReadTokens)}cache`;
+          const services = s.services === undefined ? "" : `  services=${s.services}`;
           line(
-            `${s.id}  ${s.state.padEnd(9)}  task=${s.taskId.slice(-8)}  agent=${s.agentId.slice(-8)}  turns=${String(s.usage.turns)}  ${usage}`,
+            `${s.id}  ${s.state.padEnd(9)}  task=${s.taskId.slice(-8)}  agent=${s.agentId.slice(-8)}  turns=${String(s.usage.turns)}  ${usage}${services}`,
           );
         }
         return;

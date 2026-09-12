@@ -8,6 +8,7 @@ import {
   Project,
   PublishPolicy,
   RepoSource,
+  ServicesPolicy,
   TaskArtifacts,
   TaskPriority,
   TaskStatus,
@@ -23,6 +24,7 @@ const ProjectFields = Project.pick({
   defaultBranch: true,
   publish: true,
   intake: true,
+  services: true,
 });
 /**
  * A new floor. The daemon creates its boss (Andrew) in the same command; `importAgentIds` copies characters
@@ -73,6 +75,7 @@ const ProjectPatch = z
     defaultBranch: Project.shape.defaultBranch.unwrap(),
     publish: PublishPolicy,
     intake: IntakePolicy,
+    services: ServicesPolicy,
   })
   .partial();
 export const ProjectUpdateInput = z.object({ id: ProjectId, patch: ProjectPatch });

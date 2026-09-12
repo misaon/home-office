@@ -1,27 +1,34 @@
 import { isSessionActive } from "@ho/core";
 import type { LiveEvent, Session, Usage } from "@ho/protocol";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { type Snapshot, useUi } from "../store.ts";
 
 const fmt = (n: number): string => n.toLocaleString();
-const usageLine = (u: Usage): string =>
-  `${fmt(u.inputTokens)} in · ${fmt(u.outputTokens)} out · ${fmt(u.cacheReadTokens)} cache · ${String(u.turns)} turns`;
+const usageLine = (u: Usage, t: TFunction): string =>
+  t("inspector.usage", {
+    input: fmt(u.inputTokens),
+    output: fmt(u.outputTokens),
+    cache: fmt(u.cacheReadTokens),
+    turns: String(u.turns),
+  });
 
-function describe(live: LiveEvent): string {
+function describe(live: LiveEvent, t: TFunction): string {
   const e = live.event;
   if (e.kind === "init") {
-    return `session ${e.runtimeSessionId.slice(0, 8)} on ${e.model}`;
+    return t("inspector.session", { id: e.runtimeSessionId.slice(0, 8), model: e.model });
   }
   if (e.kind === "text_delta") {
     return e.text.trim();
   }
   if (e.kind === "tool_call") {
-    return `→ ${e.name}`;
+    return t("inspector.call", { name: e.name });
   }
   if (e.kind === "tool_result") {
     return `${e.ok ? "✓" : "✗"} ${e.summary}`;
   }
   if (e.kind === "permission_request") {
-    return `permission: ${e.tool}`;
+    return t("inspector.permission", { tool: e.tool });
   }
   if (e.kind === "usage") {
     return "";
@@ -32,15 +39,23 @@ function describe(live: LiveEvent): string {
         ? ""
         : ` (${String(Math.round((e.usedTokens / e.windowTokens) * 100))}%)`;
     const cost = e.cost === null ? "" : ` · ${e.cost.amount.toFixed(2)} ${e.cost.currency}`;
-    return `context ${fmt(e.usedTokens)}/${fmt(e.windowTokens)}${share}${cost}`;
+    return t("inspector.context", {
+      used: fmt(e.usedTokens),
+      window: fmt(e.windowTokens),
+      share,
+      cost,
+    });
   }
   if (e.kind === "rate_limited") {
-    return "rate limited";
+    return t("inspector.rateLimited");
   }
   if (e.kind === "result") {
-    return `${e.ok ? "done" : "failed"}: ${e.text.slice(0, 300)}`;
+    return t("inspector.result", {
+      outcome: e.ok ? t("inspector.resultDone") : t("inspector.resultFailed"),
+      text: e.text.slice(0, 300),
+    });
   }
-  return `error ${e.code}: ${e.message}`;
+  return t("inspector.error", { code: e.code, message: e.message });
 }
 
 function SessionBlock({
@@ -50,6 +65,7 @@ function SessionBlock({
   session: Session;
   tasks: Snapshot["tasks"];
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const live = useUi((s) => s.live.get(session.id));
   const task = tasks.get(session.taskId);
   const events = (live ?? []).filter((l) => l.event.kind !== "usage").slice(-60);
@@ -59,18 +75,25 @@ function SessionBlock({
         <span className="font-medium">
           {session.mode} · {task?.title ?? session.taskId}
         </span>
-        <span className={isSessionActive(session.state) ? "text-emerald-300" : "text-gray-400"}>
-          {session.state}
+        <span className="flex shrink-0 gap-2">
+          {session.services === undefined ? null : (
+            <span className={session.services === "ready" ? "text-sky-300" : "text-amber-300"}>
+              {t("inspector.services", { state: session.services })}
+            </span>
+          )}
+          <span className={isSessionActive(session.state) ? "text-emerald-300" : "text-gray-400"}>
+            {session.state}
+          </span>
         </span>
       </div>
-      <div className="text-gray-400">{usageLine(session.usage)}</div>
+      <div className="text-gray-400">{usageLine(session.usage, t)}</div>
       {task?.artifacts.branch === undefined ? null : (
         <div className="truncate font-mono text-2xs text-gray-300">{task.artifacts.branch}</div>
       )}
       {events.length === 0 ? null : (
         <ul className="mt-2 max-h-64 space-y-1 overflow-y-auto font-mono text-2xs">
           {events.map((l, i) => {
-            const text = describe(l);
+            const text = describe(l, t);
             return text === "" ? null : (
               <li key={`${l.at}-${String(i)}`} className="truncate text-gray-300">
                 <span className="text-gray-500">{new Date(l.at).toLocaleTimeString()} </span>
@@ -85,6 +108,7 @@ function SessionBlock({
 }
 
 export function InspectorPanel(): React.JSX.Element {
+  const { t } = useTranslation();
   const projects = useUi((s) => s.snapshot.projects);
   const staff = useUi((s) => s.snapshot.agents);
   const tasks = useUi((s) => s.snapshot.tasks);
@@ -99,7 +123,7 @@ export function InspectorPanel(): React.JSX.Element {
   if (agent === undefined) {
     return (
       <div className="h-full overflow-y-auto p-4 text-xs">
-        <p className="mb-3 text-gray-400">Click a character in the office or pick an agent:</p>
+        <p className="mb-3 text-gray-400">{t("inspector.pick")}</p>
         <ul className="space-y-2">
           {agents.map((a) => (
             <li key={a.id}>
@@ -131,15 +155,15 @@ export function InspectorPanel(): React.JSX.Element {
       <div className="space-y-1">
         <div className="text-base font-semibold">{agent.name}</div>
         <div className="text-gray-400">
-          {agent.role} · {agent.provider} · {agent.model} / {agent.effort} · skills{" "}
-          {agent.skillPack}
+          {agent.role} · {agent.provider} · {agent.model} / {agent.effort} ·{" "}
+          {t("inspector.skills", { pack: agent.skillPack })}
         </div>
-        <div className="text-gray-400">floor: {floor}</div>
+        <div className="text-gray-400">{t("inspector.floor", { name: floor })}</div>
         {agent.basePrompt === "" ? null : (
           <p className="mt-2 whitespace-pre-wrap text-gray-300">{agent.basePrompt}</p>
         )}
       </div>
-      {sessions.length === 0 ? <p className="text-gray-400">No sessions yet.</p> : null}
+      {sessions.length === 0 ? <p className="text-gray-400">{t("inspector.noSessions")}</p> : null}
       {sessions.map((s) => (
         <SessionBlock key={s.id} session={s} tasks={tasks} />
       ))}

@@ -1,6 +1,7 @@
 import { errorMessage, type IntakePolicy, type IntakeStatus, type Project } from "@ho/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../kit/controls.tsx";
 import { intakeStatusQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
@@ -24,10 +25,11 @@ function IntakeFields({
   saveLabels,
   update,
 }: FieldsProps): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
       <label className="flex items-center gap-2">
-        every
+        {t("settings.intakeEvery")}
         <input
           type="number"
           min={30}
@@ -46,7 +48,7 @@ function IntakeFields({
             }
           }}
         />
-        s
+        {t("settings.intakeSeconds")}
       </label>
       <label className="flex items-center gap-2">
         <input
@@ -56,13 +58,13 @@ function IntakeFields({
             update({ dryRun: e.target.checked });
           }}
         />
-        dry run (log only)
+        {t("settings.intakeDry")}
       </label>
       <label className="col-span-2 flex items-center gap-2">
-        labels
+        {t("settings.intakeLabels")}
         <input
           className="flex-1 rounded-md border border-line bg-ink px-2 py-1 font-mono"
-          placeholder="all open issues"
+          placeholder={t("settings.intakeAllIssues")}
           value={labels}
           onChange={(e) => {
             setLabels(e.target.value);
@@ -78,10 +80,10 @@ function IntakeFields({
             update({ comment: e.target.checked });
           }}
         />
-        comment on the issue
+        {t("settings.intakeComment")}
       </label>
       <label className="flex items-center gap-2">
-        label
+        {t("settings.intakeAckLabel")}
         <input
           className="w-24 rounded-md border border-line bg-ink px-2 py-1 font-mono"
           defaultValue={intake.ackLabel}
@@ -97,18 +99,22 @@ function IntakeFields({
 }
 
 function IntakeHealth({ status }: { status: IntakeStatus | null }): React.JSX.Element | null {
+  const { t } = useTranslation();
   if (status === null) {
     return null;
   }
   return (
     <p className="leading-relaxed text-gray-400">
-      last poll {when(status.lastPollAt)}
-      {status.nextPollAt === null ? "" : `, next ${when(status.nextPollAt)}`}, received{" "}
-      {status.received}
-      {status.lastError === null ? "" : ` · error: ${status.lastError}`}
+      {t("settings.intakeLastPoll", { when: when(status.lastPollAt) })}
+      {status.nextPollAt === null
+        ? ""
+        : t("settings.intakeNext", { when: when(status.nextPollAt) })}
+      {", "}
+      {t("settings.intakeReceived", { received: status.received, duplicates: 0 })}
+      {status.lastError === null ? "" : t("settings.intakeError", { message: status.lastError })}
       {status.lastDryRun.length === 0
         ? ""
-        : ` · dry run would take: ${status.lastDryRun.join("; ")}`}
+        : t("settings.intakeDryRun", { items: status.lastDryRun.join("; ") })}
     </p>
   );
 }
@@ -120,6 +126,7 @@ type Props = { project: Project };
  * a manual poll and the connector's health. Every change is one `projects.update` with the whole policy.
  */
 export function IntakeSettings({ project }: Props): React.JSX.Element {
+  const { t } = useTranslation();
   const connection = useUi((s) => s.connection);
   const queries = useQueryClient();
   const all = useQuery({ ...intakeStatusQuery, enabled: connection === "online" });
@@ -159,8 +166,15 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
     poll.data === undefined
       ? null
       : polled === undefined
-        ? "nothing polled"
-        : `received ${String(polled.received)}, already known ${String(polled.duplicates)}${polled.dryRun.length === 0 ? "" : `; dry run would take: ${polled.dryRun.join("; ")}`}`;
+        ? t("settings.intakeNothing")
+        : `${t("settings.intakeReceived", {
+            received: polled.received,
+            duplicates: polled.duplicates,
+          })}${
+            polled.dryRun.length === 0
+              ? ""
+              : t("settings.intakeDryRun", { items: polled.dryRun.join("; ") })
+          }`;
 
   const { intake } = project;
   return (
@@ -174,7 +188,7 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
               update({ enabled: e.target.checked });
             }}
           />
-          GitHub issues → mail
+          {t("settings.intake")}
         </label>
         <Button
           disabled={poll.isPending}
@@ -182,7 +196,7 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
             poll.mutate();
           }}
         >
-          {poll.isPending ? "Polling…" : "Poll now"}
+          {poll.isPending ? t("settings.intakePolling") : t("settings.intakePoll")}
         </Button>
       </div>
       <IntakeFields

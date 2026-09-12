@@ -12,6 +12,12 @@ not evidence that every original acceptance target was achieved.
 - Claude Code plus ACP adapters for OpenCode, Gemini CLI and Codex; provider-specific images and secrets.
 - React/Pixi office, board, inspector, usage/resources/settings and first-run checklist.
 - Electrobun macOS arm64 packaging and unsigned release workflow.
+- Optional per-project **task services**: a private rootless container engine per session (rootful as an
+  opt-in), so a repository's own `docker-compose.yml` runs inside the sandbox. The scheduler counts such
+  a session as two slots, and the session record says whether it got its engine. Every gate is measured,
+  including a real Claude Code worker that ran `docker compose up -d` on an unmodified repository and a
+  daemon killed while an engine was up; `bun run spike:task-engine` re-runs the lot. Plan and evidence:
+  [the plan](plans/2026-09-09-task-service-environments.md).
 - Earlier audit repairs: serialized state changes; safe replay failure; bounded channels and runtime
   shutdown; credential/storage/HTTP hardening; task publication ordering; restart reconciliation;
   bounded renderer caches and fixed-step simulation; Sharp image pipeline; shared UI query management;
@@ -32,13 +38,6 @@ not evidence that every original acceptance target was achieved.
 ## Work remaining
 
 These items are not implemented merely because an older plan described them in a completed phase.
-
-**Proposed 2026-09-09 — Docker Compose inside tasks:** add an opt-in private Docker Engine behind a
-per-environment VM boundary, retaining the restricted container backend for ordinary tasks. Evaluate
-Docker Sandboxes first, with Lima/VZ as the fallback if the integration gates fail. The
-[implementation plan](plans/2026-09-09-task-container-engine.md) covers current code, current vendor
-capabilities, workspace publication, networking, quotas, recovery and acceptance. No backend has been
-implemented or runtime compatibility demonstrated by this research task.
 
 | Priority | Work                                            | Completion evidence                                                                                                                                                                                                                                                                                                                                                               |
 | -------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -82,6 +81,38 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 ([ADR 003](../audit/adr/003-sprite-pipeline.md)).
 
 ## Audit log
+
+- 2026-09-10 — Owner task: footprints, an outline around furniture, and two languages — Seven pieces
+  resized in `OBJECT_SPEC` (meeting and dining table 7×3, fridge 3×2, hot tub 5×5, bookcase 8×1, toilet
+  2×2, window 4×1), and ARCHITECTURE's stale copy of those numbers corrected to match the table it
+  should have been reading. Furniture is now inset and outlined at the weight rooms use, which is what
+  stops two desks that share a cell edge from reading as one: the old stroke was a world-unit hairline
+  that vanishes at the zoom a whole floor is seen at. The office also speaks Czech — chosen in Settings,
+  remembered in the browser, every panel, tooltip and the editor's own palette included, with room and
+  furniture names in the dictionaries while the office file keeps its slugs. Everything an agent reads
+  stays English. Decisions, the measurement and what the library cost are in
+  [the plan](plans/2026-09-10-footprints-borders-and-language.md).
+
+- 2026-09-09 — Owner task: `docker compose` inside a task — Eleven candidates were read from primary
+  sources first (Docker Sandboxes `sbx` 0.42.1, rootful and rootless dind, sysbox, gVisor, rootless
+  Podman, Apple `container` 1.0, Docker Offload, socket proxies, Dev Containers, Dagger container-use),
+  and the load-bearing behaviour was measured on this machine before anything was written. Chosen: a
+  private rootless dind engine per session, joined to the sandbox's network namespace, with the task
+  volume at the same path in both — which is what makes an unmodified Compose file work. Rejected:
+  running the repository's Compose file on the daemon's own engine, because a Compose file is a
+  privilege request (`privileged`, `network_mode: host`, absolute binds) and its relative bind mounts
+  would resolve on the wrong filesystem. Two of this plan's own instructions were corrected by
+  measurement, both recorded beside the original claim. Decisions, survey and evidence in
+  [the plan](plans/2026-09-09-task-service-environments.md).
+
+- 2026-09-10 — Owner task: closing the service-environment gates — All seven verification gates are now
+  measured. The last two needed a real daemon on a scratch state directory: a Claude Code worker ran the
+  repository's Compose file unchanged and verified postgres on `127.0.0.1:15432` itself, and a `kill -9`
+  while an engine was up left orphans that the restart removed while GC collected their socket volumes.
+  Added along the way: `Session.services` so the inspector, the CLI and the history say whether a session
+  had its engine; `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE`, without which Ryuk would look for a socket the
+  engine does not have (a real Testcontainers run now proves both variables); and `spikes/task-engine`,
+  the harness behind `bun run spike:task-engine`.
 
 - 2026-09-09 — Owner task: the internal office editor — A development-only editor (walls, rooms, doors,
   eraser) that saves `layouts/<id>.json` through a daemon store, with the JSON keeping semantic ids so

@@ -1,11 +1,13 @@
 import { errorMessage, formatBytes } from "@ho/protocol";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { resourcesQuery } from "../queries.ts";
+import { useTranslation } from "react-i18next";
 import { Button, Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
 
 export function ResourcesPanel(): React.JSX.Element {
+  const { t } = useTranslation();
   const connection = useUi((s) => s.connection);
   const query = useQuery({
     ...resourcesQuery,
@@ -22,7 +24,11 @@ export function ResourcesPanel(): React.JSX.Element {
       ? errorMessage(prune.error)
       : prune.data === undefined
         ? null
-        : `removed ${String(prune.data.containers.length)} containers, ${String(prune.data.volumes.length)} volumes, ${String(prune.data.images.length)} images`;
+        : t("resources.pruned", {
+            containers: prune.data.containers.length,
+            volumes: prune.data.volumes.length,
+            images: prune.data.images.length,
+          });
   return (
     <div className="h-full space-y-5 overflow-y-auto p-4 text-xs">
       <div className="flex flex-wrap items-center gap-3">
@@ -32,30 +38,34 @@ export function ResourcesPanel(): React.JSX.Element {
             prune.mutate();
           }}
         >
-          {prune.isPending ? "Pruning…" : "Prune now"}
+          {prune.isPending ? t("resources.pruning") : t("resources.prune")}
         </Button>
         <Button
           onClick={() => {
             void query.refetch();
           }}
         >
-          Refresh
+          {t("resources.refresh")}
         </Button>
         {query.error === null ? null : <span role="alert">{query.error.message}</span>}
         {note !== null ? <span className="text-gray-400">{note}</span> : null}
       </div>
       {inventory === null ? (
-        <p className="text-gray-400">No inventory yet.</p>
+        <p className="text-gray-400">{t("resources.noInventory")}</p>
       ) : (
         <>
           <div className="text-gray-300">
-            {String(inventory.snapshot.containers)} containers ·{" "}
-            {String(inventory.snapshot.volumes)} volumes (
-            {formatBytes(inventory.snapshot.volumesBytes)}) · images{" "}
-            {formatBytes(inventory.snapshot.imagesBytes)}
+            {t("resources.summary", {
+              containers: inventory.snapshot.containers,
+              volumes: inventory.snapshot.volumes,
+              volumeBytes: formatBytes(inventory.snapshot.volumesBytes),
+              imageBytes: formatBytes(inventory.snapshot.imagesBytes),
+            })}
           </div>
-          <Section title="Containers">
-            {inventory.containers.length === 0 ? <p className="text-gray-500">none</p> : null}
+          <Section title={t("resources.containers")}>
+            {inventory.containers.length === 0 ? (
+              <p className="text-gray-500">{t("common.none")}</p>
+            ) : null}
             {inventory.containers.map((c) => (
               <div key={c.name} className="flex justify-between gap-3 border-t border-line py-1.5">
                 <span className="truncate font-mono">{c.name}</span>
@@ -65,8 +75,10 @@ export function ResourcesPanel(): React.JSX.Element {
               </div>
             ))}
           </Section>
-          <Section title="Volumes">
-            {inventory.volumes.length === 0 ? <p className="text-gray-500">none</p> : null}
+          <Section title={t("resources.volumes")}>
+            {inventory.volumes.length === 0 ? (
+              <p className="text-gray-500">{t("common.none")}</p>
+            ) : null}
             {inventory.volumes.map((v) => (
               <div key={v.name} className="flex justify-between gap-3 border-t border-line py-1.5">
                 <span className="truncate font-mono">{v.name}</span>

@@ -103,7 +103,7 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
   }
   switch (event.type) {
     case "session.state_changed": {
-      const { runtimeSessionId, sandboxId } = event.payload;
+      const { runtimeSessionId, sandboxId, services } = event.payload;
       if (event.payload.reason?.startsWith(RATE_LIMITED) === true) {
         model.rateLimitsSeen += 1;
         model.rateLimits.push(event.at);
@@ -116,6 +116,7 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
         state: event.payload.state,
         ...compact({ runtimeSessionId }),
         ...compact({ sandboxId }),
+        ...compact({ services }),
       };
       model.sessions.set(session.id, next);
       trackSessionState(model, next);

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useKindName } from "../i18n/kinds.ts";
 import type { Draft, Kinds, Rect, Tool } from "./draft.ts";
 import { EditorScene } from "./scene.ts";
 
@@ -16,6 +17,7 @@ export function EditorCanvas({
   onPaint: (rect: Rect, erasing: boolean) => void;
   onRotate: () => void;
 }): React.JSX.Element {
+  const kindName = useKindName();
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<EditorScene | null>(null);
   const latest = useRef(draft);
@@ -24,10 +26,15 @@ export function EditorCanvas({
   // would have run while the scene was still null, and the first drag would have gone nowhere.
   const handler = useRef(onPaint);
   const turn = useRef(onRotate);
+  const namer = useRef(kindName);
   useEffect(() => {
     latest.current = draft;
     scene.current?.setDraft(draft);
   }, [draft]);
+  useEffect(() => {
+    namer.current = kindName;
+    scene.current?.setKindName(kindName);
+  }, [kindName]);
   useEffect(() => {
     held.current = { tool, kinds };
     scene.current?.setTool(tool, kinds);

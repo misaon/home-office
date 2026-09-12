@@ -22,10 +22,20 @@ arrive in a spawn message and enter that child's environment. The runner token i
 child. A separate short-lived git-bridge container copies a repository into a Docker task volume and
 publishes its result branch back to the host. Agent containers never mount the host repository.
 
-Agents currently have no Docker/Compose tooling or engine socket; nested project containers are not
-supported. The [task-engine plan](plans/2026-09-09-task-container-engine.md), researched 2026-09-09,
-proposes an optional VM-backed environment with a private engine. This is future work, not a change to
-the container boundary described here.
+A project can ask for **task services**, and then a session gets a second container: its own container
+engine (`docker:29.8.0-dind-rootless`, digest-pinned), so the repository's own `docker-compose.yml` runs
+as written. The engine joins the sandbox's network namespace, which is what makes a published port answer
+on `127.0.0.1` inside the sandbox, and the task volume is mounted at the same path (`/work`) in both, which
+is what makes a relative bind mount in a Compose file resolve. The sandbox reaches the engine through a
+`docker.sock` in a shared tmpfs volume owned by the sandbox user; the daemon's own socket still never
+appears in a sandbox, and one task's engine cannot see another's containers. The engine's memory limit is
+the whole environment's limit, because nested containers share its cgroup. It is off unless the owner
+enables it per project, and a session that has it costs two of the daemon's session slots. Whether a
+session got its engine is part of the session record (`services`: `ready` or `failed`, absent when the
+project asks for none), so the inspector, the CLI and the history all say so; an engine that cannot
+start does not fail the session, it only tells the agent in its brief. The design, the alternatives and
+the measurements are in the
+[service-environment plan](plans/2026-09-09-task-service-environments.md).
 
 Native host dialogs are a daemon port, not a UI capability. The same UI bundle runs in the Electrobun
 webview and in a plain browser, so `system.pickDirectory` asks the daemon, and the daemon holds a
@@ -179,9 +189,11 @@ applies to offices drawn today, and the compiled map carries that kind per cell 
 
 Footprints live in one table, `OBJECT_SPEC` in the protocol: cells across and down, whether the piece
 blocks movement, whether it mounts on a wall, and whether its direction matters. They are the owner's,
-at roughly 25 cm per cell and derived from the real pieces — a developer's desk 6×3, the boss's 8×4, a
-reception counter 10×3, a meeting table 12×5, the lift car 5×2 hung on a wall, chairs 2×2, a doorway
-1×2 — and an employee is 2×2, the same width as the chair they sit on and the doorway they pass. A piece
+at roughly 25 cm per cell and derived from the real pieces — every desk 6×3, a reception counter 8×2, a
+meeting table and a dining table 7×3, a bookcase 8×1, a fridge 3×2, a hot tub 5×5, a toilet 2×2, a
+window 4×1, the lift car 5×2 hung on a wall, chairs 2×2, a doorway 1×2 — and an employee is 2×2, the
+same width as the chair they sit on and the doorway they pass. `OBJECT_SPEC` is the only place these
+numbers live; read it rather than this sentence when one has to be exact. A piece
 that hangs on a wall puts its **back** row on the cell clicked and grows the way it faces, so a fitting
 sits in the wall and a lift car juts into the room. Movement is still one cell at a time: a two-by-two
 body is not yet what the path search reserves. Each of the eleven room kinds carries its own hue and is outlined in
@@ -193,6 +205,11 @@ a right click turns them a quarter and a right drag erases; walls and rooms are 
 Prison Architect is coarser — its office desk and bed are 2×1, its chair and door 1×1 — because its tile
 is about a metre; the whole catalogue and its sources are in
 [the editor plan](plans/2026-09-09-layout-editor.md).
+
+Furniture is drawn inset by 0.08 of a cell and outlined at the weight the room edges use, which is
+what keeps two pieces that share a cell edge — desks facing each other, a counter along a wall — from
+reading as one shape. A world-unit hairline did that job before and disappeared at the zoom the whole
+floor is seen at.
 
 The view draws ground, floors, room tint, the grid, walls, objects and then one dot per character.
 The grid is always visible — one hairline of one colour on every cell boundary, the map's outer edge
@@ -207,6 +224,14 @@ Movement uses a weighted grid A* with a TinyQueue heap, clearance and turn costs
 reservations. Needs and seeded RNG drive idle behavior. Plan steps describe walking, dwelling, emitting
 handoff completion and leaving the office; queued envelope deliveries survive later intents. Each floor
 has its own elevator and animations. Simulation stepping is fixed and catch-up is bounded.
+
+The office speaks the viewer's language: English by default, Czech on request, chosen in Settings and
+remembered in that browser's `localStorage`. i18next holds the dictionaries and React reads them through
+`react-i18next`; the keys are typed, so a missing Czech string is a compile error rather than a blank
+label, and `cs.ts` is annotated as `typeof en` to force that. Room, furniture, door and wall names are
+part of the dictionaries, which is why the editor's palette reads "Jednací stůl" while the office file
+it writes still stores `meeting-table`. Everything an agent reads stays English whatever is chosen:
+briefs, prompts, the MCP tools, the CLI and the daemon's own log.
 
 Both scales the panels use are absolute, set once in `@theme`: `--spacing: 4px` and a px text ramp
 (`--text-2xs` 11px through `--text-base` 15px) with their own line heights. A rem scale hung off the
@@ -255,6 +280,16 @@ those live-log limits. Source reload polling is only present in development UI b
   only through a volume the network-less git-bridge populates. The git-bridge itself runs with
   `network: "none"`. Tightening egress would mean an egress proxy on `ho-agents` with a per-provider host
   allowlist; that is a project of its own and is not implemented.
+- **Accepted risk — the task engine runs `--privileged`.** A project with task services enabled gets a
+  container Docker itself describes as "not a securely sandboxed process". In the default `rootless` mode
+  the flag only lifts seccomp, AppArmor and the mount masks: dockerd runs as uid 1000 inside a user
+  namespace, no process in the container runs as root, and the VM's block devices stay unreadable to it.
+  In `rootful` mode the statement is stronger and the owner opts into it per project: a successful escape
+  is root inside the Docker Desktop VM, and from there the host engine socket, every other task volume
+  and the VM's virtiofs shares are reachable. This is the widest boundary the application opens, which is
+  why it is off by default and per project. Compose `mem_limit` and `deploy.resources.limits` are accepted
+  and **silently not enforced** in rootless mode (measured: a nested container reports the engine's own
+  limit); the engine's limit is the real one, and a service that exceeds it takes the environment down.
 - The daemon token is compared in constant time, and `ho.db` (with its WAL and shm files) is written
   mode 0600; the state directory's mode is re-asserted at every start, not only when it is created.
 - Reads of the OS credential store are bounded at 5 seconds and say why they timed out — on macOS a build

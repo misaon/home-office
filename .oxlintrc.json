@@ -112,7 +112,8 @@
     "**/build/**",
     "**/artifacts/**",
     "**/.hutch/**",
-    "apps/desktop/resources/**"
+    "apps/desktop/resources/**",
+    "spikes/*/fixture/**"
   ],
   "overrides": [
     {

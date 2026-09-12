@@ -10,6 +10,7 @@ import {
 import { defaultChoice } from "@ho/core";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
@@ -43,6 +44,7 @@ const effortFor = (provider: ProviderId, current: EffortLevel): EffortLevel => {
 
 /** The "new agent" form of a floor: a draft plus the provider catalog's valid combinations. */
 export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element {
+  const { t } = useTranslation();
   const spriteSets = useUi((s) => s.spriteSets);
   const [draft, setDraft] = useState<Draft>(emptyDraft(spriteSets[0] ?? "agent-a"));
   const create = useMutation({
@@ -72,7 +74,7 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
     <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-md border border-dashed border-line p-4 text-xs">
       <input
         className="col-span-2 rounded-md border border-line bg-ink px-3 py-2"
-        placeholder="Name"
+        placeholder={t("agent.name")}
         value={draft.name}
         onChange={(e) => {
           setDraft({ ...draft, name: e.target.value });
@@ -125,7 +127,7 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
       </select>
       <textarea
         className="col-span-2 h-20 resize-none rounded-md border border-line bg-ink px-3 py-2"
-        placeholder="Base prompt (persona, habits, constraints)"
+        placeholder={t("agent.basePrompt")}
         value={draft.basePrompt}
         onChange={(e) => {
           setDraft({ ...draft, basePrompt: e.target.value });
@@ -133,7 +135,7 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
       />
       <div className="col-span-2 flex justify-end">
         <Button variant="primary" disabled={create.isPending} onClick={add}>
-          Add agent
+          {t("agent.add")}
         </Button>
       </div>
       {create.error === null ? null : (

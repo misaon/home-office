@@ -8,6 +8,22 @@ const browserGuide = (enabled: boolean): string =>
     ? `Browser: this sandbox has headless Chromium with the Playwright MCP server (browser_* tools: navigate, click, type, snapshot, take_screenshot) and may expose Chrome DevTools MCP when enabled in daemon settings; only use tools actually available in this session. Bun, Node and npm are installed. Start dev servers on 127.0.0.1 inside the sandbox and open them at http://127.0.0.1:<port>; there is no display and no access to the host. Screenshots are written to ${BROWSER_OUTPUT_DIR}; copy the ones that belong in the repository into it before committing. Close pages you no longer need.`
     : "";
 
+/** Whether this session got the private container engine its project asks for. */
+export type ServicesState =
+  | { kind: "off" }
+  | { kind: "ready" }
+  | { kind: "failed"; message: string };
+
+const servicesGuide = (state: ServicesState): string => {
+  if (state.kind === "off") {
+    return "";
+  }
+  if (state.kind === "failed") {
+    return `Services: this project expects a private container engine, but it did not start (${state.message}). Do not run docker or docker compose; if the task needs them, report that as the blocker.`;
+  }
+  return `Services: this task has its own Docker engine — \`docker\`, \`docker compose\` and \`docker buildx\` reach only it, never the host. Run the repository's own compose file from ${REPO_IN_VOLUME} as written; published ports answer on 127.0.0.1 inside this sandbox. Per-service limits such as mem_limit are accepted but not enforced: the engine has one memory limit for the whole environment, and passing it kills every service at once. Images, build cache and service volumes survive for the next session of this task.`;
+};
+
 type Model = Pick<
   ReadModel,
   | "agents"
@@ -38,12 +54,14 @@ export const workPrompt = (
   task: Task,
   branch: string,
   browser: boolean,
+  services: ServicesState,
 ): string =>
   [
     ...common(agent, project),
     `The repository is checked out at ${REPO_IN_VOLUME} on branch ${branch}. Work only inside it.`,
     "Commit your changes with clear Conventional Commit messages.",
     browserGuide(browser),
+    servicesGuide(services),
     `Task: ${task.title}`,
     ...workProtocol,
   ]
@@ -56,11 +74,13 @@ export const reviewPrompt = (
   task: Task,
   branch: string,
   browser: boolean,
+  services: ServicesState,
 ): string =>
   [
     ...common(agent, project),
     `You are reviewing branch ${branch} of the repository at ${REPO_IN_VOLUME} (base branch: ${project.defaultBranch}).`,
     browserGuide(browser),
+    servicesGuide(services),
     `Start with \`git -C ${REPO_IN_VOLUME} diff ${project.defaultBranch}...HEAD --stat\` and then the full diff; read surrounding code only where needed.`,
     "Check correctness, safety, adherence to the task brief and the repository's conventions; do not modify files.",
     `Task under review: ${task.title}`,

@@ -1,6 +1,7 @@
 import { type Doctor, errorMessage } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Button } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { dockerStatus, imagesStatus, tokenStatus } from "./status.ts";
@@ -9,16 +10,14 @@ import { Step } from "./step.tsx";
 type EnvProps = { doctor: Doctor | null; refresh: () => void };
 
 export function DockerStep({ doctor, refresh }: EnvProps): React.JSX.Element {
-  const status = dockerStatus(doctor);
+  const { t } = useTranslation();
+  const status = dockerStatus(doctor, t);
   return (
-    <Step index={1} title="Docker" status={status}>
+    <Step index={1} title={t("setup.docker")} status={status}>
       {status.state === "ok" ? null : (
         <div className="space-y-3">
-          <p className="leading-relaxed text-gray-300">
-            Agents run in isolated Alpine containers. Install and start Docker Desktop (or another
-            Docker Engine), then check again.
-          </p>
-          <Button onClick={refresh}>Check again</Button>
+          <p className="leading-relaxed text-gray-300">{t("setup.dockerIntro")}</p>
+          <Button onClick={refresh}>{t("setup.checkAgain")}</Button>
         </div>
       )}
     </Step>
@@ -28,7 +27,8 @@ export function DockerStep({ doctor, refresh }: EnvProps): React.JSX.Element {
 const LOG_LIMIT = 400;
 
 export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
-  const status = imagesStatus(doctor);
+  const { t } = useTranslation();
+  const status = imagesStatus(doctor, t);
   const [lines, setLines] = useState<string[]>([]);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -76,13 +76,9 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
   });
 
   return (
-    <Step index={2} title="Agent images" status={status}>
+    <Step index={2} title={t("setup.images")} status={status}>
       <div className="space-y-3">
-        <p className="leading-relaxed text-gray-300">
-          The agent image bundles Claude Code, git, RTK, headless Chromium and the browser MCP
-          servers. The first build downloads everything and takes a few minutes; later builds reuse
-          cached layers.
-        </p>
+        <p className="leading-relaxed text-gray-300">{t("setup.imagesIntro")}</p>
         {status.state === "ok" && !build.isPending ? null : (
           <Button
             variant="primary"
@@ -91,7 +87,9 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
               build.mutate();
             }}
           >
-            {build.isPending ? `Building… ${String(elapsed)} s` : "Build images"}
+            {build.isPending
+              ? t("setup.building", { seconds: String(elapsed) })
+              : t("setup.buildImages")}
           </Button>
         )}
         {lines.length > 0 ? (
@@ -107,7 +105,8 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
 }
 
 export function TokenStep({ doctor, refresh }: EnvProps): React.JSX.Element {
-  const status = tokenStatus(doctor);
+  const { t } = useTranslation();
+  const status = tokenStatus(doctor, t);
   const [value, setValue] = useState("");
   const store = useMutation({
     mutationFn: (token: string) =>
@@ -124,24 +123,21 @@ export function TokenStep({ doctor, refresh }: EnvProps): React.JSX.Element {
     }
   };
   return (
-    <Step index={3} title="Claude subscription token" status={status}>
+    <Step index={3} title={t("setup.token")} status={status}>
       <div className="space-y-3">
         <p className="leading-relaxed text-gray-300">
-          Agents sign in with your Claude subscription. In a terminal run{" "}
-          <code className="rounded bg-ink px-1 font-mono">claude setup-token</code>, finish the
-          browser login it opens and paste the token it prints. It is stored in this machine&rsquo;s
-          credential store (Keychain, libsecret or Credential Manager) and only ever handed to the{" "}
-          <code className="font-mono">claude</code> process inside a sandbox.
+          <Trans
+            i18nKey="setup.tokenIntro"
+            components={{ code: <code className="rounded bg-ink px-1 font-mono" /> }}
+          />
         </p>
         <div className="flex gap-2">
           <input
             type="password"
-            aria-label="Claude subscription token"
+            aria-label={t("setup.token")}
             autoComplete="off"
             className="flex-1 rounded-md border border-line bg-ink px-3 py-2 font-mono focus:border-accent/60 focus:outline-none"
-            placeholder={
-              status.state === "ok" ? "paste a new token to replace it" : "paste the token"
-            }
+            placeholder={status.state === "ok" ? t("setup.tokenReplace") : t("setup.tokenPaste")}
             value={value}
             onChange={(e) => {
               setValue(e.target.value);
@@ -153,7 +149,7 @@ export function TokenStep({ doctor, refresh }: EnvProps): React.JSX.Element {
             }}
           />
           <Button variant="primary" onClick={save}>
-            Save
+            {t("common.save")}
           </Button>
         </div>
         {store.error === null ? null : <p className="text-red-400">{errorMessage(store.error)}</p>}

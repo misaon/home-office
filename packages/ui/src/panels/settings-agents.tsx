@@ -7,6 +7,7 @@ import {
   ProjectId,
 } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { sortedFloors, useUi } from "../store.ts";
@@ -25,6 +26,7 @@ const choiceOf = (agent: Agent): Choice => ({
 type RowProps = { agent: Agent; projects: ReadonlyMap<ProjectId, Project> };
 
 function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
+  const { t } = useTranslation();
   const spriteSets = useUi((s) => s.spriteSets);
   const otherFloors = sortedFloors(projects).filter((p) => p.id !== agent.projectId);
   const save = useMutation({
@@ -55,18 +57,18 @@ function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
           {agent.name} <span className="text-gray-400">· {agent.role}</span>
         </span>
         {agent.role === "boss" ? (
-          <span className="text-xs text-gray-500">runs this floor</span>
+          <span className="text-xs text-gray-500">{t("agent.runsFloor")}</span>
         ) : (
           <button
             type="button"
             className="text-xs text-red-300 hover:underline"
             onClick={() => {
-              if (window.confirm(`Remove ${agent.name}?`)) {
+              if (window.confirm(t("agent.confirmRemove", { name: agent.name }))) {
                 remove.mutate();
               }
             }}
           >
-            remove
+            {t("common.remove")}
           </button>
         )}
       </div>
@@ -136,11 +138,12 @@ function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
 
 /** The staff of the selected floor: the boss first, then everybody else by name. */
 export function AgentsSettings(): React.JSX.Element {
+  const { t } = useTranslation();
   const projects = useUi((s) => s.snapshot.projects);
   const staff = useUi((s) => s.snapshot.agents);
   const floorId = useUi((s) => s.floorId);
   if (floorId === null) {
-    return <p className="text-gray-400">Add a project (floor) first.</p>;
+    return <p className="text-gray-400">{t("project.needFirst")}</p>;
   }
   const agents = [...staff.values()]
     .filter((a) => a.projectId === floorId)
@@ -149,7 +152,7 @@ export function AgentsSettings(): React.JSX.Element {
         Number(b.role === "boss") - Number(a.role === "boss") || a.name.localeCompare(b.name),
     );
   return (
-    <Section title={`Team of floor ${projects.get(floorId)?.name ?? ""}`}>
+    <Section title={t("agent.team", { floor: projects.get(floorId)?.name ?? "" })}>
       {agents.map((a) => (
         <AgentRow key={a.id} agent={a} projects={projects} />
       ))}

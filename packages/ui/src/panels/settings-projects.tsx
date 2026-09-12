@@ -1,14 +1,17 @@
 import { errorMessage, type Project } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Button, Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { sortedFloors, useUi } from "../store.ts";
 import { IntakeSettings } from "./settings-intake.tsx";
+import { ServicesSettings } from "./settings-services.tsx";
 
 const describeRepo = (p: Project): string => (p.repo.kind === "local" ? p.repo.path : p.repo.url);
 
 /** The floors: one per project, numbered by creation. Adding one goes through the add-project dialog. */
 export function ProjectsSettings(): React.JSX.Element {
+  const { t } = useTranslation();
   const projects = useUi((s) => s.snapshot.projects);
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
   const togglePr = useMutation({
@@ -25,17 +28,13 @@ export function ProjectsSettings(): React.JSX.Element {
   });
   const failure = togglePr.error ?? remove.error;
   const confirmRemove = (p: Project): void => {
-    if (
-      window.confirm(
-        `Remove floor ${p.name} with its boss and staff? Tasks and history stay in the log.`,
-      )
-    ) {
+    if (window.confirm(t("project.confirmRemove", { name: p.name }))) {
       remove.mutate(p);
     }
   };
 
   return (
-    <Section title="Floors (projects)">
+    <Section title={t("project.floors")}>
       {sortedFloors(projects).map((p, i) => (
         <div key={p.id} className="space-y-1.5 rounded-md border border-line bg-panel p-3">
           <div className="flex items-center justify-between">
@@ -51,7 +50,7 @@ export function ProjectsSettings(): React.JSX.Element {
                   togglePr.mutate(p);
                 }}
               >
-                delivery: {p.publish.mode}
+                {t("project.delivery", { mode: p.publish.mode })}
               </button>
               <button
                 type="button"
@@ -60,7 +59,7 @@ export function ProjectsSettings(): React.JSX.Element {
                   confirmRemove(p);
                 }}
               >
-                remove
+                {t("common.remove")}
               </button>
             </span>
           </div>
@@ -68,6 +67,7 @@ export function ProjectsSettings(): React.JSX.Element {
             {describeRepo(p)} · {p.defaultBranch}
           </div>
           <IntakeSettings project={p} />
+          <ServicesSettings project={p} />
         </div>
       ))}
       <Button
@@ -76,7 +76,7 @@ export function ProjectsSettings(): React.JSX.Element {
           setAddProjectOpen(true);
         }}
       >
-        Add a project (floor)
+        {t("project.add")}
       </Button>
       {failure === null ? null : <span className="ml-3 text-red-400">{errorMessage(failure)}</span>}
     </Section>
