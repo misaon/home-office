@@ -6,9 +6,6 @@
     "ho": "./src/main.ts"
   },
   "type": "module",
-  "scripts": {
-    "build": "bun build --compile --minify ./src/main.ts --outfile ./dist/ho"
-  },
   "dependencies": {
     "@ho/core": "workspace:*",
     "@ho/daemon": "workspace:*",

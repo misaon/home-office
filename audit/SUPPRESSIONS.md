@@ -63,3 +63,30 @@ The count is unchanged at five, and one of them moved:
 
 Nothing was added: no `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`, non-null assertion or
 whole-file disable appears anywhere in the tree (grep in `VERIFICATION.md` § "No escapes anywhere").
+
+## Current state, 2026-09-13
+
+The architecture pass changed the facts several rows above record, so this section supersedes them. Three
+suppressions survive in the source, plus one scoped rule override:
+
+| #   | Where                              | Suppression                                                                       | Why it is justified                                                                                                                                                        |
+| --- | ---------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `packages/protocol/src/patch.ts:5` | `typescript/no-unsafe-type-assertion`                                             | `compact()` builds its result with `Object.fromEntries`, whose return type TypeScript cannot express. Unchanged; `type-fest`, which ADR 005 adopted for this job, is gone. |
+| 2   | `packages/store/src/index.ts:156`  | `typescript/require-await`                                                        | `bun:sqlite` is synchronous while the `EventStore` port is async for remote backends. **Moved** from the deleted `packages/store/src/event-store.ts:77`.                   |
+| 3   | `packages/ui/src/i18n/index.ts:50` | `typescript/consistent-type-definitions`                                          | i18next's typed keys are reached by augmenting its own `CustomTypeOptions` **interface**; a `type` cannot merge into an interface.                                         |
+| 4   | `.oxlintrc.json` `overrides[0]`    | `unicorn/no-array-fill-with-reference-type` off for `packages/ui/src/office/*.ts` | Still earning it: the rule misfires on PixiJS's `Graphics.fill(style)` purely because of the method name (`tiles.ts:31` trips it with the override removed).               |
+
+The `packages/store/drizzle/**` override recorded under "Added by Wave 1" was **removed on 2026-09-13**
+together with Drizzle itself: the store is one `bun:sqlite` module with no generated files.
+
+Verified:
+
+```
+$ git ls-files "*.ts" "*.tsx" | xargs grep -n "oxlint-disable\|eslint-disable"
+packages/protocol/src/patch.ts:5:  /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.fromEntries cannot express the mapped type */
+packages/store/src/index.ts:156:    // oxlint-disable-next-line typescript/require-await -- bun:sqlite is synchronous; the port is async for remote backends
+packages/ui/src/i18n/index.ts:50:  // oxlint-disable-next-line typescript/consistent-type-definitions
+```
+
+No `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`, non-null assertion or whole-file disable exists
+anywhere in the tracked source.

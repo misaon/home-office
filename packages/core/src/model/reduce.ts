@@ -1,5 +1,11 @@
-import { compact, type Session, type StoredEvent, type Task } from "@ho/protocol";
-import { isSessionActive, RATE_LIMITED } from "../commands/sessions.ts";
+import {
+  addUsage,
+  compact,
+  isSessionActive,
+  type ProjectId,
+  type Session,
+  type StoredEvent,
+} from "@ho/protocol";
 import {
   CHAT_TAIL,
   type Collection,
@@ -7,12 +13,9 @@ import {
   indexInto,
   mailSourceKey,
   RATE_LIMIT_TAIL,
+  RATE_LIMITED,
   type ReadModel,
 } from "./read-model.ts";
-
-const touch = (model: ReadModel, task: Task, at: string): void => {
-  model.tasks.set(task.id, { ...task, updatedAt: at });
-};
 
 type TaskEvent = Extract<StoredEvent, { type: `task.${string}` }>;
 type SessionEvent = Extract<StoredEvent, { type: `session.${string}` }>;
@@ -28,53 +31,47 @@ function applyTaskEvent(model: ReadModel, event: TaskEvent): void {
   if (task === undefined) {
     return;
   }
+  const { assigneeId: _assignee, reviewerId: _reviewer, ...bare } = task;
+  const touched = { ...task, updatedAt: event.at };
   switch (event.type) {
     case "task.edited": {
       const { title, brief, priority } = event.payload;
-      touch(
-        model,
-        {
-          ...task,
-          ...compact({ title, brief, priority }),
-        },
-        event.at,
-      );
+      model.tasks.set(task.id, { ...touched, ...compact({ title, brief, priority }) });
       break;
     }
     case "task.assigned": {
-      const { assigneeId: _dropped, ...rest } = task;
-      touch(
-        model,
-        event.payload.agentId === null ? rest : { ...rest, assigneeId: event.payload.agentId },
-        event.at,
-      );
+      model.tasks.set(task.id, {
+        ...bare,
+        ...compact({ reviewerId: task.reviewerId, assigneeId: event.payload.agentId ?? undefined }),
+        updatedAt: event.at,
+      });
       break;
     }
     case "task.reviewer_assigned": {
-      const { reviewerId: _dropped, ...rest } = task;
-      touch(
-        model,
-        event.payload.reviewerId === null
-          ? rest
-          : { ...rest, reviewerId: event.payload.reviewerId },
-        event.at,
-      );
+      model.tasks.set(task.id, {
+        ...bare,
+        ...compact({
+          assigneeId: task.assigneeId,
+          reviewerId: event.payload.reviewerId ?? undefined,
+        }),
+        updatedAt: event.at,
+      });
       break;
     }
     case "task.status_changed": {
-      touch(model, { ...task, status: event.payload.to }, event.at);
+      model.tasks.set(task.id, { ...touched, status: event.payload.to });
       break;
     }
     case "task.artifacts_changed": {
-      touch(model, { ...task, artifacts: event.payload.artifacts }, event.at);
+      model.tasks.set(task.id, { ...touched, artifacts: event.payload.artifacts });
       break;
     }
     case "task.note_added": {
-      touch(model, { ...task, notes: [...task.notes, event.payload.note] }, event.at);
+      model.tasks.set(task.id, { ...touched, notes: [...task.notes, event.payload.note] });
       break;
     }
     case "task.review_recorded": {
-      touch(model, { ...task, reviewRounds: event.payload.rounds }, event.at);
+      model.tasks.set(task.id, { ...touched, reviewRounds: event.payload.rounds });
       break;
     }
   }
@@ -103,7 +100,7 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
   }
   switch (event.type) {
     case "session.state_changed": {
-      const { runtimeSessionId, sandboxId, services } = event.payload;
+      const { state, runtimeSessionId, sandboxId, services } = event.payload;
       if (event.payload.reason?.startsWith(RATE_LIMITED) === true) {
         model.rateLimitsSeen += 1;
         model.rateLimits.push(event.at);
@@ -111,37 +108,20 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
           model.rateLimits.splice(0, model.rateLimits.length - RATE_LIMIT_TAIL);
         }
       }
-      const next = {
-        ...session,
-        state: event.payload.state,
-        ...compact({ runtimeSessionId }),
-        ...compact({ sandboxId }),
-        ...compact({ services }),
-      };
+      const next = { ...session, state, ...compact({ runtimeSessionId, sandboxId, services }) };
       model.sessions.set(session.id, next);
       trackSessionState(model, next);
       break;
     }
     case "session.usage_recorded": {
-      const u = event.payload.usage;
       model.sessions.set(session.id, {
         ...session,
-        usage: {
-          inputTokens: session.usage.inputTokens + u.inputTokens,
-          outputTokens: session.usage.outputTokens + u.outputTokens,
-          cacheReadTokens: session.usage.cacheReadTokens + u.cacheReadTokens,
-          cacheWriteTokens: session.usage.cacheWriteTokens + u.cacheWriteTokens,
-          turns: session.usage.turns + u.turns,
-        },
+        usage: addUsage(session.usage, event.payload.usage),
       });
       break;
     }
     case "session.ended": {
-      const ended = {
-        ...session,
-        state: event.payload.state,
-        endedAt: event.payload.endedAt,
-      };
+      const ended = { ...session, state: event.payload.state, endedAt: event.payload.endedAt };
       model.sessions.set(session.id, ended);
       trackSessionState(model, ended);
       break;
@@ -149,7 +129,36 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
   }
 }
 
-/** Folds one stored event into the model. Unknown ids are ignored so a partial log never throws. */
+/**
+ * The floor is gone: its staff left with `agent.removed`, and its tasks, their sessions, its chat and
+ * its mail go with it. Sessions are keyed by task, so nothing else would ever clean them up.
+ */
+function removeProject(model: ReadModel, projectId: ProjectId): void {
+  model.projects.delete(projectId);
+  model.agentsByProject.delete(projectId);
+  for (const taskId of model.tasksByProject.get(projectId) ?? []) {
+    for (const sessionId of model.sessionsByTask.get(taskId) ?? []) {
+      const session = model.sessions.get(sessionId);
+      if (session !== undefined) {
+        dropFrom(model.sessionsByAgent, session.agentId, sessionId);
+      }
+      model.sessions.delete(sessionId);
+      model.activeSessions.delete(sessionId);
+    }
+    model.sessionsByTask.delete(taskId);
+    model.tasks.delete(taskId);
+  }
+  model.tasksByProject.delete(projectId);
+  model.chat.delete(projectId);
+  for (const mail of model.mail.values()) {
+    if (mail.projectId === projectId) {
+      model.mail.delete(mail.id);
+      model.mailBySource.delete(mailSourceKey(mail.projectId, mail.connector, mail.externalId));
+    }
+  }
+}
+
+/** Which collection each event touches, so `revisions` tells readers what to copy. */
 const TOUCHES: Readonly<Record<StoredEvent["type"], Collection | null>> = {
   "project.created": "projects",
   "project.updated": "projects",
@@ -175,6 +184,7 @@ const TOUCHES: Readonly<Record<StoredEvent["type"], Collection | null>> = {
   "session.ended": "sessions",
 };
 
+/** Folds one stored event into the model. Unknown ids are ignored so a partial log never throws. */
 export function applyEvent(model: ReadModel, event: StoredEvent): void {
   if (event.seq <= model.lastSeq) {
     return;
@@ -190,8 +200,10 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
       break;
     }
     case "project.removed": {
-      model.projects.delete(event.payload.projectId);
-      model.agentsByProject.delete(event.payload.projectId);
+      removeProject(model, event.payload.projectId);
+      for (const name of ["agents", "tasks", "sessions", "chat", "mail"] as const) {
+        model.revisions[name] += 1;
+      }
       break;
     }
     case "agent.created":

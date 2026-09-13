@@ -6,15 +6,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "scripts": {
-    "db:generate": "drizzle-kit generate"
-  },
   "dependencies": {
     "@ho/core": "workspace:*",
     "@ho/protocol": "workspace:*",
-    "drizzle-orm": "catalog:"
-  },
-  "devDependencies": {
-    "drizzle-kit": "catalog:"
+    "zod": "catalog:"
   }
 }

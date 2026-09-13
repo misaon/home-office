@@ -1,7 +1,8 @@
 import { defaultChoice } from "@ho/core";
 import { type AgentRole, AuthKind, EffortLevel, PROVIDERS, ProviderId } from "@ho/protocol";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CONTROL, Field } from "../kit/controls.tsx";
 
 export type Choice = { provider: ProviderId; auth: AuthKind; model: string; effort: EffortLevel };
 
@@ -12,8 +13,6 @@ type Props = {
   onChange: (next: Choice) => void;
   /** The role the defaults of a provider switch should follow. */
   role: AgentRole;
-  /** Compact rows inside an existing agent card versus the wider "new agent" form. */
-  dense?: boolean;
 };
 
 /**
@@ -21,45 +20,39 @@ type Props = {
  * offered, a provider switch resets model/auth/effort to that provider's defaults, and providers that accept
  * any model id get a free-text field behind "{t("common.custom")}".
  */
-export function ProviderModelFields({
-  value,
-  onChange,
-  role,
-  dense = false,
-}: Props): React.JSX.Element {
+export function ProviderModelFields({ value, onChange, role }: Props): React.JSX.Element {
   const { t } = useTranslation();
+  const id = useId();
   const catalog = PROVIDERS[value.provider];
   const listed = catalog.models.some((m) => m.id === value.model);
   const [custom, setCustom] = useState(!listed && catalog.freeFormModels);
-  const control = "rounded-md border border-line bg-ink";
-  const input = dense ? `${control} px-2 py-1` : `${control} px-2 py-1.5`;
   const switchProvider = (provider: ProviderId): void => {
     setCustom(false);
     onChange({ provider, ...defaultChoice(provider, role) });
   };
   return (
     <>
-      <label className="flex items-center gap-2">
-        {dense ? "provider" : null}
+      <Field id={`${id}-provider`} label={t("agent.provider")}>
         <select
-          className={input}
+          id={`${id}-provider`}
+          className={CONTROL}
           value={value.provider}
           onChange={(e) => {
             switchProvider(ProviderId.parse(e.target.value));
           }}
         >
-          {ProviderId.options.map((id) => (
-            <option key={id} value={id}>
-              {PROVIDERS[id].name}
+          {ProviderId.options.map((provider) => (
+            <option key={provider} value={provider}>
+              {PROVIDERS[provider].name}
             </option>
           ))}
         </select>
-      </label>
+      </Field>
       {catalog.authKinds.length > 1 ? (
-        <label className="flex items-center gap-2">
-          {dense ? "auth" : null}
+        <Field id={`${id}-auth`} label={t("agent.auth")}>
           <select
-            className={input}
+            id={`${id}-auth`}
+            className={CONTROL}
             value={value.auth}
             onChange={(e) => {
               onChange({ ...value, auth: AuthKind.parse(e.target.value) });
@@ -69,13 +62,13 @@ export function ProviderModelFields({
               <option key={kind}>{kind}</option>
             ))}
           </select>
-        </label>
+        </Field>
       ) : null}
-      <label className="flex items-center gap-2">
-        {dense ? "model" : null}
+      <Field id={`${id}-model`} label={t("agent.model")}>
         {custom ? (
           <input
-            className={`${input} w-full font-mono`}
+            id={`${id}-model`}
+            className={`${CONTROL} font-mono`}
             placeholder={catalog.defaultModel}
             defaultValue={value.model}
             onBlur={(e) => {
@@ -87,7 +80,8 @@ export function ProviderModelFields({
           />
         ) : (
           <select
-            className={input}
+            id={`${id}-model`}
+            className={CONTROL}
             value={listed ? value.model : CUSTOM}
             onChange={(e) => {
               if (e.target.value === CUSTOM) {
@@ -105,22 +99,22 @@ export function ProviderModelFields({
             {catalog.freeFormModels ? <option value={CUSTOM}>{t("common.custom")}</option> : null}
           </select>
         )}
-      </label>
+      </Field>
       {catalog.effortLevels.length > 0 ? (
-        <label className="flex items-center gap-2">
-          {dense ? "effort" : null}
+        <Field id={`${id}-effort`} label={t("agent.effort")}>
           <select
-            className={input}
+            id={`${id}-effort`}
+            className={CONTROL}
             value={value.effort}
             onChange={(e) => {
               onChange({ ...value, effort: EffortLevel.parse(e.target.value) });
             }}
           >
-            {catalog.effortLevels.map((x) => (
-              <option key={x}>{x}</option>
+            {catalog.effortLevels.map((level) => (
+              <option key={level}>{level}</option>
             ))}
           </select>
-        </label>
+        </Field>
       ) : null}
     </>
   );

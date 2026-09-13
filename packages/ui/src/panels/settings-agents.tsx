@@ -1,18 +1,11 @@
-import {
-  type Agent,
-  type AgentUpdateInput,
-  errorMessage,
-  Gender,
-  type Project,
-  ProjectId,
-} from "@ho/protocol";
+import { type Agent, type AgentUpdateInput, Gender, type Project, ProjectId } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
+import { useId } from "react";
 import { useTranslation } from "react-i18next";
-import { Section } from "../kit/controls.tsx";
+import { GENDER_KEY, ROLE_KEY } from "../i18n/labels.ts";
+import { CONTROL, Failure, Field, Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { sortedFloors, useUi } from "../store.ts";
-
-const GENDERS = Gender.options;
 import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
 import { NewAgent } from "./agent-new.tsx";
 
@@ -27,7 +20,7 @@ type RowProps = { agent: Agent; projects: ReadonlyMap<ProjectId, Project> };
 
 function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
   const { t } = useTranslation();
-  const spriteSets = useUi((s) => s.spriteSets);
+  const id = useId();
   const otherFloors = sortedFloors(projects).filter((p) => p.id !== agent.projectId);
   const save = useMutation({
     mutationFn: (patch: AgentUpdateInput["patch"]) =>
@@ -39,22 +32,11 @@ function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
   const remove = useMutation({
     mutationFn: () => requireClient().agents.remove({ id: agent.id }),
   });
-  const failure = save.error ?? copy.error ?? remove.error;
-  const update = (patch: AgentUpdateInput["patch"]): void => {
-    save.mutate(patch);
-  };
-  const copyTo = (projectId: ProjectId): void => {
-    copy.mutate(projectId);
-  };
-  const sprites = [
-    agent.appearance.spriteSet,
-    ...spriteSets.filter((s) => s !== agent.appearance.spriteSet),
-  ];
   return (
     <div className="space-y-2.5 rounded-md border border-line bg-panel p-3">
       <div className="flex items-center justify-between">
         <span className="font-medium">
-          {agent.name} <span className="text-gray-400">· {agent.role}</span>
+          {agent.name} <span className="text-gray-400">· {t(ROLE_KEY[agent.role])}</span>
         </span>
         {agent.role === "boss" ? (
           <span className="text-xs text-gray-500">{t("agent.runsFloor")}</span>
@@ -74,64 +56,51 @@ function AgentRow({ agent, projects }: RowProps): React.JSX.Element {
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
         <ProviderModelFields
-          dense
           role={agent.role}
           value={choiceOf(agent)}
           onChange={(next) => {
-            update(next);
+            save.mutate(next);
           }}
         />
-        <label className="flex items-center gap-2">
-          sprite
+        <Field id={`${id}-gender`} label={t("agent.gender")}>
           <select
-            className="rounded-md border border-line bg-ink px-2 py-1"
-            value={agent.appearance.spriteSet}
-            onChange={(e) => {
-              update({ appearance: { ...agent.appearance, spriteSet: e.target.value } });
-            }}
-          >
-            {sprites.map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-2">
-          gender
-          <select
-            className="rounded-md border border-line bg-ink px-2 py-1"
+            id={`${id}-gender`}
+            className={CONTROL}
             value={agent.appearance.gender}
             onChange={(e) => {
-              update({ appearance: { ...agent.appearance, gender: Gender.parse(e.target.value) } });
+              save.mutate({ appearance: { gender: Gender.parse(e.target.value) } });
             }}
           >
-            {GENDERS.map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {agent.role === "boss" || otherFloors.length === 0 ? null : (
-        <div className="flex items-center gap-2 text-xs text-gray-400">
-          copy to floor
-          <select
-            className="rounded-md border border-line bg-ink px-2 py-1"
-            value=""
-            onChange={(e) => {
-              if (e.target.value !== "") {
-                copyTo(ProjectId.parse(e.target.value));
-              }
-            }}
-          >
-            <option value="">…</option>
-            {otherFloors.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
+            {Gender.options.map((gender) => (
+              <option key={gender} value={gender}>
+                {t(GENDER_KEY[gender])}
               </option>
             ))}
           </select>
-        </div>
-      )}
-      {failure === null ? null : <p className="text-xs text-red-400">{errorMessage(failure)}</p>}
+        </Field>
+        {agent.role === "boss" || otherFloors.length === 0 ? null : (
+          <Field id={`${id}-copy`} label={t("agent.copyToFloor")}>
+            <select
+              id={`${id}-copy`}
+              className={CONTROL}
+              value=""
+              onChange={(e) => {
+                if (e.target.value !== "") {
+                  copy.mutate(ProjectId.parse(e.target.value));
+                }
+              }}
+            >
+              <option value="">{t("agent.pickFloor")}</option>
+              {otherFloors.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+      </div>
+      <Failure error={save.error ?? copy.error ?? remove.error} />
     </div>
   );
 }

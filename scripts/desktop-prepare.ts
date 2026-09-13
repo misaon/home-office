@@ -1,16 +1,12 @@
-// Assembles everything the desktop app bundles besides its own main process: the office UI, image build
-// contexts (with the bundled ho-runner and role skill packs), database migrations and the app icon.
-// Output: apps/desktop/resources/ho (mirrors the repository paths @ho/daemon resolves) and
-// apps/desktop/icon.iconset. Both are git-ignored; `bun run desktop:dev|build` runs this first.
+// Assembles everything the desktop app bundles besides its own main process: the office UI and the image
+// build contexts (with the bundled ho-runner). Output: apps/desktop/resources/ho, which mirrors the
+// repository paths @ho/daemon resolves; git-ignored. `bun run desktop:dev|build` runs this first.
 import { $ } from "bun";
 import { cp, mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
-import { drawIcon, ICONSET_FILES, scaleNearest } from "./lib/desktop-icon.ts";
-import { encodePng } from "./lib/png.ts";
 
 const root = resolve(import.meta.dir, "..");
-const desktop = resolve(root, "apps/desktop");
-const out = resolve(desktop, "resources/ho");
+const out = resolve(root, "apps/desktop/resources/ho");
 const at = (...parts: string[]): string => resolve(root, ...parts);
 const say = (text: string): void => {
   process.stdout.write(`desktop-prepare: ${text}\n`);
@@ -19,22 +15,17 @@ const say = (text: string): void => {
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 
-// 1. Office UI bundle.
 await $`bun run ${at("scripts/ui-build.ts")}`.cwd(root);
 await cp(at("packages/ui/dist"), resolve(out, "packages/ui/dist"), { recursive: true });
 say("ui bundle copied");
 
-// 2. Image build contexts: Dockerfiles as in the repository, plus the runner binary and skill packs the
-//    daemon would otherwise produce at build time (the packaged app has neither sources nor `bun`).
+// The Dockerfiles as in the repository, plus the runner bundle the daemon would otherwise produce at build
+// time (the packaged app has neither sources nor `bun`).
 await cp(at("images/git-bridge"), resolve(out, "images/git-bridge"), { recursive: true });
 await cp(at("images/agent"), resolve(out, "images/agent"), {
   recursive: true,
   filter: (source) =>
-    !source.split("/").includes("node_modules") &&
-    !/\/images\/agent\/(?:bin|plugins)(?:\/|$)/u.test(source),
-});
-await cp(at("packages/agent-kit/plugins"), resolve(out, "images/agent/plugins"), {
-  recursive: true,
+    !source.split("/").includes("node_modules") && !/\/images\/agent\/bin(?:\/|$)/u.test(source),
 });
 const runner = resolve(out, "images/agent/bin/ho-runner.js");
 await mkdir(resolve(out, "images/agent/bin"), { recursive: true });
@@ -42,17 +33,4 @@ await $`bun build --target=bun --minify ${at("packages/runner/src/main.ts")} --o
   .cwd(root)
   .quiet();
 say("image contexts assembled (ho-runner bundled for the image's own Bun)");
-
-// 3. Database migrations.
-await cp(at("packages/store/drizzle"), resolve(out, "packages/store/drizzle"), { recursive: true });
-
-// 4. App icon: pixel-art building at every size iconutil wants.
-const iconset = resolve(desktop, "icon.iconset");
-await rm(iconset, { recursive: true, force: true });
-await mkdir(iconset, { recursive: true });
-const base = drawIcon();
-for (const { name, size } of ICONSET_FILES) {
-  await Bun.write(resolve(iconset, name), await encodePng(scaleNearest(base, size / base.width)));
-}
-say(`icon.iconset written (${String(ICONSET_FILES.length)} sizes)`);
 say(`resources ready at ${out}`);

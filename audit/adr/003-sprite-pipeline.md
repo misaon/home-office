@@ -144,3 +144,12 @@ built now would be regenerated with every delivery.
 
 **Decision: defer until the art is complete**, then generate the atlas from the manifest (a mechanical
 transform, ~40 lines of packer) — or drop it if first paint still measures like the numbers above.
+
+## Correction 2026-09-13 — the pipeline and `sharp` are gone
+
+Both the pipeline this ADR argued to keep and the `sharp` dependency behind its first correction were
+deleted: the art went at the owner's instruction on 2026-09-09 (`docs/PLAN.md`), and the architecture pass
+on 2026-09-13 removed the last `sharp` consumer — the desktop icon is now ten committed PNGs under
+`apps/desktop/icon.iconset/`. The atlas question goes with them. What survives is the reasoning: measure
+first paint before optimising it, and prefer an exact hand-written transform to async plumbing when the
+library's behaviour differs.

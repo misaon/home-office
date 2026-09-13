@@ -2,24 +2,26 @@ import { errorMessage, type OfficeLayout } from "@ho/protocol";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { OFFICE_SIZE } from "@ho/sim";
 import { useKindName } from "../i18n/kinds.ts";
 import { Button, CONTROL, Field, Section, Tabs } from "../kit/controls.tsx";
+import { layoutsQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
+import { EditorCanvas } from "./canvas.tsx";
 import {
-  type Draft,
+  type Brush,
   emptyDraft,
   erase,
-  type Kinds,
-  paint,
   type Note,
+  type OfficeDraft,
+  paint,
   rotate,
   slugify,
   type Tool,
 } from "./draft.ts";
 import { fromOffice, toOffice } from "./office-file.ts";
-import { EditorCanvas } from "./canvas.tsx";
+import { SavedOffices } from "./offices.tsx";
 import { Palette } from "./palette.tsx";
-import { layoutsQuery, SavedOffices } from "./offices.tsx";
 
 const TOOLS = [
   { value: "wall", label: "editor.wall" },
@@ -28,14 +30,13 @@ const TOOLS = [
   { value: "object", label: "editor.furniture" },
 ] as const satisfies readonly { value: Tool; label: string }[];
 
-const SIZE = { width: 60, height: 34 };
 /** The office's own fields. The file name is the name, slugified, so it cannot drift from it. */
 function OfficeFields({
   draft,
   setDraft,
 }: {
-  draft: Draft;
-  setDraft: (draft: Draft) => void;
+  draft: OfficeDraft;
+  setDraft: (draft: OfficeDraft) => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
   const office = toOffice(draft);
@@ -82,11 +83,11 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
   const { t } = useTranslation();
   const kindName = useKindName();
   const queries = useQueryClient();
-  const [draft, setDraft] = useState<Draft>(() =>
-    emptyDraft(t("editor.newOffice"), SIZE.width, SIZE.height),
+  const [draft, setDraft] = useState<OfficeDraft>(() =>
+    emptyDraft(t("editor.newOffice"), OFFICE_SIZE.width, OFFICE_SIZE.height),
   );
   const [tool, setTool] = useState<Tool>("wall");
-  const [kinds, setKinds] = useState<Kinds>({
+  const [brush, setBrush] = useState<Brush>({
     wall: "wall",
     room: "team-room",
     door: "door",
@@ -98,7 +99,7 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (event.key.toLowerCase() === "r" && document.activeElement?.tagName !== "INPUT") {
-        setKinds(rotate);
+        setBrush(rotate);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -124,7 +125,7 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
             options={TOOLS.map(({ value, label }) => ({ value, label: t(label) }))}
             onChange={setTool}
           />
-          <Palette key={tool} kinds={kinds} setKinds={setKinds} tool={tool} />
+          <Palette key={tool} brush={brush} setBrush={setBrush} tool={tool} />
           <p className="text-2xs leading-relaxed text-gray-500">
             {tool === "object" || tool === "door" ? t("editor.helpPlace") : t("editor.helpPaint")}{" "}
             {t("editor.helpPan")}
@@ -157,12 +158,12 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
         <EditorCanvas
           draft={draft}
           tool={tool}
-          kinds={kinds}
+          brush={brush}
           onRotate={() => {
-            setKinds(rotate);
+            setBrush(rotate);
           }}
           onPaint={(rect, erasing) => {
-            const result = erasing ? erase(draft, tool, rect) : paint(draft, tool, rect, kinds);
+            const result = erasing ? erase(draft, tool, rect) : paint(draft, tool, rect, brush);
             setDraft(result.next);
             setNote(result.note);
           }}

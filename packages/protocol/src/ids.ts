@@ -13,9 +13,6 @@ export type TaskId = z.infer<typeof TaskId>;
 export const SessionId = z.uuidv7().brand<"SessionId">();
 export type SessionId = z.infer<typeof SessionId>;
 
-export const HandoffId = z.uuidv7().brand<"HandoffId">();
-export type HandoffId = z.infer<typeof HandoffId>;
-
 export const ChatMessageId = z.uuidv7().brand<"ChatMessageId">();
 export type ChatMessageId = z.infer<typeof ChatMessageId>;
 

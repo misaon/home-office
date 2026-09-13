@@ -4,8 +4,6 @@ import { join } from "node:path";
 import { createFileSecretStore } from "./file.ts";
 import { createOsSecretStore, SecretStoreTimeout } from "./os-credential-store.ts";
 
-export { createFileSecretStore, createOsSecretStore };
-
 export type SecretStoreKind = "auto" | "os" | "file";
 
 type Operation<T> = (store: SecretStore) => Promise<T>;
@@ -47,8 +45,8 @@ const withFileFallback = (
 
 export const createSecretStore = (
   home: string,
-  kind: SecretStoreKind = "auto",
-  onFallback: (reason: string) => void = () => undefined,
+  kind: SecretStoreKind,
+  onFallback: (reason: string) => void,
 ): SecretStore => {
   const file = (): SecretStore => createFileSecretStore(join(home, "secrets.json"));
   if (kind === "file") {

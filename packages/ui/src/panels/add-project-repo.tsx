@@ -8,17 +8,18 @@ import {
   repoUrl,
   REPO_URL_FORMS,
 } from "@ho/protocol";
+import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
-import { useMutation } from "@tanstack/react-query";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CONTROL, Field, FolderIcon, Segmented } from "../kit/controls.tsx";
-import { getClient, requireClient } from "../rpc.ts";
+import { requireClient } from "../rpc.ts";
+import { useOnline } from "../store.ts";
 
 const INSPECT_DEBOUNCE_MS = 600;
 
 export type Source = "local" | "git";
-export type Draft = {
+export type RepoDraft = {
   kind: Source;
   path: string;
   url: string;
@@ -33,7 +34,7 @@ const SOURCES = [
 ] as const satisfies readonly { value: Source; label: string }[];
 
 /** What the user typed for the source that is currently selected. */
-export const typedIn = (draft: Draft): string =>
+export const typedIn = (draft: RepoDraft): string =>
   (draft.kind === "local" ? draft.path : draft.url).trim();
 
 /** What the daemon would be asked about, or null while the field is empty or not yet a repository URL. */
@@ -47,56 +48,45 @@ const repoFrom = (kind: Source, text: string): RepoSource | null => {
   return parsed.success ? parsed.data : null;
 };
 
-type Found = Extract<RepoInspection, { ok: true }>;
-export type Inspecting = { result: RepoInspection | null; busy: boolean };
-
-/** Asks the daemon about the typed repository once the typing pauses; `onFound` fills in name and branch. */
-export function useRepoInspection(
-  kind: Source,
-  text: string,
-  onFound: (result: Found) => void,
-): Inspecting {
-  const [state, setState] = useState<Inspecting & { key: string }>({
-    key: "",
-    result: null,
-    busy: false,
-  });
-  const found = useEffectEvent(onFound);
-  const key = `${kind}:${text}`;
+/** The value once it has stopped changing for `ms`. */
+function useDebounced<T>(value: T, ms: number): T {
+  const [settled, setSettled] = useState(value);
   useEffect(() => {
-    const repo = repoFrom(kind, text);
-    if (repo === null) {
-      return undefined;
-    }
-    let cancelled = false;
     const timer = setTimeout(() => {
-      const client = getClient();
-      if (client === null) {
-        return;
-      }
-      setState({ key, result: null, busy: true });
-      client.projects.inspect({ repo }).then(
-        (result) => {
-          if (!cancelled) {
-            setState({ key, result, busy: false });
-            if (result.ok) {
-              found(result);
-            }
-          }
-        },
-        (e: unknown) => {
-          if (!cancelled) {
-            setState({ key, result: { ok: false, message: errorMessage(e) }, busy: false });
-          }
-        },
-      );
-    }, INSPECT_DEBOUNCE_MS);
+      setSettled(value);
+    }, ms);
     return () => {
-      cancelled = true;
       clearTimeout(timer);
     };
-  }, [kind, text, key]);
-  return state.key === key ? state : { result: null, busy: repoFrom(kind, text) !== null };
+  }, [value, ms]);
+  return settled;
+}
+
+export type Found = Extract<RepoInspection, { ok: true }>;
+export type Inspecting = { result: RepoInspection | null; busy: boolean };
+
+/** Asks the daemon about the typed repository once the typing pauses. */
+export function useRepoInspection(kind: Source, text: string): Inspecting {
+  const online = useOnline();
+  const settled = useDebounced(text, INSPECT_DEBOUNCE_MS);
+  const repo = repoFrom(kind, settled);
+  const query = useQuery({
+    queryKey: ["inspect", repo],
+    queryFn:
+      repo === null || !online
+        ? skipToken
+        : ({ signal }) => requireClient().projects.inspect({ repo }, { signal }),
+  });
+  if (repoFrom(kind, text) === null) {
+    return { result: null, busy: false };
+  }
+  if (settled !== text || query.isFetching) {
+    return { result: null, busy: true };
+  }
+  if (query.error !== null) {
+    return { result: { ok: false, message: errorMessage(query.error) }, busy: false };
+  }
+  return { result: query.data ?? null, busy: false };
 }
 
 type Hint = { text: string; tone: "muted" | "error" };
@@ -137,7 +127,7 @@ const isOldDaemon = (error: unknown): boolean =>
 const pickFailure = (error: unknown, t: TFunction): string =>
   isOldDaemon(error) ? t("project.oldDaemon") : errorMessage(error);
 
-type FieldProps = { draft: Draft; setDraft: (draft: Draft) => void; hint: Hint };
+type FieldProps = { draft: RepoDraft; setDraft: (draft: RepoDraft) => void; hint: Hint };
 
 /** The local path, with the host's own directory dialog behind the folder button. */
 function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
@@ -149,7 +139,7 @@ function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
       ),
     onSuccess: (picked) => {
       if (picked.status === "picked") {
-        setDraft({ ...draft, kind: "local", path: picked.path, name: "", branch: "" });
+        setDraft({ ...draft, kind: "local", path: picked.path, branch: "" });
       }
     },
   });
@@ -163,8 +153,8 @@ function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
   const typed = (value: string): void => {
     setDraft(
       repoSourceOf(value).kind === "git"
-        ? { ...draft, kind: "git", url: value, path: "", name: "", branch: "" }
-        : { ...draft, path: value, name: "", branch: "" },
+        ? { ...draft, kind: "git", url: value, path: "", branch: "" }
+        : { ...draft, path: value, branch: "" },
     );
   };
   return (
@@ -210,7 +200,7 @@ function UrlField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
         placeholder="git@github.com:org/repo.git"
         value={draft.url}
         onChange={(e) => {
-          setDraft({ ...draft, url: e.target.value, name: "", branch: "" });
+          setDraft({ ...draft, url: e.target.value, branch: "" });
         }}
       />
     </Field>
@@ -223,8 +213,8 @@ export function RepoFields({
   setDraft,
   inspecting,
 }: {
-  draft: Draft;
-  setDraft: (draft: Draft) => void;
+  draft: RepoDraft;
+  setDraft: (draft: RepoDraft) => void;
   inspecting: Inspecting;
 }): React.JSX.Element {
   const { t } = useTranslation();
@@ -235,7 +225,7 @@ export function RepoFields({
         value={draft.kind}
         options={SOURCES.map(({ value, label }) => ({ value, label: t(label) }))}
         onChange={(kind) => {
-          setDraft({ ...draft, kind, name: "", branch: "" });
+          setDraft({ ...draft, kind, branch: "" });
         }}
       />
       {draft.kind === "local" ? (
@@ -247,26 +237,27 @@ export function RepoFields({
   );
 }
 
-/** Floor name and the default branch, which is a choice among the branches git reported. */
+/** Floor name and the default branch; what git reported stands in until the user decides otherwise. */
 export function Details({
   draft,
   setDraft,
-  branches,
+  inspection,
 }: {
-  draft: Draft;
-  setDraft: (draft: Draft) => void;
-  branches: readonly string[];
+  draft: RepoDraft;
+  setDraft: (draft: RepoDraft) => void;
+  inspection: Found | null;
 }): React.JSX.Element {
   const { t } = useTranslation();
-  const options =
-    draft.branch === "" || branches.includes(draft.branch) ? branches : [draft.branch, ...branches];
+  const branches = inspection?.branches ?? [];
+  const branch = draft.branch === "" ? (inspection?.defaultBranch ?? "") : draft.branch;
+  const options = branch === "" || branches.includes(branch) ? branches : [branch, ...branches];
   return (
     <div className="grid grid-cols-2 gap-5">
       <Field id="ho-floor-name" label={t("project.name")}>
         <input
           id="ho-floor-name"
           className={CONTROL}
-          placeholder={t("project.nameHint")}
+          placeholder={inspection?.name ?? t("project.nameHint")}
           value={draft.name}
           onChange={(e) => {
             setDraft({ ...draft, name: e.target.value });
@@ -282,15 +273,15 @@ export function Details({
           id="ho-default-branch"
           className={`${CONTROL} font-mono`}
           disabled={options.length === 0}
-          value={draft.branch}
+          value={branch}
           onChange={(e) => {
             setDraft({ ...draft, branch: e.target.value });
           }}
         >
           {options.length === 0 ? <option value="">—</option> : null}
-          {options.map((branch) => (
-            <option key={branch} value={branch}>
-              {branch}
+          {options.map((candidate) => (
+            <option key={candidate} value={candidate}>
+              {candidate}
             </option>
           ))}
         </select>

@@ -3,8 +3,8 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../kit/controls.tsx";
 import { doctorQuery } from "../queries.ts";
-import { useUi } from "../store.ts";
-import { dockerStatus, imagesStatus, setupNeeded, tokenStatus } from "./status.ts";
+import { useOnline, useUi } from "../store.ts";
+import { setupNeeded, setupReady } from "./status.ts";
 import { DockerStep, ImagesStep, TokenStep } from "./steps-environment.tsx";
 import { SmokeStep } from "./steps-office.tsx";
 
@@ -31,28 +31,23 @@ const dismiss = (): void => {
  * teams are not part of it: the empty office offers the first project itself.
  */
 export function useSetupAutoOpen(): void {
-  const { t } = useTranslation();
-  const connection = useUi((s) => s.connection);
+  const online = useOnline();
   const setSetupOpen = useUi((s) => s.setSetupOpen);
-  const { data: doctor } = useQuery({
-    ...doctorQuery,
-    enabled: connection === "online" && !dismissed(),
-  });
+  const { data: doctor } = useQuery({ ...doctorQuery, enabled: online && !dismissed() });
   useEffect(() => {
-    if (connection === "online" && !dismissed() && doctor !== undefined && setupNeeded(doctor, t)) {
+    if (online && !dismissed() && doctor !== undefined && setupNeeded(doctor)) {
       setSetupOpen(true);
     }
-  }, [connection, doctor, setSetupOpen, t]);
+  }, [online, doctor, setSetupOpen]);
 }
 
 export function SetupOverlay(): React.JSX.Element | null {
   const { t } = useTranslation();
   const open = useUi((s) => s.setupOpen);
   const setSetupOpen = useUi((s) => s.setSetupOpen);
-  const snapshot = useUi((s) => s.snapshot);
   const floorId = useUi((s) => s.floorId);
-  const connection = useUi((s) => s.connection);
-  const query = useQuery({ ...doctorQuery, enabled: open && connection === "online" });
+  const online = useOnline();
+  const query = useQuery({ ...doctorQuery, enabled: open && online });
   const doctor = query.data ?? null;
   const refresh = (): void => {
     void query.refetch();
@@ -60,9 +55,7 @@ export function SetupOverlay(): React.JSX.Element | null {
   if (!open) {
     return null;
   }
-  const ready = [dockerStatus(doctor, t), imagesStatus(doctor, t), tokenStatus(doctor, t)].every(
-    (s) => s.state === "ok",
-  );
+  const ready = setupReady(doctor);
   const close = (): void => {
     dismiss();
     setSetupOpen(false);
@@ -82,8 +75,8 @@ export function SetupOverlay(): React.JSX.Element | null {
         </header>
         <DockerStep doctor={doctor} refresh={refresh} />
         <ImagesStep doctor={doctor} refresh={refresh} />
-        <TokenStep doctor={doctor} refresh={refresh} />
-        <SmokeStep key={floorId} snapshot={snapshot} ready={ready} />
+        <TokenStep doctor={doctor} />
+        <SmokeStep key={floorId} ready={ready} />
       </div>
     </div>
   );

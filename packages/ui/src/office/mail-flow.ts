@@ -1,24 +1,10 @@
 import { bossOf } from "@ho/core";
 import type { AgentId, MailItem, MailItemId, ProjectId, TaskId } from "@ho/protocol";
-import {
-  deliverMail,
-  fetchMail,
-  receive,
-  setMailboxState,
-  type SimEvent,
-  type World,
-} from "@ho/sim";
+import { deliverMail, fetchMail, receive, type SimEvent, type World } from "@ho/sim";
 import { model } from "../store.ts";
 
 /** Mail on its way: dropped at the reception by the postman, then carried to the boss by Lola. */
-type PendingMail = {
-  mailId: MailItemId;
-  taskId: TaskId;
-  floorId: ProjectId;
-  stage: "postman" | "counter" | "courier";
-};
-
-const POSTMAN_SPRITE = "characters/postman";
+type PendingMail = { mailId: MailItemId; taskId: TaskId; floorId: ProjectId };
 
 /**
  * The postman-and-receptionist choreography for incoming mail, per floor. The host reports `delivered(taskId)`
@@ -44,11 +30,19 @@ export class MailFlow {
     this.#receptionist = receptionist;
   }
 
+  /** Drops the items nobody is carrying any more (a floor or a courier disappeared mid-walk). */
+  sweep(walking: (ref: string) => boolean): void {
+    // Between the drop at the reception and Lola picking it up nobody carries it; that gap is the
+    // postman's own walk, which `walking` still sees, so only a truly lost item is reported here.
+    for (const pending of this.#pending.filter((item) => !walking(item.mailId))) {
+      this.#finish(pending);
+    }
+  }
+
   /** Nobody is watching any more: whatever is in flight counts as delivered. */
   flush(): void {
     for (const pending of this.#pending.splice(0)) {
       this.#delivered(pending.taskId);
-      setMailboxState(this.#world, pending.floorId, "empty");
     }
   }
 
@@ -58,17 +52,16 @@ export class MailFlow {
     if (taskId === undefined) {
       return;
     }
-    const boss = bossOf(model, mail.projectId);
     if (
       !watching ||
-      boss === undefined ||
+      bossOf(model, mail.projectId) === undefined ||
       !this.#world.floors.has(mail.projectId) ||
-      !deliverMail(this.#world, mail.projectId, this.#visitorId(), POSTMAN_SPRITE, mail.id)
+      !deliverMail(this.#world, mail.projectId, this.#visitorId(), mail.id)
     ) {
       this.#delivered(taskId);
       return;
     }
-    this.#pending.push({ mailId: mail.id, taskId, floorId: mail.projectId, stage: "postman" });
+    this.#pending.push({ mailId: mail.id, taskId, floorId: mail.projectId });
   }
 
   /** Sim events that belong to the mail flow; returns false for anything else. */
@@ -77,14 +70,12 @@ export class MailFlow {
       this.#onDropped(event.ref);
       return true;
     }
-    if (event.kind === "envelope_delivered") {
+    if (event.kind === "delivered") {
       const pending = this.#pending.find((p) => p.mailId === event.ref);
       if (pending === undefined) {
         return false;
       }
-      if (event.by !== event.to) {
-        receive(this.#world, event.to, event.by);
-      }
+      receive(this.#world, event.to, event.by);
       this.#finish(pending);
       return true;
     }
@@ -96,8 +87,6 @@ export class MailFlow {
     if (pending === undefined) {
       return;
     }
-    setMailboxState(this.#world, pending.floorId, "full");
-    pending.stage = "counter";
     const boss = bossOf(model, pending.floorId);
     // Lola carries the post; a floor without her (mid-setup) sends the boss to fetch it himself.
     const courier = this.#receptionist(pending.floorId) ?? boss?.id ?? null;
@@ -107,22 +96,13 @@ export class MailFlow {
       !fetchMail(this.#world, pending.floorId, courier, boss.id, mailId)
     ) {
       this.#finish(pending);
-      return;
     }
-    pending.stage = "courier";
   }
 
   #finish(pending: PendingMail): void {
     const index = this.#pending.indexOf(pending);
     if (index >= 0) {
       this.#pending.splice(index, 1);
-    }
-    if (
-      !this.#pending.some(
-        (p) => p.floorId === pending.floorId && (p.stage === "counter" || p.stage === "courier"),
-      )
-    ) {
-      setMailboxState(this.#world, pending.floorId, "empty");
     }
     this.#delivered(pending.taskId);
   }

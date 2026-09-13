@@ -1,24 +1,27 @@
 import { chatOf } from "@ho/core";
-import { type ChatMessageId, errorMessage, type ProjectId, type TaskId } from "@ho/protocol";
+import type { ChatMessage, ProjectId, TaskId } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
+import type { TFunction } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "../kit/controls.tsx";
+import { Button, Failure } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
-import { type Snapshot, useUi } from "../store.ts";
-import type { TFunction } from "i18next";
-import type { StepStatus } from "./status.ts";
-import { Step } from "./step.tsx";
+import { bossOnFloor, type Snapshot, useUi } from "../store.ts";
+import { SetupStep, type StepStatus } from "./step.tsx";
 
 const HELLO =
   "Hello! This is the first-run check of Home Office. Reply with one short sentence confirming you are online; do not delegate anything.";
 
-type Sent = { messageId: ChatMessageId; taskId: TaskId | null; at: string };
+type Sent = { taskId: TaskId | null; at: string };
 
-const replyTo = (snapshot: Snapshot, sent: Sent, floorId: ProjectId): string | null =>
-  chatOf(snapshot, floorId).find(
+/** The boss's answer to the hello: an agent's message on that task, written after it was sent. */
+const replyTo = (chat: Snapshot["chat"], sent: Sent, floorId: ProjectId): ChatMessage | undefined =>
+  chatOf({ chat }, floorId).find(
     (m) => m.author.kind === "agent" && m.taskId === sent.taskId && m.at >= sent.at,
-  )?.text ?? null;
+  );
+
+const secondsBetween = (from: string, to: string): string =>
+  String(Math.round((Date.parse(to) - Date.parse(from)) / 1000));
 
 function smokeStatus(
   snapshot: Snapshot,
@@ -35,16 +38,11 @@ function smokeStatus(
       ? { state: "todo", text: t("setup.triageHint") }
       : { state: "todo", text: t("setup.finishFirst") };
   }
-  const reply = replyTo(snapshot, sent, floorId);
-  if (reply !== null) {
-    const answered = chatOf(snapshot, floorId).find((m) => m.text === reply)?.at ?? sent.at;
+  const reply = replyTo(snapshot.chat, sent, floorId);
+  if (reply !== undefined) {
     return {
       state: "ok",
-      text: t("setup.bossAnswered", {
-        seconds: String(
-          Math.round((new Date(answered).getTime() - new Date(sent.at).getTime()) / 1000),
-        ),
-      }),
+      text: t("setup.bossAnswered", { seconds: secondsBetween(sent.at, reply.at) }),
     };
   }
   const task = sent.taskId === null ? undefined : snapshot.tasks.get(sent.taskId);
@@ -70,24 +68,17 @@ function smokeStatus(
   };
 }
 
-export function SmokeStep({
-  snapshot,
-  ready,
-}: {
-  snapshot: Snapshot;
-  ready: boolean;
-}): React.JSX.Element {
+export function SmokeStep({ ready }: { ready: boolean }): React.JSX.Element {
   const { t } = useTranslation();
+  const snapshot = useUi((s) => s.snapshot);
   const floorId = useUi((s) => s.floorId);
   const [sent, setSent] = useState<Sent | null>(null);
   const status = smokeStatus(snapshot, sent, ready, floorId, t);
-  const boss = [...snapshot.agents.values()].find(
-    (a) => a.role === "boss" && a.projectId === floorId,
-  );
+  const boss = floorId === null ? undefined : bossOnFloor(snapshot.agents, floorId);
   const hello = useMutation({
     mutationFn: (projectId: ProjectId) => requireClient().chat.send({ text: HELLO, projectId }),
     onSuccess: ({ message, task }) => {
-      setSent({ messageId: message.id, taskId: task?.id ?? null, at: message.at });
+      setSent({ taskId: task?.id ?? null, at: message.at });
     },
   });
   const send = (): void => {
@@ -95,9 +86,10 @@ export function SmokeStep({
       hello.mutate(floorId);
     }
   };
-  const reply = sent === null || floorId === null ? null : replyTo(snapshot, sent, floorId);
+  const reply =
+    sent === null || floorId === null ? undefined : replyTo(snapshot.chat, sent, floorId);
   return (
-    <Step index={4} title={t("setup.smokeTest")} status={status}>
+    <SetupStep index={4} title={t("setup.smokeTest")} status={status}>
       <div className="space-y-3">
         <p className="leading-relaxed text-gray-300">
           {t("setup.smokeIntro", {
@@ -105,9 +97,9 @@ export function SmokeStep({
             model: boss?.model ?? t("setup.bossModel"),
           })}
         </p>
-        {reply !== null ? (
+        {reply !== undefined ? (
           <blockquote className="rounded-md border border-line bg-ink p-3 leading-relaxed text-gray-200">
-            {reply}
+            {reply.text}
           </blockquote>
         ) : (
           <Button
@@ -123,8 +115,8 @@ export function SmokeStep({
             {sent === null ? t("setup.sayHello") : t("setup.tryAgain")}
           </Button>
         )}
-        {hello.error === null ? null : <p className="text-red-400">{errorMessage(hello.error)}</p>}
+        <Failure error={hello.error} />
       </div>
-    </Step>
+    </SetupStep>
   );
 }

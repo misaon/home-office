@@ -1,12 +1,19 @@
-import type { Agent, HoReportInput, HoReviewInput, NewEvent, Task, TaskId } from "@ho/protocol";
-import { conflict } from "../errors.ts";
+import {
+  type Agent,
+  conflict,
+  type HoReportInput,
+  type HoReviewInput,
+  type NewEvent,
+  type Task,
+  type TaskId,
+} from "@ho/protocol";
 import type { ReadModel } from "../model/read-model.ts";
-import { err, ok } from "../result.ts";
-import type { CommandContext, CommandResult } from "./context.ts";
-import { note, noteEvent, requireTask, statusChange } from "./shared.ts";
+import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
+import { handoffEvent, note, noteEvent, requireTask, statusChange } from "./shared.ts";
+import { readTask } from "./tasks.ts";
 
 /** A reviewer for a floor: a member with the reviewer role who is not the author. */
-export const reviewerFor = (model: ReadModel, task: Task): Agent | undefined =>
+const reviewerFor = (model: ReadModel, task: Task): Agent | undefined =>
   [...model.agents.values()].find(
     (a) => a.role === "reviewer" && a.id !== task.assigneeId && a.projectId === task.projectId,
   );
@@ -26,64 +33,51 @@ export function fileReport(
   if (task.status !== "in_progress") {
     return err(conflict(`task is ${task.status}; reports are filed while in progress`));
   }
-  const report = note(ctx, "report", input.summary);
-  const artifacts = { ...task.artifacts, report: input.summary };
   const events: NewEvent[] = [
-    noteEvent(ctx, task, report),
-    { type: "task.artifacts_changed", actor: ctx.actor, payload: { taskId: task.id, artifacts } },
+    noteEvent(ctx, task, note(ctx, "report", input.summary)),
+    {
+      type: "task.artifacts_changed",
+      actor: ctx.actor,
+      payload: { taskId: task.id, artifacts: { ...task.artifacts, report: input.summary } },
+    },
   ];
-  const next: Task = { ...task, artifacts, notes: [...task.notes, report] };
+  const read = readTask(task.id);
   if (input.status === "blocked") {
     events.push(statusChange(ctx, task, "blocked", input.summary.slice(0, 2000)));
-    return ok({ events, value: { ...next, status: "blocked" } });
+    return ok({ events, read });
   }
-  const reviewer = task.kind === "work" ? reviewerFor(model, task) : undefined;
-  if (reviewer !== undefined) {
-    // The author carries the work to the reviewer: a handoff the office animates before the review starts.
-    const handoffNote = note(ctx, "handoff", `review requested from ${reviewer.name}`);
+  // "done" means the agent is asking for no review, which the tool's own description promises.
+  const reviewer =
+    input.status === "review" && task.kind === "work" ? reviewerFor(model, task) : undefined;
+  if (reviewer === undefined) {
+    // Without a reviewer in the project the branch is the deliverable: the human reviews it on GitHub.
     events.push(
-      noteEvent(ctx, task, handoffNote),
-      {
-        type: "task.reviewer_assigned",
-        actor: ctx.actor,
-        payload: { taskId: task.id, reviewerId: reviewer.id },
-      },
-      statusChange(ctx, task, "review", "awaiting review"),
+      statusChange(
+        ctx,
+        task,
+        "done",
+        input.status === "review" && task.kind === "work"
+          ? "reported; no reviewer in this project"
+          : "reported",
+      ),
     );
-    if (task.assigneeId !== undefined && task.assigneeId !== reviewer.id) {
-      events.push({
-        type: "handoff.requested",
-        actor: ctx.actor,
-        payload: {
-          taskId: task.id,
-          fromAgentId: task.assigneeId,
-          toAgentId: reviewer.id,
-          brief: handoffNote.text,
-        },
-      });
-    }
-    return ok({
-      events,
-      value: {
-        ...next,
-        reviewerId: reviewer.id,
-        status: "review",
-        notes: [...next.notes, handoffNote],
-      },
-    });
+    return ok({ events, read });
   }
-  // Without a reviewer in the project the branch is the deliverable: the human reviews it on GitHub.
+  // The author carries the work to the reviewer: a handoff the office animates before the review starts.
+  const handoffNote = note(ctx, "handoff", `review requested from ${reviewer.name}`);
   events.push(
-    statusChange(
-      ctx,
-      task,
-      "done",
-      input.status === "review" && task.kind === "work"
-        ? "reported; no reviewer in this project"
-        : "reported",
-    ),
+    noteEvent(ctx, task, handoffNote),
+    {
+      type: "task.reviewer_assigned",
+      actor: ctx.actor,
+      payload: { taskId: task.id, reviewerId: reviewer.id },
+    },
+    statusChange(ctx, task, "review", "awaiting review"),
   );
-  return ok({ events, value: { ...next, status: "done" } });
+  if (task.assigneeId !== undefined && task.assigneeId !== reviewer.id) {
+    events.push(handoffEvent(ctx, task.id, task.assigneeId, reviewer.id, handoffNote.text));
+  }
+  return ok({ events, read });
 }
 
 /** Reviewer verdict: approve closes the task; request_changes sends it back to the worker or blocks it after the budget. */
@@ -102,19 +96,18 @@ export function submitReview(
     return err(conflict(`task is ${task.status}; only tasks in review accept a verdict`));
   }
   const rounds = task.reviewRounds + 1;
-  const verdictNote = note(ctx, "review", `${input.verdict}: ${input.findings}`);
   const events: NewEvent[] = [
-    noteEvent(ctx, task, verdictNote),
+    noteEvent(ctx, task, note(ctx, "review", `${input.verdict}: ${input.findings}`)),
     {
       type: "task.review_recorded",
       actor: ctx.actor,
       payload: { taskId: task.id, verdict: input.verdict, rounds },
     },
   ];
-  const base: Task = { ...task, reviewRounds: rounds, notes: [...task.notes, verdictNote] };
+  const read = readTask(task.id);
   if (input.verdict === "approve") {
     events.push(statusChange(ctx, task, "done", "approved"));
-    return ok({ events, value: { ...base, status: "done" } });
+    return ok({ events, read });
   }
   const worker = task.assigneeId === undefined ? undefined : model.agents.get(task.assigneeId);
   const limit = worker?.budgets.maxReviewRounds ?? 0;
@@ -127,30 +120,17 @@ export function submitReview(
         `review round budget exhausted (${String(rounds)}/${String(limit)})`,
       ),
     );
-    return ok({ events, value: { ...base, status: "blocked" } });
+    return ok({ events, read });
   }
   // Changes requested: the reviewer walks the findings back to the author.
-  const back = note(
-    ctx,
-    "handoff",
-    `changes requested by ${
-      task.reviewerId === undefined
-        ? "the reviewer"
-        : (model.agents.get(task.reviewerId)?.name ?? "the reviewer")
-    }`,
-  );
+  const reviewerName =
+    task.reviewerId === undefined
+      ? "the reviewer"
+      : (model.agents.get(task.reviewerId)?.name ?? "the reviewer");
+  const back = note(ctx, "handoff", `changes requested by ${reviewerName}`);
   events.push(noteEvent(ctx, task, back), statusChange(ctx, task, "assigned", "changes requested"));
   if (task.reviewerId !== undefined && task.reviewerId !== worker.id) {
-    events.push({
-      type: "handoff.requested",
-      actor: ctx.actor,
-      payload: {
-        taskId: task.id,
-        fromAgentId: task.reviewerId,
-        toAgentId: worker.id,
-        brief: back.text,
-      },
-    });
+    events.push(handoffEvent(ctx, task.id, task.reviewerId, worker.id, back.text));
   }
-  return ok({ events, value: { ...base, status: "assigned", notes: [...base.notes, back] } });
+  return ok({ events, read });
 }

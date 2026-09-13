@@ -1,22 +1,53 @@
 import {
   type Agent,
   compact,
+  conflict,
+  type DomainError,
   type NewEvent,
+  notFound,
   type ProjectId,
   type Task,
-  type TaskArtifactsInput,
+  type TaskArtifacts,
   type TaskAssignInput,
   type TaskCreateInput,
-  type TaskEditInput,
+  type TaskId,
   type TaskStatus,
   type TaskTransitionInput,
 } from "@ho/protocol";
-import { conflict, type DomainError, notFound } from "../errors.ts";
 import type { ReadModel } from "../model/read-model.ts";
-import { err, ok, type Result } from "../result.ts";
-import { canTransition } from "../tasks/transitions.ts";
-import type { CommandContext, CommandResult } from "./context.ts";
+import {
+  type CommandContext,
+  type CommandResult,
+  entity,
+  err,
+  ok,
+  type Result,
+} from "../result.ts";
+import { requireTask, statusChange } from "./shared.ts";
 
+/**
+ * The task state machine. Terminal states have no outgoing edges.
+ * `in_progress → assigned` is a handoff or a question that paused the work; `review → assigned` is a review that
+ * requested changes.
+ */
+const TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = {
+  inbox: ["planned", "assigned", "blocked", "cancelled"],
+  planned: ["assigned", "blocked", "cancelled"],
+  assigned: ["in_progress", "planned", "blocked", "cancelled"],
+  in_progress: ["review", "done", "assigned", "blocked", "failed", "cancelled"],
+  review: ["done", "in_progress", "assigned", "blocked", "cancelled"],
+  blocked: ["planned", "assigned", "in_progress", "cancelled"],
+  failed: ["planned", "assigned", "cancelled"],
+  done: [],
+  cancelled: [],
+};
+
+export const canTransition = (from: TaskStatus, to: TaskStatus): boolean =>
+  TRANSITIONS[from].includes(to);
+
+export const isTerminal = (status: TaskStatus): boolean => TRANSITIONS[status].length === 0;
+
+/** Statuses a human may hand to somebody else; a task mid-session or under review is not reassigned. */
 const REASSIGNABLE: ReadonlySet<TaskStatus> = new Set([
   "inbox",
   "planned",
@@ -41,6 +72,36 @@ const assignable = (
   return ok(agent);
 };
 
+/** A fresh task: assigned when it has an assignee, otherwise waiting in the inbox. */
+export const newTask = (
+  ctx: CommandContext,
+  fields: Pick<Task, "projectId" | "kind" | "title" | "brief" | "source"> & {
+    assigneeId?: Task["assigneeId"] | undefined;
+    priority?: Task["priority"] | undefined;
+    notes?: Task["notes"] | undefined;
+  },
+): Task => ({
+  id: ctx.ids.task(),
+  projectId: fields.projectId,
+  kind: fields.kind,
+  title: fields.title,
+  brief: fields.brief,
+  status: fields.assigneeId === undefined ? "inbox" : "assigned",
+  ...compact({ assigneeId: fields.assigneeId }),
+  reviewRounds: 0,
+  notes: fields.notes ?? [],
+  source: fields.source,
+  artifacts: {},
+  priority: fields.priority ?? "normal",
+  createdAt: ctx.now,
+  updatedAt: ctx.now,
+});
+
+export const readTask =
+  (id: TaskId) =>
+  (model: ReadModel): Task =>
+    entity(model.tasks, id);
+
 export function createTask(
   model: ReadModel,
   input: TaskCreateInput,
@@ -49,69 +110,16 @@ export function createTask(
   if (!model.projects.has(input.projectId)) {
     return err(notFound("project", input.projectId));
   }
-  if (input.parentId !== undefined && !model.tasks.has(input.parentId)) {
-    return err(notFound("task", input.parentId));
-  }
-  if (
-    input.parentId !== undefined &&
-    model.tasks.get(input.parentId)?.projectId !== input.projectId
-  ) {
-    return err(conflict("parent task belongs to another floor"));
-  }
   if (input.assigneeId !== undefined) {
     const check = assignable(model, input.assigneeId, input.projectId);
     if (!check.ok) {
       return check;
     }
   }
-  const task: Task = {
-    id: ctx.ids.task(),
-    projectId: input.projectId,
-    ...compact({ parentId: input.parentId }),
-    title: input.title,
-    brief: input.brief,
-    kind: "work",
-    status: input.assigneeId === undefined ? "inbox" : "assigned",
-    reviewRounds: 0,
-    notes: [],
-    ...compact({ assigneeId: input.assigneeId }),
-    source:
-      ctx.actor.kind === "agent"
-        ? {
-            kind: "delegation",
-            byAgentId: ctx.actor.agentId,
-            ...compact({ parentTaskId: input.parentId }),
-          }
-        : { kind: "manual" },
-    artifacts: {},
-    priority: input.priority,
-    createdAt: ctx.now,
-    updatedAt: ctx.now,
-  };
+  const task = newTask(ctx, { ...input, kind: "work", source: { kind: "manual" } });
   return ok({
     events: [{ type: "task.created", actor: ctx.actor, payload: { task } }],
-    value: task,
-  });
-}
-
-export function editTask(
-  model: ReadModel,
-  input: TaskEditInput,
-  ctx: CommandContext,
-): CommandResult<Task> {
-  const task = model.tasks.get(input.id);
-  if (task === undefined) {
-    return err(notFound("task", input.id));
-  }
-  const { id, ...changes } = input;
-  const next: Task = {
-    ...task,
-    ...compact(changes),
-    updatedAt: ctx.now,
-  };
-  return ok({
-    events: [{ type: "task.edited", actor: ctx.actor, payload: { taskId: id, ...changes } }],
-    value: next,
+    read: readTask(task.id),
   });
 }
 
@@ -120,52 +128,37 @@ export function assignTask(
   input: TaskAssignInput,
   ctx: CommandContext,
 ): CommandResult<Task> {
-  const task = model.tasks.get(input.id);
-  if (task === undefined) {
-    return err(notFound("task", input.id));
+  const found = requireTask(model, input.id);
+  if (!found.ok) {
+    return found;
   }
+  const task = found.value;
   if (!REASSIGNABLE.has(task.status)) {
     return err(conflict(`task in status "${task.status}" cannot be reassigned`));
   }
-  const events: NewEvent[] = [];
-  let next: Task = { ...task, updatedAt: ctx.now };
-  if (input.agentId === null) {
-    const { assigneeId: _dropped, ...rest } = next;
-    next = rest;
-    events.push({
+  if (input.agentId !== null) {
+    const check = assignable(model, input.agentId, task.projectId);
+    if (!check.ok) {
+      return check;
+    }
+  }
+  const events: NewEvent[] = [
+    {
       type: "task.assigned",
       actor: ctx.actor,
-      payload: { taskId: task.id, agentId: null },
-    });
-    if (task.status === "assigned") {
-      next = { ...next, status: "planned" };
-      events.push({
-        type: "task.status_changed",
-        actor: ctx.actor,
-        payload: { taskId: task.id, from: "assigned", to: "planned", reason: "unassigned" },
-      });
-    }
-    return ok({ events, value: next });
+      payload: { taskId: task.id, agentId: input.agentId },
+    },
+  ];
+  if (input.agentId === null && task.status === "assigned") {
+    events.push(statusChange(ctx, task, "planned", "unassigned"));
+  } else if (
+    input.agentId !== null &&
+    task.status !== "assigned" &&
+    canTransition(task.status, "assigned")
+  ) {
+    events.push(statusChange(ctx, task, "assigned"));
   }
-  const check = assignable(model, input.agentId, task.projectId);
-  if (!check.ok) {
-    return check;
-  }
-  next = { ...next, assigneeId: input.agentId };
-  events.push({
-    type: "task.assigned",
-    actor: ctx.actor,
-    payload: { taskId: task.id, agentId: input.agentId },
-  });
-  if (task.status !== "assigned" && canTransition(task.status, "assigned")) {
-    next = { ...next, status: "assigned" };
-    events.push({
-      type: "task.status_changed",
-      actor: ctx.actor,
-      payload: { taskId: task.id, from: task.status, to: "assigned" },
-    });
-  }
-  return ok({ events, value: next });
+  return ok({ events, read: readTask(task.id) });
 }
 
 export function transitionTask(
@@ -173,52 +166,39 @@ export function transitionTask(
   input: TaskTransitionInput,
   ctx: CommandContext,
 ): CommandResult<Task> {
-  const task = model.tasks.get(input.id);
-  if (task === undefined) {
-    return err(notFound("task", input.id));
+  const found = requireTask(model, input.id);
+  if (!found.ok) {
+    return found;
   }
+  const task = found.value;
   if (!canTransition(task.status, input.to)) {
     return err({ code: "invalid_transition", from: task.status, to: input.to });
   }
   if ((input.to === "assigned" || input.to === "in_progress") && task.assigneeId === undefined) {
     return err(conflict("task has no assignee"));
   }
-  const next: Task = { ...task, status: input.to, updatedAt: ctx.now };
-  return ok({
-    events: [
-      {
-        type: "task.status_changed",
-        actor: ctx.actor,
-        payload: {
-          taskId: task.id,
-          from: task.status,
-          to: input.to,
-          ...compact({ reason: input.reason }),
-        },
-      },
-    ],
-    value: next,
-  });
+  return ok({ events: [statusChange(ctx, task, input.to, input.reason)], read: readTask(task.id) });
 }
 
-export function setTaskArtifacts(
+/** Merges into the task's artifacts (branch, pull request, report) whatever a session produced. */
+export function patchTaskArtifacts(
   model: ReadModel,
-  input: TaskArtifactsInput,
+  taskId: TaskId,
+  artifacts: TaskArtifacts,
   ctx: CommandContext,
 ): CommandResult<Task> {
-  const task = model.tasks.get(input.id);
-  if (task === undefined) {
-    return err(notFound("task", input.id));
+  const found = requireTask(model, taskId);
+  if (!found.ok) {
+    return found;
   }
-  const next: Task = { ...task, artifacts: input.artifacts, updatedAt: ctx.now };
   return ok({
     events: [
       {
         type: "task.artifacts_changed",
         actor: ctx.actor,
-        payload: { taskId: task.id, artifacts: input.artifacts },
+        payload: { taskId, artifacts: { ...found.value.artifacts, ...artifacts } },
       },
     ],
-    value: next,
+    read: readTask(taskId),
   });
 }

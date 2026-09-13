@@ -1,14 +1,7 @@
-import type { TileMap } from "@ho/sim";
+import { NEIGHBOURS, type TileMap } from "@ho/sim";
 
 /** One edge of one cell where the room changes, in cell coordinates. */
-export type Edge = { x1: number; y1: number; x2: number; y2: number; room: string };
-
-const SIDES = [
-  [0, -1],
-  [0, 1],
-  [-1, 0],
-  [1, 0],
-] as const;
+type Edge = { x1: number; y1: number; x2: number; y2: number; room: string };
 
 /**
  * Every cell edge where the room changes, which traces each room's outline without having to find the
@@ -27,7 +20,7 @@ export function roomOutline(map: TileMap): Edge[] {
       if (room === null) {
         continue;
       }
-      for (const [dx, dy] of SIDES) {
+      for (const { x: dx, y: dy } of NEIGHBOURS) {
         if (at(x + dx, y + dy) === room) {
           continue;
         }

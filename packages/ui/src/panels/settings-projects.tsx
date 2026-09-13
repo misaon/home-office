@@ -1,7 +1,7 @@
-import { errorMessage, type Project } from "@ho/protocol";
+import type { Project } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Button, Section } from "../kit/controls.tsx";
+import { Button, Failure, Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { sortedFloors, useUi } from "../store.ts";
 import { IntakeSettings } from "./settings-intake.tsx";
@@ -26,7 +26,6 @@ export function ProjectsSettings(): React.JSX.Element {
   const remove = useMutation({
     mutationFn: (p: Project) => requireClient().projects.remove({ id: p.id }),
   });
-  const failure = togglePr.error ?? remove.error;
   const confirmRemove = (p: Project): void => {
     if (window.confirm(t("project.confirmRemove", { name: p.name }))) {
       remove.mutate(p);
@@ -78,7 +77,7 @@ export function ProjectsSettings(): React.JSX.Element {
       >
         {t("project.add")}
       </Button>
-      {failure === null ? null : <span className="ml-3 text-red-400">{errorMessage(failure)}</span>}
+      <Failure error={togglePr.error ?? remove.error} />
     </Section>
   );
 }

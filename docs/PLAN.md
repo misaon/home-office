@@ -27,7 +27,7 @@ not evidence that every original acceptance target was achieved.
   [`audit/`](../audit/AUDIT.md): nine stricter lint rules and a CI daemon smoke check that immediately
   caught a compiled binary which could not start; a deduplicated `errorMessage` and 62 spread guards
   replaced by one typed `compact()`; read-model indexes with revision counters instead of per-bump
-  rebuilds; one MCP server per session; an image content hash that actually sees its build context; a
+  rebuilds; one MCP server per request, bound to its session; an image content hash that actually sees its build context; a
   first frame in a hidden document and updates that no longer stop there; constant-time token comparison
   and 0600 database files; the runner as a bundle on the image's own Bun (1.76 → 1.69 GB); role-aware
   model and effort defaults; a declarative CLI command table with `--json` and readable validation
@@ -74,6 +74,12 @@ which two were added and one removed (005), a hand-written command table over a 
 which a single-machine daemon that starts every agent itself does not have; the two cases where it could
 pay off later are named there, and one of them waits on remote operation.
 
+**Superseded on 2026-09-13** by the architecture pass: the sprite pipeline decision of ADR 003 and the
+texture atlas below it describe art that no longer exists, and `sharp`, Drizzle, `type-fest` and the
+`@ho/agent-kit` workspace of ADR 004/005 are gone — the event log is plain `bun:sqlite` with a
+`PRAGMA user_version` check, and the role skill packs live in `images/agent/plugins`, which is the same
+`--plugin-dir` mechanism without a package that contained no code.
+
 **Decided by the owner on 2026-09-09**, all three recorded with their measurements: the role-aware effort
 defaults **stay** (`high` for worker and reviewer is the vendor's own default, not an escalation — B33.4);
 the browser image **is not split** (B24.1); and the **texture atlas is deferred** until the art is complete,
@@ -81,6 +87,15 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 ([ADR 003](../audit/adr/003-sprite-pipeline.md)).
 
 ## Audit log
+
+- 2026-09-13 — Owner task: a full pass over the monorepo for architecture and complexity — Two
+  independent audit waves over every file, then the repairs. The office's own read model, its envelope
+  bookkeeping and the daemon's lifecycle were the load-bearing changes: a wall under a window stays
+  solid, an envelope is reported exactly once per walk (and reported at all when its carrier leaves or
+  the connection drops), sessions end before their sockets do, and a resumed ACP session announces
+  itself. The event log lost its ORM, the skill packs their empty workspace, the CLI its duplicated
+  dispatch, and `@ho/core`/`@ho/sim`/`@ho/protocol` the exports nobody imported. Details and the
+  measurements are in [the plan](plans/2026-09-13-architecture-pass.md).
 
 - 2026-09-10 — Owner task: footprints, an outline around furniture, and two languages — Seven pieces
   resized in `OBJECT_SPEC` (meeting and dining table 7×3, fridge 3×2, hot tub 5×5, bookcase 8×1, toilet

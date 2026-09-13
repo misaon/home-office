@@ -5,17 +5,22 @@ import {
   type AgentId,
   type AgentUpdateInput,
   compact,
+  conflict,
+  isSessionActive,
+  notFound,
   type ProjectId,
 } from "@ho/protocol";
-import { conflict, notFound } from "../errors.ts";
+import { bossOf, membersOf, sessionsOfAgent } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
-import { err, ok } from "../result.ts";
 import { defaultChoice, validateChoice } from "../providers.ts";
-import { isTerminal } from "../tasks/transitions.ts";
-import { isSessionActive, sessionsOfAgent } from "./sessions.ts";
-import type { CommandContext, CommandResult } from "./context.ts";
+import { type CommandContext, type CommandResult, entity, err, ok } from "../result.ts";
 import { copyOf } from "./office-defaults.ts";
-import { bossOf, membersOf } from "./shared.ts";
+import { isTerminal } from "./tasks.ts";
+
+const readAgent =
+  (id: AgentId) =>
+  (model: ReadModel): Agent =>
+    entity(model.agents, id);
 
 /** Names are unique per floor: Andrew runs every floor, Pam may work on two. */
 const nameTaken = (
@@ -42,26 +47,20 @@ export function createAgent(
   if (input.role === "boss" && bossOf(model, input.projectId) !== undefined) {
     return err(conflict("this floor already has a boss"));
   }
-  const auth = input.auth ?? defaultChoice(input.provider).auth;
-  const choice = validateChoice({
-    provider: input.provider,
-    auth,
-    model: input.model,
-    effort: input.effort,
-  });
-  if (!choice.ok) {
-    return choice;
-  }
   const agent: Agent = {
     id: ctx.ids.agent(),
     ...input,
-    auth,
+    auth: input.auth ?? defaultChoice(input.provider, input.role).auth,
     createdAt: ctx.now,
     updatedAt: ctx.now,
   };
+  const choice = validateChoice(agent);
+  if (!choice.ok) {
+    return choice;
+  }
   return ok({
     events: [{ type: "agent.created", actor: ctx.actor, payload: { agent } }],
-    value: agent,
+    read: readAgent(agent.id),
   });
 }
 
@@ -74,33 +73,31 @@ export function updateAgent(
   if (current === undefined) {
     return err(notFound("agent", input.id));
   }
-  if (
-    input.patch.name !== undefined &&
-    nameTaken(model, current.projectId, input.patch.name, input.id)
-  ) {
-    return err(conflict(`agent name "${input.patch.name}" is already used on this floor`));
+  const { patch } = input;
+  if (patch.name !== undefined && nameTaken(model, current.projectId, patch.name, input.id)) {
+    return err(conflict(`agent name "${patch.name}" is already used on this floor`));
   }
-  if (input.patch.role !== undefined && input.patch.role !== current.role) {
+  if (patch.role !== undefined && patch.role !== current.role) {
     if (current.role === "boss") {
       return err(conflict("the floor's boss keeps the boss role"));
     }
-    if (input.patch.role === "boss") {
+    if (patch.role === "boss") {
       return err(conflict("this floor already has a boss"));
     }
   }
-  const merged: Agent = { ...current, ...compact(input.patch), updatedAt: ctx.now };
-  // A provider switch keeps whatever still fits and takes the new provider's defaults for the rest.
-  const agent: Agent =
-    input.patch.provider !== undefined && input.patch.provider !== current.provider
-      ? { ...merged, ...defaultChoice(merged.provider), ...compact(input.patch) }
-      : merged;
+  // A provider switch starts from the new provider's defaults for the role; the patch wins where it speaks.
+  const base =
+    patch.provider !== undefined && patch.provider !== current.provider
+      ? { ...current, ...defaultChoice(patch.provider, patch.role ?? current.role) }
+      : current;
+  const agent: Agent = { ...base, ...compact(patch), updatedAt: ctx.now };
   const choice = validateChoice(agent);
   if (!choice.ok) {
     return choice;
   }
   return ok({
     events: [{ type: "agent.updated", actor: ctx.actor, payload: { agent } }],
-    value: agent,
+    read: readAgent(agent.id),
   });
 }
 
@@ -130,7 +127,7 @@ export function copyAgent(
   const agent = copyOf(source, input.projectId, name, ctx);
   return ok({
     events: [{ type: "agent.created", actor: ctx.actor, payload: { agent } }],
-    value: agent,
+    read: readAgent(agent.id),
   });
 }
 
@@ -146,17 +143,17 @@ export function removeAgent(
   if (agent.role === "boss" && model.projects.has(agent.projectId)) {
     return err(conflict("the boss leaves with the floor; remove the project instead"));
   }
-  const busy = [...model.tasks.values()].filter(
-    (t) => (t.assigneeId === id || t.reviewerId === id) && !isTerminal(t.status),
-  ).length;
   if (sessionsOfAgent(model, id).some((s) => isSessionActive(s.state))) {
     return err(conflict("agent has an active session"));
   }
+  const busy = [...model.tasks.values()].filter(
+    (t) => (t.assigneeId === id || t.reviewerId === id) && !isTerminal(t.status),
+  ).length;
   if (busy > 0) {
     return err(conflict(`agent has ${String(busy)} active task(s); reassign them first`));
   }
   return ok({
     events: [{ type: "agent.removed", actor: ctx.actor, payload: { agentId: id } }],
-    value: id,
+    read: () => id,
   });
 }

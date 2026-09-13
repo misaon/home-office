@@ -6,9 +6,6 @@
   "exports": {
     "./pump": "./src/pump.ts"
   },
-  "scripts": {
-    "build": "bun build --target=bun --minify ./src/main.ts --outfile ./dist/ho-runner.js"
-  },
   "dependencies": {
     "@ho/protocol": "workspace:*"
   }

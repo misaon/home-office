@@ -1,8 +1,8 @@
+import { writePrivateFile } from "@ho/secrets";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { DaemonConfig } from "./config.ts";
-import { writePrivateFile } from "@ho/secrets";
 
 /** Written next to the database so local clients (CLI, desktop shell) can find and authenticate to the daemon. */
 export const DaemonInfo = z.object({
@@ -12,28 +12,40 @@ export const DaemonInfo = z.object({
   pid: z.int().positive(),
   startedAt: z.iso.datetime(),
   version: z.string(),
-  /** What this build carries; absent in files written by an older daemon. */
-  serves: z.object({ ui: z.boolean(), images: z.boolean() }).optional(),
+  /** What this build carries. */
+  serves: z.object({ ui: z.boolean(), images: z.boolean() }),
 });
 export type DaemonInfo = z.infer<typeof DaemonInfo>;
 
-export const daemonInfoPath = (home: string): string => join(home, "daemon.json");
+const infoPath = (home: string): string => join(home, "daemon.json");
 
 export async function readDaemonInfo(home: string): Promise<DaemonInfo | null> {
-  const file = Bun.file(daemonInfoPath(home));
+  const file = Bun.file(infoPath(home));
   return (await file.exists()) ? DaemonInfo.parse(await file.json()) : null;
 }
 
 /** The file carries the bearer token, so it is readable by the owner only. */
 export async function writeDaemonInfo(home: string, info: DaemonInfo): Promise<void> {
-  await writePrivateFile(daemonInfoPath(home), `${JSON.stringify(info, null, 2)}\n`);
+  await writePrivateFile(infoPath(home), `${JSON.stringify(info, null, 2)}\n`);
 }
 
 export const removeDaemonInfo = (home: string): Promise<void> =>
-  rm(daemonInfoPath(home), { force: true });
+  rm(infoPath(home), { force: true });
 
 export const daemonUrl = (
   info: Pick<DaemonInfo, "host" | "port">,
   protocol: "http" | "ws" = "http",
 ): string =>
   `${protocol}://${info.host.includes(":") ? `[${info.host}]` : info.host}:${String(info.port)}`;
+
+/** The office UI with the launch token in the fragment, which browsers never send to the server. */
+export const officeUrl = (info: DaemonInfo): string => `${daemonUrl(info)}/#token=${info.token}`;
+
+/** Whether the daemon `daemon.json` describes still answers, so a stale file after a crash is not trusted. */
+export const daemonAnswers = async (info: DaemonInfo): Promise<boolean> => {
+  try {
+    return (await fetch(`${daemonUrl(info)}/health`, { signal: AbortSignal.timeout(1500) })).ok;
+  } catch {
+    return false;
+  }
+};

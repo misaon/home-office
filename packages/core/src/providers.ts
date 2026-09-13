@@ -1,21 +1,15 @@
 import {
+  type Agent,
   type AgentRole,
-  type AuthKind,
+  conflict,
+  type DomainError,
   type EffortLevel,
   PROVIDERS,
   type ProviderId,
-  type SecretKeyName,
-  secretKeysFor,
 } from "@ho/protocol";
-import { conflict, type DomainError } from "./errors.ts";
 import { err, ok, type Result } from "./result.ts";
 
-export type AgentChoice = {
-  provider: ProviderId;
-  auth: AuthKind;
-  model: string;
-  effort: EffortLevel;
-};
+type AgentChoice = Pick<Agent, "provider" | "auth" | "model" | "effort">;
 
 /**
  * Effort a new agent starts at, by what the role actually does: the agents that change the repository think
@@ -69,7 +63,3 @@ export function validateChoice(choice: AgentChoice): Result<AgentChoice, DomainE
   }
   return ok(choice);
 }
-
-/** Secrets a session needs before it can start, in the order the runtime expects them. */
-export const requiredSecrets = (choice: AgentChoice): SecretKeyName[] =>
-  secretKeysFor(choice.provider, choice.auth, choice.model);

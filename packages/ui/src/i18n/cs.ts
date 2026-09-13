@@ -1,6 +1,6 @@
 // Czech: the office's own vocabulary is translated, while the words a developer reads in git, Docker
 // and the provider CLIs stay as they are — commit, branch, pull request, token, session, prune.
-import { csKinds } from "./cs-kinds.ts";
+import { csEditor } from "./cs-editor.ts";
 import type { en } from "./en.ts";
 
 export const cs: typeof en = {
@@ -12,7 +12,6 @@ export const cs: typeof en = {
     remove: "odebrat",
     none: "nic",
     search: "hledat…",
-    enter: "Enter",
     ofTotal: "{{shown}} z {{total}}",
     custom: "vlastní…",
   },
@@ -58,8 +57,6 @@ export const cs: typeof en = {
       "Zaměstnanci se přihlašují vaším předplatným Claude. V terminálu spusťte <code>claude setup-token</code>, dokončete přihlášení v prohlížeči a vložte vypsaný token. Uloží se do úložiště přihlašovacích údajů tohoto stroje (Keychain, libsecret nebo Credential Manager) a předá se jedině procesu <code>claude</code> v sandboxu.",
     tokenStored: "uloženo v nastaveném úložišti tajemství",
     tokenMissing: "token předplatného Claude ještě není",
-    tokenPaste: "vložte token",
-    tokenReplace: "vložte nový token, který ho nahradí",
     title: "Nastavte si kancelář",
     recheck: "Zkontrolovat znovu",
     skip: "Teď přeskočit",
@@ -123,6 +120,25 @@ export const cs: typeof en = {
     runsFloor: "vede toto podlaží",
     confirmRemove: "Odebrat {{name}}?",
     team: "Tým podlaží {{floor}}",
+    role: "Role",
+    provider: "Poskytovatel",
+    auth: "Přihlášení",
+    model: "Model",
+    effort: "Úsilí",
+    gender: "Pohlaví",
+    copyToFloor: "Zkopírovat na podlaží",
+    pickFloor: "vyberte podlaží…",
+  },
+  roles: {
+    boss: "šéf",
+    worker: "pracovník",
+    reviewer: "reviewer",
+    clerk: "asistent",
+  },
+  genders: {
+    female: "žena",
+    male: "muž",
+    neutral: "neutrální",
   },
   board: {
     tasks_one: "{{count}} úkol",
@@ -155,6 +171,8 @@ export const cs: typeof en = {
     placeholder: "Napište podlaží, co potřebujete… (Enter odešle, Shift+Enter nový řádek)",
     answerPlaceholder: "Vaše odpověď… (Enter odešle)",
     floorSuffix: " · podlaží {{name}}",
+    empty:
+      "Napište šéfovi tohoto podlaží. Lola mu vaši zprávu donese; on ji naplánuje, rozdělí kolegům a sem napíše, jak to dopadlo.",
   },
   inspector: {
     usage: "{{input}} in · {{output}} out · {{cache}} cache · turns {{turns}}",
@@ -196,6 +214,8 @@ export const cs: typeof en = {
     intakeError: " · chyba: {{message}}",
     intakeDryRun: " · na nečisto by vzal: {{items}}",
     intakeReceived: "přijato {{received}}, už známé {{duplicates}}",
+    intakeReceivedTotal: "přijato {{received}}",
+    intakeNever: "nikdy",
     intakeNothing: "nic nepřišlo",
     credentials: "Přihlašovací údaje",
     language: "Jazyk",
@@ -220,6 +240,7 @@ export const cs: typeof en = {
     stored: "uloženo",
     missing: "chybí",
     paste: "vložte token",
+    replace: "vložte nový token, který ho nahradí",
     forget: "Zapomenout",
     claude: "Token předplatného Claude",
     anthropic: "Anthropic API klíč",
@@ -247,45 +268,5 @@ export const cs: typeof en = {
     cache: "cache",
     sessions: "sessions",
   },
-  editor: {
-    noteNoFit: "nevejde se na mapu",
-    noteNoWall: "tento průchod se nedotýká žádné zdi",
-    noteOnWall: "{{name}} se zavěšuje na zeď — klikněte na samotnou zeď",
-    noteInWall: "nábytek nemůže stát ve zdi",
-    noteOccupied: "tam už něco stojí",
-    noRepo: "Tento build nemá repozitář, do kterého by zapsal, takže ukládání není dostupné.",
-    saveOffice: "Uložit kancelář",
-    stats:
-      "{{width}} × {{height}} buněk · {{walls}} úseků zdí · {{rooms}} úseků místností · {{doors}} dveří · {{objects}} nábytku",
-    facing: "směr {{facing}}",
-    held: " · {{w}} × {{h}} buněk",
-    helpPlace:
-      "Klikněte pro umístění; obrys ukazuje, co zabere. Pravé tlačítko ho otočí o čtvrt otáčky, tažení pravým maže.",
-    helpPaint: "Tažením levým tlačítkem kreslíte, pravým mažete to, co tento nástroj kreslí.",
-    helpPan: "Prostřední tlačítko nebo shift posouvá; kolečko přibližuje.",
-    savedAs: "uloženo {{path}}",
-    save: "Uložit",
-    title: "Editor kanceláře",
-    office: "Kancelář",
-    name: "Název",
-    file: "Soubor",
-    fileHint: "převzato z názvu",
-    tool: "Nástroj",
-    wall: "Zeď",
-    room: "Místnost",
-    door: "Dveře",
-    furniture: "Nábytek",
-    material: "Materiál",
-    newOffice: "Nová kancelář",
-    saved: "Uložené kanceláře",
-    load: "Načíst kancelář z JSON souboru",
-    notALayout: "tohle není layout kanceláře",
-    rotate: "Otočit",
-    onWall: " · na zdi",
-    footprint: "{{w}}×{{h}}",
-    footprintWall: "{{w}}×{{h}} na zdi",
-    searchIn: "Hledat: {{what}}",
-    noMatch: "nic neodpovídá „{{needle}}“",
-  },
-  kinds: csKinds,
+  ...csEditor,
 };

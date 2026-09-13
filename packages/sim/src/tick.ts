@@ -1,7 +1,7 @@
-/** Advances the world by `dtMs`. Idle decisions are made by the behaviour module through `onIdle`. */
+import { lazyOccupancy, setSteps, walkSteps } from "./actors.ts";
+import { idleBehaviour } from "./behaviours.ts";
 import type { Point } from "./grid.ts";
 import { advanceStep } from "./steps.ts";
-import { lazyOccupancy, setSteps, walkSteps } from "./actors.ts";
 import {
   type Actor,
   anchorOf,
@@ -16,7 +16,6 @@ import {
 /** Pause on the threshold before walking off, and the pause with closed doors before the next car. */
 const STEP_OUT_MS = 300;
 const CAR_GAP_MS = 600;
-const DOORS_KEY = "elevator-doors";
 /** The boss keeps to his office: his needs build up this many times slower than the staff's. */
 const BOSS_NEED_SLOWDOWN = 4;
 
@@ -90,14 +89,10 @@ function runElevator(world: World, floorId: string, floor: Floor, dtMs: number):
       break;
     }
   }
-  floor.animations.set(DOORS_KEY, e.amount);
 }
 
-export function tick(
-  world: World,
-  dtMs: number,
-  onIdle: (world: World, actor: Actor) => void,
-): void {
+/** Advances the world by `dtMs`: elevators, needs, emotions, idle decisions and one step of every plan. */
+export function tick(world: World, dtMs: number): void {
   world.time += dtMs;
   for (const [floorId, floor] of world.floors) {
     runElevator(world, floorId, floor, dtMs);
@@ -117,7 +112,6 @@ export function tick(
       }
       continue;
     }
-    actor.animTime += dtMs;
     const slowdown = actor.kind === "boss" ? BOSS_NEED_SLOWDOWN : 1;
     for (const need of NEEDS) {
       actor.needs[need] = Math.min(1, actor.needs[need] + dtMs / (NEED_PERIOD_MS[need] * slowdown));
@@ -134,7 +128,7 @@ export function tick(
         actor.activity = "idle";
       }
       if (world.time >= actor.idleUntil) {
-        onIdle(world, actor);
+        idleBehaviour(world, actor);
       }
     }
     advanceStep(world, actor, dtMs, occupancy);

@@ -1,7 +1,7 @@
 import { errorMessage } from "@ho/protocol";
 import type { PruneReport, SandboxProvider } from "@ho/core";
 import type { DaemonConfig } from "./config.ts";
-import { LABELS } from "./images.ts";
+import { LABELS, MANAGED } from "./labels.ts";
 import type { Logger } from "./logger.ts";
 
 const INTERVAL_MS = 30 * 60 * 1000;
@@ -22,20 +22,19 @@ async function collectGarbage(
   provider: SandboxProvider,
   config: DaemonConfig,
 ): Promise<PruneReport> {
-  const managed = { [LABELS.managed]: "true" };
   const retention = config.retention.taskVolumeHours * HOUR_MS;
   let report: PruneReport = { containers: [], volumes: [], images: [] };
   for (const kind of ["session", "engine", "bridge"]) {
     report = merge(
       report,
-      await provider.prune({ labels: { ...managed, [LABELS.kind]: kind }, kinds: ["containers"] }),
+      await provider.prune({ labels: { ...MANAGED, [LABELS.kind]: kind }, kinds: ["containers"] }),
     );
   }
   for (const kind of [...VOLUME_KINDS, ...LEGACY_VOLUME_KINDS]) {
     report = merge(
       report,
       await provider.prune({
-        labels: { ...managed, [LABELS.kind]: kind },
+        labels: { ...MANAGED, [LABELS.kind]: kind },
         olderThanMs: retention,
         kinds: ["volumes"],
       }),
@@ -44,12 +43,12 @@ async function collectGarbage(
   for (const kind of TRANSIENT_VOLUME_KINDS) {
     report = merge(
       report,
-      await provider.prune({ labels: { ...managed, [LABELS.kind]: kind }, kinds: ["volumes"] }),
+      await provider.prune({ labels: { ...MANAGED, [LABELS.kind]: kind }, kinds: ["volumes"] }),
     );
   }
   report = merge(
     report,
-    await provider.prune({ labels: { ...managed, [LABELS.kind]: "image" }, kinds: ["images"] }),
+    await provider.prune({ labels: { ...MANAGED, [LABELS.kind]: "image" }, kinds: ["images"] }),
   );
   return report;
 }

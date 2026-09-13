@@ -121,12 +121,6 @@
       "rules": {
         "unicorn/no-array-fill-with-reference-type": "off"
       }
-    },
-    {
-      "files": ["packages/store/drizzle/**"],
-      "rules": {
-        "unicorn/filename-case": "off"
-      }
     }
   ]
 }

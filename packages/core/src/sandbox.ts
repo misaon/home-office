@@ -1,26 +1,20 @@
-import type {
-  ProviderHealth,
-  ResourceInventory,
-  ResourceSnapshot,
-  ServicesPolicy,
-} from "@ho/protocol";
+import type { ProviderHealth, ResourceInventory, ServicesPolicy } from "@ho/protocol";
+import type { Cancellation } from "./ports.ts";
 
 /** Where agent sessions run. Docker locally today; a cloud provider tomorrow with the same shape. */
 
 export type ImageSpec = {
   ref: string;
   contextDir: string;
-  dockerfile?: string;
   /** Multi-stage build target (provider variants share one Dockerfile). */
   target?: string;
-  platform?: string;
   labels: Readonly<Record<string, string>>;
   /** Content hash of the build inputs; the provider skips the build when an image with this label exists. */
   contentHash: string;
 };
 
-export type VolumeMount = { name: string; target: string; readonly?: boolean };
-export type BindMount = { source: string; target: string; readonly: boolean };
+export type VolumeMount = { name: string; target: string };
+type BindMount = { source: string; target: string; readonly: boolean };
 
 export type SandboxSpec = {
   name: string;
@@ -40,7 +34,6 @@ export type SandboxSpec = {
 };
 
 export type SandboxHandle = { id: string; name: string };
-export type VolumeRef = { name: string };
 
 export type EngineMode = ServicesPolicy["mode"];
 
@@ -66,12 +59,7 @@ export type EngineSpec = {
   limits: { memoryBytes: number; cpus: number; pids: number };
 };
 
-export type SandboxRunResult = {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-  durationMs: number;
-};
+export type SandboxRunResult = { exitCode: number; stdout: string; stderr: string };
 
 export type PruneScope = {
   labels: Readonly<Record<string, string>>;
@@ -80,42 +68,33 @@ export type PruneScope = {
 };
 export type PruneReport = { containers: string[]; volumes: string[]; images: string[] };
 
-export type { ProviderHealth, ResourceInventory, ResourceSnapshot } from "@ho/protocol";
-
-export type BuildProgress = { line: string };
-
 export type SandboxProvider = {
   readonly id: "docker";
   health: () => Promise<ProviderHealth>;
-  ensureImage: (spec: ImageSpec, onProgress?: (p: BuildProgress) => void) => Promise<void>;
+  /** The content hash an image was built from, "" for an unlabelled image, null when it is absent. */
+  imageHash: (ref: string) => Promise<string | null>;
+  ensureImage: (
+    spec: ImageSpec,
+    onLine?: (line: string) => void,
+    signal?: Cancellation,
+  ) => Promise<void>;
   ensureNetwork: (name: string, labels: Readonly<Record<string, string>>) => Promise<void>;
   createVolume: (
     name: string,
     labels: Readonly<Record<string, string>>,
     /** `local` driver mount options, e.g. a tmpfs volume owned by the sandbox user. */
     driverOpts?: Readonly<Record<string, string>>,
-  ) => Promise<VolumeRef>;
-  removeVolume: (ref: VolumeRef) => Promise<void>;
+  ) => Promise<void>;
+  removeVolume: (name: string) => Promise<void>;
   /** Creates and starts a long-lived sandbox (the runner is its PID 1). */
   start: (spec: SandboxSpec) => Promise<SandboxHandle>;
+  /** Starts a task's engine in its sandbox's network namespace and resolves once its API answers. */
+  startEngine: (spec: EngineSpec, readyTimeoutMs: number) => Promise<SandboxHandle>;
   stop: (handle: SandboxHandle, graceSeconds?: number) => Promise<void>;
   remove: (handle: SandboxHandle) => Promise<void>;
   /** Runs a short one-shot container to completion and removes it (git-bridge, smoke checks). */
   run: (spec: SandboxSpec, timeoutMs?: number) => Promise<SandboxRunResult>;
-  logs: (handle: SandboxHandle, tail?: number) => Promise<{ stdout: string; stderr: string }>;
   prune: (scope: PruneScope) => Promise<PruneReport>;
-  snapshot: (labels: Readonly<Record<string, string>>) => Promise<ResourceSnapshot>;
-  /** Everything HO owns right now, for the Resources panel and `ho resources`. */
+  /** Everything HO owns right now, for the Resources panel, `ho resources` and the doctor. */
   inventory: (labels: Readonly<Record<string, string>>) => Promise<ResourceInventory>;
-};
-
-/**
- * The optional second execution boundary: an engine per task instead of the daemon's own. A microVM
- * backend implements this without implementing `SandboxProvider`, which is why it is a separate port.
- */
-export type TaskEngineProvider = {
-  /** Starts the engine and resolves once its API answers; rejects on timeout or a dead container. */
-  startEngine: (spec: EngineSpec, readyTimeoutMs: number) => Promise<SandboxHandle>;
-  /** Stops the engine so its own containers get their termination signal before the sandbox goes. */
-  stopEngine: (handle: SandboxHandle, graceSeconds?: number) => Promise<void>;
 };

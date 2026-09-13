@@ -37,7 +37,6 @@ body,
 
 canvas {
   display: block;
-  image-rendering: pixelated;
 }
 
 /* A dropdown's own list is drawn by the platform, so it needs the office's ground stated explicitly.

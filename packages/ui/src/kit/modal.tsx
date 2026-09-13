@@ -1,6 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
-/** A centred dialog with a header, a body on its own rhythm and a footer for its actions. Escape closes it. */
+/**
+ * A real modal dialog: the browser puts it in the top layer, makes the page behind it inert, moves focus
+ * into it and restores focus on close, and closes it on Escape. A header, a body on its own rhythm and a
+ * footer for its actions.
+ */
 export function Modal({
   title,
   description,
@@ -14,29 +18,30 @@ export function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
+  const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
+    const element = dialog.current;
+    element?.showModal();
     return () => {
-      window.removeEventListener("keydown", onKey);
+      element?.close();
     };
-  }, [onClose]);
+  }, []);
   return (
-    <div className="absolute inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/75 p-8">
-      <div className="my-auto w-full max-w-xl overflow-hidden rounded-xl border border-line bg-panel shadow-2xl">
-        <header className="border-b border-line px-6 py-5">
-          <h2 className="text-base font-semibold">{title}</h2>
-          <p className="mt-2 text-xs leading-relaxed text-gray-400">{description}</p>
-        </header>
-        <div className="space-y-6 px-6 py-6">{children}</div>
-        <footer className="flex items-center justify-end gap-3 border-t border-line bg-ink/50 px-6 py-4">
-          {footer}
-        </footer>
-      </div>
-    </div>
+    <dialog
+      ref={dialog}
+      aria-label={title}
+      className="m-auto w-full max-w-xl overflow-hidden rounded-xl border border-line bg-panel p-0 text-gray-100 shadow-2xl backdrop:bg-black/75"
+      // Escape closes a modal dialog itself; this is how the office hears about it.
+      onClose={onClose}
+    >
+      <header className="border-b border-line px-6 py-5">
+        <h2 className="text-base font-semibold">{title}</h2>
+        <p className="mt-2 text-xs leading-relaxed text-gray-400">{description}</p>
+      </header>
+      <div className="space-y-6 px-6 py-6">{children}</div>
+      <footer className="flex items-center justify-end gap-3 border-t border-line bg-ink/50 px-6 py-4">
+        {footer}
+      </footer>
+    </dialog>
   );
 }

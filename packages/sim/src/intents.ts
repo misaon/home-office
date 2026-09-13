@@ -1,6 +1,4 @@
-import type { AgentId, AgentRole } from "@ho/protocol";
-import { facingTowards, neighboursOf, type Point } from "./grid.ts";
-import type { Anchor } from "./templates.ts";
+import type { AgentId, AgentRole, RuntimeEvent } from "@ho/protocol";
 import {
   homeSteps,
   pendingDeliveries,
@@ -9,6 +7,8 @@ import {
   summon,
   walkSteps,
 } from "./actors.ts";
+import { facingTowards, neighboursOf, type Point } from "./grid.ts";
+import type { Anchor } from "./map.ts";
 import {
   type Actor,
   anchorOf,
@@ -16,6 +16,7 @@ import {
   freeAnchors,
   release,
   reserve,
+  type Step,
   type World,
 } from "./world.ts";
 
@@ -88,51 +89,48 @@ export function releaseWork(world: World, agentId: AgentId, ok: boolean): void {
   }
   actor.work = null;
   release(world, actor);
-  setSteps(actor, [
-    ...pendingDeliveries(actor),
-    ...(ok
-      ? [
-          {
-            kind: "dwell",
-            activity: "celebrate",
-            facing: "s",
-            until: null,
-            ms: CELEBRATE_MS,
-          } as const,
-        ]
-      : []),
-    ...homeSteps(world, actor),
-  ]);
+  const celebrate: Step[] = ok
+    ? [{ kind: "dwell", activity: "celebrate", facing: "s", until: null, ms: CELEBRATE_MS }]
+    : [];
+  setSteps(actor, [...pendingDeliveries(actor), ...celebrate, ...homeSteps(world, actor)]);
   actor.idleUntil = world.time + CELEBRATE_MS;
 }
 
 /** A free cell next to `at` on that floor, else `fallback`. */
-export const adjacentFree = (world: World, floorId: string, at: Point, fallback: Point): Point => {
+const adjacentFree = (world: World, floorId: string, at: Point, fallback: Point): Point => {
   const floor = world.floors.get(floorId);
   return neighboursOf(at).find((p) => floor?.grid.isWalkable(p) === true) ?? fallback;
 };
 
 /**
- * Where a carrier meets somebody who is off the floor: at their desk when they have one, else at the
- * elevator entrance — the recipient is summoned and steps out of the next car.
+ * Where a carrier meets somebody: beside them when they are on the floor; when they are away, beside their
+ * desk, their home or the elevator entrance — the recipient is summoned and steps out of the next car.
  */
 const meetingPoint = (world: World, source: Actor, target: Actor): Point => {
   if (!target.hidden) {
     return adjacentFree(world, target.floorId, target.tile, source.tile);
   }
-  const desk =
-    target.work === null ? undefined : anchorOf(world, target.floorId, target.work.anchorId);
-  const spot = desk ?? anchorOf(world, target.floorId, "entrance");
+  const place = target.work ?? target.home;
+  const spot =
+    (place === null ? undefined : anchorOf(world, target.floorId, place.anchorId)) ??
+    anchorOf(world, target.floorId, "entrance");
   return spot === undefined
     ? source.tile
     : adjacentFree(world, source.floorId, spot.at, source.tile);
 };
 
 /**
- * `from` carries the envelope to `to`, hands it over, and the sim emits `handoff_delivered` so the host can act
- * (start the recipient's session, let the boss speak). The carrier then returns to its desk or home.
+ * `from` carries an envelope to `to` — after `before` (fetching it from the counter, say) — hands it over
+ * and emits `delivered` with `ref`, so the host can act (start the recipient's session, let the boss
+ * speak). The carrier then returns to its desk or home.
  */
-export function handoff(world: World, from: AgentId, to: AgentId): boolean {
+export function carry(
+  world: World,
+  from: AgentId,
+  to: AgentId,
+  ref: string,
+  before: readonly Step[] = [],
+): boolean {
   const source = world.actors.get(from);
   const target = world.actors.get(to);
   if (source === undefined || target === undefined || source.floorId !== target.floorId) {
@@ -144,9 +142,10 @@ export function handoff(world: World, from: AgentId, to: AgentId): boolean {
   setEmotion(world, from, "envelope", null);
   setSteps(source, [
     ...pendingDeliveries(source),
+    ...before,
     ...walkSteps(target.floorId, meet),
     { kind: "dwell", activity: "handover", facing: face, until: null, ms: HANDOVER_MS },
-    { kind: "emit", event: { kind: "handoff_delivered", from, to } },
+    { kind: "emit", event: { kind: "delivered", ref, by: from, to } },
     ...resumeSteps(world, source),
   ]);
   return true;
@@ -157,7 +156,7 @@ export function receive(world: World, agentId: AgentId, from: AgentId): void {
   const actor = world.actors.get(agentId);
   const source = world.actors.get(from);
   setEmotion(world, from, null, null);
-  if (actor === undefined || source === undefined || actor.hidden) {
+  if (actor === undefined || source === undefined || actor.hidden || agentId === from) {
     return;
   }
   setEmotion(world, agentId, "envelope", RECEIVED_BUBBLE_MS);
@@ -202,7 +201,7 @@ export function wake(world: World, agentId: AgentId): void {
   const actor = world.actors.get(agentId);
   if (actor !== undefined && actor.activity === "sleep") {
     release(world, actor);
-    setSteps(actor, []);
+    setSteps(actor, pendingDeliveries(actor));
     actor.activity = "idle";
     actor.idleUntil = world.time;
   }
@@ -220,4 +219,24 @@ export function setEmotion(
   }
   actor.emotion =
     kind === null ? null : { kind, until: ttlMs === null ? null : world.time + ttlMs };
+}
+
+type EmotionCue = { kind: Emotion; ttlMs: number | null };
+
+const STATIC_CUES: Partial<Record<RuntimeEvent["kind"], EmotionCue>> = {
+  tool_call: { kind: "focused", ttlMs: 8000 },
+  error: { kind: "frustrated", ttlMs: 20000 },
+  permission_request: { kind: "question", ttlMs: null },
+  rate_limited: { kind: "sleepy", ttlMs: null },
+};
+
+/** How live runtime events show up above an agent's head. `null` ttl keeps the bubble until replaced. */
+export function emotionFor(event: RuntimeEvent): EmotionCue | null {
+  if (event.kind === "tool_result") {
+    return event.ok ? null : { kind: "frustrated", ttlMs: 6000 };
+  }
+  if (event.kind === "result") {
+    return event.ok ? { kind: "happy", ttlMs: 6000 } : { kind: "frustrated", ttlMs: 10000 };
+  }
+  return STATIC_CUES[event.kind] ?? null;
 }

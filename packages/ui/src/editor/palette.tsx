@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useKindName } from "../i18n/kinds.ts";
 import { Button, CONTROL } from "../kit/controls.tsx";
-import { type Kinds, rotate, type Tool } from "./draft.ts";
+import { type Brush, rotate, type Tool } from "./draft.ts";
 
 const KIND_LABEL = {
   wall: "editor.material",
@@ -14,8 +14,13 @@ const KIND_LABEL = {
   object: "editor.furniture",
 } as const satisfies Record<Tool, string>;
 
-/** Which half of the catalogue a tool paints from. */
-const GROUP = { wall: "wall", room: "room", door: "door", object: "object" } as const;
+/** What each tool paints from: the closed list of the protocol, whose slugs the office file stores. */
+const SCHEMA = {
+  wall: WallMaterial,
+  room: RoomKind,
+  door: DoorKind,
+  object: ObjectKind,
+} as const;
 
 /** Every choice of the active tool, two to a row, with a footprint where a piece has one. */
 function Choices({
@@ -39,6 +44,7 @@ function Choices({
           <button
             key={option}
             type="button"
+            aria-pressed={option === value}
             className={`rounded-md border px-2 py-1.5 text-left text-2xs leading-tight break-words transition ${
               option === value
                 ? "border-accent/70 bg-line text-white"
@@ -71,28 +77,21 @@ const footprintOf = (option: string, t: TFunction): string | null => {
 
 /** The palette of the active tool, plus the footprint of what is in hand. */
 export function Palette({
-  kinds,
-  setKinds,
+  brush,
+  setBrush,
   tool,
 }: {
-  kinds: Kinds;
-  setKinds: (kinds: Kinds) => void;
+  brush: Brush;
+  setBrush: (brush: Brush) => void;
   tool: Tool;
 }): React.JSX.Element {
   const { t } = useTranslation();
   const kindName = useKindName();
   const [search, setSearch] = useState("");
-  const sideways = kinds.facing === "e" || kinds.facing === "w";
-  const all =
-    tool === "wall"
-      ? WallMaterial.options
-      : tool === "room"
-        ? RoomKind.options
-        : tool === "door"
-          ? DoorKind.options
-          : ObjectKind.options;
+  const sideways = brush.facing === "e" || brush.facing === "w";
+  const all: readonly string[] = SCHEMA[tool].options;
   const needle = search.trim().toLowerCase();
-  const name = (option: string): string => kindName(GROUP[tool], option);
+  const name = (option: string): string => kindName(tool, option);
   // The slug is what a saved office contains, so searching keeps matching it as well as the name.
   const options =
     needle === ""
@@ -100,7 +99,7 @@ export function Palette({
       : all.filter(
           (option) => option.includes(needle) || name(option).toLowerCase().includes(needle),
         );
-  const spec = OBJECT_SPEC[kinds.object];
+  const spec = OBJECT_SPEC[brush.object];
   return (
     <>
       <div className="flex items-baseline justify-between gap-3">
@@ -125,32 +124,24 @@ export function Palette({
       ) : null}
       <Choices
         options={options}
-        value={kinds[tool]}
+        value={brush[tool]}
         size={tool === "object" ? (option) => footprintOf(option, t) : () => null}
         name={name}
         pick={(option) => {
-          setKinds(
-            tool === "wall"
-              ? { ...kinds, wall: WallMaterial.parse(option) }
-              : tool === "room"
-                ? { ...kinds, room: RoomKind.parse(option) }
-                : tool === "door"
-                  ? { ...kinds, door: DoorKind.parse(option) }
-                  : { ...kinds, object: ObjectKind.parse(option) },
-          );
+          setBrush({ ...brush, [tool]: SCHEMA[tool].parse(option) });
         }}
       />
       {tool === "object" || tool === "door" ? (
         <div className="flex items-center gap-3">
           <Button
             onClick={() => {
-              setKinds(rotate(kinds));
+              setBrush(rotate(brush));
             }}
           >
             {t("editor.rotate")}
           </Button>
           <span className="font-mono text-2xs text-gray-400">
-            {t("editor.facing", { facing: kinds.facing })}
+            {t("editor.facing", { facing: brush.facing })}
             {tool === "door"
               ? ""
               : `${t("editor.held", {

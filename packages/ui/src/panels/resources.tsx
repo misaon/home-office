@@ -1,34 +1,20 @@
-import { errorMessage, formatBytes } from "@ho/protocol";
+import { formatBytes } from "@ho/protocol";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { resourcesQuery } from "../queries.ts";
 import { useTranslation } from "react-i18next";
-import { Button, Section } from "../kit/controls.tsx";
+import { Button, Failure, Section } from "../kit/controls.tsx";
+import { resourcesQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
-import { useUi } from "../store.ts";
+import { useOnline } from "../store.ts";
 
 export function ResourcesPanel(): React.JSX.Element {
   const { t } = useTranslation();
-  const connection = useUi((s) => s.connection);
-  const query = useQuery({
-    ...resourcesQuery,
-    enabled: connection === "online",
-    refetchInterval: 30_000,
-  });
+  const online = useOnline();
+  const query = useQuery({ ...resourcesQuery, enabled: online, refetchInterval: 30_000 });
   const inventory = query.data ?? null;
   const prune = useMutation({
     mutationFn: () => requireClient().system.gc(),
     onSuccess: () => query.refetch(),
   });
-  const note =
-    prune.error !== null
-      ? errorMessage(prune.error)
-      : prune.data === undefined
-        ? null
-        : t("resources.pruned", {
-            containers: prune.data.containers.length,
-            volumes: prune.data.volumes.length,
-            images: prune.data.images.length,
-          });
   return (
     <div className="h-full space-y-5 overflow-y-auto p-4 text-xs">
       <div className="flex flex-wrap items-center gap-3">
@@ -47,9 +33,17 @@ export function ResourcesPanel(): React.JSX.Element {
         >
           {t("resources.refresh")}
         </Button>
-        {query.error === null ? null : <span role="alert">{query.error.message}</span>}
-        {note !== null ? <span className="text-gray-400">{note}</span> : null}
+        {prune.data === undefined ? null : (
+          <span className="text-gray-400">
+            {t("resources.pruned", {
+              containers: prune.data.containers.length,
+              volumes: prune.data.volumes.length,
+              images: prune.data.images.length,
+            })}
+          </span>
+        )}
       </div>
+      <Failure error={query.error ?? prune.error} />
       {inventory === null ? (
         <p className="text-gray-400">{t("resources.noInventory")}</p>
       ) : (

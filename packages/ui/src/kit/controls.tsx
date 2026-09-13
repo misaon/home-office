@@ -1,6 +1,12 @@
+import { errorMessage } from "@ho/protocol";
+
 /** One rhythm for every text field, select and textarea in the office. */
 export const CONTROL =
   "w-full rounded-md border border-line bg-ink px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-accent/60 focus:outline-none";
+
+/** The compact variant for a select or a short input inside a card row. */
+export const CONTROL_DENSE =
+  "rounded-md border border-line bg-ink px-2 py-1 text-xs text-gray-100 focus:border-accent/60 focus:outline-none";
 
 const VARIANTS = {
   primary: "bg-accent text-black hover:brightness-110",
@@ -84,6 +90,7 @@ export function Segmented<T extends string>({
         <button
           key={option.value}
           type="button"
+          aria-pressed={option.value === value}
           className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
             option.value === value
               ? "bg-line text-white"
@@ -116,6 +123,7 @@ export function Tabs<T extends string>({
         <button
           key={option.value}
           type="button"
+          aria-pressed={option.value === value}
           className={`flex-1 px-2 py-2.5 text-xs transition ${
             option.value === value
               ? "border-b-2 border-accent font-medium text-white"
@@ -151,6 +159,15 @@ export function Section({
       </div>
       {children}
     </section>
+  );
+}
+
+/** What a failed request said, or nothing while there is nothing to say. */
+export function Failure({ error }: { error: unknown }): React.JSX.Element | null {
+  return error === null || error === undefined ? null : (
+    <p role="alert" className="rounded-md bg-red-950/70 px-3 py-2 text-xs text-red-200">
+      {errorMessage(error)}
+    </p>
   );
 }
 

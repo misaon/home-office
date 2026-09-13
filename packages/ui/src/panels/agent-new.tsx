@@ -1,52 +1,31 @@
-import {
-  AgentRole,
-  type EffortLevel,
-  errorMessage,
-  Gender,
-  type ProjectId,
-  type ProviderId,
-  PROVIDERS,
-} from "@ho/protocol";
 import { defaultChoice } from "@ho/core";
+import { AgentRole, Gender, type ProjectId } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "../kit/controls.tsx";
+import { GENDER_KEY, ROLE_KEY } from "../i18n/labels.ts";
+import { Button, CONTROL, Failure, Field } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
-import { useUi } from "../store.ts";
 import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
 
 /** Roles a floor hires; the boss comes with the floor. */
 const ROLES = AgentRole.options.filter((r) => r !== "boss");
-const GENDERS = Gender.options;
-type Draft = Choice & {
-  name: string;
-  role: AgentRole;
-  spriteSet: string;
-  gender: Gender;
-  basePrompt: string;
-};
 
-const emptyDraft = (spriteSet: string): Draft => ({
+type AgentDraft = Choice & { name: string; role: AgentRole; gender: Gender; basePrompt: string };
+
+const EMPTY: AgentDraft = {
   name: "",
   role: "worker",
   provider: "claude-code",
   ...defaultChoice("claude-code", "worker"),
-  spriteSet,
   gender: "neutral",
   basePrompt: "",
-});
-
-const effortFor = (provider: ProviderId, current: EffortLevel): EffortLevel => {
-  const levels = PROVIDERS[provider].effortLevels;
-  return levels.length === 0 || levels.includes(current) ? current : (levels[0] ?? current);
 };
 
 /** The "new agent" form of a floor: a draft plus the provider catalog's valid combinations. */
 export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element {
   const { t } = useTranslation();
-  const spriteSets = useUi((s) => s.spriteSets);
-  const [draft, setDraft] = useState<Draft>(emptyDraft(spriteSets[0] ?? "agent-a"));
+  const [draft, setDraft] = useState<AgentDraft>(EMPTY);
   const create = useMutation({
     mutationFn: () =>
       requireClient().agents.create({
@@ -57,12 +36,12 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
         auth: draft.auth,
         model: draft.model.trim(),
         effort: draft.effort,
-        appearance: { spriteSet: draft.spriteSet, gender: draft.gender },
+        appearance: { gender: draft.gender },
         basePrompt: draft.basePrompt,
         skillPack: draft.role === "clerk" ? "none" : draft.role,
       }),
     onSuccess: () => {
-      setDraft(emptyDraft(spriteSets[0] ?? "agent-a"));
+      setDraft(EMPTY);
     },
   });
   const add = (): void => {
@@ -72,75 +51,78 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
   };
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-md border border-dashed border-line p-4 text-xs">
-      <input
-        className="col-span-2 rounded-md border border-line bg-ink px-3 py-2"
-        placeholder={t("agent.name")}
-        value={draft.name}
-        onChange={(e) => {
-          setDraft({ ...draft, name: e.target.value });
-        }}
-      />
-      <select
-        className="rounded-md border border-line bg-ink px-2 py-1.5"
-        value={draft.role}
-        onChange={(e) => {
-          const role = AgentRole.parse(e.target.value);
-          setDraft({
-            ...draft,
-            role,
-            ...defaultChoice(draft.provider, role),
-          });
-        }}
-      >
-        {ROLES.map((x) => (
-          <option key={x}>{x}</option>
-        ))}
-      </select>
+      <div className="col-span-2">
+        <Field id="ho-new-agent-name" label={t("agent.name")}>
+          <input
+            id="ho-new-agent-name"
+            className={CONTROL}
+            value={draft.name}
+            onChange={(e) => {
+              setDraft({ ...draft, name: e.target.value });
+            }}
+          />
+        </Field>
+      </div>
+      <Field id="ho-new-agent-role" label={t("agent.role")}>
+        <select
+          id="ho-new-agent-role"
+          className={CONTROL}
+          value={draft.role}
+          onChange={(e) => {
+            const role = AgentRole.parse(e.target.value);
+            setDraft({ ...draft, role, ...defaultChoice(draft.provider, role) });
+          }}
+        >
+          {ROLES.map((role) => (
+            <option key={role} value={role}>
+              {t(ROLE_KEY[role])}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field id="ho-new-agent-gender" label={t("agent.gender")}>
+        <select
+          id="ho-new-agent-gender"
+          className={CONTROL}
+          value={draft.gender}
+          onChange={(e) => {
+            setDraft({ ...draft, gender: Gender.parse(e.target.value) });
+          }}
+        >
+          {Gender.options.map((gender) => (
+            <option key={gender} value={gender}>
+              {t(GENDER_KEY[gender])}
+            </option>
+          ))}
+        </select>
+      </Field>
       <ProviderModelFields
         value={draft}
         role={draft.role}
         onChange={(next) => {
-          setDraft({ ...draft, ...next, effort: effortFor(next.provider, next.effort) });
+          setDraft({ ...draft, ...next });
         }}
       />
-      <select
-        className="rounded-md border border-line bg-ink px-2 py-1.5"
-        value={draft.spriteSet}
-        onChange={(e) => {
-          setDraft({ ...draft, spriteSet: e.target.value });
-        }}
-      >
-        {(spriteSets.length === 0 ? [draft.spriteSet] : spriteSets).map((x) => (
-          <option key={x}>{x}</option>
-        ))}
-      </select>
-      <select
-        className="rounded-md border border-line bg-ink px-2 py-1.5"
-        value={draft.gender}
-        onChange={(e) => {
-          setDraft({ ...draft, gender: Gender.parse(e.target.value) });
-        }}
-      >
-        {GENDERS.map((x) => (
-          <option key={x}>{x}</option>
-        ))}
-      </select>
-      <textarea
-        className="col-span-2 h-20 resize-none rounded-md border border-line bg-ink px-3 py-2"
-        placeholder={t("agent.basePrompt")}
-        value={draft.basePrompt}
-        onChange={(e) => {
-          setDraft({ ...draft, basePrompt: e.target.value });
-        }}
-      />
+      <div className="col-span-2">
+        <Field id="ho-new-agent-prompt" label={t("agent.basePrompt")}>
+          <textarea
+            id="ho-new-agent-prompt"
+            className={`${CONTROL} h-20 resize-none`}
+            value={draft.basePrompt}
+            onChange={(e) => {
+              setDraft({ ...draft, basePrompt: e.target.value });
+            }}
+          />
+        </Field>
+      </div>
       <div className="col-span-2 flex justify-end">
         <Button variant="primary" disabled={create.isPending} onClick={add}>
           {t("agent.add")}
         </Button>
       </div>
-      {create.error === null ? null : (
-        <p className="col-span-2 text-red-400">{errorMessage(create.error)}</p>
-      )}
+      <div className="col-span-2">
+        <Failure error={create.error} />
+      </div>
     </div>
   );
 }

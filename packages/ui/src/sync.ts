@@ -1,7 +1,8 @@
 import { applyEvent } from "@ho/core";
+import { pushLive } from "./live-log.ts";
 import type { Bridge } from "./office/bridge.ts";
 import { type Client, connect, resolveToken } from "./rpc.ts";
-import { model, pushLive, scheduleLiveBump, scheduleModelBump, useUi } from "./store.ts";
+import { model, scheduleModelBump, useUi } from "./store.ts";
 
 const RETRY_MS = 2000;
 const wait = (ms: number): Promise<void> =>
@@ -29,8 +30,16 @@ const daemonAnswers = async (): Promise<boolean> => {
   }
 };
 
+/** The log this page replayed; a different one (a daemon restarted on a fresh database) means reload. */
+let followedLog: string | null = null;
+
 async function runEvents(client: Client, bridge: Bridge, signal: AbortSignal): Promise<void> {
   const head = await client.events.head();
+  if (head.logId !== null && followedLog !== null && head.logId !== followedLog) {
+    window.location.reload();
+    return;
+  }
+  followedLog = head.logId;
   let replayed = model.lastSeq >= head.seq;
   if (replayed) {
     bridge.syncFromModel();
@@ -54,7 +63,6 @@ async function runEvents(client: Client, bridge: Bridge, signal: AbortSignal): P
 async function runLive(client: Client, bridge: Bridge, signal: AbortSignal): Promise<void> {
   for await (const live of await client.sessions.stream({}, { signal })) {
     pushLive(live);
-    scheduleLiveBump();
     bridge.onLive(live);
   }
 }

@@ -99,3 +99,11 @@ help text is not derived from the commands". A table fixes exactly that, for ~40
 **If this call is wrong** it is cheap to reverse: the table's shape (`name`, `flags`, `run`) maps almost
 directly onto commander's `.command().option().action()`, so switching later is a mechanical rewrite of one
 file plus 18 descriptors.
+
+## As built, 2026-09-13
+
+The decision holds and the table exists, with two details that no longer match the sketch above: the
+descriptor is `Action = Flags & { positionals?, run }` with `strings` / `booleans` / `repeatable` /
+`required` (`apps/cli/src/cli.ts`), not `usage`/`flags`; and `run.ts` and `help.ts` were deleted rather
+than rewritten — the table lives in `apps/cli/src/cli.ts` with the command list in
+`apps/cli/src/commands/index.ts`. Seventeen top-level commands, and `ho help` is generated from them.

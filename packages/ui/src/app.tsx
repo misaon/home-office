@@ -1,4 +1,6 @@
 import type { ProjectId } from "@ho/protocol";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useDevReload } from "./dev-reload.ts";
 import { EditorOverlay } from "./editor/overlay.tsx";
 import { OfficeCanvas } from "./office/office-canvas.tsx";
@@ -10,9 +12,7 @@ import { ResourcesPanel } from "./panels/resources.tsx";
 import { SettingsPanel } from "./panels/settings.tsx";
 import { UsagePanel } from "./panels/usage.tsx";
 import { SetupOverlay, useSetupAutoOpen } from "./setup/overlay.tsx";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { type Panel, sortedFloors, useUi } from "./store.ts";
+import { CONNECTION_KEY, type Panel, sortedFloors, useUi } from "./store.ts";
 
 /** The office editor is an internal tool: this is replaced by a constant at build time, so a production
  * bundle contains neither the branch nor the import. */
@@ -36,19 +36,12 @@ const VIEWS: Record<Panel, () => React.JSX.Element> = {
   settings: SettingsPanel,
 };
 
+/** The chat and settings panels hold per-floor drafts, so switching floors remounts them. */
 function PanelBody({ panel }: { panel: Panel }): React.JSX.Element {
   const View = VIEWS[panel];
   const floorId = useUi((s) => s.floorId);
   return <View key={panel === "chat" || panel === "settings" ? floorId : panel} />;
 }
-
-const CONNECTION_KEY = {
-  connecting: "app.connecting",
-  online: "app.connected",
-  offline: "app.offline",
-  unauthorized: "app.noToken",
-  rejected: "app.rejected",
-} as const;
 
 /** Floor tabs in the header: numbered by creation, the "+" adds a project (a new floor). */
 function FloorTabs({ floorId }: { floorId: ProjectId | null }): React.JSX.Element {
@@ -62,6 +55,7 @@ function FloorTabs({ floorId }: { floorId: ProjectId | null }): React.JSX.Elemen
         <button
           key={p.id}
           type="button"
+          aria-pressed={p.id === floorId}
           title={p.repo.kind === "local" ? p.repo.path : p.repo.url}
           className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs ${
             p.id === floorId ? "bg-accent text-black" : "bg-ink text-gray-300 hover:bg-line"
@@ -88,17 +82,15 @@ function FloorTabs({ floorId }: { floorId: ProjectId | null }): React.JSX.Elemen
   );
 }
 
-/** Before the first project: a black screen with one button. Setup stays reachable in the corner. */
-function EmptyOffice({ openEditor }: { openEditor: () => void }): React.JSX.Element {
+/** Before the first project: a black screen with one button. */
+function EmptyOffice(): React.JSX.Element {
   const { t } = useTranslation();
   const connection = useUi((s) => s.connection);
   const replayed = useUi((s) => s.replayed);
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
-  const setSetupOpen = useUi((s) => s.setSetupOpen);
-  const ready = connection === "online" && replayed;
   return (
-    <div className="relative flex h-full items-center justify-center bg-black">
-      {ready ? (
+    <div className="flex h-full items-center justify-center bg-black">
+      {connection === "online" && replayed ? (
         <button
           type="button"
           className="rounded-lg bg-accent px-8 py-4 text-base font-semibold text-black shadow-lg transition hover:brightness-110"
@@ -111,28 +103,12 @@ function EmptyOffice({ openEditor }: { openEditor: () => void }): React.JSX.Elem
       ) : (
         <p className="text-sm text-gray-500">{t(CONNECTION_KEY[connection])}</p>
       )}
-      <div className="absolute right-5 bottom-4 flex items-center gap-3 text-xs text-gray-500">
-        <span
-          className={`inline-block h-2 w-2 rounded-full ${connection === "online" ? "bg-emerald-500" : "bg-red-500"}`}
-        />
-        <button
-          type="button"
-          className="hover:text-gray-300"
-          onClick={() => {
-            setSetupOpen(true);
-          }}
-        >
-          {t("app.setup")}
-        </button>
-        {DEV ? (
-          <button type="button" className="hover:text-gray-300" onClick={openEditor}>
-            {t("app.editorButton")}
-          </button>
-        ) : null}
-      </div>
     </div>
   );
 }
+
+const HEADER_BUTTON =
+  "shrink-0 rounded-md border border-line px-3 py-1.5 text-xs text-gray-300 hover:bg-line";
 
 export function App(): React.JSX.Element {
   const { t } = useTranslation();
@@ -147,27 +123,17 @@ export function App(): React.JSX.Element {
   const setSetupOpen = useUi((s) => s.setSetupOpen);
   useSetupAutoOpen();
   useDevReload();
-  const openEditor = (): void => {
-    setEditor(true);
-  };
-  const closeEditor = (): void => {
-    setEditor(false);
-  };
-  if (!hasFloors) {
-    return (
-      <div className="relative h-full">
-        <SetupOverlay />
-        <AddProjectModal />
-        <EmptyOffice openEditor={openEditor} />
-        {DEV && editor ? <EditorOverlay onClose={closeEditor} /> : null}
-      </div>
-    );
-  }
   return (
     <div className="relative flex h-full">
       <SetupOverlay />
       <AddProjectModal />
-      {DEV && editor ? <EditorOverlay onClose={closeEditor} /> : null}
+      {DEV && editor ? (
+        <EditorOverlay
+          onClose={() => {
+            setEditor(false);
+          }}
+        />
+      ) : null}
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-4 border-b border-line bg-panel px-4 py-2.5">
           <span className="shrink-0 font-semibold tracking-wide">Home Office</span>
@@ -175,55 +141,60 @@ export function App(): React.JSX.Element {
             className={`h-2 w-2 shrink-0 rounded-full ${connection === "online" ? "bg-emerald-400" : "bg-red-400"}`}
             title={t(CONNECTION_KEY[connection])}
           />
-          <FloorTabs floorId={floorId} />
-          {DEV ? (
+          {hasFloors ? <FloorTabs floorId={floorId} /> : null}
+          <span className="ml-auto flex shrink-0 gap-2">
+            {DEV ? (
+              <button
+                type="button"
+                className={HEADER_BUTTON}
+                title={t("app.editor")}
+                onClick={() => {
+                  setEditor(true);
+                }}
+              >
+                {t("app.editorButton")}
+              </button>
+            ) : null}
             <button
               type="button"
-              className="ml-auto shrink-0 rounded-md border border-line px-3 py-1.5 text-xs text-gray-300 hover:bg-line"
-              title={t("app.editor")}
-              onClick={openEditor}
-            >
-              {t("app.editorButton")}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className={`${DEV ? "" : "ml-auto "}shrink-0 rounded-md border border-line px-3 py-1.5 text-xs text-gray-300 hover:bg-line`}
-            title={t("app.setupSummary")}
-            onClick={() => {
-              setSetupOpen(true);
-            }}
-          >
-            {t("app.setup")}
-          </button>
-        </header>
-        <div className="min-h-0 flex-1">
-          <OfficeCanvas />
-        </div>
-      </main>
-      <aside className="flex w-[440px] shrink-0 flex-col border-l border-line bg-ink">
-        <nav className="flex border-b border-line bg-panel">
-          {PANELS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className={`flex-1 px-2 py-3 text-xs transition ${
-                p.id === panel
-                  ? "border-b-2 border-accent text-white"
-                  : "text-gray-400 hover:text-white"
-              }`}
+              className={HEADER_BUTTON}
+              title={t("app.setupSummary")}
               onClick={() => {
-                selectPanel(p.id);
+                setSetupOpen(true);
               }}
             >
-              {t(p.label)}
+              {t("app.setup")}
             </button>
-          ))}
-        </nav>
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <PanelBody panel={panel} />
-        </div>
-      </aside>
+          </span>
+        </header>
+        <div className="min-h-0 flex-1">{hasFloors ? <OfficeCanvas /> : <EmptyOffice />}</div>
+      </main>
+      {hasFloors ? (
+        <aside className="flex w-[440px] shrink-0 flex-col border-l border-line bg-ink">
+          <nav className="flex border-b border-line bg-panel">
+            {PANELS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={p.id === panel}
+                className={`flex-1 px-2 py-3 text-xs transition ${
+                  p.id === panel
+                    ? "border-b-2 border-accent text-white"
+                    : "text-gray-400 hover:text-white"
+                }`}
+                onClick={() => {
+                  selectPanel(p.id);
+                }}
+              >
+                {t(p.label)}
+              </button>
+            ))}
+          </nav>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <PanelBody panel={panel} />
+          </div>
+        </aside>
+      ) : null}
     </div>
   );
 }

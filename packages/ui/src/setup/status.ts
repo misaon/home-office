@@ -1,72 +1,47 @@
 import type { Doctor } from "@ho/protocol";
-import type { TFunction } from "i18next";
 
 /** Docker Engine API level the daemon relies on (Docker Desktop 4.27+ / Engine 25+). */
-const MIN_DOCKER_API = 1.44;
+export const MIN_DOCKER_API = 1.44;
 
-type StepState = "ok" | "todo" | "error" | "unknown";
-export type StepStatus = { state: StepState; text: string };
+export type StepState = "ok" | "todo" | "error" | "unknown";
 
-export const dockerStatus = (doctor: Doctor | null, t: TFunction): StepStatus => {
+export const dockerState = (doctor: Doctor | null): StepState => {
   if (doctor === null) {
-    return { state: "unknown", text: t("common.checking") };
+    return "unknown";
   }
   if (!doctor.provider.ok) {
-    return { state: "error", text: doctor.provider.message };
+    return "error";
   }
-  const api = Number(doctor.provider.apiVersion);
-  return api >= MIN_DOCKER_API
-    ? {
-        state: "ok",
-        text: t("setup.dockerOk", {
-          version: doctor.provider.version,
-          api: doctor.provider.apiVersion,
-          os: doctor.provider.os,
-          arch: doctor.provider.arch,
-        }),
-      }
-    : {
-        state: "error",
-        text: t("setup.dockerOld", {
-          api: doctor.provider.apiVersion,
-          min: String(MIN_DOCKER_API),
-        }),
-      };
+  return Number(doctor.provider.apiVersion) >= MIN_DOCKER_API ? "ok" : "error";
 };
 
-export const imagesStatus = (doctor: Doctor | null, t: TFunction): StepStatus => {
+export const missingImages = (doctor: Doctor): string[] =>
+  doctor.images.filter((i) => !i.present).map((i) => i.ref);
+
+export const staleImages = (doctor: Doctor): string[] =>
+  doctor.images.filter((i) => i.present && !i.upToDate).map((i) => i.ref);
+
+export const imagesState = (doctor: Doctor | null): StepState => {
   if (doctor === null) {
-    return { state: "unknown", text: t("common.checking") };
+    return "unknown";
   }
-  if (!doctor.provider.ok) {
-    return { state: "todo", text: t("setup.imagesWaiting") };
+  if (!doctor.provider.ok || !doctor.imageContexts) {
+    return "todo";
   }
-  if (!doctor.imageContexts) {
-    return { state: "todo", text: t("setup.imagesNoContexts") };
-  }
-  const missing = doctor.images.filter((i) => !i.present).map((i) => i.ref);
-  const stale = doctor.images.filter((i) => i.present && !i.upToDate).map((i) => i.ref);
-  if (missing.length > 0) {
-    return { state: "todo", text: t("setup.imagesMissing", { refs: missing.join(", ") }) };
-  }
-  if (stale.length > 0) {
-    return { state: "todo", text: t("setup.imagesStale", { refs: stale.join(", ") }) };
-  }
-  return { state: "ok", text: doctor.images.map((i) => i.ref).join(", ") };
+  return missingImages(doctor).length > 0 || staleImages(doctor).length > 0 ? "todo" : "ok";
 };
 
-export const tokenStatus = (doctor: Doctor | null, t: TFunction): StepStatus =>
-  doctor === null
-    ? { state: "unknown", text: t("common.checking") }
-    : doctor.secrets.anthropicOauthToken
-      ? { state: "ok", text: t("setup.tokenStored") }
-      : { state: "todo", text: t("setup.tokenMissing") };
+export const tokenState = (doctor: Doctor | null): StepState => {
+  if (doctor === null) {
+    return "unknown";
+  }
+  return doctor.secrets.anthropicOauthToken ? "ok" : "todo";
+};
 
-/**
- * True while any step a working office depends on is still open (floors and their teams are separate).
- * The states are what matters here, so the texts are asked for in the fallback language.
- */
-export const setupNeeded = (doctor: Doctor, t: TFunction): boolean =>
-  [dockerStatus(doctor, t), imagesStatus(doctor, t), tokenStatus(doctor, t)].some(
-    (s) => s.state !== "ok",
-  );
+/** True while any step a working office depends on is still open (floors and their teams are separate). */
+export const setupNeeded = (doctor: Doctor): boolean =>
+  [dockerState, imagesState, tokenState].some((state) => state(doctor) !== "ok");
+
+/** The office can start its first sandbox: the doctor answered and every environment step is done. */
+export const setupReady = (doctor: Doctor | null): boolean =>
+  doctor !== null && !setupNeeded(doctor);

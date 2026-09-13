@@ -10,13 +10,13 @@ export const SecretKeyName = z.enum([
 ]);
 export type SecretKeyName = z.infer<typeof SecretKeyName>;
 
-export type ModelDescriptor = { id: string; label: string };
+type ModelDescriptor = { id: string; label: string };
 
 /**
  * What the agent editor, the CLI and the daemon need to know about a provider. Static data: providers
  * change with releases, not at runtime. `models` are suggestions; `freeFormModels` allows any id.
  */
-export type ProviderDescriptor = {
+type ProviderDescriptor = {
   id: ProviderId;
   name: string;
   /** stream-json: Claude Code's own headless protocol; acp: Agent Client Protocol over stdio. */

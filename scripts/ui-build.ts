@@ -1,7 +1,6 @@
-import { errorMessage } from "@ho/protocol";
 import type { BunPlugin } from "bun";
 import { existsSync, renameSync, watch as fsWatch } from "node:fs";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import tailwind from "bun-plugin-tailwind";
 
@@ -31,7 +30,6 @@ const withoutEditor: BunPlugin = {
 async function build(): Promise<void> {
   const staging = await mkdtemp(resolve(root, "packages/ui/.build-"));
   const previous = `${staging}-previous`;
-  let published = false;
   try {
     const result = await Bun.build({
       entrypoints: [resolve(root, "packages/ui/index.html")],
@@ -57,7 +55,6 @@ async function build(): Promise<void> {
     }
     try {
       renameSync(staging, outdir);
-      published = true;
     } catch (error) {
       if (hadPrevious) {
         renameSync(previous, outdir);
@@ -70,7 +67,7 @@ async function build(): Promise<void> {
   } finally {
     await Promise.all([
       rm(staging, { recursive: true, force: true }),
-      published ? rm(previous, { recursive: true, force: true }) : Promise.resolve(),
+      rm(previous, { recursive: true, force: true }),
     ]);
   }
 }
@@ -85,18 +82,16 @@ if (watch) {
     }
     timer = setTimeout(() => {
       pending = pending.then(build).catch((error: unknown) => {
-        process.stderr.write(`${errorMessage(error)}\n`);
+        process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
       });
     }, 150);
   };
-  await mkdir(resolve(root, "assets/dist"), { recursive: true });
   const watched = [
     "packages/ui/src",
     "packages/ui/index.html",
     "packages/sim/src",
     "packages/core/src",
     "packages/protocol/src",
-    "assets/dist",
   ];
   for (const path of watched) {
     fsWatch(resolve(root, path), { recursive: true }, rebuild);

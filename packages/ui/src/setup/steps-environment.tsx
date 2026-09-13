@@ -1,26 +1,79 @@
-import { type Doctor, errorMessage } from "@ho/protocol";
+import type { Doctor } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
+import type { TFunction } from "i18next";
 import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { Button } from "../kit/controls.tsx";
+import { Button, Failure } from "../kit/controls.tsx";
+import { SecretField } from "../panels/settings-token.tsx";
 import { requireClient } from "../rpc.ts";
-import { dockerStatus, imagesStatus, tokenStatus } from "./status.ts";
-import { Step } from "./step.tsx";
+import {
+  dockerState,
+  imagesState,
+  MIN_DOCKER_API,
+  missingImages,
+  staleImages,
+  tokenState,
+} from "./status.ts";
+import { SetupStep, type StepStatus } from "./step.tsx";
 
 type EnvProps = { doctor: Doctor | null; refresh: () => void };
+
+const dockerStatus = (doctor: Doctor | null, t: TFunction): StepStatus => {
+  const state = dockerState(doctor);
+  if (doctor === null) {
+    return { state, text: t("common.checking") };
+  }
+  if (!doctor.provider.ok) {
+    return { state, text: doctor.provider.message };
+  }
+  const { version, apiVersion: api, os, arch } = doctor.provider;
+  return state === "ok"
+    ? { state, text: t("setup.dockerOk", { version, api, os, arch }) }
+    : { state, text: t("setup.dockerOld", { api, min: String(MIN_DOCKER_API) }) };
+};
+
+const imagesStatus = (doctor: Doctor | null, t: TFunction): StepStatus => {
+  const state = imagesState(doctor);
+  if (doctor === null) {
+    return { state, text: t("common.checking") };
+  }
+  if (!doctor.provider.ok) {
+    return { state, text: t("setup.imagesWaiting") };
+  }
+  if (!doctor.imageContexts) {
+    return { state, text: t("setup.imagesNoContexts") };
+  }
+  const missing = missingImages(doctor);
+  if (missing.length > 0) {
+    return { state, text: t("setup.imagesMissing", { refs: missing.join(", ") }) };
+  }
+  const stale = staleImages(doctor);
+  if (stale.length > 0) {
+    return { state, text: t("setup.imagesStale", { refs: stale.join(", ") }) };
+  }
+  return { state, text: doctor.images.map((i) => i.ref).join(", ") };
+};
+
+const tokenStatus = (doctor: Doctor | null, t: TFunction): StepStatus => {
+  const state = tokenState(doctor);
+  if (doctor === null) {
+    return { state, text: t("common.checking") };
+  }
+  return { state, text: state === "ok" ? t("setup.tokenStored") : t("setup.tokenMissing") };
+};
 
 export function DockerStep({ doctor, refresh }: EnvProps): React.JSX.Element {
   const { t } = useTranslation();
   const status = dockerStatus(doctor, t);
   return (
-    <Step index={1} title={t("setup.docker")} status={status}>
+    <SetupStep index={1} title={t("setup.docker")} status={status}>
       {status.state === "ok" ? null : (
         <div className="space-y-3">
           <p className="leading-relaxed text-gray-300">{t("setup.dockerIntro")}</p>
           <Button onClick={refresh}>{t("setup.checkAgain")}</Button>
         </div>
       )}
-    </Step>
+    </SetupStep>
   );
 }
 
@@ -33,7 +86,7 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const controller = useRef<AbortController | null>(null);
-  const bottom = useRef<HTMLDivElement>(null);
+  const log = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
     if (startedAt === null) {
@@ -47,7 +100,10 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
     };
   }, [startedAt]);
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
+    const element = log.current;
+    if (element !== null) {
+      element.scrollTop = element.scrollHeight;
+    }
   }, [lines.length]);
   useEffect(() => () => controller.current?.abort(), []);
 
@@ -76,7 +132,7 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
   });
 
   return (
-    <Step index={2} title={t("setup.images")} status={status}>
+    <SetupStep index={2} title={t("setup.images")} status={status}>
       <div className="space-y-3">
         <p className="leading-relaxed text-gray-300">{t("setup.imagesIntro")}</p>
         {status.state === "ok" && !build.isPending ? null : (
@@ -93,37 +149,24 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
           </Button>
         )}
         {lines.length > 0 ? (
-          <pre className="max-h-44 overflow-y-auto rounded-md border border-line bg-ink p-3 font-mono text-2xs text-gray-300">
+          <pre
+            ref={log}
+            className="max-h-44 overflow-y-auto rounded-md border border-line bg-ink p-3 font-mono text-2xs text-gray-300"
+          >
             {lines.join("\n")}
-            <div ref={bottom} />
           </pre>
         ) : null}
-        {build.error === null ? null : <p className="text-red-400">{errorMessage(build.error)}</p>}
+        <Failure error={build.error} />
       </div>
-    </Step>
+    </SetupStep>
   );
 }
 
-export function TokenStep({ doctor, refresh }: EnvProps): React.JSX.Element {
+export function TokenStep({ doctor }: { doctor: Doctor | null }): React.JSX.Element {
   const { t } = useTranslation();
   const status = tokenStatus(doctor, t);
-  const [value, setValue] = useState("");
-  const store = useMutation({
-    mutationFn: (token: string) =>
-      requireClient().secrets.set({ key: "anthropic-oauth-token", value: token }),
-    onSuccess: () => {
-      setValue("");
-      refresh();
-    },
-  });
-  const save = (): void => {
-    const token = value.trim();
-    if (token !== "") {
-      store.mutate(token);
-    }
-  };
   return (
-    <Step index={3} title={t("setup.token")} status={status}>
+    <SetupStep index={3} title={t("setup.token")} status={status}>
       <div className="space-y-3">
         <p className="leading-relaxed text-gray-300">
           <Trans
@@ -131,29 +174,12 @@ export function TokenStep({ doctor, refresh }: EnvProps): React.JSX.Element {
             components={{ code: <code className="rounded bg-ink px-1 font-mono" /> }}
           />
         </p>
-        <div className="flex gap-2">
-          <input
-            type="password"
-            aria-label={t("setup.token")}
-            autoComplete="off"
-            className="flex-1 rounded-md border border-line bg-ink px-3 py-2 font-mono focus:border-accent/60 focus:outline-none"
-            placeholder={status.state === "ok" ? t("setup.tokenReplace") : t("setup.tokenPaste")}
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                save();
-              }
-            }}
-          />
-          <Button variant="primary" onClick={save}>
-            {t("common.save")}
-          </Button>
-        </div>
-        {store.error === null ? null : <p className="text-red-400">{errorMessage(store.error)}</p>}
+        <SecretField
+          secret="anthropic-oauth-token"
+          label={t("setup.token")}
+          stored={status.state === "ok"}
+        />
       </div>
-    </Step>
+    </SetupStep>
   );
 }

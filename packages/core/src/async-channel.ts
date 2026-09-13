@@ -14,9 +14,7 @@ export function createChannel<T>(signal?: Cancellation, options: ChannelOptions 
   if (!Number.isSafeInteger(capacity) || capacity < 1) {
     throw new RangeError("channel capacity must be a positive safe integer");
   }
-  const buffer = new Map<number, T>();
-  let head = 0;
-  let tail = 0;
+  const buffer: { value: T }[] = [];
   let pending: PromiseWithResolvers<void> | null = null;
   let closed = false;
   let failure: Error | null = null;
@@ -35,7 +33,7 @@ export function createChannel<T>(signal?: Cancellation, options: ChannelOptions 
     notify();
   };
   const cancel = (): void => {
-    buffer.clear();
+    buffer.length = 0;
     close();
   };
   if (signal?.aborted === true) {
@@ -48,13 +46,13 @@ export function createChannel<T>(signal?: Cancellation, options: ChannelOptions 
       if (closed) {
         return;
       }
-      if (buffer.size >= capacity) {
+      if (buffer.length >= capacity) {
         failure = new Error("stream consumer fell behind; reconnect to resume");
-        buffer.clear();
+        buffer.length = 0;
         close();
         return;
       }
-      buffer.set(tail++, item);
+      buffer.push({ value: item });
       notify();
     },
     close,
@@ -71,12 +69,9 @@ export function createChannel<T>(signal?: Cancellation, options: ChannelOptions 
           if (failure !== null) {
             throw failure;
           }
-          if (buffer.size > 0) {
-            const entry = buffer.entries().next();
-            if (entry.done !== true) {
-              buffer.delete(head++);
-              yield entry.value[1];
-            }
+          const next = buffer.shift();
+          if (next !== undefined) {
+            yield next.value;
             continue;
           }
           if (closed) {
@@ -86,7 +81,7 @@ export function createChannel<T>(signal?: Cancellation, options: ChannelOptions 
           await pending.promise;
         }
       } finally {
-        buffer.clear();
+        buffer.length = 0;
         iterating = false;
         close();
       }

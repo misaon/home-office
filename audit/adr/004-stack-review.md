@@ -60,3 +60,16 @@ pattern with a better mechanism sitting right next to it.
 Keep the stack. Fix the five items above plus the two unfinished ones, in the waves the brief lays out.
 There is no case here for rewriting anything: the problems are all local, and every one has a named file
 and line in `audit/AUDIT.md`.
+
+## Correction 2026-09-13 — two "keep" rows are superseded
+
+The architecture pass reversed two of the decisions above, both because the thing being kept had stopped
+paying for itself:
+
+- **Event sourcing on `bun:sqlite` + Drizzle** → `bun:sqlite` alone. The ORM contributed one table, one
+  unique index and a migrations folder; `packages/store/src/index.ts` now applies that schema at open and
+  versions it with `PRAGMA user_version`. Event sourcing itself is unchanged, and an existing database
+  opens as it is (the `CREATE TABLE` statement is the shape Drizzle created).
+- **`@ho/agent-kit` shipping skills as Claude Code plugins** → the same packs at
+  `images/agent/plugins/{boss,reviewer,worker}`, copied by `images/agent/Dockerfile` and passed with
+  `--plugin-dir`. The mechanism is identical; the workspace that contained no code is gone.

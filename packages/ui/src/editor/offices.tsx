@@ -3,13 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, CONTROL, Field, Section } from "../kit/controls.tsx";
-import { requireClient } from "../rpc.ts";
-import { useUi } from "../store.ts";
-
-export const layoutsQuery = {
-  queryKey: ["layouts"],
-  queryFn: () => requireClient().layouts.list(),
-} as const;
+import { layoutsQuery } from "../queries.ts";
+import { useOnline } from "../store.ts";
 
 /** Any office JSON, not only the ones already in the repository. */
 function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX.Element {
@@ -59,8 +54,8 @@ export function SavedOffices({
   save: () => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
-  const connection = useUi((s) => s.connection);
-  const store = useQuery({ ...layoutsQuery, enabled: connection === "online" });
+  const online = useOnline();
+  const store = useQuery({ ...layoutsQuery, enabled: online });
   const available = store.data?.available ?? false;
   return (
     <Section title={t("editor.saved")}>

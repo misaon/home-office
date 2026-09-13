@@ -1,20 +1,24 @@
 import {
   type Agent,
   compact,
+  conflict,
   type NewEvent,
+  notFound,
   type Project,
   type ProjectCreateInput,
   type ProjectId,
   type ProjectUpdateInput,
 } from "@ho/protocol";
-import { conflict, notFound } from "../errors.ts";
+import { activeSessionOfTask, membersOf, tasksOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
-import { err, ok } from "../result.ts";
-import { isTerminal } from "../tasks/transitions.ts";
-import type { CommandContext, CommandResult } from "./context.ts";
+import { type CommandContext, type CommandResult, entity, err, ok } from "../result.ts";
 import { bossFor, copyOf } from "./office-defaults.ts";
-import { activeSessionOfTask } from "./sessions.ts";
-import { membersOf, tasksOf } from "./shared.ts";
+import { isTerminal } from "./tasks.ts";
+
+const readProject =
+  (id: ProjectId) =>
+  (model: ReadModel): Project =>
+    entity(model.projects, id);
 
 const nameTaken = (model: ReadModel, name: string, except?: ProjectId): boolean =>
   [...model.projects.values()].some(
@@ -74,7 +78,7 @@ export function createProject(
       payload: { agent },
     })),
   ];
-  return ok({ events, value: project });
+  return ok({ events, read: readProject(project.id) });
 }
 
 export function updateProject(
@@ -95,7 +99,7 @@ export function updateProject(
   const project: Project = { ...current, ...compact(input.patch), updatedAt: ctx.now };
   return ok({
     events: [{ type: "project.updated", actor: ctx.actor, payload: { project } }],
-    value: project,
+    read: readProject(project.id),
   });
 }
 
@@ -105,8 +109,7 @@ export function removeProject(
   id: ProjectId,
   ctx: CommandContext,
 ): CommandResult<ProjectId> {
-  const current = model.projects.get(id);
-  if (current === undefined) {
+  if (!model.projects.has(id)) {
     return err(notFound("project", id));
   }
   const tasks = tasksOf(model, id);
@@ -125,5 +128,5 @@ export function removeProject(
     })),
     { type: "project.removed", actor: ctx.actor, payload: { projectId: id } },
   ];
-  return ok({ events, value: id });
+  return ok({ events, read: () => id });
 }

@@ -9,7 +9,6 @@ import {
   PublishPolicy,
   RepoSource,
   ServicesPolicy,
-  TaskArtifacts,
   TaskPriority,
   TaskStatus,
   Usage,
@@ -81,7 +80,7 @@ const ProjectPatch = z
 export const ProjectUpdateInput = z.object({ id: ProjectId, patch: ProjectPatch });
 export type ProjectUpdateInput = z.infer<typeof ProjectUpdateInput>;
 
-const AgentFields = Agent.pick({
+export const AgentCreateInput = Agent.pick({
   name: true,
   role: true,
   appearance: true,
@@ -96,7 +95,6 @@ const AgentFields = Agent.pick({
   auth: AuthKind.optional(),
   budgets: Budgets.prefault({}),
 });
-export const AgentCreateInput = AgentFields;
 export type AgentCreateInput = z.infer<typeof AgentCreateInput>;
 /** See ProjectPatch: a model change must keep the persona, skill pack, projects and budgets. */
 const AgentPatch = z
@@ -124,14 +122,12 @@ export const AgentCopyInput = z.object({
 });
 export type AgentCopyInput = z.infer<typeof AgentCopyInput>;
 export const AgentListInput = z.object({ projectId: ProjectId.optional() });
-export type AgentListInput = z.infer<typeof AgentListInput>;
 
 export const TaskCreateInput = z.object({
   projectId: ProjectId,
   title: z.string().min(1).max(200),
   brief: z.string().max(20000).default(""),
   priority: TaskPriority.default("normal"),
-  parentId: TaskId.optional(),
   assigneeId: AgentId.optional(),
 });
 export type TaskCreateInput = z.infer<typeof TaskCreateInput>;
@@ -139,14 +135,6 @@ export const TaskListInput = z.object({
   projectId: ProjectId.optional(),
   status: z.array(TaskStatus).min(1).optional(),
 });
-export type TaskListInput = z.infer<typeof TaskListInput>;
-export const TaskEditInput = z.object({
-  id: TaskId,
-  title: z.string().min(1).max(200).optional(),
-  brief: z.string().max(20000).optional(),
-  priority: TaskPriority.optional(),
-});
-export type TaskEditInput = z.infer<typeof TaskEditInput>;
 export const TaskAssignInput = z.object({ id: TaskId, agentId: AgentId.nullable() });
 export type TaskAssignInput = z.infer<typeof TaskAssignInput>;
 export const TaskTransitionInput = z.object({
@@ -155,37 +143,23 @@ export const TaskTransitionInput = z.object({
   reason: z.string().max(2000).optional(),
 });
 export type TaskTransitionInput = z.infer<typeof TaskTransitionInput>;
-export const TaskArtifactsInput = z.object({ id: TaskId, artifacts: TaskArtifacts });
-export type TaskArtifactsInput = z.infer<typeof TaskArtifactsInput>;
 
+const ChatText = z.string().trim().min(1).max(20000);
 /**
  * A message to a floor's boss (`projectId`), who triages it, or an answer to a question an agent asked about a
- * task (`taskId`), which resumes that task. Exactly one of the two.
+ * task (`taskId`), which resumes that task.
  */
-export const ChatSendInput = z
-  .object({
-    text: z.string().trim().min(1).max(20000),
-    projectId: ProjectId.optional(),
-    taskId: TaskId.optional(),
-  })
-  .refine(
-    (input) => (input.projectId === undefined) !== (input.taskId === undefined),
-    "specify exactly one of projectId or taskId",
-  );
+export const ChatSendInput = z.union([
+  z.object({ text: ChatText, projectId: ProjectId }),
+  z.object({ text: ChatText, taskId: TaskId }),
+]);
 export type ChatSendInput = z.infer<typeof ChatSendInput>;
-export const ChatHistoryInput = z.object({
-  projectId: ProjectId.optional(),
-  limit: z.int().positive().max(500).default(100),
-});
-export type ChatHistoryInput = z.infer<typeof ChatHistoryInput>;
 
 export const SessionListInput = z.object({
   taskId: TaskId.optional(),
   active: z.boolean().optional(),
 });
-export type SessionListInput = z.infer<typeof SessionListInput>;
 export const SessionStreamInput = z.object({ sessionId: SessionId.optional() });
-export type SessionStreamInput = z.infer<typeof SessionStreamInput>;
 
 export const UsageSummaryInput = z.object({
   sinceHours: z
@@ -194,14 +168,12 @@ export const UsageSummaryInput = z.object({
     .max(24 * 365)
     .optional(),
 });
-export type UsageSummaryInput = z.infer<typeof UsageSummaryInput>;
-export const UsageBucket = z.object({
+const UsageBucket = z.object({
   key: z.string(),
   label: z.string(),
   usage: Usage,
   sessions: z.int().nonnegative(),
 });
-export type UsageBucket = z.infer<typeof UsageBucket>;
 export const UsageSummary = z.object({
   since: IsoDateTime.nullable(),
   totals: Usage,
@@ -214,7 +186,6 @@ export const UsageSummary = z.object({
 export type UsageSummary = z.infer<typeof UsageSummary>;
 
 export const EventsSubscribeInput = z.object({ afterSeq: z.int().nonnegative().optional() });
-export type EventsSubscribeInput = z.infer<typeof EventsSubscribeInput>;
 
 export const Health = z.object({
   ok: z.literal(true),

@@ -1,31 +1,36 @@
-import { bossOf, createIdFactory, isSessionActive, RECEPTIONIST } from "@ho/core";
-import type { AgentId, LiveEvent, Session, StoredEvent, Task, TaskId } from "@ho/protocol";
+import { bossOf, createIdFactory } from "@ho/core";
+import {
+  type AgentId,
+  isSessionActive,
+  type LiveEvent,
+  type Session,
+  type StoredEvent,
+  type Task,
+  TaskId,
+} from "@ho/protocol";
 import {
   assignWork,
-  carryEnvelope,
+  carry,
   createWorld,
   emotionFor,
-  type FloorTemplate,
-  handoff,
-  idleBehaviour,
-  floorTemplate,
+  inFlight,
   receive,
   releaseWork,
   removeActor,
   setEmotion,
+  type SimEvent,
   sleep,
   tick,
   wake,
 } from "@ho/sim";
 import type { Client } from "../rpc.ts";
 import { model } from "../store.ts";
+import { Envelopes } from "./envelopes.ts";
 import { MailFlow } from "./mail-flow.ts";
 import { syncRoster } from "./roster.ts";
 
-type PendingHandoff = { from: AgentId; to: AgentId; taskId: TaskId };
 const MAX_DT_MS = 250;
 const STEP_MS = 1000 / 30;
-const POSTMAN_NAME = "Postman";
 const QUESTION_PREFIX = "question:";
 
 /**
@@ -35,13 +40,9 @@ const QUESTION_PREFIX = "question:";
  */
 export class Bridge {
   readonly world = createWorld("home-office");
-  readonly #templates = new Map<string, FloorTemplate>();
   /** The receptionist of every floor (an office character, never an agent). */
   readonly #receptionists = new Map<string, AgentId>();
-  #client: Client | null = null;
-  readonly #pending: PendingHandoff[] = [];
-  /** Chat envelopes on their way from the reception to the boss: the sim's ref (the task id as text) → task. */
-  readonly #envelopes = new Map<string, TaskId>();
+  readonly #envelopes = new Envelopes();
   readonly #mail: MailFlow;
   readonly #sleeping = new Set<AgentId>();
   /** Visitor and receptionist ids come from the same UUIDv7 factory as agents so the sim's branded ids stay honest. */
@@ -68,34 +69,12 @@ export class Bridge {
     );
   }
 
-  /** The floor of a project: the same blank plane under its own id. */
-  templateFor(floorId: string): FloorTemplate {
-    let template = this.#templates.get(floorId);
-    if (template === undefined) {
-      template = floorTemplate(floorId);
-      this.#templates.set(floorId, template);
-    }
-    return template;
-  }
-
-  /** Name shown above an actor: the agent's, or the office character's. */
-  nameOf(id: AgentId): string {
-    const actor = this.world.actors.get(id);
-    if (actor?.kind === "visitor") {
-      return POSTMAN_NAME;
-    }
-    if (actor?.kind === "receptionist") {
-      return RECEPTIONIST.name;
-    }
-    return model.agents.get(id)?.name ?? "?";
-  }
-
   attach(client: Client): void {
-    this.#client = client;
+    this.#envelopes.attach(client);
   }
 
   detach(): void {
-    this.#client = null;
+    this.#envelopes.detach();
   }
 
   /**
@@ -105,28 +84,17 @@ export class Bridge {
   setWatching(watching: boolean): void {
     this.#watching = watching;
     if (!watching) {
-      for (const pending of this.#pending.splice(0)) {
-        this.#deliver(pending.taskId);
-      }
-      for (const taskId of this.#envelopes.values()) {
-        this.#deliver(taskId);
-      }
-      this.#envelopes.clear();
+      this.#envelopes.flush();
       this.#mail.flush();
     }
   }
 
   /** Reconciles floors, actors and seats with the read model (after replay and on roster changes). */
   syncFromModel(): void {
-    syncRoster({
-      world: this.world,
-      templateFor: (floorId) => this.templateFor(floorId),
-      forgetFloor: (floorId) => {
-        this.#templates.delete(floorId);
-      },
-      receptionists: this.#receptionists,
-      newId: () => this.#ids.agent(),
-    });
+    syncRoster(this.world, this.#receptionists, () => this.#ids.agent());
+    // A floor or a colleague can disappear mid-walk, taking the envelope's carrier with them.
+    this.#envelopes.sweep((taskId) => inFlight(this.world, taskId));
+    this.#mail.sweep((ref) => inFlight(this.world, ref) > 0);
     for (const session of model.sessions.values()) {
       if (isSessionActive(session.state)) {
         this.#seat(session);
@@ -135,18 +103,16 @@ export class Bridge {
   }
 
   #seat(session: Session): void {
-    const task = model.tasks.get(session.taskId);
     const agent = model.agents.get(session.agentId);
-    if (task === undefined || agent === undefined) {
-      return;
+    if (agent !== undefined && model.tasks.has(session.taskId)) {
+      assignWork(this.world, session.agentId, agent.projectId, agent.role);
     }
-    assignWork(this.world, session.agentId, agent.projectId, agent.role);
   }
 
   /** A carrier walks the envelope to a colleague; without viewers (or a walk) the daemon hears at once. */
   #carry(from: AgentId, to: AgentId, taskId: TaskId): void {
-    if (from !== to && this.#watching && handoff(this.world, from, to)) {
-      this.#pending.push({ from, to, taskId });
+    if (from !== to && this.#watching && carry(this.world, from, to, taskId)) {
+      this.#envelopes.sent(taskId);
     } else {
       this.#deliver(taskId);
     }
@@ -156,16 +122,11 @@ export class Bridge {
   #onChat(task: Task): void {
     const boss = bossOf(model, task.projectId);
     const lola = this.#receptionists.get(task.projectId);
-    if (
-      boss === undefined ||
-      lola === undefined ||
-      !this.#watching ||
-      !carryEnvelope(this.world, lola, boss.id, task.id)
-    ) {
+    if (boss === undefined || lola === undefined) {
       this.#deliver(task.id);
       return;
     }
-    this.#envelopes.set(task.id, task.id);
+    this.#carry(lola, boss.id, task.id);
   }
 
   /** Finished (or stuck) work walks back to the boss before he reports it in the chat. */
@@ -179,14 +140,17 @@ export class Bridge {
     if (boss === undefined) {
       return;
     }
-    const carrier = from === "review" ? task.reviewerId : task.assigneeId;
+    // The same rule the daemon waits on (`walksBack` in boss-voice.ts): somebody else did the work and
+    // it just ended. Anything else is not an envelope, so the daemon is not waiting for one.
     const walks =
-      (to === "done" || (to === "blocked" && reason?.startsWith(QUESTION_PREFIX) !== true)) &&
-      (from === "in_progress" || from === "review");
-    if (!walks || task.assigneeId === boss.id) {
+      task.assigneeId !== undefined &&
+      task.assigneeId !== boss.id &&
+      (to === "done" || (to === "blocked" && reason?.startsWith(QUESTION_PREFIX) !== true));
+    if (!walks) {
       return;
     }
-    if (carrier === undefined || carrier === boss.id) {
+    const carrier = from === "review" ? task.reviewerId : task.assigneeId;
+    if (carrier === undefined) {
       this.#deliver(task.id);
       return;
     }
@@ -194,36 +158,69 @@ export class Bridge {
   }
 
   onEvent(event: StoredEvent): void {
-    if (event.type === "session.started") {
-      this.#seat(event.payload.session);
-    } else if (event.type === "session.ended") {
-      const session = model.sessions.get(event.payload.sessionId);
-      if (session !== undefined) {
-        releaseWork(this.world, session.agentId, event.payload.state === "stopped");
-        this.#sleeping.delete(session.agentId);
+    switch (event.type) {
+      case "session.started": {
+        this.#seat(event.payload.session);
+        break;
       }
-    } else if (event.type === "handoff.requested") {
-      const { fromAgentId, toAgentId, taskId } = event.payload;
-      this.#carry(fromAgentId, toAgentId, taskId);
-    } else if (event.type === "task.status_changed") {
-      this.#onStatus(event);
-    } else if (event.type === "task.note_added") {
-      const task = model.tasks.get(event.payload.taskId);
-      if (task?.assigneeId !== undefined && event.payload.note.kind === "question") {
-        setEmotion(this.world, task.assigneeId, "question", null);
-      } else if (task?.assigneeId !== undefined && event.payload.note.kind === "answer") {
-        setEmotion(this.world, task.assigneeId, null, null);
+      case "session.ended": {
+        const session = model.sessions.get(event.payload.sessionId);
+        if (session !== undefined) {
+          releaseWork(this.world, session.agentId, event.payload.state === "stopped");
+          this.#sleeping.delete(session.agentId);
+        }
+        break;
       }
-    } else if (event.type === "task.created") {
-      // The human's message is stored before its task; the task is what Lola carries and the daemon waits for.
-      const { task } = event.payload;
-      if (task.kind === "triage" && task.source.kind === "chat") {
-        this.#onChat(task);
+      case "handoff.requested": {
+        const { fromAgentId, toAgentId, taskId } = event.payload;
+        this.#carry(fromAgentId, toAgentId, taskId);
+        break;
       }
-    } else if (event.type === "mail.received") {
-      this.#mail.onMail(event.payload.mail, this.#watching);
-    } else if (event.type.startsWith("project.") || event.type.startsWith("agent.")) {
-      this.syncFromModel();
+      case "task.status_changed": {
+        this.#onStatus(event);
+        break;
+      }
+      case "task.note_added": {
+        const task = model.tasks.get(event.payload.taskId);
+        if (task?.assigneeId !== undefined && event.payload.note.kind === "question") {
+          setEmotion(this.world, task.assigneeId, "question", null);
+        } else if (task?.assigneeId !== undefined && event.payload.note.kind === "answer") {
+          setEmotion(this.world, task.assigneeId, null, null);
+        }
+        break;
+      }
+      case "task.created": {
+        // The human's message is stored before its task; the task is what Lola carries and the daemon waits for.
+        const { task } = event.payload;
+        if (task.kind === "triage" && task.source.kind === "chat") {
+          this.#onChat(task);
+        }
+        break;
+      }
+      case "mail.received": {
+        this.#mail.onMail(event.payload.mail, this.#watching);
+        break;
+      }
+      case "project.created":
+      case "project.updated":
+      case "project.removed":
+      case "agent.created":
+      case "agent.updated":
+      case "agent.removed": {
+        this.syncFromModel();
+        break;
+      }
+      case "chat.message_posted":
+      case "mail.acknowledged":
+      case "session.state_changed":
+      case "session.usage_recorded":
+      case "task.artifacts_changed":
+      case "task.assigned":
+      case "task.edited":
+      case "task.review_recorded":
+      case "task.reviewer_assigned": {
+        break;
+      }
     }
   }
 
@@ -248,38 +245,39 @@ export class Bridge {
   }
 
   #deliver(taskId: TaskId): void {
-    void this.#client?.office.delivered({ taskId }).catch(() => null);
+    this.#envelopes.report(taskId);
   }
 
   /** Advances the simulation and reports delivered envelopes. */
   tick(dtMs: number): void {
     this.#accumulator += Math.max(0, Math.min(dtMs, MAX_DT_MS));
     while (this.#accumulator >= STEP_MS) {
-      tick(this.world, STEP_MS, idleBehaviour);
+      tick(this.world, STEP_MS);
       this.#accumulator -= STEP_MS;
     }
     for (const event of this.world.outbox.splice(0)) {
-      if (event.kind === "handoff_delivered") {
-        const index = this.#pending.findIndex((p) => p.from === event.from && p.to === event.to);
-        if (index >= 0) {
-          const [pending] = this.#pending.splice(index, 1);
-          if (pending !== undefined) {
-            receive(this.world, pending.to, pending.from);
-            this.#deliver(pending.taskId);
-          }
-        }
-      } else if (event.kind === "envelope_delivered" && this.#envelopes.has(event.ref)) {
-        const taskId = this.#envelopes.get(event.ref);
-        this.#envelopes.delete(event.ref);
-        receive(this.world, event.to, event.by);
-        if (taskId !== undefined) {
-          this.#deliver(taskId);
-        }
-      } else if (event.kind === "visitor_left") {
+      if (event.kind === "visitor_left") {
         removeActor(this.world, event.actorId);
-      } else {
+      } else if (!this.#onDelivered(event)) {
         this.#mail.onSimEvent(event);
       }
     }
   }
+
+  /** An envelope this bridge sent out reached its colleague; mail refs fall through to the mail flow. */
+  #onDelivered(event: SimEvent): boolean {
+    if (event.kind !== "delivered") {
+      return false;
+    }
+    const taskId = TaskId.safeParse(event.ref);
+    if (!taskId.success || !this.#envelopes.arrived(taskId.data)) {
+      return false;
+    }
+    receive(this.world, event.to, event.by);
+    this.#deliver(taskId.data);
+    return true;
+  }
 }
+
+/** One simulation per page; React components and the sync loop share it. */
+export const bridge = new Bridge();

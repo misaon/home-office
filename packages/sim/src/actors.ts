@@ -1,5 +1,5 @@
 import type { AgentId } from "@ho/protocol";
-import { key, manhattan, type Point, samePoint } from "./grid.ts";
+import { key, manhattan, type Point } from "./grid.ts";
 import {
   type Actor,
   type ActorKind,
@@ -27,7 +27,6 @@ const jitterFor = (id: AgentId): number => {
 export function spawnActor(
   world: World,
   id: AgentId,
-  sprite: string,
   floorId: string,
   options: { kind?: ActorKind; at?: Point } = {},
 ): Actor {
@@ -41,13 +40,11 @@ export function spawnActor(
   const actor: Actor = {
     id,
     kind: options.kind ?? "staff",
-    sprite,
     floorId,
     pos: { ...at },
     tile: { ...at },
     facing: "s",
     activity: "idle",
-    animTime: 0,
     hidden: arriving,
     moving: null,
     steps: [],
@@ -96,10 +93,6 @@ export function removeActor(world: World, id: AgentId): void {
   }
 }
 
-/** Whether the actor is off the floor (away by elevator) or still waiting in the car to arrive. */
-export const isOffFloor = (world: World, actor: Actor): boolean =>
-  actor.hidden || (world.floors.get(actor.floorId)?.elevator.queue.includes(actor.id) ?? false);
-
 /** Brings an actor who is away back at once: the next car carries them in. Nothing happens otherwise. */
 export function summon(world: World, actor: Actor): void {
   const elevator = world.floors.get(actor.floorId)?.elevator;
@@ -124,7 +117,7 @@ export function settleAt(world: World, actor: Actor, anchorId: string): boolean 
  * `claimed` for walkers' current and next cell. Counts rather than sets, so one actor's own contribution can
  * be taken back out without rebuilding anything.
  */
-export type Occupancy = { standing: Map<number, number>; claimed: Map<number, number> };
+type Occupancy = { standing: Map<number, number>; claimed: Map<number, number> };
 
 const NO_CELL = -1;
 
@@ -133,7 +126,7 @@ const bump = (counts: Map<number, number>, at: Point): void => {
   counts.set(k, (counts.get(k) ?? 0) + 1);
 };
 
-export const occupancyOf = (world: World): Map<string, Occupancy> => {
+const occupancyOf = (world: World): Map<string, Occupancy> => {
   const floors = new Map<string, Occupancy>();
   for (const actor of world.actors.values()) {
     if (actor.hidden) {
@@ -263,17 +256,12 @@ export function homeSteps(world: World, actor: Actor): Step[] {
 
 export const setSteps = (actor: Actor, steps: Step[]): void => {
   actor.steps = steps;
-  actor.animTime = 0;
 };
 
-export const isAt = (actor: Actor, p: Point): boolean =>
-  samePoint(actor.tile, p) && actor.steps.length === 0;
-
+/** Whatever the actor still has to deliver stays ahead of any new plan: an envelope is never dropped. */
 export const pendingDeliveries = (actor: Actor): Step[] => {
   const index = actor.steps.findLastIndex(
-    (step) =>
-      step.kind === "emit" &&
-      (step.event.kind === "handoff_delivered" || step.event.kind === "envelope_delivered"),
+    (step) => step.kind === "emit" && step.event.kind === "delivered",
   );
   return index < 0 ? [] : actor.steps.slice(0, index + 1);
 };

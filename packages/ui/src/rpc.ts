@@ -1,12 +1,11 @@
 import { HANDSHAKE_TIMEOUT_MS, waitForOpen } from "@ho/core";
-import type { Contract } from "@ho/protocol";
+import { type Contract, TOKEN_STORAGE_KEY } from "@ho/protocol";
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/websocket";
 import type { ContractRouterClient } from "@orpc/contract";
 
 export type Client = ContractRouterClient<Contract>;
 
-const TOKEN_KEY = "ho.token";
 const PROTOCOL_PREFIX = "ho.bearer.";
 
 /**
@@ -17,19 +16,17 @@ export function resolveToken(): string | null {
   const fragment = new URLSearchParams(window.location.hash.replace(/^#/u, ""));
   const fromHash = fragment.get("token");
   if (fromHash !== null && fromHash !== "") {
-    window.sessionStorage.setItem(TOKEN_KEY, fromHash);
+    window.sessionStorage.setItem(TOKEN_STORAGE_KEY, fromHash);
     // The search survives: only the fragment carried the token.
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     return fromHash;
   }
-  return window.sessionStorage.getItem(TOKEN_KEY);
+  return window.sessionStorage.getItem(TOKEN_STORAGE_KEY);
 }
 
 let current: Client | null = null;
 
-/** The client of the live connection, or null while offline. Panels call RPCs through this. */
-export const getClient = (): Client | null => current;
-
+/** The client of the live connection; panels call RPCs through this and fail fast while offline. */
 export function requireClient(): Client {
   if (current === null) {
     throw new Error("daemon is offline");

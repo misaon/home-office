@@ -5,16 +5,13 @@ import {
   type SessionUpdate,
   type Stream,
 } from "@agentclientprotocol/sdk";
-import type { RuntimeEvent } from "@ho/core";
-
-type Listener = (update: SessionUpdate) => void;
+import type { RuntimeEvent } from "@ho/protocol";
 
 export type OfficeConnection = {
   conn: ClientConnection;
-  /** Receives every `session/update` while a prompt is running. */
-  listen: (listener: Listener | null) => void;
-  /** Events produced outside a prompt turn (permission decisions), drained by the turn that follows. */
-  drain: () => RuntimeEvent[];
+  /** Receives every `session/update`, and the permission requests the office answers, while a prompt runs. */
+  listen: (listener: ((update: SessionUpdate) => void) | null) => void;
+  onPermission: (listener: ((event: RuntimeEvent) => void) | null) => void;
 };
 
 /** Permission prompts get the most permissive option: the sandbox, not the prompt, limits the agent. */
@@ -25,12 +22,12 @@ const pickOption = (options: readonly PermissionOption[]): PermissionOption | un
 
 /** The office's side of an ACP connection: auto-approving permissions and forwarding session updates. */
 export function openConnection(stream: Stream): OfficeConnection {
-  let listener: Listener | null = null;
-  let pending: RuntimeEvent[] = [];
+  let listener: ((update: SessionUpdate) => void) | null = null;
+  let permission: ((event: RuntimeEvent) => void) | null = null;
   const conn = client({ name: "home-office" })
     .onRequest("session/request_permission", (cx) => {
       const option = pickOption(cx.params.options);
-      pending.push({
+      permission?.({
         kind: "permission_request",
         id: cx.params.toolCall.toolCallId,
         tool: cx.params.toolCall.title ?? "tool",
@@ -49,10 +46,8 @@ export function openConnection(stream: Stream): OfficeConnection {
     listen: (next) => {
       listener = next;
     },
-    drain: () => {
-      const events = pending;
-      pending = [];
-      return events;
+    onPermission: (next) => {
+      permission = next;
     },
   };
 }

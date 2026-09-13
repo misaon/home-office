@@ -1,6 +1,6 @@
 // The office speaks English by default. Every other language is checked against these keys by the
 // compiler, so a missing translation is a type error rather than a blank label.
-import { enKinds } from "./en-kinds.ts";
+import { enEditor } from "./en-editor.ts";
 
 export const en = {
   common: {
@@ -11,7 +11,6 @@ export const en = {
     remove: "remove",
     none: "none",
     search: "search…",
-    enter: "Enter",
     ofTotal: "{{shown}} of {{total}}",
     custom: "custom…",
   },
@@ -57,8 +56,6 @@ export const en = {
       "Agents sign in with your Claude subscription. In a terminal run <code>claude setup-token</code>, finish the browser login it opens and paste the token it prints. It is stored in this machine’s credential store (Keychain, libsecret or Credential Manager) and only ever handed to the <code>claude</code> process inside a sandbox.",
     tokenStored: "stored in the configured secret store",
     tokenMissing: "no Claude subscription token yet",
-    tokenPaste: "paste the token",
-    tokenReplace: "paste a new token to replace it",
     title: "Set up your office",
     recheck: "Re-check",
     skip: "Skip for now",
@@ -122,6 +119,25 @@ export const en = {
     runsFloor: "runs this floor",
     confirmRemove: "Remove {{name}}?",
     team: "Team of floor {{floor}}",
+    role: "Role",
+    provider: "Provider",
+    auth: "Sign-in",
+    model: "Model",
+    effort: "Effort",
+    gender: "Gender",
+    copyToFloor: "Copy to floor",
+    pickFloor: "choose a floor…",
+  },
+  roles: {
+    boss: "boss",
+    worker: "worker",
+    reviewer: "reviewer",
+    clerk: "clerk",
+  },
+  genders: {
+    female: "female",
+    male: "male",
+    neutral: "neutral",
   },
   board: {
     tasks_one: "{{count}} task",
@@ -154,6 +170,8 @@ export const en = {
     placeholder: "Ask the floor for something… (Enter to send, Shift+Enter for a new line)",
     answerPlaceholder: "Your answer… (Enter to send)",
     floorSuffix: " · floor {{name}}",
+    empty:
+      "Write to the boss of this floor. Lola brings him your message; he plans, delegates and reports back here.",
   },
   inspector: {
     usage: "{{input}} in · {{output}} out · {{cache}} cache · {{turns}} turns",
@@ -195,6 +213,8 @@ export const en = {
     intakeError: " · error: {{message}}",
     intakeDryRun: " · dry run would take: {{items}}",
     intakeReceived: "received {{received}}, already known {{duplicates}}",
+    intakeReceivedTotal: "received {{received}}",
+    intakeNever: "never",
     intakeNothing: "nothing polled",
     credentials: "Credentials",
     language: "Language",
@@ -219,6 +239,7 @@ export const en = {
     stored: "stored",
     missing: "missing",
     paste: "paste token",
+    replace: "paste a new token to replace it",
     forget: "Forget",
     claude: "Claude subscription token",
     anthropic: "Anthropic API key",
@@ -246,46 +267,5 @@ export const en = {
     cache: "cache",
     sessions: "sessions",
   },
-  editor: {
-    noteNoFit: "does not fit on the map",
-    noteNoWall: "this doorway touches no wall",
-    noteOnWall: "{{name}} hangs on a wall — click the wall itself",
-    noteInWall: "furniture cannot stand in a wall",
-    noteOccupied: "something already stands there",
-    noRepo: "This build has no repository to write into, so saving is unavailable.",
-    saveOffice: "Save office",
-    stats:
-      "{{width}} × {{height}} cells · {{walls}} wall runs · {{rooms}} room runs · {{doors}} doors · {{objects}} furniture",
-    facing: "facing {{facing}}",
-    held: " · {{w}} × {{h}} cells",
-    helpPlace:
-      "Click to place; the outline shows what it will take. The right button turns it a quarter, and a right drag erases.",
-    helpPaint:
-      "Drag with the left button to paint, with the right button to erase what this tool paints.",
-    helpPan: "The middle button or shift pans; the wheel zooms.",
-    savedAs: "saved {{path}}",
-    save: "Save",
-    title: "Office editor",
-    office: "Office",
-    name: "Name",
-    file: "File",
-    fileHint: "taken from the name",
-    tool: "Tool",
-    wall: "Wall",
-    room: "Room",
-    door: "Door",
-    furniture: "Furniture",
-    material: "Material",
-    newOffice: "New office",
-    saved: "Saved offices",
-    load: "Load an office from a JSON file",
-    notALayout: "not an office layout",
-    rotate: "Rotate",
-    onWall: " · on a wall",
-    footprint: "{{w}}×{{h}}",
-    footprintWall: "{{w}}×{{h}} wall",
-    searchIn: "Search {{what}}",
-    noMatch: "nothing matches “{{needle}}”",
-  },
-  kinds: enKinds,
+  ...enEditor,
 };

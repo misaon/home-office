@@ -1,6 +1,7 @@
 import { ApplicationMenu, type ApplicationMenuItemConfig, Utils } from "electrobun/main";
+import { z } from "zod";
 
-export type MenuActions = {
+type MenuActions = {
   reload: () => void;
   openInBrowser: () => void;
   openLogs: () => void;
@@ -64,16 +65,7 @@ const MENU: ApplicationMenuItemConfig[] = [
   },
 ];
 
-const actionOf = (event: unknown): string | null => {
-  if (typeof event !== "object" || event === null || !("data" in event)) {
-    return null;
-  }
-  const data: unknown = event.data;
-  if (typeof data !== "object" || data === null || !("action" in data)) {
-    return null;
-  }
-  return typeof data.action === "string" ? data.action : null;
-};
+const MenuClicked = z.object({ data: z.object({ action: z.string() }) });
 
 /** Native application menu; roles are handled by macOS, actions come back as `application-menu-clicked`. */
 export function installMenu(actions: MenuActions): void {
@@ -87,9 +79,9 @@ export function installMenu(actions: MenuActions): void {
     },
   };
   ApplicationMenu.on("application-menu-clicked", (event) => {
-    const action = actionOf(event);
-    if (action !== null) {
-      handlers[action]?.();
+    const clicked = MenuClicked.safeParse(event);
+    if (clicked.success) {
+      handlers[clicked.data.data.action]?.();
     }
   });
 }

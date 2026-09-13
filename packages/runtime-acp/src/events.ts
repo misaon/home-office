@@ -1,7 +1,9 @@
 import type { SessionUpdate, StopReason, ToolCallContent } from "@agentclientprotocol/sdk";
-import type { RuntimeEvent } from "@ho/core";
+import type { RuntimeEvent } from "@ho/protocol";
 
 const SUMMARY_MAX = 200;
+/** Titles remembered for running tool calls; the oldest is forgotten past this many. */
+const TOOL_TITLES_MAX = 1024;
 
 const clip = (text: string): string =>
   text.length > SUMMARY_MAX ? `${text.slice(0, SUMMARY_MAX - 1)}…` : text;
@@ -19,6 +21,21 @@ export type TurnState = { text: string; tools: Map<string, string> };
 
 export const newTurn = (): TurnState => ({ text: "", tools: new Map() });
 
+const finished = (
+  id: string,
+  status: "completed" | "failed",
+  title: string,
+  content: readonly ToolCallContent[] | undefined,
+): RuntimeEvent => {
+  const text = contentText(content);
+  return {
+    kind: "tool_result",
+    id,
+    ok: status === "completed",
+    summary: clip(text === "" ? title : text),
+  };
+};
+
 /** Maps one `session/update` notification onto the office's runtime events; plans and thoughts stay internal. */
 export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeEvent[] {
   if (update.sessionUpdate === "agent_message_chunk") {
@@ -30,8 +47,11 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
   }
   if (update.sessionUpdate === "tool_call") {
     const name = update.name ?? update.kind ?? "tool";
-    if (turn.tools.size >= 1024) {
-      throw new Error("ACP exceeded 1024 outstanding tool calls");
+    if (turn.tools.size >= TOOL_TITLES_MAX) {
+      const oldest = turn.tools.keys().next();
+      if (oldest.done !== true) {
+        turn.tools.delete(oldest.value);
+      }
     }
     turn.tools.set(update.toolCallId, update.title);
     const events: RuntimeEvent[] = [
@@ -66,21 +86,6 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
   }
   return [];
 }
-
-const finished = (
-  id: string,
-  status: "completed" | "failed",
-  title: string,
-  content: readonly ToolCallContent[] | undefined,
-): RuntimeEvent => {
-  const text = contentText(content);
-  return {
-    kind: "tool_result",
-    id,
-    ok: status === "completed",
-    summary: clip(text === "" ? title : text),
-  };
-};
 
 /** The prompt's stop reason as the office sees it: a result, or an error the daemon maps to a status. */
 export function stopToEvent(stop: StopReason, turn: TurnState, sessionId: string): RuntimeEvent {

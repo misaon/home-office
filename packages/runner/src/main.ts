@@ -42,7 +42,7 @@ let child: Child | undefined;
 async function relayExit(proc: Child, output: Promise<unknown>): Promise<void> {
   const code = await proc.exited;
   await output;
-  send({ type: "exit", code, signal: proc.signalCode });
+  send({ type: "exit", code });
   child = undefined;
 }
 
@@ -63,11 +63,11 @@ function spawnChild(
     ...compact({ cwd }),
   });
   child = proc;
-  send({ type: "spawned", pid: proc.pid });
+  send({ type: "spawned" });
   const stdout = pumpLines(
     proc.stdout,
-    (line) => {
-      send({ type: "stdout", line });
+    (text) => {
+      send({ type: "stdout", text });
     },
     () => child?.kill("SIGKILL"),
   ).catch(reportError);
@@ -100,22 +100,11 @@ function handle(message: ToRunner): void {
       child?.kill(message.signal);
       break;
     }
-    case "shutdown": {
-      child?.kill("SIGTERM");
-      ws.close();
-      break;
-    }
   }
 }
 
 ws.addEventListener("open", () => {
-  send({
-    type: "hello",
-    hostname: Bun.env["HOSTNAME"] ?? "unknown",
-    uid: process.getuid?.() ?? -1,
-    cwd: process.cwd(),
-    bunVersion: Bun.version,
-  });
+  send({ type: "hello", uid: process.getuid?.() ?? -1 });
 });
 ws.addEventListener("message", (event) => {
   const data: unknown = event.data;

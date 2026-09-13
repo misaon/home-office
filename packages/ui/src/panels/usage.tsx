@@ -2,9 +2,9 @@ import type { UsageSummary } from "@ho/protocol";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Section } from "../kit/controls.tsx";
-import { requireClient } from "../rpc.ts";
-import { useUi } from "../store.ts";
+import { Failure, Section } from "../kit/controls.tsx";
+import { usageQuery } from "../queries.ts";
+import { useOnline } from "../store.ts";
 
 const fmt = (n: number): string => n.toLocaleString();
 
@@ -46,15 +46,9 @@ function Buckets({
 
 export function UsagePanel(): React.JSX.Element {
   const { t } = useTranslation();
-  const connection = useUi((s) => s.connection);
+  const online = useOnline();
   const [hours, setHours] = useState(24);
-  const query = useQuery({
-    queryKey: ["usage", hours],
-    queryFn: ({ signal }) =>
-      requireClient().usage.summary(hours === 0 ? {} : { sinceHours: hours }, { signal }),
-    enabled: connection === "online",
-    refetchInterval: 10_000,
-  });
+  const query = useQuery({ ...usageQuery(hours), enabled: online, refetchInterval: 10_000 });
   const summary = query.data ?? null;
   return (
     <div className="h-full space-y-5 overflow-y-auto p-4">
@@ -64,6 +58,7 @@ export function UsagePanel(): React.JSX.Element {
           <button
             key={h}
             type="button"
+            aria-pressed={hours === h}
             className={`rounded-md px-3 py-1.5 ${hours === h ? "bg-accent font-medium text-black" : "bg-panel hover:bg-line"}`}
             onClick={() => {
               setHours(h);
@@ -73,11 +68,7 @@ export function UsagePanel(): React.JSX.Element {
           </button>
         ))}
       </div>
-      {query.error === null ? null : (
-        <p role="alert" className="text-red-400">
-          {query.error.message}
-        </p>
-      )}
+      <Failure error={query.error} />
       {summary === null ? (
         <p className="text-xs text-gray-400">{t("usage.noData")}</p>
       ) : (

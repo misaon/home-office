@@ -20,6 +20,5 @@
     "@orpc/server": "catalog:",
     "pino": "catalog:",
     "zod": "catalog:"
-  },
-  "devDependencies": {}
+  }
 }

@@ -6,23 +6,12 @@ import {
 } from "@ho/protocol";
 import { stat } from "node:fs/promises";
 import { basename } from "node:path";
+import { exec, type Exec } from "./host-exec.ts";
 
 const GIT_TIMEOUT_MS = 15_000;
 
-const git = async (args: readonly string[]): Promise<{ ok: boolean; out: string; err: string }> => {
-  const proc = Bun.spawn(["git", ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-    timeout: GIT_TIMEOUT_MS,
-    env: { ...Bun.env, GIT_TERMINAL_PROMPT: "0" },
-  });
-  const [out, err, code] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-  return { ok: code === 0, out: out.trim(), err: err.trim() };
-};
+const git = (args: readonly string[]): Promise<Exec> =>
+  exec(["git", ...args], { timeoutMs: GIT_TIMEOUT_MS });
 
 const nameFromUrl = (url: string): string => {
   const last = url.replace(/\/+$/u, "").split(/[/:]/u).at(-1) ?? "project";
@@ -41,11 +30,11 @@ const ordered = (defaultBranch: string, names: readonly string[]): string[] => {
 /** `origin/HEAD` when the checkout tracks a remote, else the current branch, else `main`. */
 async function localDefaultBranch(path: string): Promise<string> {
   const remote = await git(["-C", path, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"]);
-  if (remote.ok && remote.out !== "") {
-    return remote.out.replace(/^origin\//u, "");
+  if (remote.code === 0 && remote.stdout !== "") {
+    return remote.stdout.replace(/^origin\//u, "");
   }
   const head = await git(["-C", path, "symbolic-ref", "--short", "HEAD"]);
-  return head.ok && head.out !== "" ? head.out : "main";
+  return head.code === 0 && head.stdout !== "" ? head.stdout : "main";
 }
 
 async function inspectLocal(path: string): Promise<RepoInspection> {
@@ -57,17 +46,17 @@ async function inspectLocal(path: string): Promise<RepoInspection> {
     return { ok: false, message: `${path} does not exist` };
   }
   const top = await git(["-C", path, "rev-parse", "--show-toplevel"]);
-  if (!top.ok || top.out === "") {
+  if (top.code !== 0 || top.stdout === "") {
     return {
       ok: false,
-      message: `${path} is not inside a git repository (${top.err || "git failed"})`,
+      message: `${path} is not inside a git repository (${top.stderr || "git failed"})`,
     };
   }
-  const repo: RepoSource = { kind: "local", path: top.out };
-  const defaultBranch = await localDefaultBranch(top.out);
+  const repo: RepoSource = { kind: "local", path: top.stdout };
+  const defaultBranch = await localDefaultBranch(top.stdout);
   const refs = await git([
     "-C",
-    top.out,
+    top.stdout,
     "for-each-ref",
     "--format=%(refname:short)",
     "refs/heads",
@@ -75,9 +64,9 @@ async function inspectLocal(path: string): Promise<RepoInspection> {
   ]);
   return {
     ok: true,
-    name: basename(top.out),
+    name: basename(top.stdout),
     defaultBranch,
-    branches: ordered(defaultBranch, refs.ok ? refs.out.split("\n") : []),
+    branches: ordered(defaultBranch, refs.code === 0 ? refs.stdout.split("\n") : []),
     repo,
   };
 }
@@ -85,12 +74,15 @@ async function inspectLocal(path: string): Promise<RepoInspection> {
 /** One `ls-remote` reports both the symbolic HEAD and every head, so the branch list costs no extra round trip. */
 async function inspectRemote(url: string): Promise<RepoInspection> {
   const probe = await git(["ls-remote", "--symref", url, "HEAD", "refs/heads/*"]);
-  if (!probe.ok) {
-    return { ok: false, message: `cannot reach ${url} (${probe.err || "git ls-remote failed"})` };
+  if (probe.code !== 0) {
+    return {
+      ok: false,
+      message: `cannot reach ${url} (${probe.stderr || "git ls-remote failed"})`,
+    };
   }
-  const match = /^ref: refs\/heads\/(\S+)\tHEAD$/mu.exec(probe.out);
+  const match = /^ref: refs\/heads\/(\S+)\tHEAD$/mu.exec(probe.stdout);
   const defaultBranch = match?.[1] ?? "main";
-  const heads = [...probe.out.matchAll(/^\S+\trefs\/heads\/(.+)$/gmu)].map(
+  const heads = [...probe.stdout.matchAll(/^\S+\trefs\/heads\/(.+)$/gmu)].map(
     ([, name]) => name ?? "",
   );
   return {

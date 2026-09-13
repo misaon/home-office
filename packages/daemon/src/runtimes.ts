@@ -1,4 +1,4 @@
-import type { AgentRuntime } from "@ho/core";
+import type { AgentRuntime, Clock } from "@ho/core";
 import type { ProviderId } from "@ho/protocol";
 import { codexPreset, createAcpRuntime, geminiPreset, opencodePreset } from "@ho/runtime-acp";
 import { createClaudeCodeRuntime } from "@ho/runtime-claude-code";
@@ -8,7 +8,7 @@ import { VERSION } from "./version.ts";
 /** One runtime per provider in the catalog: Claude Code speaks stream-json, the rest ACP. */
 export function createRuntimes(
   log: Logger,
-  clock: { now: () => Date },
+  clock: Clock,
 ): Readonly<Record<ProviderId, AgentRuntime>> {
   const onStderr = (provider: ProviderId) => (text: string) => {
     log.debug({ provider, stderr: text.slice(0, 500) }, "agent stderr");

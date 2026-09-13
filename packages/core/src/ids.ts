@@ -15,7 +15,7 @@ for (let i = 0; i < 256; i += 1) {
 }
 
 /** RFC 9562 UUIDv7: 48-bit unix milliseconds, then random bits. Sortable by creation time. */
-export function uuidv7(clock: Clock, random: Randomness): string {
+function uuidv7(clock: Clock, random: Randomness): string {
   const bytes = new Uint8Array(16);
   random.randomize(bytes);
   let ms = clock.now().getTime();

@@ -1,12 +1,14 @@
 import { useTranslation } from "react-i18next";
-import type { StepStatus } from "./status.ts";
+import type { StepState } from "./status.ts";
+
+export type StepStatus = { state: StepState; text: string };
 
 const BADGE = {
   ok: { label: "setup.done", className: "bg-emerald-900/60 text-emerald-300" },
   todo: { label: "setup.todo", className: "bg-amber-900/60 text-amber-200" },
   error: { label: "setup.problem", className: "bg-red-900/60 text-red-200" },
   unknown: { label: null, className: "bg-line text-gray-300" },
-} as const satisfies Record<StepStatus["state"], { label: string | null; className: string }>;
+} as const satisfies Record<StepState, { label: string | null; className: string }>;
 
 type Props = {
   index: number;
@@ -16,7 +18,7 @@ type Props = {
 };
 
 /** One row of the setup checklist: number, title, state badge and the step's own controls. */
-export function Step({ index, title, status, children }: Props): React.JSX.Element {
+export function SetupStep({ index, title, status, children }: Props): React.JSX.Element {
   const { t } = useTranslation();
   const badge = BADGE[status.state];
   return (

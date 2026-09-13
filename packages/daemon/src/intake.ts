@@ -1,29 +1,20 @@
-import {
-  acknowledgeMail,
-  findMail,
-  type IntakeConnector,
-  receiveMail,
-  type ReceivedMail,
-} from "@ho/core";
+import { acknowledgeMail, findMail, type IntakeConnector, receiveMail } from "@ho/core";
 import {
   errorMessage,
-  GITHUB_ISSUES_CONNECTOR,
   type IntakePollResult,
   type IntakeStatus,
   type Project,
   type ProjectId,
-  type StoredEvent,
+  SYSTEM_ACTOR,
 } from "@ho/protocol";
 import { delegationAck, outcomeAck, type SourceAck } from "./intake-acks.ts";
 import type { Logger } from "./logger.ts";
-import type { Office } from "./office.ts";
+import { followEvents, type Office } from "./office.ts";
 
-const SYSTEM = { kind: "system" } as const;
 const FIRST_POLL_MS = 1_000;
 
 type ProjectState = {
   timer: ReturnType<typeof setTimeout> | null;
-  intervalSeconds: number;
   lastPollAt: string | null;
   nextPollAt: string | null;
   lastError: string | null;
@@ -34,7 +25,6 @@ type ProjectState = {
 
 const fresh = (): ProjectState => ({
   timer: null,
-  intervalSeconds: 0,
   lastPollAt: null,
   nextPollAt: null,
   lastError: null,
@@ -43,13 +33,6 @@ const fresh = (): ProjectState => ({
   polling: false,
 });
 
-const receivedDetail = (received: ReceivedMail): string =>
-  received.task === null
-    ? ""
-    : received.task.kind === "triage"
-      ? "The boss will triage it and delegate the work."
-      : "It waits in the project inbox for an assignee.";
-
 /**
  * Intake service: polls every enabled project's connector on its own interval, turns new items into mail
  * and tasks, and reports back to the source when the office received, delegated and finished them.
@@ -57,53 +40,55 @@ const receivedDetail = (received: ReceivedMail): string =>
  */
 export class IntakeService {
   readonly #office: Office;
-  readonly #connectors: Map<string, IntakeConnector>;
+  readonly #connector: IntakeConnector;
   readonly #log: Logger;
   readonly #state = new Map<ProjectId, ProjectState>();
   readonly #controller = new AbortController();
-
   readonly #pending = new Set<Promise<unknown>>();
-  #listening: Promise<void> | null = null;
+  #following: { stop: () => Promise<void> } | null = null;
 
-  constructor(office: Office, connectors: readonly IntakeConnector[], log: Logger) {
+  constructor(office: Office, connector: IntakeConnector, log: Logger) {
     this.#office = office;
-    this.#connectors = new Map(connectors.map((c) => [c.id, c]));
+    this.#connector = connector;
     this.#log = log;
   }
 
   start(): void {
     this.#reschedule();
-    this.#listening = (async () => {
-      const types: StoredEvent["type"][] = [
+    this.#following = followEvents(
+      this.#office,
+      [
         "project.created",
         "project.updated",
         "project.removed",
         "task.created",
         "task.status_changed",
-      ];
-      for await (const event of this.#office.store.subscribe({ types }, this.#controller.signal)) {
-        if (event.type.startsWith("project.")) {
-          this.#reschedule();
-        } else if (event.type === "task.created") {
-          void this.#track(this.#tell(delegationAck(this.#office.model, event.payload.task)));
-        } else if (event.type === "task.status_changed") {
-          const { taskId, to, reason } = event.payload;
-          void this.#track(this.#tell(outcomeAck(this.#office.model, taskId, to, reason)));
+      ],
+      (event) => {
+        if (event.type === "task.created") {
+          return this.#track(this.#tell(delegationAck(this.#office.model, event.payload.task)));
         }
-      }
-    })().catch((error: unknown) => {
-      this.#log.error({ err: String(error) }, "intake subscription failed");
-    });
+        if (event.type === "task.status_changed") {
+          const { taskId, to, reason } = event.payload;
+          return this.#track(this.#tell(outcomeAck(this.#office.model, taskId, to, reason)));
+        }
+        this.#reschedule();
+        return undefined;
+      },
+      this.#log,
+      "intake",
+    );
   }
 
   async stop(): Promise<void> {
     this.#controller.abort();
+    // The subscription drains first: a handler still in flight would otherwise arm a fresh timer.
+    await this.#following?.stop();
     for (const state of this.#state.values()) {
       if (state.timer !== null) {
         clearTimeout(state.timer);
       }
     }
-    await this.#listening;
     await Promise.allSettled(this.#pending);
   }
 
@@ -129,7 +114,7 @@ export class IntakeService {
     );
     const results: IntakePollResult[] = [];
     for (const project of projects) {
-      results.push(await this.#poll(project));
+      results.push(await this.#track(this.#poll(project)));
     }
     return results;
   }
@@ -143,19 +128,21 @@ export class IntakeService {
     return state;
   }
 
-  /** Aligns timers with the projects' intake settings (on start and on every project change). */
+  /** Re-arms every enabled project's timer from its current settings and disarms the rest. */
   #reschedule(): void {
+    if (this.#controller.signal.aborted) {
+      return;
+    }
     const live = new Set<ProjectId>();
     for (const project of this.#office.model.projects.values()) {
-      if (!project.intake.enabled) {
-        continue;
+      if (project.intake.enabled) {
+        live.add(project.id);
+        const state = this.#stateFor(project.id);
+        this.#arm(
+          project.id,
+          state.lastPollAt === null ? FIRST_POLL_MS : project.intake.intervalSeconds * 1000,
+        );
       }
-      live.add(project.id);
-      const state = this.#stateFor(project.id);
-      if (state.timer !== null && state.intervalSeconds === project.intake.intervalSeconds) {
-        continue;
-      }
-      this.#arm(project.id, project.intake.intervalSeconds, state.lastPollAt === null);
     }
     for (const [projectId, state] of this.#state) {
       if (!live.has(projectId) && state.timer !== null) {
@@ -166,31 +153,25 @@ export class IntakeService {
     }
   }
 
-  #arm(projectId: ProjectId, intervalSeconds: number, soon = false): void {
+  #arm(projectId: ProjectId, delayMs: number): void {
     const state = this.#stateFor(projectId);
     if (state.timer !== null) {
       clearTimeout(state.timer);
     }
-    const delay = soon ? FIRST_POLL_MS : intervalSeconds * 1000;
-    state.intervalSeconds = intervalSeconds;
-    state.nextPollAt = new Date(this.#office.clock.now().getTime() + delay).toISOString();
+    state.nextPollAt = new Date(this.#office.clock.now().getTime() + delayMs).toISOString();
     state.timer = setTimeout(() => {
       state.timer = null;
       const project = this.#office.model.projects.get(projectId);
       if (project === undefined || !project.intake.enabled) {
         return;
       }
-      void this.#poll(project).finally(() => {
+      void this.#track(this.#poll(project)).finally(() => {
         const current = this.#office.model.projects.get(projectId);
         if (!this.#controller.signal.aborted && current?.intake.enabled === true) {
-          this.#arm(projectId, current.intake.intervalSeconds);
+          this.#arm(projectId, current.intake.intervalSeconds * 1000);
         }
       });
-    }, delay);
-  }
-
-  #poll(project: Project): Promise<IntakePollResult> {
-    return this.#track(this.#pollProject(project));
+    }, delayMs);
   }
 
   #track<T>(work: Promise<T>): Promise<T> {
@@ -201,7 +182,7 @@ export class IntakeService {
     return pending;
   }
 
-  async #pollProject(project: Project): Promise<IntakePollResult> {
+  async #poll(project: Project): Promise<IntakePollResult> {
     const state = this.#stateFor(project.id);
     const result: IntakePollResult = {
       projectId: project.id,
@@ -209,17 +190,19 @@ export class IntakeService {
       duplicates: 0,
       dryRun: [],
     };
-    const connector = this.#connectors.get(GITHUB_ISSUES_CONNECTOR);
-    if (this.#controller.signal.aborted || state.polling || connector === undefined) {
+    if (this.#controller.signal.aborted || state.polling) {
       return result;
     }
     state.polling = true;
     try {
-      const items = await connector.poll(project, this.#controller.signal);
+      const items = await this.#connector.poll(project, this.#controller.signal);
       state.lastPollAt = this.#office.clock.now().toISOString();
       for (const item of items) {
         this.#controller.signal.throwIfAborted();
-        if (findMail(this.#office.model, project.id, connector.id, item.externalId) !== undefined) {
+        if (
+          findMail(this.#office.model, project.id, this.#connector.id, item.externalId) !==
+          undefined
+        ) {
           result.duplicates += 1;
           continue;
         }
@@ -227,8 +210,8 @@ export class IntakeService {
           result.dryRun.push(`#${item.externalId} ${item.title}`);
           continue;
         }
-        const received = await this.#office.execute(SYSTEM, (m, c) =>
-          receiveMail(m, project.id, connector.id, item, c),
+        const received = await this.#office.execute(SYSTEM_ACTOR, (m, c) =>
+          receiveMail(m, project.id, this.#connector.id, item, c),
         );
         if (received.duplicate) {
           result.duplicates += 1;
@@ -243,7 +226,15 @@ export class IntakeService {
         await this.#tell({
           project,
           mail: received.mail,
-          ack: { outcome: "received", detail: receivedDetail(received) },
+          ack: {
+            outcome: "received",
+            detail:
+              received.task === null
+                ? ""
+                : received.task.kind === "triage"
+                  ? "The boss will triage it and delegate the work."
+                  : "It waits in the project inbox for an assignee.",
+          },
         });
       }
       state.lastDryRun = result.dryRun;
@@ -264,15 +255,14 @@ export class IntakeService {
     }
     const { project, mail, ack } = source;
     try {
-      const stamped = await this.#office.execute(SYSTEM, (m, c) =>
+      const stamped = await this.#office.execute(SYSTEM_ACTOR, (m, c) =>
         acknowledgeMail(m, mail.id, ack, c),
       );
-      const connector = this.#connectors.get(mail.connector);
       const last = stamped.acks.at(-1);
-      if (project.intake.dryRun || connector === undefined || last === undefined) {
+      if (project.intake.dryRun || last === undefined) {
         return;
       }
-      await connector.acknowledge(project, mail, last, this.#controller.signal);
+      await this.#connector.acknowledge(project, mail, last, this.#controller.signal);
     } catch (error) {
       this.#log.warn({ err: errorMessage(error) }, `${ack.outcome} acknowledgement failed`);
     }

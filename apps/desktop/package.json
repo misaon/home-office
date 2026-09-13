@@ -6,7 +6,7 @@
   "dependencies": {
     "@ho/daemon": "workspace:*",
     "@ho/protocol": "workspace:*",
-    "electrobun": "catalog:"
-  },
-  "devDependencies": {}
+    "electrobun": "catalog:",
+    "zod": "catalog:"
+  }
 }

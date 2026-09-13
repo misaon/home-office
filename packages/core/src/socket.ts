@@ -2,9 +2,9 @@ import type { Cancellation } from "./ports.ts";
 
 export const HANDSHAKE_TIMEOUT_MS = 10_000;
 
-export type SocketEvent = "open" | "error" | "close";
+type SocketEvent = "open" | "error" | "close";
 
-export type HandshakeSocket = {
+type HandshakeSocket = {
   addEventListener: (type: SocketEvent, listener: () => void) => void;
   removeEventListener: (type: SocketEvent, listener: () => void) => void;
   close: () => void;

@@ -6,7 +6,8 @@
       "project": ["scripts/**/*.ts"]
     },
     "packages/*": {
-      "project": ["src/**/*.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx}"],
+      "includeEntryExports": true
     },
     "spikes/*": {
       "entry": ["src/*.ts"],
@@ -23,6 +24,5 @@
     "apps/cli": {
       "project": ["src/**/*.ts"]
     }
-  },
-  "ignoreWorkspaces": ["packages/agent-kit"]
+  }
 }

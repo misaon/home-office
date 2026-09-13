@@ -1,64 +1,15 @@
-import type { RuntimeEvent, RuntimeSession } from "@ho/core";
-import type { TaskArtifacts } from "@ho/protocol";
+import type { RuntimeSession } from "@ho/core";
+import type { RuntimeEvent } from "@ho/protocol";
 import { browserMcpServers } from "./browser.ts";
-import { pushFromVolume, REPO_IN_VOLUME } from "./git-bridge.ts";
-import {
-  openingMessage,
-  reviewPrompt,
-  type ServicesState,
-  triagePrompt,
-  workPrompt,
-} from "./prompts.ts";
-import { deliver } from "./publish.ts";
-import { type Provisioned, sessionServicesOf, type SessionContext } from "./session-provision.ts";
+import { REPO_IN_VOLUME } from "./git-bridge.ts";
+import { openingMessage, systemPrompt } from "./prompts.ts";
+import type { Provisioned, SessionContext } from "./session-provision.ts";
 import type { SessionDeps } from "./sessions.ts";
 
 const REPORT_MAX = 4000;
 const PLUGINS_ROOT = "/opt/ho/plugins";
 
-export type Outcome = {
-  report: string;
-  failure: string | null;
-  runtimeSessionId: string | null;
-  sawInit: boolean;
-};
-
-const servicesStateOf = (provisioned: Provisioned): ServicesState => {
-  const services = sessionServicesOf(provisioned);
-  if (services === "ready") {
-    return { kind: "ready" };
-  }
-  if (services === "failed") {
-    return { kind: "failed", message: provisioned.engineFailure ?? "unknown reason" };
-  }
-  return { kind: "off" };
-};
-
-const promptFor = (deps: SessionDeps, ctx: SessionContext, provisioned: Provisioned): string => {
-  const { branch } = provisioned;
-  const browser = deps.config.browser.enabled;
-  if (ctx.session.mode === "review") {
-    return reviewPrompt(
-      ctx.agent,
-      ctx.project,
-      ctx.task,
-      branch,
-      browser,
-      servicesStateOf(provisioned),
-    );
-  }
-  if (ctx.session.mode === "triage") {
-    return triagePrompt(ctx.agent, ctx.project, deps.office.model);
-  }
-  return workPrompt(
-    ctx.agent,
-    ctx.project,
-    ctx.task,
-    branch,
-    browser,
-    servicesStateOf(provisioned),
-  );
-};
+export type Outcome = { report: string; failure: string | null };
 
 const openRuntime = (
   deps: SessionDeps,
@@ -78,14 +29,25 @@ const openRuntime = (
       effort: ctx.agent.effort,
       maxTurns: ctx.agent.budgets.maxTurnsPerTask,
       maxUsd: ctx.agent.budgets.maxUsdPerTask ?? null,
-      systemPromptAppendix: promptFor(deps, ctx, provisioned),
+      systemPromptAppendix: systemPrompt(
+        {
+          agent: ctx.agent,
+          project: ctx.project,
+          task: ctx.task,
+          mode: ctx.session.mode,
+          branch: provisioned.branch,
+          browser: deps.config.browser.enabled,
+          services: provisioned.services,
+        },
+        deps.office.model,
+      ),
       cwd: REPO_IN_VOLUME,
       resume,
       pluginDirs: ctx.agent.skillPack === "none" ? [] : [`${PLUGINS_ROOT}/${ctx.agent.skillPack}`],
       mcpServers: {
         ho: {
           kind: "http",
-          url: deps.mcpUrl,
+          url: deps.mcpUrl(),
           headers: { Authorization: `Bearer ${provisioned.mcpToken}` },
         },
         ...(deps.config.browser.enabled && ctx.session.mode !== "triage"
@@ -103,39 +65,21 @@ async function consume(
   ctx: SessionContext,
   message: string,
   onEvent: (event: RuntimeEvent) => Promise<void>,
-): Promise<Outcome> {
-  const outcome: Outcome = { report: "", failure: null, runtimeSessionId: null, sawInit: false };
+): Promise<Outcome & { sawInit: boolean }> {
+  const outcome = { report: "", failure: null as string | null, sawInit: false };
   let sawResult = false;
   for await (const event of runtimeSession.prompt({ text: message }, ctx.signal)) {
     await onEvent(event);
-    switch (event.kind) {
-      case "init": {
-        outcome.sawInit = true;
-        outcome.runtimeSessionId = event.runtimeSessionId;
-        break;
+    if (event.kind === "init") {
+      outcome.sawInit = true;
+    } else if (event.kind === "result") {
+      sawResult = true;
+      outcome.report = event.text.slice(0, REPORT_MAX);
+      if (!event.ok && outcome.failure === null) {
+        outcome.failure = "the agent reported an error";
       }
-      case "result": {
-        sawResult = true;
-        outcome.report = event.text.slice(0, REPORT_MAX);
-        outcome.runtimeSessionId = event.runtimeSessionId ?? outcome.runtimeSessionId;
-        if (!event.ok && outcome.failure === null) {
-          outcome.failure = "the agent reported an error";
-        }
-        break;
-      }
-      case "error": {
-        outcome.failure = `${event.code}: ${event.message}`;
-        break;
-      }
-      case "usage":
-      case "context":
-      case "rate_limited":
-      case "text_delta":
-      case "tool_call":
-      case "tool_result":
-      case "permission_request": {
-        break;
-      }
+    } else if (event.kind === "error") {
+      outcome.failure = `${event.code}: ${event.message}`;
     }
   }
   if (ctx.signal.aborted && outcome.failure === null) {
@@ -149,7 +93,8 @@ async function consume(
 
 /**
  * Runs the session's single prompt, resuming the agent's earlier conversation when one exists. A resume that
- * dies before `init` (the conversation is gone) is retried once as a fresh conversation.
+ * dies before `init` (the conversation is gone) is retried once as a fresh conversation. The agent process
+ * is terminated before this returns; the sandbox itself outlives it until the session is settled.
  */
 export async function runPrompt(
   deps: SessionDeps,
@@ -160,9 +105,14 @@ export async function runPrompt(
 ): Promise<Outcome> {
   const message = openingMessage(ctx.task, ctx.session.mode, ctx.previous);
   const resume = ctx.previous?.runtimeSessionId ?? null;
-  let runtimeSession = await openRuntime(deps, ctx, provisioned, secrets, resume);
   try {
-    let outcome = await consume(runtimeSession, ctx, message, onEvent);
+    const first = await openRuntime(deps, ctx, provisioned, secrets, resume);
+    let outcome: Outcome & { sawInit: boolean };
+    try {
+      outcome = await consume(first, ctx, message, onEvent);
+    } finally {
+      first.close();
+    }
     if (
       resume !== null &&
       !outcome.sawInit &&
@@ -173,34 +123,20 @@ export async function runPrompt(
         { sessionId: ctx.session.id, resume },
         "resume failed; starting a fresh conversation",
       );
-      await runtimeSession.close().catch(() => null);
-      runtimeSession = await openRuntime(deps, ctx, provisioned, secrets, null);
-      outcome = await consume(
-        runtimeSession,
-        ctx,
-        `${message}\n\n(Your earlier conversation could not be restored; the notes above are the full context.)`,
-        onEvent,
-      );
+      const fresh = await openRuntime(deps, ctx, provisioned, secrets, null);
+      try {
+        outcome = await consume(
+          fresh,
+          ctx,
+          `${message}\n\n(Your earlier conversation could not be restored; the notes above are the full context.)`,
+          onEvent,
+        );
+      } finally {
+        fresh.close();
+      }
     }
-    return outcome;
+    return { report: outcome.report, failure: outcome.failure };
   } finally {
-    await runtimeSession.close().catch(() => null);
+    await provisioned.connection.terminate();
   }
-}
-
-/** Pushes the branch back to the source repository, then (per project policy) opens a pull request. */
-export async function publish(
-  deps: SessionDeps,
-  ctx: SessionContext,
-  provisioned: Provisioned,
-  report: string,
-): Promise<TaskArtifacts> {
-  await pushFromVolume(
-    deps.provider,
-    deps.config,
-    provisioned.sourcePath,
-    provisioned.volume,
-    provisioned.branch,
-  );
-  return deliver(deps.home, ctx.project, ctx.task, provisioned.branch, report);
 }

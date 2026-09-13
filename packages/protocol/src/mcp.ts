@@ -75,15 +75,3 @@ export const HoReplyInput = z.object({
   text: z.string().min(1).max(4000).describe("Message to the human in the office chat"),
 });
 export type HoReplyInput = z.infer<typeof HoReplyInput>;
-
-export const McpToolName = z.enum([
-  "ho_report",
-  "ho_review",
-  "ho_handoff",
-  "ho_ask_human",
-  "ho_delegate",
-  "ho_reply",
-  "ho_task_status",
-  "ho_list_agents",
-]);
-export type McpToolName = z.infer<typeof McpToolName>;

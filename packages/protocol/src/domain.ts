@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { AgentId, ChatMessageId, MailItemId, ProjectId, SessionId, TaskId } from "./ids.ts";
-import { IntakePolicy, MailConnector, PublishPolicy, ServicesPolicy } from "./policies.ts";
+import { IntakePolicy, PublishPolicy, ServicesPolicy } from "./policies.ts";
 
 /** The per-project policies live in their own module; this one keeps them part of the domain surface. */
 export * from "./policies.ts";
@@ -27,8 +27,8 @@ export const TaskPriority = z.enum(["low", "normal", "high"]);
 export type TaskPriority = z.infer<typeof TaskPriority>;
 
 /** `work` changes the repository; `triage` is the floor's boss planning a chat message or a mail item. */
-export const TaskKind = z.enum(["work", "triage"]);
-export type TaskKind = z.infer<typeof TaskKind>;
+const TaskKind = z.enum(["work", "triage"]);
+type TaskKind = z.infer<typeof TaskKind>;
 
 export const AgentRole = z.enum(["boss", "worker", "reviewer", "clerk"]);
 export type AgentRole = z.infer<typeof AgentRole>;
@@ -57,6 +57,9 @@ export const SessionState = z.enum([
 ]);
 export type SessionState = z.infer<typeof SessionState>;
 
+export const isSessionActive = (state: SessionState): boolean =>
+  state !== "stopped" && state !== "failed";
+
 /** What a session is for: doing the task, reviewing its branch, or triaging a chat message (boss). */
 export const SessionMode = z.enum(["work", "review", "triage"]);
 export type SessionMode = z.infer<typeof SessionMode>;
@@ -68,6 +71,9 @@ export const Actor = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("system") }),
 ]);
 export type Actor = z.infer<typeof Actor>;
+
+export const HUMAN_ACTOR = { kind: "human" } as const satisfies Actor;
+export const SYSTEM_ACTOR = { kind: "system" } as const satisfies Actor;
 
 // ---- value objects ------------------------------------------------------------------------------
 
@@ -86,23 +92,6 @@ export const RepoSource = z.discriminatedUnion("kind", [
 ]);
 export type RepoSource = z.infer<typeof RepoSource>;
 
-const SCP_LIKE = /^([^\s/@:]+)@([^\s/@:]+):(?!\/)(\S+)$/u;
-
-/** Git's scp-style shorthand — what GitHub's "SSH" button copies — is not a URL; `ssh://` is. */
-export const repoUrl = (source: string): string => {
-  const trimmed = source.trim();
-  const scp = SCP_LIKE.exec(trimmed);
-  return scp === null ? trimmed : `ssh://${scp[1]}@${scp[2]}/${scp[3]}`;
-};
-
-export const REPO_URL_FORMS = "https://host/org/repo, ssh://git@host/org/repo or git@host:org/repo";
-
-/** Anything carrying a URL scheme or the scp shorthand is a repository URL; the rest is a local path. */
-export const repoSourceOf = (source: string): RepoSource => {
-  const url = repoUrl(source);
-  return /^[a-z][a-z\d+.-]*:\/\//iu.test(url) ? { kind: "git", url } : { kind: "local", path: url };
-};
-
 export const Budgets = z.object({
   maxTurnsPerTask: z.int().positive().default(60),
   maxConcurrentSessions: z.int().positive().default(1),
@@ -113,11 +102,8 @@ export const Budgets = z.object({
 });
 export type Budgets = z.infer<typeof Budgets>;
 
-export const Appearance = z.object({
-  spriteSet: z.string().min(1),
-  gender: Gender,
-});
-export type Appearance = z.infer<typeof Appearance>;
+const Appearance = z.object({ gender: Gender });
+type Appearance = z.infer<typeof Appearance>;
 
 export const Usage = z.object({
   inputTokens: z.int().nonnegative(),
@@ -128,8 +114,26 @@ export const Usage = z.object({
 });
 export type Usage = z.infer<typeof Usage>;
 
-export const TaskSource = z.discriminatedUnion("kind", [
+export const ZERO_USAGE: Usage = {
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheReadTokens: 0,
+  cacheWriteTokens: 0,
+  turns: 0,
+};
+
+export const addUsage = (a: Usage, b: Usage): Usage => ({
+  inputTokens: a.inputTokens + b.inputTokens,
+  outputTokens: a.outputTokens + b.outputTokens,
+  cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens,
+  cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens,
+  turns: a.turns + b.turns,
+});
+
+const TaskSource = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("chat"), messageId: ChatMessageId }),
+  // A stored event is read back as it was written, so the connector id is not narrowed here; the
+  // intake inputs are where a new one is checked.
   z.object({
     kind: z.literal("mail"),
     connector: z.string().min(1),
@@ -138,7 +142,7 @@ export const TaskSource = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("delegation"), byAgentId: AgentId, parentTaskId: TaskId.optional() }),
   z.object({ kind: z.literal("manual") }),
 ]);
-export type TaskSource = z.infer<typeof TaskSource>;
+type TaskSource = z.infer<typeof TaskSource>;
 
 export const TaskArtifacts = z.object({
   branch: z.string().min(1).optional(),
@@ -148,22 +152,23 @@ export const TaskArtifacts = z.object({
 export type TaskArtifacts = z.infer<typeof TaskArtifacts>;
 
 /** Appended context a resumed session must see: handoffs, review findings, questions and answers, reports. */
-export const TaskNoteKind = z.enum(["handoff", "review", "question", "answer", "report", "info"]);
-export type TaskNoteKind = z.infer<typeof TaskNoteKind>;
+const TaskNoteKind = z.enum(["handoff", "review", "question", "answer", "report", "info"]);
+
+/** The longest a note on a task can be; longer text is clipped by whoever writes it. */
+export const NOTE_MAX = 8000;
 
 export const TaskNote = z.object({
   at: IsoDateTime,
   author: Actor,
   kind: TaskNoteKind,
-  text: z.string().min(1).max(8000),
+  text: z.string().min(1).max(NOTE_MAX),
 });
 export type TaskNote = z.infer<typeof TaskNote>;
 
-export const Author = z.discriminatedUnion("kind", [
+const Author = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("human") }),
   z.object({ kind: z.literal("agent"), agentId: AgentId }),
 ]);
-export type Author = z.infer<typeof Author>;
 
 // ---- entities -----------------------------------------------------------------------------------
 
@@ -204,7 +209,6 @@ export type Agent = z.infer<typeof Agent>;
 export const Task = z.object({
   id: TaskId,
   projectId: ProjectId,
-  parentId: TaskId.optional(),
   kind: TaskKind.default("work"),
   title: z.string().min(1).max(200),
   brief: z.string().max(20000),
@@ -247,7 +251,7 @@ export type MailAck = z.infer<typeof MailAck>;
 export const MailItem = z.object({
   id: MailItemId,
   projectId: ProjectId,
-  connector: MailConnector,
+  connector: z.string().min(1),
   /** Stable id at the source (the issue number); dedupes polls. */
   externalId: z.string().min(1).max(100),
   url: z.url(),

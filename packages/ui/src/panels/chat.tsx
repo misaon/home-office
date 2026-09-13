@@ -1,17 +1,12 @@
-import { bossOf, chatOf } from "@ho/core";
-import {
-  type ChatMessage,
-  type ChatSendInput,
-  errorMessage,
-  type ProjectId,
-  type TaskId,
-} from "@ho/protocol";
+import { chatOf } from "@ho/core";
+import type { ChatMessage, ChatSendInput, ProjectId, TaskId } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CONTROL, Failure } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
-import { type Snapshot, useUi } from "../store.ts";
+import { bossOnFloor, type Snapshot, useUi } from "../store.ts";
 
 const authorName = (
   agents: Snapshot["agents"],
@@ -60,12 +55,7 @@ function Messages({
   }, [messages.length]);
   return (
     <div className="flex-1 space-y-3 overflow-y-auto p-4">
-      {messages.length === 0 ? (
-        <p className="text-xs text-gray-500">
-          Write to the boss of this floor. Lola brings him your message; he plans, delegates and
-          reports back here.
-        </p>
-      ) : null}
+      {messages.length === 0 ? <p className="text-xs text-gray-500">{t("chat.empty")}</p> : null}
       {messages.map((m) => (
         <div
           key={m.id}
@@ -84,11 +74,47 @@ function Messages({
   );
 }
 
+function Questions({
+  questions,
+  answering,
+  setAnswering,
+}: {
+  questions: Question[];
+  answering: TaskId | null;
+  setAnswering: (taskId: TaskId | null) => void;
+}): React.JSX.Element | null {
+  const { t } = useTranslation();
+  if (questions.length === 0) {
+    return null;
+  }
+  return (
+    <div className="space-y-1 border-t border-line bg-amber-950/40 p-3 text-xs">
+      {questions.map((q) => (
+        <button
+          key={q.taskId}
+          type="button"
+          aria-pressed={answering === q.taskId}
+          className={`block w-full rounded-md px-3 py-2 text-left hover:bg-line ${
+            answering === q.taskId ? "bg-line" : ""
+          }`}
+          onClick={() => {
+            setAnswering(answering === q.taskId ? null : q.taskId);
+          }}
+        >
+          <span className="text-amber-300">
+            {t("chat.question", { asker: q.asker, title: q.title })}
+          </span>
+          <div className="mt-1 text-gray-300">{q.text}</div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function ChatPanel(): React.JSX.Element {
   const { t } = useTranslation();
   const projects = useUi((s) => s.snapshot.projects);
   const agents = useUi((s) => s.snapshot.agents);
-  const agentsByProject = useUi((s) => s.snapshot.agentsByProject);
   const tasks = useUi((s) => s.snapshot.tasks);
   const chat = useUi((s) => s.snapshot.chat);
   const floorId = useUi((s) => s.floorId);
@@ -105,8 +131,7 @@ export function ChatPanel(): React.JSX.Element {
     return <p className="p-4 text-xs text-gray-400">{t("project.needFirst")}</p>;
   }
   const floor = projects.get(floorId);
-  const boss = bossOf({ agents, agentsByProject }, floorId);
-  const messages = chatOf({ chat }, floorId).slice(-200);
+  const bossName = bossOnFloor(agents, floorId)?.name ?? t("chat.theBoss");
   const questions = openQuestions(tasks, agents, floorId, t);
   const question = questions.find((q) => q.taskId === answering);
 
@@ -125,40 +150,16 @@ export function ChatPanel(): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-line px-4 py-3 text-xs text-gray-400">
-        {t("chat.with")} <span className="text-gray-200">{boss?.name ?? t("chat.theBoss")}</span>
+        {t("chat.with")} <span className="text-gray-200">{bossName}</span>
         {floor === undefined ? "" : t("chat.floorSuffix", { name: floor.name })}
       </div>
-      <Messages messages={messages} agents={agents} />
-      {questions.length > 0 ? (
-        <div className="space-y-1 border-t border-line bg-amber-950/40 p-3 text-xs">
-          {questions.map((q) => (
-            <button
-              key={q.taskId}
-              type="button"
-              className={`block w-full rounded-md px-3 py-2 text-left hover:bg-line ${
-                answering === q.taskId ? "bg-line" : ""
-              }`}
-              onClick={() => {
-                setAnswering(answering === q.taskId ? null : q.taskId);
-              }}
-            >
-              <span className="text-amber-300">
-                {t("chat.question", { asker: q.asker, title: q.title })}
-              </span>
-              <div className="mt-1 text-gray-300">{q.text}</div>
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <div className="border-t border-line p-4">
-        {send.error === null ? null : (
-          <p className="mb-3 rounded-md bg-red-950/70 px-3 py-2 text-xs text-red-200">
-            {errorMessage(send.error)}
-          </p>
-        )}
-        <div className="mb-2 flex items-center gap-3 text-xs text-gray-400">
+      <Messages messages={chatOf({ chat }, floorId)} agents={agents} />
+      <Questions questions={questions} answering={answering} setAnswering={setAnswering} />
+      <div className="space-y-2 border-t border-line p-4">
+        <Failure error={send.error} />
+        <div className="flex items-center gap-3 text-xs text-gray-400">
           {question === undefined ? (
-            <span>{t("chat.to", { name: boss?.name ?? t("chat.theBoss") })}</span>
+            <span>{t("chat.to", { name: bossName })}</span>
           ) : (
             <>
               <span>{t("chat.answerTo", { name: question.asker })}</span>
@@ -178,7 +179,7 @@ export function ChatPanel(): React.JSX.Element {
           aria-label={t("chat.label")}
           maxLength={20_000}
           disabled={send.isPending}
-          className="h-20 w-full resize-none rounded-md border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent/60"
+          className={`${CONTROL} h-20 resize-none`}
           placeholder={question === undefined ? t("chat.placeholder") : t("chat.answerPlaceholder")}
           value={text}
           onChange={(e) => {

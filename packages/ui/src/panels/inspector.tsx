@@ -1,7 +1,7 @@
-import { isSessionActive } from "@ho/core";
-import type { LiveEvent, Session, Usage } from "@ho/protocol";
+import { isSessionActive, type LiveEvent, type Session, type Usage } from "@ho/protocol";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
+import { ROLE_KEY } from "../i18n/labels.ts";
 import { type Snapshot, useUi } from "../store.ts";
 
 const fmt = (n: number): string => n.toLocaleString();
@@ -137,7 +137,7 @@ export function InspectorPanel(): React.JSX.Element {
                 {a.name}
               </button>{" "}
               <span className="text-gray-400">
-                {a.role} · {a.model}/{a.effort}
+                {t(ROLE_KEY[a.role])} · {a.model}/{a.effort}
               </span>
             </li>
           ))}
@@ -155,7 +155,7 @@ export function InspectorPanel(): React.JSX.Element {
       <div className="space-y-1">
         <div className="text-base font-semibold">{agent.name}</div>
         <div className="text-gray-400">
-          {agent.role} · {agent.provider} · {agent.model} / {agent.effort} ·{" "}
+          {t(ROLE_KEY[agent.role])} · {agent.provider} · {agent.model} / {agent.effort} ·{" "}
           {t("inspector.skills", { pack: agent.skillPack })}
         </div>
         <div className="text-gray-400">{t("inspector.floor", { name: floor })}</div>

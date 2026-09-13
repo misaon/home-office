@@ -1,7 +1,7 @@
-import { errorMessage, type Project, type ServicesPolicy } from "@ho/protocol";
+import type { Project, ServicesPolicy } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Segmented } from "../kit/controls.tsx";
+import { Failure, Segmented } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 
 type Props = { project: Project };
@@ -54,7 +54,7 @@ export function ServicesSettings({ project }: Props): React.JSX.Element {
         ) : null}
       </div>
       {services.enabled ? <p className="text-gray-400">{t(NOTE[services.mode])}</p> : null}
-      {save.error === null ? null : <p className="text-red-400">{errorMessage(save.error)}</p>}
+      <Failure error={save.error} />
     </div>
   );
 }

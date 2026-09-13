@@ -1,8 +1,8 @@
 // Drives @ho/runtime-acp against the mock agent through a local stand-in for the runner relay: the same
 // RunnerChannel contract the daemon uses, but the child is a Bun subprocess on this machine instead of a
 // process inside a sandbox. Prints every runtime event and checks the ones that matter.
-import { createChannel, type RunnerChannel, type RunnerLine, type RuntimeEvent } from "@ho/core";
-import { AgentId, compact, SessionId, TaskId } from "@ho/protocol";
+import { createChannel, type RunnerChannel, type RunnerLine } from "@ho/core";
+import { AgentId, compact, type RuntimeEvent, SessionId, TaskId } from "@ho/protocol";
 import { pumpLines, pumpText } from "@ho/runner/pump";
 import { createAcpRuntime } from "@ho/runtime-acp";
 
@@ -31,7 +31,7 @@ function localChannel(): RunnerChannel & { exited: Promise<number | null> } {
         lines.push({ stream: "stderr", text });
       });
       void proc.exited.then((code) => {
-        lines.push({ stream: "exit", code });
+        lines.push({ stream: "exit", code, stderrTail: "" });
         lines.close();
         exit.resolve(code);
       });
@@ -58,7 +58,6 @@ const runtime = createAcpRuntime(
     argv: () => ["bun", `${here}/agent.ts`],
     env: () => ({}),
     authMethods: ["api-key"],
-    resume: false,
   },
   {
     clientVersion: "0.0.0-spike",
@@ -112,7 +111,7 @@ for await (const event of session.prompt({ text: "Summarise the README." })) {
   events.push(event);
   process.stdout.write(`${describeEvent(event)}\n`);
 }
-await session.close();
+session.close();
 const kinds = events.map((e) => e.kind);
 const checks = {
   init: kinds[0] === "init",

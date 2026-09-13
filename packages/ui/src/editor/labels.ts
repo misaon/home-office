@@ -1,22 +1,15 @@
-import { CELL_PX } from "@ho/sim";
+import { CELL_PX, NEIGHBOURS } from "@ho/sim";
 import { type Container, Text, type TextStyleOptions } from "pixi.js";
 import type { KindName } from "../i18n/kinds.ts";
-import type { Draft } from "./draft.ts";
+import type { OfficeDraft } from "./draft.ts";
 
 /** A name written across the middle of a shape, in cell coordinates. */
 type Label = { text: string; x: number; y: number };
 
 type Component = { cells: number[]; kind: string };
 
-const NEIGHBOURS = [
-  [-1, 0],
-  [1, 0],
-  [0, -1],
-  [0, 1],
-] as const;
-
 /** Contiguous areas of the same room, found by flooding four ways. */
-function* components(draft: Draft): Generator<Component> {
+function* components(draft: OfficeDraft): Generator<Component> {
   const seen = new Uint8Array(draft.width * draft.height);
   for (let start = 0; start < draft.room.length; start += 1) {
     const kind = draft.room[start] ?? null;
@@ -31,7 +24,7 @@ function* components(draft: Draft): Generator<Component> {
       cells.push(index);
       const x = index % draft.width;
       const y = Math.floor(index / draft.width);
-      for (const [dx, dy] of NEIGHBOURS) {
+      for (const { x: dx, y: dy } of NEIGHBOURS) {
         const nx = x + dx;
         const ny = y + dy;
         const next = ny * draft.width + nx;
@@ -57,7 +50,7 @@ function* components(draft: Draft): Generator<Component> {
  * cell. The middle of the bounding box is wrong the moment a room is not a rectangle — a corridor
  * wrapped around other rooms would have its name printed inside one of them.
  */
-function heart(draft: Draft, cells: readonly number[]): { x: number; y: number } {
+function heart(draft: OfficeDraft, cells: readonly number[]): { x: number; y: number } {
   const member = new Set(cells);
   const depth = new Map<number, number>();
   const queue: number[] = [];
@@ -66,7 +59,7 @@ function heart(draft: Draft, cells: readonly number[]): { x: number; y: number }
   for (const index of cells) {
     const x = index % draft.width;
     const y = Math.floor(index / draft.width);
-    if (NEIGHBOURS.some(([dx, dy]) => outside(x + dx, y + dy))) {
+    if (NEIGHBOURS.some(({ x: dx, y: dy }) => outside(x + dx, y + dy))) {
       depth.set(index, 1);
       queue.push(index);
     }
@@ -82,9 +75,12 @@ function heart(draft: Draft, cells: readonly number[]): { x: number; y: number }
     }
     const x = index % draft.width;
     const y = Math.floor(index / draft.width);
-    for (const [dx, dy] of NEIGHBOURS) {
+    for (const { x: dx, y: dy } of NEIGHBOURS) {
+      if (outside(x + dx, y + dy)) {
+        continue;
+      }
       const next = (y + dy) * draft.width + (x + dx);
-      if (member.has(next) && !depth.has(next)) {
+      if (!depth.has(next)) {
         depth.set(next, distance + 1);
         queue.push(next);
       }
@@ -94,7 +90,7 @@ function heart(draft: Draft, cells: readonly number[]): { x: number; y: number }
 }
 
 /** Every placed shape names itself, so a colour never has to be remembered. */
-const labelsOf = (draft: Draft, name: KindName): Label[] => [
+const labelsOf = (draft: OfficeDraft, name: KindName): Label[] => [
   ...[...components(draft)].map(({ cells, kind }) => {
     const at = heart(draft, cells);
     return { text: name("room", kind), x: at.x, y: at.y };
@@ -114,14 +110,14 @@ const labelsOf = (draft: Draft, name: KindName): Label[] => [
 /** Redraws the layer that names every shape, at a size the camera's zoom does not inflate. */
 export function drawLabels(
   layer: Container,
-  draft: Draft,
+  draft: OfficeDraft,
   name: KindName,
   style: TextStyleOptions,
   scale: number,
 ): void {
-  layer.removeChildren().forEach((child) => {
+  for (const child of layer.removeChildren()) {
     child.destroy();
-  });
+  }
   for (const label of labelsOf(draft, name)) {
     const text = new Text({ text: label.text, style, resolution: 3 });
     text.anchor.set(0.5);

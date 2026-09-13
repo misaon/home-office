@@ -1,18 +1,19 @@
-import type {
-  AgentId,
-  ChatMessage,
-  HoHandoffInput,
-  NewEvent,
-  Task,
-  TaskId,
-  TaskStatus,
+import {
+  type AgentId,
+  type ChatMessage,
+  conflict,
+  type HoHandoffInput,
+  notFound,
+  NOTE_MAX,
+  type Task,
+  type TaskId,
+  type TaskStatus,
 } from "@ho/protocol";
-import { conflict, notFound } from "../errors.ts";
+import { findAgentByRef } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
-import { err, ok } from "../result.ts";
-import { canTransition } from "../tasks/transitions.ts";
-import type { CommandContext, CommandResult } from "./context.ts";
-import { findAgentByRef, note, noteEvent, requireTask, statusChange } from "./shared.ts";
+import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
+import { chatEvent, handoffEvent, note, noteEvent, requireTask, statusChange } from "./shared.ts";
+import { canTransition, readTask } from "./tasks.ts";
 
 /** Passes the task to a colleague: the current session ends, the target's session starts with the brief. */
 export function handoffTask(
@@ -42,26 +43,23 @@ export function handoffTask(
     "handoff",
     `from ${model.agents.get(fromAgentId)?.name ?? fromAgentId}: ${input.brief}`,
   );
-  const events: NewEvent[] = [
-    {
-      type: "handoff.requested",
-      actor: ctx.actor,
-      payload: { taskId: task.id, fromAgentId, toAgentId: target.id, brief: input.brief },
-    },
-    noteEvent(ctx, task, handoffNote),
-    { type: "task.assigned", actor: ctx.actor, payload: { taskId: task.id, agentId: target.id } },
-    statusChange(ctx, task, "assigned", `handed off to ${target.name}`),
-  ];
   return ok({
-    events,
-    value: {
-      ...task,
-      assigneeId: target.id,
-      status: "assigned",
-      notes: [...task.notes, handoffNote],
-    },
+    events: [
+      handoffEvent(ctx, task.id, fromAgentId, target.id, input.brief),
+      noteEvent(ctx, task, handoffNote),
+      { type: "task.assigned", actor: ctx.actor, payload: { taskId: task.id, agentId: target.id } },
+      statusChange(ctx, task, "assigned", `handed off to ${target.name}`),
+    ],
+    read: readTask(task.id),
   });
 }
+
+const readTaskAndMessage =
+  (taskId: TaskId, message: ChatMessage) =>
+  (model: ReadModel): { task: Task; message: ChatMessage } => ({
+    task: readTask(taskId)(model),
+    message,
+  });
 
 /** Pauses the task with a question for the human; the answer (chat.send with taskId) resumes it. */
 export function askHuman(
@@ -89,15 +87,13 @@ export function askHuman(
     taskId: task.id,
     at: ctx.now,
   };
-  const questionNote = note(ctx, "question", question);
-  const events: NewEvent[] = [
-    noteEvent(ctx, task, questionNote),
-    { type: "chat.message_posted", actor: ctx.actor, payload: { message, author: message.author } },
-    statusChange(ctx, task, "blocked", `question: ${question.slice(0, 1900)}`),
-  ];
   return ok({
-    events,
-    value: { task: { ...task, status: "blocked", notes: [...task.notes, questionNote] }, message },
+    events: [
+      noteEvent(ctx, task, note(ctx, "question", question)),
+      chatEvent(ctx, message),
+      statusChange(ctx, task, "blocked", `question: ${question.slice(0, 1900)}`),
+    ],
+    read: readTaskAndMessage(task.id, message),
   });
 }
 
@@ -121,16 +117,13 @@ export function answerQuestion(
     taskId: task.id,
     at: ctx.now,
   };
-  const answerNote = note(ctx, "answer", text);
-  const events: NewEvent[] = [
-    { type: "chat.message_posted", actor: ctx.actor, payload: { message, author: message.author } },
-    noteEvent(ctx, task, answerNote),
+  const events = [
+    chatEvent(ctx, message),
+    noteEvent(ctx, task, note(ctx, "answer", text.slice(0, NOTE_MAX))),
   ];
-  let next: Task = { ...task, notes: [...task.notes, answerNote] };
   if (task.status === "blocked") {
     const to: TaskStatus = task.assigneeId === undefined ? "planned" : "assigned";
     events.push(statusChange(ctx, task, to, "answered"));
-    next = { ...next, status: to };
   }
-  return ok({ events, value: { task: next, message } });
+  return ok({ events, read: readTaskAndMessage(task.id, message) });
 }

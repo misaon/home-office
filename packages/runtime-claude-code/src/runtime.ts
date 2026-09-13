@@ -1,82 +1,16 @@
-import type {
-  AgentRuntime,
-  Cancellation,
-  Clock,
-  RunnerChannel,
-  RuntimeEvent,
-  RuntimeSession,
-  RuntimeSessionSpec,
-} from "@ho/core";
-import { type ClaudeCommandOptions, claudeArgv, userMessage } from "./command.ts";
+import type { AgentRuntime, Cancellation, Clock, RunnerChannel, RuntimeSession } from "@ho/core";
+import type { RuntimeEvent } from "@ho/protocol";
+import { claudeArgv, userMessage } from "./command.ts";
 import { normalizeLine } from "./stream-json.ts";
 
-export const OAUTH_TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN";
-export const API_KEY_ENV = "ANTHROPIC_API_KEY";
+export type ClaudeRuntimeOptions = { clock: Clock; onStderr: (text: string) => void };
 
-type Line = { stream: "stdout" | "stderr"; text: string } | { stream: "exit"; code: number | null };
-
-export type ClaudeRuntimeOptions = ClaudeCommandOptions & {
-  clock?: Clock;
-  onStderr?: (text: string) => void;
-};
-
-/** Shares one runner line stream across sequential prompts; each prompt drains until its `result`. */
-class Reader {
-  readonly #iterator: AsyncIterator<Line>;
-  #exit: number | null | undefined;
-
-  constructor(lines: AsyncIterable<Line>) {
-    this.#iterator = lines[Symbol.asyncIterator]();
-  }
-
-  get exited(): boolean {
-    return this.#exit !== undefined;
-  }
-
-  async next(): Promise<Line | null> {
-    if (this.exited) {
-      return null;
-    }
-    const step = await this.#iterator.next();
-    if (step.done === true) {
-      this.#exit = null;
-      return null;
-    }
-    if (step.value.stream === "exit") {
-      this.#exit = step.value.code;
-    }
-    return step.value;
-  }
-}
-
-export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions = {}): AgentRuntime {
-  const clock = options.clock ?? { now: () => new Date() };
+export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions): AgentRuntime {
   return {
     id: "claude-code",
-    capabilities: () => ({
-      resume: true,
-      structuredOutput: true,
-      effortLevels: ["low", "medium", "high", "xhigh", "max"],
-    }),
-    open: async (
-      spec: RuntimeSessionSpec,
-      channel: RunnerChannel,
-      secrets,
-    ): Promise<RuntimeSession> => {
-      const claudeSessionId = spec.resume ?? crypto.randomUUID();
-      let resumeToken: string | null = spec.resume;
-      const reader = new Reader(channel.lines());
-      // Subscription sessions carry the OAuth token, API-key sessions the key; never both.
-      const credential = spec.auth === "api-key" ? API_KEY_ENV : OAUTH_TOKEN_ENV;
-      const value = secrets[credential];
-      if (value === undefined) {
-        throw new Error(`${credential} is not available for this session`);
-      }
-      await channel.spawn(
-        claudeArgv(spec, claudeSessionId, options),
-        { [credential]: value },
-        spec.cwd,
-      );
+    open: async (spec, channel: RunnerChannel, secrets): Promise<RuntimeSession> => {
+      await channel.spawn(claudeArgv(spec, spec.resume ?? crypto.randomUUID()), secrets, spec.cwd);
+      const lines = channel.lines()[Symbol.asyncIterator]();
 
       async function* prompt(
         input: { text: string },
@@ -94,8 +28,8 @@ export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions = {}): Age
           }
           channel.write(userMessage(input.text));
           for (;;) {
-            const line = await Promise.race([reader.next(), cancelled.promise]);
-            if (line === null) {
+            const step = await Promise.race([lines.next(), cancelled.promise]);
+            if (step === null || step.done === true) {
               yield {
                 kind: "error",
                 code: "process_exit",
@@ -103,22 +37,20 @@ export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions = {}): Age
               };
               return;
             }
+            const line = step.value;
             if (line.stream === "exit") {
               yield {
                 kind: "error",
                 code: "process_exit",
-                message: `claude exited with code ${String(line.code)}`,
+                message: `claude exited with code ${String(line.code)}${line.stderrTail}`,
               };
               return;
             }
             if (line.stream === "stderr") {
-              options.onStderr?.(line.text);
+              options.onStderr(line.text);
               continue;
             }
-            for (const event of normalizeLine(line.text, clock.now)) {
-              if (event.kind === "result") {
-                resumeToken = event.runtimeSessionId;
-              }
+            for (const event of normalizeLine(line.text, options.clock.now)) {
               yield event;
               if (event.kind === "result") {
                 return;
@@ -130,43 +62,7 @@ export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions = {}): Age
         }
       }
 
-      return {
-        prompt,
-        interrupt: () => {
-          channel.signal("SIGINT");
-          return Promise.resolve();
-        },
-        close: async () => {
-          channel.closeStdin();
-          const terminate = setTimeout(() => {
-            channel.signal("SIGTERM");
-          }, 5000);
-          const kill = setTimeout(() => {
-            channel.signal("SIGKILL");
-          }, 10_000);
-          let deadline: ReturnType<typeof setTimeout> | undefined;
-          const drain = async (): Promise<void> => {
-            while (!reader.exited && (await reader.next()) !== null) {
-              continue;
-            }
-          };
-          try {
-            await Promise.race([
-              drain(),
-              new Promise<never>((_resolve, reject) => {
-                deadline = setTimeout(() => {
-                  reject(new Error("Claude did not exit"));
-                }, 15_000);
-              }),
-            ]);
-          } finally {
-            clearTimeout(terminate);
-            clearTimeout(kill);
-            clearTimeout(deadline);
-          }
-        },
-        resumeToken: () => resumeToken,
-      };
+      return { prompt, close: () => undefined };
     },
   };
 }

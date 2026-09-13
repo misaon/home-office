@@ -16,24 +16,17 @@ const parseMessage = (line: string): AnyMessage | null => {
   }
 };
 
-export type ChannelStream = {
-  stream: Stream;
-  /** Resolves with the exit code once the agent process is gone (null when the relay closed first). */
-  exited: Promise<number | null>;
-};
-
 /**
  * Adapts the runner relay (stdin/stdout lines of the agent process inside the sandbox) to the SDK's
  * bidirectional message stream: outbound JSON-RPC messages become stdin lines, stdout lines that parse as
- * JSON become inbound messages, everything else (banners, logs) goes to `onStderr`.
+ * JSON become inbound messages, everything else (banners, logs) goes to `onStderr`. `exited` resolves with
+ * the child's exit code once the relay reports it (null when the relay closed first).
  */
 export function channelStream(
   channel: RunnerChannel,
   onStderr: (text: string) => void,
-): ChannelStream {
+): { stream: Stream; exited: Promise<number | null> } {
   const exit = Promise.withResolvers<number | null>();
-  const resolveExit = exit.resolve;
-  const exited = exit.promise;
   const writable = new WritableStream<AnyMessage>({
     write(message) {
       channel.write(`${JSON.stringify(message)}\n`);
@@ -42,53 +35,47 @@ export function channelStream(
       channel.closeStdin();
     },
   });
-  const iterator = channel.lines()[Symbol.asyncIterator]();
-  const state = { closed: false };
-  const isClosed = (): boolean => state.closed;
+  async function* messages(): AsyncGenerator<AnyMessage> {
+    for await (const line of channel.lines()) {
+      if (line.stream === "exit") {
+        exit.resolve(line.code);
+        return;
+      }
+      const text = line.text.trim();
+      if (line.stream === "stderr" || text === "") {
+        if (text !== "") {
+          onStderr(text);
+        }
+        continue;
+      }
+      const parsed = parseMessage(text);
+      if (parsed === null) {
+        onStderr(text);
+      } else {
+        yield parsed;
+      }
+    }
+    exit.resolve(null);
+  }
+  const iterator = messages();
   const readable = new ReadableStream<AnyMessage>({
     async pull(controller) {
       try {
-        while (!isClosed()) {
-          const step = await iterator.next();
-          if (isClosed()) {
-            return;
-          }
-          if (step.done === true || step.value.stream === "exit") {
-            state.closed = true;
-            resolveExit(
-              step.done !== true && step.value.stream === "exit" ? step.value.code : null,
-            );
-            controller.close();
-            return;
-          }
-          const line = step.value;
-          if (line.stream === "stderr") {
-            onStderr(line.text);
-            continue;
-          }
-          const trimmed = line.text.trim();
-          if (trimmed === "") {
-            continue;
-          }
-          const parsed = parseMessage(trimmed);
-          if (parsed === null) {
-            onStderr(trimmed);
-          } else {
-            controller.enqueue(parsed);
-            return;
-          }
+        const step = await iterator.next();
+        if (step.done === true) {
+          controller.close();
+        } else {
+          controller.enqueue(step.value);
         }
       } catch (error) {
-        state.closed = true;
-        resolveExit(null);
+        exit.resolve(null);
         controller.error(error);
       }
     },
     cancel() {
-      state.closed = true;
-      resolveExit(null);
-      return iterator.return?.().then(() => undefined);
+      exit.resolve(null);
+      return iterator.return(undefined).then(() => undefined);
     },
   });
-  return { stream: { writable, readable }, exited };
+  return { stream: { writable, readable }, exited: exit.promise };
 }

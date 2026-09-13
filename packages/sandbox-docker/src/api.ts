@@ -1,22 +1,19 @@
 // Thin, typed Docker Engine API client over the unix socket. No SDK: Bun's fetch speaks unix sockets.
+import type { SandboxSpec, VolumeMount } from "@ho/core";
 import { z } from "zod";
 
-const DEFAULT_SOCKET = "/var/run/docker.sock";
 const API = "v1.44";
+const CPU_NANOS = 1_000_000_000;
 
 type Method = "GET" | "POST" | "DELETE";
 
 export class DockerApiError extends Error {
   readonly status: number;
-  readonly method: Method;
-  readonly path: string;
 
   constructor(method: Method, path: string, status: number, body: string) {
     super(`docker ${method} ${path} -> ${String(status)}: ${body.trim()}`);
     this.name = "DockerApiError";
     this.status = status;
-    this.method = method;
-    this.path = path;
   }
 }
 
@@ -27,7 +24,7 @@ export type DockerApi = {
   maybe: (method: Method, path: string, body?: unknown) => Promise<Response | null>;
 };
 
-export function createDockerApi(socket = DEFAULT_SOCKET): DockerApi {
+export function createDockerApi(socket: string): DockerApi {
   const raw = async (
     method: Method,
     path: string,
@@ -94,6 +91,7 @@ const ContainerSummary = z.object({
   Created: z.int(),
   Labels: z.record(z.string(), z.string()).nullable(),
 });
+export type ContainerSummary = z.infer<typeof ContainerSummary>;
 export const ContainerList = z.array(ContainerSummary);
 const VolumeSummary = z.object({
   Name: z.string(),
@@ -101,16 +99,19 @@ const VolumeSummary = z.object({
   Labels: z.record(z.string(), z.string()).nullable(),
 });
 export const VolumeList = z.object({ Volumes: z.array(VolumeSummary).nullable() });
-const NetworkSummary = z.object({ Id: z.string(), Name: z.string() });
-export const NetworkList = z.array(NetworkSummary);
-const ImageSummary = z.object({
-  Id: z.string(),
-  RepoTags: z.array(z.string()).nullable(),
-  Created: z.int(),
-  Size: z.int(),
-  Labels: z.record(z.string(), z.string()).nullable(),
+export const NetworkList = z.array(z.object({ Id: z.string(), Name: z.string() }));
+export const ImageList = z.array(
+  z.object({
+    Id: z.string(),
+    RepoTags: z.array(z.string()).nullable(),
+    Created: z.int(),
+    Size: z.int(),
+    Labels: z.record(z.string(), z.string()).nullable(),
+  }),
+);
+export const ImageInspect = z.object({
+  Config: z.object({ Labels: z.record(z.string(), z.string()).nullish() }).nullish(),
 });
-export const ImageList = z.array(ImageSummary);
 export const SystemDf = z.object({
   Images: z
     .array(z.object({ Size: z.int(), Labels: z.record(z.string(), z.string()).nullable() }))
@@ -134,6 +135,10 @@ export const labelFilter = (
     JSON.stringify({ label: Object.entries(labels).map(([k, v]) => `${k}=${v}`), ...extra }),
   );
 
+/** Docker reports `/name`; the office says `name`. */
+export const nameOf = (summary: ContainerSummary): string =>
+  (summary.Names[0] ?? summary.Id).replace(/^\//u, "");
+
 /** Docker multiplexed stream (TTY off): 8-byte header per frame — type, padding, big-endian length. */
 export function demux(buffer: Uint8Array): { stdout: string; stderr: string } {
   const decoder = new TextDecoder();
@@ -154,3 +159,63 @@ export function demux(buffer: Uint8Array): { stdout: string; stderr: string } {
   }
   return { stdout, stderr };
 }
+
+// ---- container primitives shared by sandboxes and engines ---------------------------------------
+
+/** The cgroup and log bounds every Home Office container gets; swap is capped at the memory limit. */
+export const hostLimits = (
+  limits: SandboxSpec["limits"],
+): {
+  Memory: number;
+  MemorySwap: number;
+  NanoCpus: number;
+  PidsLimit: number;
+  LogConfig: { Type: string; Config: Record<string, string> };
+} => ({
+  Memory: limits.memoryBytes,
+  MemorySwap: limits.memoryBytes,
+  NanoCpus: Math.round(limits.cpus * CPU_NANOS),
+  PidsLimit: limits.pids,
+  LogConfig: { Type: "local", Config: { "max-size": "10m", "max-file": "2" } },
+});
+
+export const volumeMounts = (
+  volumes: readonly VolumeMount[],
+): { Type: string; Source: string; Target: string; ReadOnly: boolean }[] =>
+  volumes.map((v) => ({ Type: "volume", Source: v.name, Target: v.target, ReadOnly: false }));
+
+const container = (id: string): string => `/containers/${encodeURIComponent(id)}`;
+
+export const createContainer = async (
+  api: DockerApi,
+  name: string,
+  config: unknown,
+): Promise<string> =>
+  (await api.json(Created, "POST", `/containers/create?name=${encodeURIComponent(name)}`, config))
+    .Id;
+
+export const startContainer = async (api: DockerApi, id: string): Promise<void> => {
+  await api.raw("POST", `${container(id)}/start`);
+};
+
+/** 304 (already stopped) and 404 (already gone) are the outcome, not failures. */
+export async function stopContainer(
+  api: DockerApi,
+  id: string,
+  graceSeconds: number,
+): Promise<void> {
+  try {
+    await api.raw("POST", `${container(id)}/stop?t=${String(graceSeconds)}`);
+  } catch (error) {
+    if (!(error instanceof DockerApiError && (error.status === 304 || error.status === 404))) {
+      throw error;
+    }
+  }
+}
+
+export async function removeContainer(api: DockerApi, id: string): Promise<void> {
+  await api.maybe("DELETE", `${container(id)}?v=1&force=1`);
+}
+
+export const inspectContainer = (api: DockerApi, id: string): Promise<ContainerInspect> =>
+  api.json(ContainerInspect, "GET", `${container(id)}/json`);

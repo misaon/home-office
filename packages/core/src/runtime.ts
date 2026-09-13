@@ -9,16 +9,6 @@ import type {
 } from "@ho/protocol";
 import type { Cancellation } from "./ports.ts";
 
-export type { RuntimeErrorCode, RuntimeEvent } from "@ho/protocol";
-
-export type RuntimeCapabilities = {
-  resume: boolean;
-  structuredOutput: boolean;
-  effortLevels: readonly EffortLevel[];
-};
-
-export type PromptInput = { text: string };
-
 export type McpServerSpec =
   | { kind: "http"; url: string; headers: Readonly<Record<string, string>> }
   | {
@@ -43,7 +33,7 @@ export type RuntimeSessionSpec = {
   cwd: string;
   /** Provider-specific session id to resume, when the runtime supports it. */
   resume: string | null;
-  /** Plugin directories inside the sandbox (role skill packs). */
+  /** Plugin directories inside the sandbox (role skill packs); Claude Code reads them, ACP agents cannot. */
   pluginDirs: readonly string[];
   /** MCP servers this session may call: the HO tool server (HTTP, per-session token) and sandbox-local stdio servers. */
   mcpServers: Readonly<Record<string, McpServerSpec>>;
@@ -51,7 +41,8 @@ export type RuntimeSessionSpec = {
 
 export type RunnerLine =
   | { stream: "stdout" | "stderr"; text: string }
-  | { stream: "exit"; code: number | null };
+  /** The child is gone; `stderrTail` is the last of what it wrote to stderr, for the failure text. */
+  | { stream: "exit"; code: number | null; stderrTail: string };
 
 /** The daemon's side of a runner connection: a line-oriented child process relay. */
 export type RunnerChannel = {
@@ -67,15 +58,13 @@ export type RunnerChannel = {
 };
 
 export type RuntimeSession = {
-  prompt: (input: PromptInput, signal?: Cancellation) => AsyncIterable<RuntimeEvent>;
-  interrupt: () => Promise<void>;
-  close: () => Promise<void>;
-  readonly resumeToken: () => string | null;
+  prompt: (input: { text: string }, signal?: Cancellation) => AsyncIterable<RuntimeEvent>;
+  /** Lets go of the agent's protocol state; the daemon terminates the child itself. */
+  close: () => void;
 };
 
 export type AgentRuntime = {
   readonly id: ProviderId;
-  capabilities: () => RuntimeCapabilities;
   /** `secrets` is the environment the child must receive at spawn time (never persisted, never logged). */
   open: (
     spec: RuntimeSessionSpec,

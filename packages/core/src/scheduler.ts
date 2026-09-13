@@ -1,8 +1,7 @@
-import type { AgentId, SessionMode, Task, TaskId } from "@ho/protocol";
-import { activeSessions } from "./commands/sessions.ts";
+import type { AgentId, Project, SessionMode, Task, TaskId } from "@ho/protocol";
+import { activeSessions } from "./model/queries.ts";
 import type { ReadModel } from "./model/read-model.ts";
 
-export type SchedulerLimits = { maxConcurrentSessions: number };
 export type SessionStart = { taskId: TaskId; agentId: AgentId; mode: SessionMode };
 
 const PRIORITY_RANK = { high: 0, normal: 1, low: 2 } as const;
@@ -13,10 +12,28 @@ const PRIORITY_RANK = { high: 0, normal: 1, low: 2 } as const;
  */
 const SERVICES_COST = 2;
 
-const costOf = (model: ReadModel, taskId: TaskId): number => {
-  const task = model.tasks.get(taskId);
+/**
+ * Whether a session gets its own container engine: the daemon's switch, the floor's setting, and the work
+ * itself — triage is the boss planning a message, so it touches no code. The provisioner asks the same
+ * question, so the two cannot drift.
+ */
+export const needsEngine = (
+  daemonEnabled: boolean,
+  project: Pick<Project, "services">,
+  mode: SessionMode,
+): boolean => daemonEnabled && project.services.enabled && mode !== "triage";
+
+/** What a session of this task and mode occupies: two slots when it gets an engine, one otherwise. */
+const costOf = (
+  model: ReadModel,
+  session: { taskId: TaskId; mode: SessionMode },
+  daemonEnabled: boolean,
+): number => {
+  const task = model.tasks.get(session.taskId);
   const project = task === undefined ? undefined : model.projects.get(task.projectId);
-  return project?.services.enabled === true ? SERVICES_COST : 1;
+  return project !== undefined && needsEngine(daemonEnabled, project, session.mode)
+    ? SERVICES_COST
+    : 1;
 };
 
 const candidateOf = (task: Task): SessionStart | null => {
@@ -37,7 +54,11 @@ const candidateOf = (task: Task): SessionStart | null => {
  * Decides which tasks get a session now: assigned tasks (work or triage) and tasks awaiting their reviewer.
  * Pure: the daemon applies the decisions. Order: priority, then age. Respects the global cap and each agent's budget.
  */
-export function planSessionStarts(model: ReadModel, limits: SchedulerLimits): SessionStart[] {
+export function planSessionStarts(
+  model: ReadModel,
+  maxConcurrentSessions: number,
+  servicesEnabled: boolean,
+): SessionStart[] {
   const active = activeSessions(model);
   const busyTasks = new Set(active.map((s) => s.taskId));
   const perAgent = new Map<AgentId, number>();
@@ -45,7 +66,7 @@ export function planSessionStarts(model: ReadModel, limits: SchedulerLimits): Se
     perAgent.set(session.agentId, (perAgent.get(session.agentId) ?? 0) + 1);
   }
   let capacity =
-    limits.maxConcurrentSessions - active.reduce((sum, s) => sum + costOf(model, s.taskId), 0);
+    maxConcurrentSessions - active.reduce((sum, s) => sum + costOf(model, s, servicesEnabled), 0);
   const candidates = [...model.tasks.values()]
     .filter((t) => !busyTasks.has(t.id))
     .toSorted(
@@ -63,7 +84,7 @@ export function planSessionStarts(model: ReadModel, limits: SchedulerLimits): Se
       continue;
     }
     // A task that needs an engine waits for a free slot pair instead of blocking cheaper work behind it.
-    const cost = costOf(model, task.id);
+    const cost = costOf(model, start, servicesEnabled);
     if (cost > capacity) {
       continue;
     }

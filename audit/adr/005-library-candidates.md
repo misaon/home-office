@@ -92,3 +92,11 @@ dependencies into a CLI that is compiled with `bun build --compile` and started 
 this audit's own rule for candidate 8 — do not trade a few working lines for a dependency — applies
 unchanged here. So `readSecret()` stays as it is, and the net dependency change of this audit is one
 package smaller than first recorded.
+
+## Correction 2026-09-13 — two adoptions removed
+
+Rows 1-3 and the recommendation above are superseded. `type-fest` was dropped: `compact()` is hand-typed
+in `packages/protocol/src/patch.ts` with one scoped suppression, and `DistributiveOmit` is three lines in
+`packages/protocol/src/events.ts`. `sharp` was dropped with the sprite pipeline and the desktop icon
+generator (see ADR 003's second correction). Of the sweep's two new dependencies only `yoctocolors`
+survives; the removal of `proper-lockfile` stands.

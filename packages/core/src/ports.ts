@@ -25,10 +25,12 @@ export type EventStore = {
   /** Appends atomically in order and returns the stored events with `seq`, `id` and `at` assigned. */
   append: (events: readonly NewEvent[]) => Promise<StoredEvent[]>;
   /** Reads stored events with `seq` greater than `afterSeq` (all when omitted), in order. */
-  read: (afterSeq?: number, filter?: EventFilter) => AsyncIterable<StoredEvent>;
+  read: (afterSeq?: number) => AsyncIterable<StoredEvent>;
   /** Live events appended after subscription time. */
   subscribe: (filter?: EventFilter, signal?: Cancellation) => AsyncIterable<StoredEvent>;
   lastSeq: () => Promise<number>;
+  /** Identity of this log: the id of its first event, or null while it is empty. */
+  firstId: () => Promise<string | null>;
 };
 
 export type SecretStore = {

@@ -1,18 +1,20 @@
+import { errorMessage } from "@ho/protocol";
 import { ORPCError, onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/bun-ws";
-import { errorMessage } from "@ho/protocol";
 import { timingSafeEqual } from "node:crypto";
 import type { Logger } from "./logger.ts";
+import { McpGateway } from "./mcp.ts";
 import type { RpcContext } from "./rpc/context.ts";
 import { router } from "./rpc/router.ts";
-import { McpGateway } from "./mcp.ts";
 import { RunnerGateway, type RunnerSocketData } from "./runner-gateway.ts";
+import { bearerToken, mintToken } from "./token.ts";
 import { serveStatic } from "./static.ts";
 
 export type ServerOptions = {
   host: string;
   port: number;
-  token: string;
+  /** Directory with the built office UI; null means this build serves none. */
+  uiDir: string | null;
   context: RpcContext;
   gateway: RunnerGateway;
   mcp: McpGateway;
@@ -25,9 +27,9 @@ const PROTOCOL_PREFIX = "ho.bearer.";
 
 /** Browsers cannot set headers on WebSocket upgrades, so the token may also ride in a subprotocol. */
 const presentedToken = (req: Request): { token: string; viaProtocol: boolean } | null => {
-  const header = req.headers.get("authorization");
-  if (header?.startsWith("Bearer ") === true) {
-    return { token: header.slice("Bearer ".length), viaProtocol: false };
+  const header = bearerToken(req);
+  if (header !== null) {
+    return { token: header, viaProtocol: false };
   }
   const protocols =
     req.headers
@@ -50,17 +52,21 @@ const sameToken = (presented: string, expected: string): boolean => {
 };
 
 /** The office UI bundle at `/`: read-only and unauthenticated (it carries no data). */
-function serveUi(options: ServerOptions, pathname: string): Promise<Response> | Response {
-  const { dir } = options.context.config.ui;
-  return dir === null
+const serveUi = (uiDir: string | null, pathname: string): Promise<Response> | Response =>
+  uiDir === null
     ? new Response(
         "this build carries no office UI bundle; use the desktop app or run the daemon from a source checkout",
         { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } },
       )
-    : serveStatic(dir, pathname, "index.html");
-}
+    : serveStatic(uiDir, pathname, "index.html");
 
-export function startServer(options: ServerOptions): { port: number; stop: () => Promise<void> } {
+export function startServer(options: ServerOptions): {
+  port: number;
+  token: string;
+  stop: () => Promise<void>;
+} {
+  // One token per launch: the office page carries it in its URL fragment and every RPC presents it.
+  const token = mintToken();
   const handler = new RPCHandler(router, {
     interceptors: [
       onError((error) => {
@@ -88,20 +94,20 @@ export function startServer(options: ServerOptions): { port: number; stop: () =>
         return options.mcp.handle(req);
       }
       if (url.pathname === RunnerGateway.path) {
-        const token = options.gateway.authorize(req);
-        if (token === null) {
+        const runnerToken = options.gateway.authorize(req);
+        if (runnerToken === null) {
           options.log.warn({ ip: srv.requestIP(req)?.address }, "rejected runner connection");
           return new Response("unauthorized", { status: 401 });
         }
-        return srv.upgrade(req, { data: { kind: "runner", token } })
+        return srv.upgrade(req, { data: { kind: "runner", token: runnerToken } })
           ? undefined
           : new Response("upgrade failed", { status: 500 });
       }
       if (url.pathname !== "/rpc") {
-        return serveUi(options, url.pathname);
+        return serveUi(options.uiDir, url.pathname);
       }
       const presented = presentedToken(req);
-      if (presented === null || !sameToken(presented.token, options.token)) {
+      if (presented === null || !sameToken(presented.token, token)) {
         options.log.warn({ ip: srv.requestIP(req)?.address }, "rejected rpc connection");
         return new Response("unauthorized", { status: 401 });
       }
@@ -128,7 +134,7 @@ export function startServer(options: ServerOptions): { port: number; stop: () =>
       },
       async message(ws, message) {
         if (ws.data.kind === "runner") {
-          options.gateway.message(ws.data.token, ws, message);
+          options.gateway.message(ws.data.token, message);
           return;
         }
         await handler.message(ws, message, { context: options.context });
@@ -143,5 +149,5 @@ export function startServer(options: ServerOptions): { port: number; stop: () =>
     },
   });
   options.log.info({ host: options.host, port: server.port }, "rpc server listening");
-  return { port: server.port ?? options.port, stop: () => server.stop(true) };
+  return { port: server.port ?? options.port, token, stop: () => server.stop(true) };
 }
