@@ -107,6 +107,9 @@ function EmptyOffice(): React.JSX.Element {
   );
 }
 
+/** The bar above the office and the panel tabs beside it are one line of chrome, so they are one height. */
+const BAR = "h-12.5 shrink-0 border-b border-line bg-panel";
+
 const HEADER_BUTTON =
   "shrink-0 rounded-md border border-line px-3 py-1.5 text-xs text-gray-300 hover:bg-line";
 
@@ -135,7 +138,7 @@ export function App(): React.JSX.Element {
         />
       ) : null}
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-4 border-b border-line bg-panel px-4 py-2.5">
+        <header className={`flex items-center gap-4 px-4 ${BAR}`}>
           <span className="shrink-0 font-semibold tracking-wide">Home Office</span>
           <span
             className={`h-2 w-2 shrink-0 rounded-full ${connection === "online" ? "bg-emerald-400" : "bg-red-400"}`}
@@ -171,13 +174,13 @@ export function App(): React.JSX.Element {
       </main>
       {hasFloors ? (
         <aside className="flex w-[440px] shrink-0 flex-col border-l border-line bg-ink">
-          <nav className="flex border-b border-line bg-panel">
+          <nav className={`flex ${BAR}`}>
             {PANELS.map((p) => (
               <button
                 key={p.id}
                 type="button"
                 aria-pressed={p.id === panel}
-                className={`flex-1 px-2 py-3 text-xs transition ${
+                className={`flex-1 px-2 text-xs transition ${
                   p.id === panel
                     ? "border-b-2 border-accent text-white"
                     : "text-gray-400 hover:text-white"

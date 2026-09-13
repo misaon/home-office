@@ -1,5 +1,12 @@
 import { chatOf } from "@ho/core";
-import type { ChatMessage, ChatSendInput, ProjectId, TaskId } from "@ho/protocol";
+import {
+  type Agent,
+  type ChatMessage,
+  type ChatSendInput,
+  type ProjectId,
+  PROVIDERS,
+  type TaskId,
+} from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 import { useEffect, useRef, useState } from "react";
@@ -16,6 +23,28 @@ const authorName = (
   message.author.kind === "human"
     ? translate("chat.you")
     : (agents.get(message.author.agentId)?.name ?? translate("chat.agent"));
+
+const CHIP = "rounded bg-line px-1.5 py-px font-mono text-2xs text-gray-300";
+
+/** What the colleague who wrote this runs on; the effort level only where the provider offers one. */
+function AgentChips({ agent }: { agent: Agent | undefined }): React.JSX.Element | null {
+  const { t } = useTranslation();
+  if (agent === undefined) {
+    return null;
+  }
+  return (
+    <>
+      <span className={CHIP} title={t("agent.model")}>
+        {agent.model}
+      </span>
+      {PROVIDERS[agent.provider].effortLevels.length === 0 ? null : (
+        <span className={CHIP} title={t("agent.effort")}>
+          {agent.effort}
+        </span>
+      )}
+    </>
+  );
+}
 
 type Question = { taskId: TaskId; title: string; text: string; asker: string };
 
@@ -63,8 +92,13 @@ function Messages({
             m.author.kind === "human" ? "ml-auto bg-accent/20" : "bg-panel"
           }`}
         >
-          <div className="mb-1 text-2xs text-gray-400">
-            {authorName(agents, m, t)} · {new Date(m.at).toLocaleTimeString()}
+          <div className="mb-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-2xs text-gray-400">
+            <span>
+              {authorName(agents, m, t)} · {new Date(m.at).toLocaleTimeString()}
+            </span>
+            <AgentChips
+              agent={m.author.kind === "agent" ? agents.get(m.author.agentId) : undefined}
+            />
           </div>
           <div className="whitespace-pre-wrap">{m.text}</div>
         </div>
