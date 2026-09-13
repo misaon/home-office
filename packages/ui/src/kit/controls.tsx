@@ -1,5 +1,6 @@
 import { errorMessage } from "@ho/protocol";
-import { useId } from "react";
+import { useId, useState } from "react";
+import { Reveal } from "./reveal.tsx";
 
 /** One rhythm for every text field, select and textarea in the office. */
 export const CONTROL =
@@ -220,13 +221,21 @@ export function Badge({
 
 /** What a failed request said, or nothing while there is nothing to say. */
 export function Failure({ error }: { error: unknown }): React.JSX.Element | null {
-  return error === null || error === undefined ? null : (
-    <p
-      role="alert"
-      className="animate-rise rounded-lg border border-bad/30 bg-bad/10 px-3 py-2 text-xs text-bad"
-    >
-      {errorMessage(error)}
-    </p>
+  const message = error === null || error === undefined ? null : errorMessage(error);
+  // The words outlive the error itself, so the box has something to say while it collapses.
+  const [shown, setShown] = useState(message);
+  if (message !== null && message !== shown) {
+    setShown(message);
+  }
+  return (
+    <Reveal open={message !== null}>
+      <p
+        role="alert"
+        className="rounded-lg border border-bad/30 bg-bad/10 px-3 py-2 text-xs text-bad"
+      >
+        {shown}
+      </p>
+    </Reveal>
   );
 }
 
