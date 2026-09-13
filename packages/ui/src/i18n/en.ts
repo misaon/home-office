@@ -10,7 +10,6 @@ export const en = {
     cancel: "Cancel",
     close: "Close",
     remove: "remove",
-    none: "none",
     search: "search…",
     ofTotal: "{{shown}} of {{total}}",
     custom: "custom…",
@@ -74,7 +73,6 @@ export const en = {
     branchHint: "filled in once git answers",
     importAgents: "Import characters from other floors",
     floors: "Floors (projects)",
-    delivery: "delivery: {{mode}}",
     pullRequests: "Open a pull request",
     pullRequestsHint:
       "On: finished work arrives as a pull request. Off: the branch is pushed and nothing else happens.",
@@ -88,7 +86,6 @@ export const en = {
     basePrompt: "Base prompt (persona, habits, constraints)",
     runsFloor: "runs this floor",
     confirmRemove: "Remove {{name}}?",
-    team: "Team of floor {{floor}}",
     copyHint: "The same persona and model, a new colleague on that floor.",
     role: "Role",
     provider: "Provider",
@@ -111,10 +108,6 @@ export const en = {
     neutral: "neutral",
   },
   board: {
-    tasks_one: "{{count}} task",
-    tasks_few: "{{count}} tasks",
-    tasks_many: "{{count}} tasks",
-    tasks_other: "{{count}} tasks",
     rounds: "rounds {{count}}",
     issue: "issue #{{id}}",
     pullRequest: "pull request",
@@ -125,7 +118,6 @@ export const en = {
     blocked: "Blocked",
     done: "Done",
     triage: "triage",
-    floor: "Floor",
     empty: "Nothing on this floor yet. Write to the boss in Chat and he turns it into tasks.",
   },
   chat: {
@@ -147,7 +139,6 @@ export const en = {
     label: "Message to the selected floor",
     placeholder: "Ask the floor for something… (Enter to send, Shift+Enter for a new line)",
     answerPlaceholder: "Your answer… (Enter to send)",
-    floorSuffix: " · floor {{name}}",
     empty:
       "Write to the boss of this floor. Lola brings him your message; he plans, delegates and reports back here.",
   },
@@ -168,8 +159,6 @@ export const en = {
   resources: {
     refresh: "Refresh",
     pruned: "removed {{containers}} containers, {{volumes}} volumes, {{images}} images",
-    summary:
-      "{{containers}} containers · {{volumes}} volumes ({{volumeBytes}}) · images {{imageBytes}}",
     prune: "Prune now",
     pruning: "Pruning…",
     noInventory: "No inventory yet.",
@@ -239,8 +228,6 @@ export const en = {
   usage: {
     all: "all",
     in: "in",
-    totals:
-      "{{sessions}} sessions · {{input}} in · {{output}} out · {{cache}} cache read · {{limits}} rate-limit incidents",
     note: "Token counts come from Claude Code. OpenCode, Gemini CLI and Codex speak ACP, which reports how full the context window is and the session’s cost rather than a token split — those arrive live and are shown per session in Agent.",
     window: "Window",
     day: "24 h",

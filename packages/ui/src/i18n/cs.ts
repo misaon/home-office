@@ -11,7 +11,6 @@ export const cs: typeof en = {
     cancel: "Zrušit",
     close: "Zavřít",
     remove: "odebrat",
-    none: "nic",
     search: "hledat…",
     ofTotal: "{{shown}} z {{total}}",
     custom: "vlastní…",
@@ -75,7 +74,6 @@ export const cs: typeof en = {
     branchHint: "doplní se, až odpoví git",
     importAgents: "Převzít postavy z jiných podlaží",
     floors: "Podlaží (projekty)",
-    delivery: "doručení: {{mode}}",
     pullRequests: "Otevírat pull request",
     pullRequestsHint:
       "Zapnuto: hotová práce přijde jako pull request. Vypnuto: branch se jen pushne a nic dalšího se neděje.",
@@ -89,7 +87,6 @@ export const cs: typeof en = {
     basePrompt: "Základní prompt (osobnost, zvyky, omezení)",
     runsFloor: "vede toto podlaží",
     confirmRemove: "Odebrat {{name}}?",
-    team: "Tým podlaží {{floor}}",
     copyHint: "Stejná povaha i model, nový kolega na tom podlaží.",
     role: "Role",
     provider: "Poskytovatel",
@@ -112,10 +109,6 @@ export const cs: typeof en = {
     neutral: "neutrální",
   },
   board: {
-    tasks_one: "{{count}} úkol",
-    tasks_few: "{{count}} úkoly",
-    tasks_many: "{{count}} úkolů",
-    tasks_other: "{{count}} úkolů",
     rounds: "kol {{count}}",
     issue: "issue #{{id}}",
     pullRequest: "pull request",
@@ -126,7 +119,6 @@ export const cs: typeof en = {
     blocked: "Blokováno",
     done: "Hotovo",
     triage: "triage",
-    floor: "Podlaží",
     empty: "Na tomto podlaží zatím nic není. Napište šéfovi do chatu a on z toho udělá úkoly.",
   },
   chat: {
@@ -148,7 +140,6 @@ export const cs: typeof en = {
     label: "Zpráva vybranému podlaží",
     placeholder: "Napište podlaží, co potřebujete… (Enter odešle, Shift+Enter nový řádek)",
     answerPlaceholder: "Vaše odpověď… (Enter odešle)",
-    floorSuffix: " · podlaží {{name}}",
     empty:
       "Napište šéfovi tohoto podlaží. Lola mu vaši zprávu donese; on ji naplánuje, rozdělí kolegům a sem napíše, jak to dopadlo.",
   },
@@ -169,8 +160,6 @@ export const cs: typeof en = {
   resources: {
     refresh: "Obnovit",
     pruned: "odebráno {{containers}} kontejnerů, {{volumes}} volumes, {{images}} images",
-    summary:
-      "kontejnerů {{containers}} · volumes {{volumes}} ({{volumeBytes}}) · images {{imageBytes}}",
     prune: "Uklidit",
     pruning: "Uklízím…",
     noInventory: "Zatím není co ukázat.",
@@ -240,8 +229,6 @@ export const cs: typeof en = {
   usage: {
     all: "vše",
     in: "in",
-    totals:
-      "sessions {{sessions}} · {{input}} in · {{output}} out · {{cache}} cache read · rate-limit incidentů {{limits}}",
     note: "Počty tokenů hlásí Claude Code. OpenCode, Gemini CLI a Codex mluví ACP, které místo rozpadu tokenů hlásí zaplnění kontextového okna a cenu session — ta přichází živě a je vidět u jednotlivých session v panelu Zaměstnanec.",
     window: "Okno",
     day: "24 h",
