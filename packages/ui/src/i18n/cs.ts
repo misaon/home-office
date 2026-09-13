@@ -158,6 +158,12 @@ export const cs: typeof en = {
     floor: "Podlaží",
   },
   chat: {
+    thinking: "přemýšlí…",
+    attach: "Přiložit soubor",
+    attachRejected: "kancelář nebere {{names}}",
+    imageOpen: "Otevřít {{name}}",
+    imageFit: "Na celou",
+    thinkingTool: "používá {{name}}",
     agent: "zaměstnanec",
     colleague: "kolega",
     theBoss: "šéf",

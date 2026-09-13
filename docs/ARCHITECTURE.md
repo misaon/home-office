@@ -85,6 +85,12 @@ states. The daemon serializes domain decision, event append and projection appli
 batches transactionally; sequence numbers prevent replay from double-applying events. UI clients replay
 the same events into their own pure read model and then follow live events.
 
+A chat message's files are not in the log: the bytes live under `<HO_HOME>/attachments/`, named by their
+own SHA-256, and the event carries the descriptor (id, name, type, size). The office uploads and reads
+them over the daemon's own HTTP routes with the same bearer token as the RPC, and a download always
+answers with opaque bytes. A session sees the task's files read-only at `/in/chat` and writes what it
+wants to send at `/out/chat`, both host directories bound into the sandbox for that session only.
+
 SQLite uses WAL, and the schema is versioned with `PRAGMA user_version`. The role skill packs the agent
 image carries live in `images/agent/plugins/{boss,reviewer,worker}`. A replay validation failure preserves the database
 and fails startup. It never silently starts a new database. Unsupported historic event schemas require

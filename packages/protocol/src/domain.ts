@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Attachments } from "./attachments.ts";
 import { AgentId, ChatMessageId, MailItemId, ProjectId, SessionId, TaskId } from "./ids.ts";
 import { IntakePolicy, PublishPolicy, ServicesPolicy } from "./policies.ts";
 
@@ -231,6 +232,8 @@ export const ChatMessage = z.object({
   projectId: ProjectId,
   author: Author,
   text: z.string().min(1).max(20000),
+  /** Files the office keeps beside the log; the message carries only their descriptors. */
+  attachments: Attachments,
   taskId: TaskId.optional(),
   at: IsoDateTime,
 });

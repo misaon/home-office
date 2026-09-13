@@ -229,10 +229,10 @@ export const router = base.router({
     send: base.chat.send.handler(({ input, context }) =>
       "taskId" in input
         ? context.office.execute(HUMAN_ACTOR, (m, ctx) =>
-            answerQuestion(m, input.taskId, input.text, ctx),
+            answerQuestion(m, input.taskId, input.text, input.attachments, ctx),
           )
         : context.office.execute(HUMAN_ACTOR, (m, ctx) =>
-            triageMessage(m, input.projectId, input.text, ctx),
+            triageMessage(m, input.projectId, input.text, input.attachments, ctx),
           ),
     ),
   },

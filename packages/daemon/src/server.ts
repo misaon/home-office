@@ -1,7 +1,8 @@
-import { errorMessage } from "@ho/protocol";
+import { describeDomainError, errorMessage } from "@ho/protocol";
 import { ORPCError, onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/bun-ws";
 import { timingSafeEqual } from "node:crypto";
+import type { AttachmentStore } from "./attachments.ts";
 import type { Logger } from "./logger.ts";
 import { McpGateway } from "./mcp.ts";
 import type { RpcContext } from "./rpc/context.ts";
@@ -50,6 +51,46 @@ const sameToken = (presented: string, expected: string): boolean => {
   const b = encoder.encode(expected);
   return a.length === b.length && timingSafeEqual(a, b);
 };
+
+const ATTACHMENTS_PATH = "/attachments";
+/** The name of an uploaded file, base64url so any name survives a header. */
+const FILENAME_HEADER = "x-ho-filename";
+
+/**
+ * The chat's files. An upload is the raw body with its name in a header; a download always answers with
+ * opaque bytes, never with a type, so nothing served from the office's own origin can be rendered as a
+ * document. The office knows each file's type from the message that names it and builds the blob there.
+ */
+async function serveAttachment(req: Request, url: URL, store: AttachmentStore): Promise<Response> {
+  if (req.method === "POST" && url.pathname === ATTACHMENTS_PATH) {
+    const encoded = req.headers.get(FILENAME_HEADER);
+    if (encoded === null) {
+      return new Response(`expected the file name in ${FILENAME_HEADER}`, { status: 400 });
+    }
+    const name = Buffer.from(encoded, "base64url").toString("utf8");
+    const stored = await store.put(name, new Uint8Array(await req.arrayBuffer()));
+    return stored.ok
+      ? Response.json(stored.value)
+      : new Response(describeDomainError(stored.error), { status: 400 });
+  }
+  if (req.method !== "GET") {
+    return new Response("method not allowed", { status: 405 });
+  }
+  const found = await store.get(url.pathname.slice(ATTACHMENTS_PATH.length + 1));
+  if (!found.ok) {
+    return new Response("not found", { status: 404 });
+  }
+  return new Response(found.value, {
+    headers: {
+      "content-type": "application/octet-stream",
+      "content-security-policy": "default-src 'none'",
+      "x-content-type-options": "nosniff",
+      "content-disposition": "attachment",
+      // The name is the content's own hash, so a stored file never changes under its id.
+      "cache-control": "private, max-age=31536000, immutable",
+    },
+  });
+}
 
 /** The office UI bundle at `/`: read-only and unauthenticated (it carries no data). */
 const serveUi = (uiDir: string | null, pathname: string): Promise<Response> | Response =>
@@ -102,6 +143,11 @@ export function startServer(options: ServerOptions): {
         return srv.upgrade(req, { data: { kind: "runner", token: runnerToken } })
           ? undefined
           : new Response("upgrade failed", { status: 500 });
+      }
+      if (url.pathname === ATTACHMENTS_PATH || url.pathname.startsWith(`${ATTACHMENTS_PATH}/`)) {
+        return sameToken(bearerToken(req) ?? "", token)
+          ? serveAttachment(req, url, options.context.attachments)
+          : new Response("unauthorized", { status: 401 });
       }
       if (url.pathname !== "/rpc") {
         return serveUi(options.uiDir, url.pathname);

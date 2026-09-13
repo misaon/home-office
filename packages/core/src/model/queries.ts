@@ -1,6 +1,7 @@
 import {
   type Agent,
   type AgentId,
+  type Attachment,
   type ChatMessage,
   isSessionActive,
   type MailConnector,
@@ -93,6 +94,20 @@ export const findMail = (
   const id = model.mailBySource.get(mailSourceKey(projectId, connector, externalId));
   return id === undefined ? undefined : model.mail.get(id);
 };
+
+/**
+ * Everything the human attached to a task: the message that started it and any answer since. Ordered as
+ * the chat is, so a session sees them in the order they were sent.
+ */
+export function attachmentsOfTask(
+  model: Pick<ReadModel, "chat">,
+  task: Task,
+): readonly Attachment[] {
+  const source = task.source.kind === "chat" ? task.source.messageId : undefined;
+  return chatOf(model, task.projectId)
+    .filter((m) => m.author.kind === "human" && (m.taskId === task.id || m.id === source))
+    .flatMap((m) => m.attachments);
+}
 
 /** The mail item behind a task: its own, or the one behind the triage task that delegated it. */
 export function mailForTask(

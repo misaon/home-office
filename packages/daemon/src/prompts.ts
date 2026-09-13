@@ -1,6 +1,9 @@
 import { membersOf, type ReadModel, sessionsOfAgent, tasksOf } from "@ho/core";
 import {
   type Agent,
+  type Attachment,
+  CHAT_INBOX_DIR,
+  CHAT_OUTBOX_DIR,
   isSessionActive,
   type Project,
   type Session,
@@ -28,6 +31,12 @@ const servicesGuide = (services: Services): string => {
   return `Services: this task has its own Docker engine — \`docker\`, \`docker compose\` and \`docker buildx\` reach only it, never the host. Run the repository's own compose file from ${REPO_IN_VOLUME} as written; published ports answer on 127.0.0.1 inside this sandbox. Per-service limits such as mem_limit are accepted but not enforced: the engine has one memory limit for the whole environment, and passing it kills every service at once. Images, build cache and service volumes survive for the next session of this task.`;
 };
 
+/** What the human attached to this task, as the session sees it. */
+const filesGuide = (files: readonly Attachment[]): string =>
+  files.length === 0
+    ? ""
+    : `Files from the human, read-only in ${CHAT_INBOX_DIR}: ${files.map((f) => f.name).join(", ")}.`;
+
 const common = (agent: Agent, project: Project): string[] => [
   `You are ${agent.name}, ${agent.role === "boss" ? "the boss of" : `a ${agent.role} on`} the floor "${project.name}" at Home Office (one floor per project; this floor's repository is "${project.name}").`,
   agent.basePrompt.trim(),
@@ -45,6 +54,8 @@ type SessionFacts = {
   agent: Agent;
   project: Project;
   task: Task;
+  /** What the human attached to this task's messages; the sandbox has them read-only. */
+  files: readonly Attachment[];
   mode: Session["mode"];
   branch: string;
   browser: boolean;
@@ -57,6 +68,7 @@ const workPrompt = (f: SessionFacts): string[] => [
   browserGuide(f.browser),
   servicesGuide(f.services),
   `Task: ${f.task.title}`,
+  filesGuide(f.files),
   ...WORK_PROTOCOL,
 ];
 
@@ -88,6 +100,8 @@ const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
     staff.length === 0
       ? "Protocol: for actionable requests call ho_delegate once per independent piece of work with a clear title and a brief (goal, acceptance criteria, constraints) and assignee set to your own name; you will get a separate work session in the repository for each. Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to do. Finish with ho_report (status done, one-line summary) and stop."
       : "Protocol: for actionable requests call ho_delegate once per independent piece of work (clear title, brief with goal, acceptance criteria and constraints, assignee = the colleague who fits best; use your own name only when nobody fits). Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to delegate. Use ho_list_agents when unsure. Finish with ho_report (status done, one-line summary) and stop.",
+    filesGuide(f.files),
+    `Files: to send the human an image or a document, write it into ${CHAT_OUTBOX_DIR} and name the file in ho_reply's \`files\`. Screenshots the browser tools take land in ${BROWSER_OUTPUT_DIR}; copy the one you mean across. Accepted: png, jpg, gif, webp, pdf, txt, md, json, csv, up to 10 MB each.`,
     "Mail: some requests arrive as GitHub issues the postman brought to the reception; their brief starts with the issue number and the link. Quote the issue link in the brief. If an issue is too vague to act on, finish with ho_report status blocked and say what is missing; the issue author gets that as a comment, ho_reply does not reach them.",
   ];
 };

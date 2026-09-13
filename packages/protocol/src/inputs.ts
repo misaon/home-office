@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Attachments } from "./attachments.ts";
 import {
   Agent,
   AuthKind,
@@ -150,8 +151,8 @@ const ChatText = z.string().trim().min(1).max(20000);
  * task (`taskId`), which resumes that task.
  */
 export const ChatSendInput = z.union([
-  z.object({ text: ChatText, projectId: ProjectId }),
-  z.object({ text: ChatText, taskId: TaskId }),
+  z.object({ text: ChatText, projectId: ProjectId, attachments: Attachments }),
+  z.object({ text: ChatText, taskId: TaskId, attachments: Attachments }),
 ]);
 export type ChatSendInput = z.infer<typeof ChatSendInput>;
 

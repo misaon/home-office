@@ -1,7 +1,9 @@
 // What a session needs before it can run: its volumes, its repository, its sandbox and its own engine.
-import { needsEngine, type SandboxHandle, type SandboxSpec } from "@ho/core";
+import { attachmentsOfTask, needsEngine, type SandboxHandle, type SandboxSpec } from "@ho/core";
 import {
   type Agent,
+  CHAT_INBOX_DIR,
+  CHAT_OUTBOX_DIR,
   errorMessage,
   imageRefFor,
   type Project,
@@ -61,6 +63,7 @@ const sandboxSpec = (
   gatewayUrl: string,
   token: string,
   engine: TaskEnginePlan | null,
+  chat: { outbox: string; inbox: string },
 ): SandboxSpec => ({
   name: `ho-session-${ctx.session.id.slice(-12)}`,
   image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
@@ -88,7 +91,11 @@ const sandboxSpec = (
     // The directory the task's engine puts its API socket in; `DOCKER_HOST` points inside it.
     ...(engine === null ? [] : [{ name: engine.socketVolume, target: engine.socketDir }]),
   ],
-  binds: [],
+  binds: [
+    // The two ways a file crosses the sandbox wall: what the human attached, and what a reply can carry.
+    { source: chat.inbox, target: CHAT_INBOX_DIR, readonly: true },
+    { source: chat.outbox, target: CHAT_OUTBOX_DIR, readonly: false },
+  ],
   tmpfs: {
     "/tmp": "rw,nosuid,size=256m",
     // Docker mounts tmpfs as root 0755; the sandbox user must own its scratch directories.
@@ -146,13 +153,24 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
       agentId: ctx.agent.id,
       projectId: ctx.project.id,
       mode: ctx.session.mode,
+      attachments: deps.attachments,
     });
     stack.defer(() => {
       mcp.unregister(mcpToken);
     });
     ctx.signal.throwIfAborted();
+    const outbox = await deps.attachments.openOutbox(ctx.session.id);
+    stack.defer(() => deps.attachments.closeOutbox(ctx.session.id));
+    const inbox = await deps.attachments.fillInbox(
+      ctx.session.id,
+      attachmentsOfTask(deps.office.model, ctx.task),
+    );
+    stack.defer(() => deps.attachments.closeInbox(ctx.session.id));
     const sandbox = await provider.start(
-      sandboxSpec(config, ctx, volume, stateVolume, deps.gatewayUrl(), issued.token, plan),
+      sandboxSpec(config, ctx, volume, stateVolume, deps.gatewayUrl(), issued.token, plan, {
+        outbox,
+        inbox,
+      }),
     );
     stack.defer(async () => {
       await provider.stop(sandbox, SANDBOX_STOP_GRACE_S).catch(() => null);

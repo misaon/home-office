@@ -1,4 +1,5 @@
 import type { SandboxProvider, SecretStore } from "@ho/core";
+import type { AttachmentStore } from "../attachments.ts";
 import type { DaemonConfig } from "../config.ts";
 import type { DirectoryPicker } from "../host-dialog.ts";
 import type { IntakeService } from "../intake.ts";
@@ -12,6 +13,7 @@ import type { SessionManager } from "../sessions.ts";
 export type RpcContext = {
   office: Office;
   sessions: SessionManager;
+  attachments: AttachmentStore;
   gate: OfficeGate;
   intake: IntakeService;
   provider: SandboxProvider;

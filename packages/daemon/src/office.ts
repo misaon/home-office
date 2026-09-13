@@ -13,6 +13,7 @@ import type { Actor, StoredEvent } from "@ho/protocol";
 import { openEventStore } from "@ho/store";
 import { join } from "node:path";
 import { DomainFailure } from "./domain-failure.ts";
+import { AttachmentStore } from "./attachments.ts";
 import type { Logger } from "./logger.ts";
 
 const DB_FILE = "ho.db";
@@ -68,7 +69,10 @@ export async function openOffice(
   home: string,
   clock: Clock,
   log: Logger,
-): Promise<{ office: Office; close: () => void }> {
+): Promise<{ office: Office; attachments: AttachmentStore; close: () => void }> {
+  // Both halves of the office's state live under the same directory: the log, and the files it names.
+  const attachments = new AttachmentStore(home);
+  await attachments.init();
   const ids = createIdFactory(clock, {
     randomize: (bytes) => {
       crypto.getRandomValues(bytes);
@@ -91,7 +95,7 @@ export async function openOffice(
       { cause: error },
     );
   }
-  return { office, close: store.close };
+  return { office, attachments, close: store.close };
 }
 
 /**

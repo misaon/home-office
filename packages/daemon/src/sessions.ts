@@ -27,6 +27,7 @@ import {
 } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
 import { LABELS } from "./labels.ts";
+import type { AttachmentStore } from "./attachments.ts";
 import type { Logger } from "./logger.ts";
 import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
@@ -47,6 +48,7 @@ export type SessionDeps = {
   runtimes: Readonly<Record<ProviderId, AgentRuntime>>;
   gateway: RunnerGateway;
   mcp: McpGateway;
+  attachments: AttachmentStore;
   secrets: SecretStore;
   config: DaemonConfig;
   home: string;

@@ -88,6 +88,16 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-13 — Owner task: attachments in the chat, and showing that the boss is thinking — A message
+  can carry files in both directions: the human drags them into the chat, the boss writes his into the
+  session's outbox and names them in `ho_reply`. Bytes live beside the log under the office's state
+  directory, named by their own SHA-256, so a replay stays cheap and a repeated upload costs nothing;
+  the event carries only the descriptor. Each session gets the task's files read-only at `/in/chat` and
+  a writable `/out/chat`, the two ways a file crosses the sandbox wall. An image in the chat opens in a
+  viewer that zooms around the pointer and pans, like the office map. While the boss works on the floor,
+  the chat shows it, with the tool he is using. Decisions and what was left out are in
+  [the plan](plans/2026-09-13-chat-attachments.md).
+
 - 2026-09-13 — Owner task: a full pass over the monorepo for architecture and complexity — Two
   independent audit waves over every file, then the repairs. The office's own read model, its envelope
   bookkeeping and the daemon's lifecycle were the load-bearing changes: a wall under a window stays

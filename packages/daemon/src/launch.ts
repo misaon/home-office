@@ -68,7 +68,7 @@ export async function launchDaemon(
   const { log, close: closeLog } = createLogger(config.logLevel, options.logFile);
   cleanup.defer(closeLog);
   const clock = { now: () => new Date() };
-  const { office, close: closeStore } = await openOffice(home, clock, log);
+  const { office, attachments, close: closeStore } = await openOffice(home, clock, log);
   cleanup.defer(closeStore);
   const secrets = createSecretStore(home, config.secrets.store, (reason) => {
     log.warn({ reason }, "no OS credential store; using the file secret store");
@@ -88,6 +88,7 @@ export async function launchDaemon(
     runtimes: createRuntimes(log, clock),
     gateway,
     mcp,
+    attachments,
     secrets,
     config,
     home,
@@ -110,6 +111,7 @@ export async function launchDaemon(
     context: {
       office,
       sessions,
+      attachments,
       gate,
       intake,
       provider,

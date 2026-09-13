@@ -1,4 +1,4 @@
-import type { RuntimeSession } from "@ho/core";
+import { attachmentsOfTask, type RuntimeSession } from "@ho/core";
 import type { RuntimeEvent } from "@ho/protocol";
 import { browserMcpServers } from "./browser.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
@@ -34,6 +34,7 @@ const openRuntime = (
           agent: ctx.agent,
           project: ctx.project,
           task: ctx.task,
+          files: attachmentsOfTask(deps.office.model, ctx.task),
           mode: ctx.session.mode,
           branch: provisioned.branch,
           browser: deps.config.browser.enabled,

@@ -3,7 +3,7 @@ import { TaskStatus } from "./domain.ts";
 
 /** Expected command failures, as values: the daemon maps them to RPC errors, the UI to messages. */
 const NotFound = z.object({
-  entity: z.enum(["project", "agent", "task", "session", "mail"]),
+  entity: z.enum(["project", "agent", "task", "session", "mail", "attachment"]),
   id: z.string(),
 });
 const Conflict = z.object({ reason: z.string() });

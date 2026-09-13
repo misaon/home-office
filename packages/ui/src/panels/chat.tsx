@@ -1,19 +1,25 @@
 import { chatOf } from "@ho/core";
 import {
   type Agent,
+  type Attachment,
   type ChatMessage,
   type ChatSendInput,
+  isSessionActive,
+  type LiveEvent,
   type ProjectId,
   PROVIDERS,
+  type SessionId,
   type TaskId,
 } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CONTROL, Failure } from "../kit/controls.tsx";
+
 import { requireClient } from "../rpc.ts";
 import { bossOnFloor, type Snapshot, useUi } from "../store.ts";
+import { Composer } from "./chat-composer.tsx";
+import { MessageFiles } from "./chat-files.tsx";
 
 const authorName = (
   agents: Snapshot["agents"],
@@ -46,6 +52,45 @@ function AgentChips({ agent }: { agent: Agent | undefined }): React.JSX.Element 
   );
 }
 
+const DOT = "h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400";
+
+/** What the colleague is doing right now, when the live stream says something worth a word. */
+const activityOf = (events: readonly LiveEvent[] | undefined, t: TFunction): string | null => {
+  const last = events?.findLast((l) => l.event.kind === "tool_call");
+  return last === undefined || last.event.kind !== "tool_call"
+    ? null
+    : t("chat.thinkingTool", { name: last.event.name });
+};
+
+/**
+ * The boss is working on this floor right now: a bubble with three dots where his answer will appear, so
+ * a wait of half a minute does not look like nothing happening.
+ */
+function Thinking({ name, sessionId }: { name: string; sessionId: SessionId }): React.JSX.Element {
+  const { t } = useTranslation();
+  const activity = activityOf(
+    useUi((s) => s.live.get(sessionId)),
+    t,
+  );
+  return (
+    <div className="max-w-[92%] rounded-lg bg-panel px-3 py-2 text-sm">
+      <div className="flex items-center gap-2 text-2xs text-gray-400">
+        <span>
+          {name} {t("chat.thinking")}
+        </span>
+        <span className="flex items-center gap-1">
+          <span className={DOT} />
+          <span className={`${DOT} [animation-delay:150ms]`} />
+          <span className={`${DOT} [animation-delay:300ms]`} />
+        </span>
+      </div>
+      {activity === null ? null : (
+        <div className="mt-1 truncate font-mono text-2xs text-gray-500">{activity}</div>
+      )}
+    </div>
+  );
+}
+
 type Question = { taskId: TaskId; title: string; text: string; asker: string };
 
 /** Open questions colleagues on this floor asked the human; answering resumes the task. */
@@ -73,15 +118,18 @@ const openQuestions = (
 function Messages({
   messages,
   agents,
+  thinking,
 }: {
   messages: readonly ChatMessage[];
   agents: Snapshot["agents"];
+  thinking: { name: string; sessionId: SessionId } | null;
 }): React.JSX.Element {
   const { t } = useTranslation();
   const bottom = useRef<HTMLDivElement>(null);
+  const waiting = thinking !== null;
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
-  }, [messages.length]);
+  }, [messages.length, waiting]);
   return (
     <div className="flex-1 space-y-3 overflow-y-auto p-4">
       {messages.length === 0 ? <p className="text-xs text-gray-500">{t("chat.empty")}</p> : null}
@@ -101,8 +149,10 @@ function Messages({
             />
           </div>
           <div className="whitespace-pre-wrap">{m.text}</div>
+          <MessageFiles attachments={m.attachments} />
         </div>
       ))}
+      {thinking === null ? null : <Thinking name={thinking.name} sessionId={thinking.sessionId} />}
       <div ref={bottom} />
     </div>
   );
@@ -151,21 +201,32 @@ export function ChatPanel(): React.JSX.Element {
   const agents = useUi((s) => s.snapshot.agents);
   const tasks = useUi((s) => s.snapshot.tasks);
   const chat = useUi((s) => s.snapshot.chat);
+  const sessions = useUi((s) => s.snapshot.sessions);
   const floorId = useUi((s) => s.floorId);
   const [text, setText] = useState("");
   const [answering, setAnswering] = useState<TaskId | null>(null);
+  const [files, setFiles] = useState<Attachment[]>([]);
   const send = useMutation({
     mutationFn: (input: ChatSendInput) => requireClient().chat.send(input),
     onSuccess: (_message, input) => {
       setText((current) => (current === input.text ? "" : current));
+      setFiles([]);
       setAnswering(null);
     },
   });
+
   if (floorId === null) {
     return <p className="p-4 text-xs text-gray-400">{t("project.needFirst")}</p>;
   }
   const floor = projects.get(floorId);
-  const bossName = bossOnFloor(agents, floorId)?.name ?? t("chat.theBoss");
+  const boss = bossOnFloor(agents, floorId);
+  const bossName = boss?.name ?? t("chat.theBoss");
+  // The boss reads the floor's chat in a session of his own; while it runs, his answer is on its way.
+  const working = [...sessions.values()].find(
+    (s) => s.agentId === boss?.id && isSessionActive(s.state),
+  );
+  const thinking =
+    boss === undefined || working === undefined ? null : { name: boss.name, sessionId: working.id };
   const questions = openQuestions(tasks, agents, floorId, t);
   const question = questions.find((q) => q.taskId === answering);
 
@@ -176,8 +237,8 @@ export function ChatPanel(): React.JSX.Element {
     }
     send.mutate(
       question === undefined
-        ? { text: body, projectId: floorId }
-        : { text: body, taskId: question.taskId },
+        ? { text: body, projectId: floorId, attachments: files }
+        : { text: body, taskId: question.taskId, attachments: files },
     );
   };
 
@@ -187,12 +248,11 @@ export function ChatPanel(): React.JSX.Element {
         {t("chat.with")} <span className="text-gray-200">{bossName}</span>
         {floor === undefined ? "" : t("chat.floorSuffix", { name: floor.name })}
       </div>
-      <Messages messages={chatOf({ chat }, floorId)} agents={agents} />
+      <Messages messages={chatOf({ chat }, floorId)} agents={agents} thinking={thinking} />
       <Questions questions={questions} answering={answering} setAnswering={setAnswering} />
-      <div className="space-y-2 border-t border-line p-4">
-        <Failure error={send.error} />
-        <div className="flex items-center gap-3 text-xs text-gray-400">
-          {question === undefined ? (
+      <Composer
+        to={
+          question === undefined ? (
             <span>{t("chat.to", { name: bossName })}</span>
           ) : (
             <>
@@ -207,26 +267,17 @@ export function ChatPanel(): React.JSX.Element {
                 {t("chat.cancelAnswer")}
               </button>
             </>
-          )}
-        </div>
-        <textarea
-          aria-label={t("chat.label")}
-          maxLength={20_000}
-          disabled={send.isPending}
-          className={`${CONTROL} h-20 resize-none`}
-          placeholder={question === undefined ? t("chat.placeholder") : t("chat.answerPlaceholder")}
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              submit();
-            }
-          }}
-        />
-      </div>
+          )
+        }
+        placeholder={question === undefined ? t("chat.placeholder") : t("chat.answerPlaceholder")}
+        text={text}
+        setText={setText}
+        files={files}
+        setFiles={setFiles}
+        disabled={send.isPending}
+        failure={send.error}
+        submit={submit}
+      />
     </div>
   );
 }

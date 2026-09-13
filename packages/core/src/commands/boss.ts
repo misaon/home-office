@@ -1,5 +1,6 @@
 import {
   type AgentId,
+  type Attachment,
   type ChatMessage,
   conflict,
   type HoDelegateInput,
@@ -68,6 +69,7 @@ export function triageMessage(
   model: ReadModel,
   projectId: ProjectId,
   text: string,
+  attachments: readonly Attachment[],
   ctx: CommandContext,
 ): CommandResult<{ message: ChatMessage; task: Task | null }> {
   const project = model.projects.get(projectId);
@@ -92,6 +94,7 @@ export function triageMessage(
     projectId,
     author: { kind: "human" },
     text,
+    attachments: [...attachments],
     ...(task === null ? {} : { taskId: task.id }),
     at: ctx.now,
   };
@@ -112,6 +115,7 @@ export function postAgentMessage(
   text: string,
   taskId: TaskId | undefined,
   ctx: CommandContext,
+  attachments: readonly Attachment[] = [],
 ): CommandResult<ChatMessage> {
   const agent = model.agents.get(agentId);
   if (agent === undefined) {
@@ -122,6 +126,7 @@ export function postAgentMessage(
     projectId: agent.projectId,
     author: { kind: "agent", agentId },
     text,
+    attachments: [...attachments],
     ...(taskId === undefined ? {} : { taskId }),
     at: ctx.now,
   };

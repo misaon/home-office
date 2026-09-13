@@ -25,6 +25,15 @@ export function resolveToken(): string | null {
 }
 
 let current: Client | null = null;
+let bearer: string | null = null;
+
+/** The token of the live connection, for the HTTP routes that carry files rather than RPC calls. */
+export function requireToken(): string {
+  if (bearer === null) {
+    throw new Error("daemon is offline");
+  }
+  return bearer;
+}
 
 /** The client of the live connection; panels call RPCs through this and fail fast while offline. */
 export function requireClient(): Client {
@@ -46,11 +55,13 @@ export async function connect(token: string): Promise<{ client: Client; socket: 
   );
   const client: Client = createORPCClient(new RPCLink({ websocket: socket }));
   current = client;
+  bearer = token;
   socket.addEventListener(
     "close",
     () => {
       if (current === client) {
         current = null;
+        bearer = null;
       }
     },
     { once: true },

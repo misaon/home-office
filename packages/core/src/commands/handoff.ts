@@ -1,5 +1,6 @@
 import {
   type AgentId,
+  type Attachment,
   type ChatMessage,
   conflict,
   type HoHandoffInput,
@@ -84,6 +85,7 @@ export function askHuman(
     projectId: task.projectId,
     author: { kind: "agent", agentId: ctx.actor.agentId },
     text: question,
+    attachments: [],
     taskId: task.id,
     at: ctx.now,
   };
@@ -102,6 +104,7 @@ export function answerQuestion(
   model: ReadModel,
   taskId: TaskId,
   text: string,
+  attachments: readonly Attachment[],
   ctx: CommandContext,
 ): CommandResult<{ task: Task; message: ChatMessage }> {
   const found = requireTask(model, taskId);
@@ -114,6 +117,7 @@ export function answerQuestion(
     projectId: task.projectId,
     author: { kind: "human" },
     text,
+    attachments: [...attachments],
     taskId: task.id,
     at: ctx.now,
   };

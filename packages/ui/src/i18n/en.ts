@@ -157,6 +157,12 @@ export const en = {
     floor: "Floor",
   },
   chat: {
+    thinking: "is thinking…",
+    attach: "Attach a file",
+    attachRejected: "the office does not take {{names}}",
+    imageOpen: "Open {{name}}",
+    imageFit: "Fit",
+    thinkingTool: "using {{name}}",
     agent: "agent",
     colleague: "a colleague",
     theBoss: "the boss",
