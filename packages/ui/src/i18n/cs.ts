@@ -127,6 +127,8 @@ export const cs: typeof en = {
     attachRejected: "kancelář nebere {{names}}",
     imageOpen: "Otevřít {{name}}",
     imageFit: "Na celou",
+    imageZoomIn: "Přiblížit",
+    imageZoomOut: "Oddálit",
     thinkingTool: "používá {{name}}",
     agent: "zaměstnanec",
     colleague: "kolega",

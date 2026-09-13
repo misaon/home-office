@@ -82,7 +82,7 @@ function ImportPicker({
  * (git, name, branches), optional characters imported from other floors, and Create. The new floor
  * gets its own Andrew and Lola.
  */
-export function AddProjectModal(): React.JSX.Element | null {
+export function AddProjectModal(): React.JSX.Element {
   const { t } = useTranslation();
   const open = useUi((s) => s.addProjectOpen);
   const setOpen = useUi((s) => s.setAddProjectOpen);
@@ -100,9 +100,6 @@ export function AddProjectModal(): React.JSX.Element | null {
     },
   });
   const inspecting = useRepoInspection(draft.kind, open ? typedIn(draft) : "");
-  if (!open) {
-    return null;
-  }
   const inspection = inspecting.result?.ok === true ? inspecting.result : null;
   const typedName = draft.name.trim();
   const name = typedName === "" ? (inspection?.name ?? "") : typedName;
@@ -130,6 +127,7 @@ export function AddProjectModal(): React.JSX.Element | null {
   };
   return (
     <Modal
+      open={open}
       title={t("project.add")}
       description={t("project.addDescription")}
       onClose={close}

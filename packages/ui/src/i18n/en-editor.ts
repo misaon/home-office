@@ -33,6 +33,8 @@ export const enEditor = {
     newOffice: "New office",
     saved: "Saved offices",
     load: "Load an office from a JSON file",
+    chooseFile: "Choose a file",
+    noFile: "no file chosen",
     notALayout: "not an office layout",
     rotate: "Rotate",
     onWall: " · on a wall",

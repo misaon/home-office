@@ -126,6 +126,8 @@ export const en = {
     attachRejected: "the office does not take {{names}}",
     imageOpen: "Open {{name}}",
     imageFit: "Fit",
+    imageZoomIn: "Zoom in",
+    imageZoomOut: "Zoom out",
     thinkingTool: "using {{name}}",
     agent: "agent",
     colleague: "a colleague",

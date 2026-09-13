@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GENDER_KEY, ROLE_KEY } from "../i18n/labels.ts";
 import { Button, CARD, CONTROL, Failure, Field } from "../kit/controls.tsx";
+import { Select } from "../kit/select.tsx";
 import { requireClient } from "../rpc.ts";
 import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
 
@@ -71,37 +72,27 @@ export function NewAgent({
         </Field>
       </div>
       <Field id="ho-new-agent-role" label={t("agent.role")}>
-        <select
+        <Select
           id="ho-new-agent-role"
-          className={CONTROL}
           value={draft.role}
-          onChange={(e) => {
-            const role = AgentRole.parse(e.target.value);
+          options={ROLES.map((role) => ({ value: role, label: t(ROLE_KEY[role]) }))}
+          onChange={(role) => {
             setDraft({ ...draft, role, ...defaultChoice(draft.provider, role) });
           }}
-        >
-          {ROLES.map((role) => (
-            <option key={role} value={role}>
-              {t(ROLE_KEY[role])}
-            </option>
-          ))}
-        </select>
+        />
       </Field>
       <Field id="ho-new-agent-gender" label={t("agent.gender")}>
-        <select
+        <Select
           id="ho-new-agent-gender"
-          className={CONTROL}
           value={draft.gender}
-          onChange={(e) => {
-            setDraft({ ...draft, gender: Gender.parse(e.target.value) });
+          options={Gender.options.map((gender) => ({
+            value: gender,
+            label: t(GENDER_KEY[gender]),
+          }))}
+          onChange={(gender) => {
+            setDraft({ ...draft, gender });
           }}
-        >
-          {Gender.options.map((gender) => (
-            <option key={gender} value={gender}>
-              {t(GENDER_KEY[gender])}
-            </option>
-          ))}
-        </select>
+        />
       </Field>
       <ProviderModelFields
         value={draft}

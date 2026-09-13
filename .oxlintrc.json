@@ -121,6 +121,12 @@
       "rules": {
         "unicorn/no-array-fill-with-reference-type": "off"
       }
+    },
+    {
+      "files": ["packages/ui/src/kit/select.tsx"],
+      "rules": {
+        "jsx-a11y/prefer-tag-over-role": "off"
+      }
     }
   ]
 }

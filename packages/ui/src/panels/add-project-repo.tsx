@@ -13,6 +13,7 @@ import type { TFunction } from "i18next";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CONTROL, Field, FolderIcon, Segmented } from "../kit/controls.tsx";
+import { Select } from "../kit/select.tsx";
 import { requireClient } from "../rpc.ts";
 import { useOnline } from "../store.ts";
 
@@ -176,7 +177,7 @@ function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
         />
         <button
           type="button"
-          className="shrink-0 rounded-md border border-line bg-ink px-3 text-muted transition hover:border-accent/60 hover:text-text disabled:opacity-40"
+          className="flex shrink-0 items-center rounded-lg border border-line bg-ink/60 px-3 text-muted hover:border-line-strong hover:text-text disabled:pointer-events-none disabled:opacity-40"
           title={t("project.chooseFolder")}
           disabled={pick.isPending}
           onClick={() => {
@@ -269,22 +270,16 @@ export function Details({
         label={t("project.branch")}
         hint={options.length === 0 ? t("project.branchHint") : undefined}
       >
-        <select
+        <Select
           id="ho-default-branch"
-          className={`${CONTROL} font-mono`}
-          disabled={options.length === 0}
+          mono
+          placeholder="—"
           value={branch}
-          onChange={(e) => {
-            setDraft({ ...draft, branch: e.target.value });
+          options={options.map((candidate) => ({ value: candidate, label: candidate }))}
+          onChange={(next) => {
+            setDraft({ ...draft, branch: next });
           }}
-        >
-          {options.length === 0 ? <option value="">—</option> : null}
-          {options.map((candidate) => (
-            <option key={candidate} value={candidate}>
-              {candidate}
-            </option>
-          ))}
-        </select>
+        />
       </Field>
     </div>
   );

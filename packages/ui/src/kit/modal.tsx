@@ -4,14 +4,19 @@ import { useEffect, useRef } from "react";
  * A real modal dialog: the browser puts it in the top layer, makes the page behind it inert, moves focus
  * into it and restores focus on close, and closes it on Escape. A header, a body on its own rhythm and a
  * footer for its actions.
+ *
+ * It stays in the document while it is closed, because an element removed the moment it is dismissed has
+ * nothing left to animate; `styles.css` transitions every dialog in and out from there.
  */
 export function Modal({
+  open,
   title,
   description,
   footer,
   onClose,
   children,
 }: {
+  open: boolean;
   title: string;
   description: React.ReactNode;
   footer: React.ReactNode;
@@ -21,16 +26,17 @@ export function Modal({
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const element = dialog.current;
-    element?.showModal();
-    return () => {
+    if (open) {
+      element?.showModal();
+    } else {
       element?.close();
-    };
-  }, []);
+    }
+  }, [open]);
   return (
     <dialog
       ref={dialog}
       aria-label={title}
-      className="animate-pop m-auto w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-panel p-0 text-text shadow-lift backdrop:bg-black/70 backdrop:backdrop-blur-sm"
+      className="m-auto w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-panel p-0 text-text shadow-lift backdrop:bg-black/70 backdrop:backdrop-blur-sm"
       // Escape closes a modal dialog itself; this is how the office hears about it.
       onClose={onClose}
     >

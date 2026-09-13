@@ -12,7 +12,6 @@
   --color-line: #232833;
   --color-line-strong: #333a49;
   --color-accent: #ffd166;
-  --color-accent-dim: #b8944a;
   --color-text: #e8eaf0;
   --color-muted: #99a2b2;
   --color-faint: #6b7483;
@@ -119,14 +118,71 @@ canvas {
   display: block;
 }
 
-@layer base {
-  /* A dropdown's own list is drawn by the platform, so it needs the office's ground stated explicitly.
-     This belongs in `base` for the same reason the rule below does: unlayered rules outrank every
-     utility, which is how `text-black` on the accent buttons lost to a stray `color: inherit`. */
-  select option {
-    background: var(--color-ink);
-  }
+/* Something that opens and closes. A height cannot be transitioned to a value the browser only learns
+   at layout time, but a grid row can: the row goes from nothing to the content's own height and back.
+   It lives here rather than in utilities because an entrance needs a style to start from, and only
+   `@starting-style` can give an element one for the frame it is inserted in. */
+.reveal {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--duration-base) var(--ease-soft);
+}
 
+.reveal[data-open="false"] {
+  grid-template-rows: 0fr;
+}
+
+@starting-style {
+  .reveal {
+    grid-template-rows: 0fr;
+  }
+}
+
+/* A dialog is shown by the platform, not by a class: it enters the top layer when `showModal` runs and
+   leaves it when `close` does. A keyframe on the element would therefore play while it is still hidden,
+   which is why opening used to be a jump. Transitioning `display` and `overlay` discretely, from the
+   style the element starts in, animates both directions with no timer to keep. */
+dialog {
+  opacity: 0;
+  transform: scale(0.96) translateY(8px);
+  transition:
+    opacity var(--duration-base) var(--ease-soft),
+    transform var(--duration-base) var(--ease-overshoot),
+    display var(--duration-base) allow-discrete,
+    overlay var(--duration-base) allow-discrete;
+}
+
+dialog[open] {
+  opacity: 1;
+  transform: none;
+}
+
+@starting-style {
+  dialog[open] {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+}
+
+dialog::backdrop {
+  opacity: 0;
+  transition:
+    opacity var(--duration-base) var(--ease-soft),
+    display var(--duration-base) allow-discrete,
+    overlay var(--duration-base) allow-discrete;
+}
+
+dialog[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+@layer base {
   /* Nothing in the office changes colour, size or position in a single frame. Anything that needs more
      than this says so itself; anything that needs less is not interactive. */
   button,

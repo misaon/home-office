@@ -175,14 +175,16 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
             save.mutate({ enabled });
           }}
         />
-        <Button
-          disabled={poll.isPending}
-          onClick={() => {
-            poll.mutate();
-          }}
-        >
-          {poll.isPending ? t("settings.intakePolling") : t("settings.intakePoll")}
-        </Button>
+        <span className="shrink-0">
+          <Button
+            disabled={poll.isPending}
+            onClick={() => {
+              poll.mutate();
+            }}
+          >
+            {poll.isPending ? t("settings.intakePolling") : t("settings.intakePoll")}
+          </Button>
+        </span>
       </div>
       <IntakeFields
         intake={intake}

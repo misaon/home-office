@@ -1,10 +1,11 @@
 import { errorMessage, type OfficeLayout } from "@ho/protocol";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OFFICE_SIZE } from "@ho/sim";
 import { useKindName } from "../i18n/kinds.ts";
 import { Button, CONTROL, Field, Section, Segmented } from "../kit/controls.tsx";
+import { EXIT_MS } from "../kit/motion.ts";
 import { layoutsQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { EditorCanvas } from "./canvas.tsx";
@@ -95,6 +96,20 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
     facing: "s",
   });
   const [note, setNote] = useState<Note | null>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => {
+    dialog.current?.showModal();
+  }, []);
+  /** The dialog closes first and leaves the document after, so its transition has something to play on. */
+  useEffect(() => {
+    const timer = leaving ? setTimeout(onClose, EXIT_MS) : null;
+    return () => {
+      if (timer !== null) {
+        clearTimeout(timer);
+      }
+    };
+  }, [leaving, onClose]);
   // R rotates the piece being held, the way Prison Architect does, unless a field has the keyboard.
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -112,11 +127,24 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
     onSuccess: () => queries.invalidateQueries({ queryKey: layoutsQuery.queryKey }),
   });
   return (
-    <div className="animate-fade absolute inset-0 z-40 flex bg-ink">
+    <dialog
+      ref={dialog}
+      aria-label={t("editor.title")}
+      className="flex h-full max-h-none w-full max-w-none bg-ink p-0 text-text"
+      onClose={() => {
+        setLeaving(true);
+      }}
+    >
       <aside className="flex w-[360px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-line bg-panel p-5 text-xs">
         <header className="flex items-center justify-between">
           <h2 className="text-base font-semibold">{t("editor.title")}</h2>
-          <Button onClick={onClose}>{t("common.close")}</Button>
+          <Button
+            onClick={() => {
+              dialog.current?.close();
+            }}
+          >
+            {t("common.close")}
+          </Button>
         </header>
         <OfficeFields draft={draft} setDraft={setDraft} />
         <Section title={t("editor.tool")}>
@@ -169,6 +197,6 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
           }}
         />
       </div>
-    </div>
+    </dialog>
   );
 }

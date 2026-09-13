@@ -5,24 +5,16 @@ import {
   Gender,
   isSessionActive,
   type Project,
-  ProjectId,
+  type ProjectId,
   type Session,
 } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GENDER_KEY, ROLE_KEY } from "../i18n/labels.ts";
-import {
-  Badge,
-  Button,
-  CARD_LIFT,
-  CONTROL,
-  Empty,
-  Failure,
-  Field,
-  Reveal,
-  Section,
-} from "../kit/controls.tsx";
+import { Badge, Button, CARD_LIFT, Empty, Failure, Field, Section } from "../kit/controls.tsx";
+import { Select } from "../kit/select.tsx";
+import { Reveal } from "../kit/reveal.tsx";
 import { requireClient } from "../rpc.ts";
 import { type Snapshot, sortedFloors, useUi } from "../store.ts";
 import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
@@ -68,40 +60,29 @@ function AgentSettings({
           }}
         />
         <Field id={`${id}-gender`} label={t("agent.gender")}>
-          <select
+          <Select
             id={`${id}-gender`}
-            className={CONTROL}
             value={agent.appearance.gender}
-            onChange={(e) => {
-              save.mutate({ appearance: { gender: Gender.parse(e.target.value) } });
+            options={Gender.options.map((gender) => ({
+              value: gender,
+              label: t(GENDER_KEY[gender]),
+            }))}
+            onChange={(gender) => {
+              save.mutate({ appearance: { gender } });
             }}
-          >
-            {Gender.options.map((gender) => (
-              <option key={gender} value={gender}>
-                {t(GENDER_KEY[gender])}
-              </option>
-            ))}
-          </select>
+          />
         </Field>
         {otherFloors.length === 0 || agent.role === "boss" ? null : (
           <Field id={`${id}-copy`} label={t("agent.copyToFloor")} hint={t("agent.copyHint")}>
-            <select
+            <Select
               id={`${id}-copy`}
-              className={CONTROL}
               value=""
-              onChange={(e) => {
-                if (e.target.value !== "") {
-                  copy.mutate(ProjectId.parse(e.target.value));
-                }
+              placeholder={t("agent.pickFloor")}
+              options={otherFloors.map((p) => ({ value: p.id, label: p.name }))}
+              onChange={(projectId) => {
+                copy.mutate(projectId);
               }}
-            >
-              <option value="">{t("agent.pickFloor")}</option>
-              {otherFloors.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            />
           </Field>
         )}
       </div>
@@ -173,16 +154,16 @@ function AgentCard({
             {agent.provider} · {agent.model} / {agent.effort}
           </span>
         </button>
-        <button
-          type="button"
-          className="shrink-0 rounded-lg px-2 py-1 text-2xs text-muted hover:bg-line/40 hover:text-text"
-          aria-pressed={editing}
-          onClick={() => {
-            setEditing((current) => !current);
-          }}
-        >
-          {editing ? t("common.close") : t("team.configure")}
-        </button>
+        <span className="shrink-0">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setEditing((current) => !current);
+            }}
+          >
+            {editing ? t("common.close") : t("team.configure")}
+          </Button>
+        </span>
       </div>
       <Reveal open={editing}>
         <AgentSettings agent={agent} projects={projects} />

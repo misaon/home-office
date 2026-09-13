@@ -72,12 +72,17 @@ while it is hidden, measured at 960 ms and then 1009 ms between two `requestAnim
 a visible, focused document. So a transition was verified by what it declares — property, duration and
 easing on the element, and the start and end states it moves between — not by watching it move.
 
-Two states were not exercised in a browser. **Reduced motion** was confirmed in the built stylesheet
-rather than under a browser reporting the preference: the production CSS carries one
-`@media (prefers-reduced-motion: reduce)` block that caps every animation and transition at 1 ms and
-sets `scroll-behavior: auto`, and no tool available here can turn the preference on. **Offline** was
-read from the code — the connection dot changes colour rather than appearing, and the panels fall back
-to the connection line — not watched with the daemon stopped.
+**Reduced motion** was confirmed in the built stylesheet rather than under a browser reporting the
+preference: the production CSS carries one `@media (prefers-reduced-motion: reduce)` block that caps
+every animation and transition at 1 ms and sets `scroll-behavior: auto`, and no tool available here can
+turn the preference on.
+
+The second round replaced the frame counting with a measurement that survives a slow pane: when a
+transition starts, `getAnimations()` lists it. Opening the add-project dialog reports three running
+transitions — the dialog's own opacity and transform, and the backdrop's opacity, each 200 ms — and
+closing it reports five, the two discrete ones for `display` and `overlay` among them. A settings drawer
+reports one `grid-template-rows` transition of 200 ms. That is the difference between a transition that
+is declared and one that actually runs, which is what the first round could not tell apart.
 
 ## What looking at it changed
 
@@ -98,3 +103,37 @@ it:
   consequence lived in a tooltip. It is now an ordinary button with that sentence written under it.
 - **The intake form was a cramped two-column grid.** One column, with the interval and the
   acknowledgement label on one line, reads as a sentence instead of a table.
+
+## What the owner's review changed
+
+The first round left three things that only someone using the office would notice, and each turned out
+to have a cause worth stating.
+
+**A dropdown could not be styled, because it is not an element.** The list a `<select>` opens is a
+window the operating system paints: no colour, radius or shadow from this stylesheet reaches it, and the
+arrow is whatever the platform has. `kit/select.tsx` replaces it with a button and a list the office
+draws — the list goes in a portal at the document's own corner, positioned in fixed coordinates, so no
+panel's overflow can clip it and nothing has to fight z-index. It keeps what a select is for: the
+keyboard opens it, arrows walk it, Enter commits, Escape and Tab close it, the current option is marked,
+and anything that moves the field closes the list rather than letting it drift. Nine native selects went.
+`jsx-a11y/prefer-tag-over-role` is off for that one file, because the rule's advice is to use the element
+being replaced.
+
+**A dialog opened in one frame because a keyframe cannot wait for it.** `animate-pop` started when React
+mounted the element, which is before `showModal` puts it in the top layer, so the animation was over
+before anything was visible. Dialogs now transition instead, from the style `@starting-style` gives them
+for the frame they appear in, with `display` and `overlay` transitioned discretely so the same rule plays
+backwards on close. That needs the element to stay in the document while it leaves: `Modal` takes an
+`open` prop rather than being unmounted, and where a component must be unmounted it is held for one
+`EXIT_MS` first. The setup checklist and the office editor became real dialogs at the same time, which
+also got them Escape and an inert background for free.
+
+**The image viewer had been left as it was.** It now has the office's toolbar — the file name, the zoom
+as a badge, two zoom steps, fit and close as the same buttons used everywhere — the image sits at its
+natural size instead of being blown up to fill the pane, a drag shows a grabbing cursor, a double click
+fits, and the zoom itself eases rather than stepping.
+
+Three more came out of the sweep that followed: a `Reveal` that leaves the document after it closes, so
+it cannot leave a gap behind in a parent that spaces its children; the same `Reveal` around the office's
+connection and error strips, which used to vanish in one frame; and the editor's file picker, which drew
+a native button and a "no file chosen" in the system's language.

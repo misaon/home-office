@@ -33,6 +33,8 @@ export const csEditor: typeof enEditor = {
     newOffice: "Nová kancelář",
     saved: "Uložené kanceláře",
     load: "Načíst kancelář z JSON souboru",
+    chooseFile: "Vybrat soubor",
+    noFile: "nic nevybráno",
     notALayout: "tohle není layout kanceláře",
     rotate: "Otočit",
     onWall: " · na zdi",

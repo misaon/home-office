@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { rejects, upload } from "../attachments.ts";
 import { CONTROL, Failure } from "../kit/controls.tsx";
+import { Reveal } from "../kit/reveal.tsx";
 import { PendingFiles } from "./chat-files.tsx";
 
 /** What the file picker offers; the office takes the same list however a file arrives. */
@@ -88,12 +89,16 @@ export function Composer({
       }}
     >
       <Failure error={failure ?? uploadError} />
-      <PendingFiles
-        files={files}
-        remove={(id) => {
-          setFiles((current) => current.filter((f) => f.id !== id));
-        }}
-      />
+      <Reveal open={files.length > 0}>
+        <div className="pb-2">
+          <PendingFiles
+            files={files}
+            remove={(id) => {
+              setFiles((current) => current.filter((f) => f.id !== id));
+            }}
+          />
+        </div>
+      </Reveal>
       <div className="flex items-center gap-3 text-xs text-muted">
         {to}
         <label className="ml-auto cursor-pointer rounded-lg px-2 py-1 text-2xs text-muted hover:bg-line/40 hover:text-text">

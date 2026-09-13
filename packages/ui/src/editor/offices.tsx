@@ -2,7 +2,7 @@ import { OfficeLayout } from "@ho/protocol";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, CONTROL, Field, Section } from "../kit/controls.tsx";
+import { Button, Field, Section } from "../kit/controls.tsx";
 import { layoutsQuery } from "../queries.ts";
 import { useOnline } from "../store.ts";
 
@@ -10,29 +10,41 @@ import { useOnline } from "../store.ts";
 function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX.Element {
   const { t } = useTranslation();
   const [problem, setProblem] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
   return (
     <Field id="ho-editor-file" label={t("editor.load")}>
-      <input
-        id="ho-editor-file"
-        type="file"
-        accept="application/json,.json"
-        className={`${CONTROL} file:mr-3 file:rounded file:border-0 file:bg-line file:px-2 file:py-1 file:text-text`}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file === undefined) {
-            return;
-          }
-          void file.text().then((text) => {
-            const parsed = OfficeLayout.safeParse(parseJson(text));
-            if (parsed.success) {
-              setProblem(null);
-              load(parsed.data);
-            } else {
-              setProblem(parsed.error.issues[0]?.message ?? t("editor.notALayout"));
+      {/* A file input draws its own button and its own "no file chosen" in the system's language,
+          neither of which the office can restyle, so the label is the button and the input is hidden. */}
+      <label className="flex items-center gap-3 text-2xs text-faint">
+        <span
+          id="ho-editor-file"
+          className="shrink-0 cursor-pointer rounded-lg border border-line bg-raised px-3 py-1.5 text-xs text-text hover:border-line-strong hover:bg-line/60"
+        >
+          {t("editor.chooseFile")}
+        </span>
+        <span className="min-w-0 truncate font-mono">{picked ?? t("editor.noFile")}</span>
+        <input
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file === undefined) {
+              return;
             }
-          });
-        }}
-      />
+            setPicked(file.name);
+            void file.text().then((text) => {
+              const parsed = OfficeLayout.safeParse(parseJson(text));
+              if (parsed.success) {
+                setProblem(null);
+                load(parsed.data);
+              } else {
+                setProblem(parsed.error.issues[0]?.message ?? t("editor.notALayout"));
+              }
+            });
+          }}
+        />
+      </label>
       {problem === null ? null : <span className="text-2xs text-bad">{problem}</span>}
     </Field>
   );
