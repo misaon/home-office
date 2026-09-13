@@ -49,15 +49,24 @@ surface, not of behaviour, and the office's own protocol is untouched.
 
 ## Verification
 
-Every panel is looked at in the browser at the size the app really runs at, in both languages, with the
-office online and offline, and with motion reduced. The check is that nothing moves without being asked
-to, and that a first-time reader can name what each panel is for.
+Every panel is looked at in the browser at the size the app really runs at, in both languages. The check
+is that nothing moves without being asked to, and that a first-time reader can name what each panel is
+for.
 
 The pass ran against a scratch daemon on port 47810 with its own state directory, never the owner's:
 Chat (with a real session's text, an uploaded image and a generated one), Board, Team, Usage in both
 views, Settings with its drawers open, the setup overlay, the add-project dialog and the image viewer,
-in Czech and in English. `bun run check` — six typecheck programs, `oxlint --deny-warnings`, `oxfmt
---check` over 309 files, `knip`, and the production UI build — passes.
+in Czech and in English. A message sent during the pass confirmed the arrival animation from the page
+itself — `rise`, 0.32 s, on the overshoot easing — while the messages already on screen carried none.
+`bun run check` — six typecheck programs, `oxlint --deny-warnings`, `oxfmt --check` over 309 files,
+`knip`, and the production UI build — passes.
+
+Two states were not exercised in a browser. **Reduced motion** was confirmed in the built stylesheet
+rather than under a browser reporting the preference: the production CSS carries one
+`@media (prefers-reduced-motion: reduce)` block that caps every animation and transition at 1 ms and
+sets `scroll-behavior: auto`, and no tool available here can turn the preference on. **Offline** was
+read from the code — the connection dot changes colour rather than appearing, and the panels fall back
+to the connection line — not watched with the daemon stopped.
 
 ## What looking at it changed
 
