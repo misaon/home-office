@@ -73,8 +73,13 @@ export function Composer({
         e.preventDefault();
         setDropping(true);
       }}
-      onDragLeave={() => {
-        setDropping(false);
+      // `dragleave` fires for the composer when the pointer crosses onto one of its own children, so a
+      // drag over the textarea would blink the drop highlight off and on the whole way in.
+      onDragLeave={(e) => {
+        const left = e.relatedTarget;
+        if (!(left instanceof Node) || !e.currentTarget.contains(left)) {
+          setDropping(false);
+        }
       }}
       onDrop={(e) => {
         e.preventDefault();
