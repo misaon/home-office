@@ -15,7 +15,7 @@ import type {
 } from "@ho/protocol";
 import { create } from "zustand";
 
-export type Panel = "chat" | "board" | "inspector" | "usage" | "resources" | "settings";
+export type Panel = "chat" | "board" | "team" | "usage" | "settings";
 export type Connection = "connecting" | "online" | "offline" | "unauthorized" | "rejected";
 
 /** What each connection state says to the viewer, as a dictionary key. */
@@ -122,7 +122,7 @@ export const useUi = create<UiState>()((set) => ({
     set({ panel });
   },
   selectAgent: (selectedAgentId) => {
-    set(selectedAgentId === null ? { selectedAgentId } : { selectedAgentId, panel: "inspector" });
+    set(selectedAgentId === null ? { selectedAgentId } : { selectedAgentId, panel: "team" });
   },
   selectFloor: (floorId) => {
     set({ floorId, selectedAgentId: null });

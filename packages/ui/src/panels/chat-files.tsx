@@ -28,7 +28,16 @@ function useAttachmentUrl(attachment: Attachment): string | null {
   return url;
 }
 
-const CARD = "flex items-center gap-2 rounded-md border border-line bg-ink/60 px-2 py-1.5 text-2xs";
+const FILE =
+  "flex items-center gap-2 rounded-lg border border-line bg-ink/60 px-2.5 py-1.5 text-2xs";
+
+/**
+ * Every image takes the same tile, whether or not its bytes have arrived. The office does not record an
+ * image's dimensions, so anything that sized itself to the picture would resize the bubble under the
+ * reader the moment the blob resolved.
+ */
+const THUMB =
+  "flex h-32 w-44 items-center justify-center overflow-hidden rounded-xl border bg-ink/60";
 
 /** An image opens in the viewer; anything else is a card that saves the file. */
 function Attached({ attachment }: { attachment: Attachment }): React.JSX.Element {
@@ -38,12 +47,12 @@ function Attached({ attachment }: { attachment: Attachment }): React.JSX.Element
   if (!isImageType(attachment.mime)) {
     return (
       <a
-        className={`${CARD} text-gray-300 hover:border-accent/60`}
+        className={`${FILE} text-muted hover:border-accent/60 hover:text-text`}
         href={url ?? undefined}
         download={attachment.name}
       >
         <span className="max-w-48 truncate">{attachment.name}</span>
-        <span className="text-gray-500">{formatBytes(attachment.bytes)}</span>
+        <span className="text-faint">{formatBytes(attachment.bytes)}</span>
       </a>
     );
   }
@@ -51,7 +60,7 @@ function Attached({ attachment }: { attachment: Attachment }): React.JSX.Element
     <>
       <button
         type="button"
-        className="block overflow-hidden rounded-md border border-line hover:border-accent/60"
+        className={`${THUMB} animate-pop border-line transition-[transform,border-color] duration-[var(--duration-base)] ease-[var(--ease-soft)] hover:-translate-y-px hover:border-accent/60`}
         title={t("chat.imageOpen", { name: attachment.name })}
         disabled={url === null}
         onClick={() => {
@@ -59,9 +68,9 @@ function Attached({ attachment }: { attachment: Attachment }): React.JSX.Element
         }}
       >
         {url === null ? (
-          <span className={`${CARD} text-gray-500`}>{attachment.name}</span>
+          <span className="animate-pulse truncate px-3 text-2xs text-faint">{attachment.name}</span>
         ) : (
-          <img src={url} alt={attachment.name} className="max-h-48 max-w-full object-contain" />
+          <img src={url} alt={attachment.name} className="max-h-full max-w-full object-contain" />
         )}
       </button>
       {open && url !== null ? (
@@ -110,12 +119,12 @@ export function PendingFiles({
   return (
     <div className="flex flex-wrap gap-2">
       {files.map((file) => (
-        <span key={file.id} className={`${CARD} text-gray-300`}>
+        <span key={file.id} className={`${FILE} animate-pop text-muted`}>
           <span className="max-w-40 truncate">{file.name}</span>
-          <span className="text-gray-500">{formatBytes(file.bytes)}</span>
+          <span className="text-faint">{formatBytes(file.bytes)}</span>
           <button
             type="button"
-            className="text-gray-500 hover:text-red-300"
+            className="rounded px-1 text-faint hover:bg-bad/15 hover:text-bad"
             title={t("common.remove")}
             onClick={() => {
               remove(file.id);

@@ -10,7 +10,7 @@ not evidence that every original acceptance target was achieved.
 - One repository per project/floor, a boss per floor, receptionist choreography, staff and chat.
 - Docker task sessions, git-bridge publication, optional GitHub PR delivery, review and question loops.
 - Claude Code plus ACP adapters for OpenCode, Gemini CLI and Codex; provider-specific images and secrets.
-- React/Pixi office, board, inspector, usage/resources/settings and first-run checklist.
+- React/Pixi office beside five panels — chat, board, team, usage, settings — and a first-run checklist.
 - Electrobun macOS arm64 packaging and unsigned release workflow.
 - Optional per-project **task services**: a private rootless container engine per session (rootful as an
   opt-in), so a repository's own `docker-compose.yml` runs inside the sandbox. The scheduler counts such
@@ -87,6 +87,18 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 ([ADR 003](../audit/adr/003-sprite-pipeline.md)).
 
 ## Audit log
+
+- 2026-09-13 — Owner task: redesign the whole UI, with animation, and make it obvious — The right rail
+  had six tabs and the floor's people lived in two of them, one to watch and another to edit; it has
+  five, and Team is one card per colleague with their state on the front and their model, effort and
+  persona one click deeper. Usage absorbed Resources, because both answer what the office costs. Every
+  setting that is on or off is a switch with its consequence written beside it, not a checkbox to guess
+  at. Motion became a token like a colour: three durations, two easings, an overshoot reserved for
+  things that arrive, and `prefers-reduced-motion` that keeps the fades and drops the movement. Looking
+  at it in the browser is what found the rest — a chat that scrolled through its own history on open, an
+  image that resized its bubble when the bytes landed, native controls still drawn light on dark panels,
+  and a prune button that shouted while its consequence hid in a tooltip. Decisions, the five
+  corrections and the verification are in [the plan](plans/2026-09-13-ui-redesign.md).
 
 - 2026-09-13 — Owner task: attachments in the chat, and showing that the boss is thinking — A message
   can carry files in both directions: the human drags them into the chat, the boss writes his into the

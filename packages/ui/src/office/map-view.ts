@@ -33,7 +33,7 @@ export class MapView {
 
   async #start(host: HTMLElement): Promise<void> {
     await this.app.init({
-      background: "#ffffff",
+      background: "#eceae4",
       width: Math.max(1, host.clientWidth),
       height: Math.max(1, host.clientHeight),
       antialias: true,

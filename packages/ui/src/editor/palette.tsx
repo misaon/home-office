@@ -45,10 +45,10 @@ function Choices({
             key={option}
             type="button"
             aria-pressed={option === value}
-            className={`rounded-md border px-2 py-1.5 text-left text-2xs leading-tight break-words transition ${
+            className={`rounded-lg border px-2 py-1.5 text-left text-2xs leading-tight break-words ${
               option === value
-                ? "border-accent/70 bg-line text-white"
-                : "border-line text-gray-400 hover:text-gray-100"
+                ? "border-accent/60 bg-accent/10 text-text"
+                : "border-line text-muted hover:border-line-strong hover:text-text"
             }`}
             onClick={() => {
               pick(option);
@@ -56,7 +56,7 @@ function Choices({
           >
             {name(option)}
             {footprint === null ? null : (
-              <span className="mt-0.5 block font-mono text-gray-500">{footprint}</span>
+              <span className="mt-0.5 block font-mono text-faint">{footprint}</span>
             )}
           </button>
         );
@@ -103,8 +103,8 @@ export function Palette({
   return (
     <>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-2xs font-medium text-gray-400">{t(KIND_LABEL[tool])}</p>
-        <span className="font-mono text-2xs text-gray-500">
+        <p className="text-2xs font-medium text-muted">{t(KIND_LABEL[tool])}</p>
+        <span className="font-mono text-2xs text-faint">
           {options.length === all.length
             ? all.length
             : t("common.ofTotal", { shown: options.length, total: all.length })}
@@ -120,7 +120,7 @@ export function Palette({
         }}
       />
       {options.length === 0 ? (
-        <p className="text-2xs text-gray-500">{t("editor.noMatch", { needle: search.trim() })}</p>
+        <p className="text-2xs text-faint">{t("editor.noMatch", { needle: search.trim() })}</p>
       ) : null}
       <Choices
         options={options}
@@ -140,7 +140,7 @@ export function Palette({
           >
             {t("editor.rotate")}
           </Button>
-          <span className="font-mono text-2xs text-gray-400">
+          <span className="font-mono text-2xs text-muted">
             {t("editor.facing", { facing: brush.facing })}
             {tool === "door"
               ? ""

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OFFICE_SIZE } from "@ho/sim";
 import { useKindName } from "../i18n/kinds.ts";
-import { Button, CONTROL, Field, Section, Tabs } from "../kit/controls.tsx";
+import { Button, CONTROL, Field, Section, Segmented } from "../kit/controls.tsx";
 import { layoutsQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { EditorCanvas } from "./canvas.tsx";
@@ -55,12 +55,12 @@ function OfficeFields({
       <Field id="ho-editor-id" label={t("editor.file")} hint={t("editor.fileHint")}>
         <input
           id="ho-editor-id"
-          className={`${CONTROL} font-mono text-gray-400`}
+          className={`${CONTROL} font-mono text-muted`}
           readOnly
           value={`layouts/${draft.id}.json`}
         />
       </Field>
-      <p className="text-2xs text-gray-500">
+      <p className="text-2xs text-faint">
         {t("editor.stats", {
           width: draft.width,
           height: draft.height,
@@ -112,26 +112,26 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
     onSuccess: () => queries.invalidateQueries({ queryKey: layoutsQuery.queryKey }),
   });
   return (
-    <div className="absolute inset-0 z-40 flex bg-ink">
-      <aside className="flex w-[360px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-line p-5 text-xs">
+    <div className="animate-fade absolute inset-0 z-40 flex bg-ink">
+      <aside className="flex w-[360px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-line bg-panel p-5 text-xs">
         <header className="flex items-center justify-between">
           <h2 className="text-base font-semibold">{t("editor.title")}</h2>
           <Button onClick={onClose}>{t("common.close")}</Button>
         </header>
         <OfficeFields draft={draft} setDraft={setDraft} />
         <Section title={t("editor.tool")}>
-          <Tabs
+          <Segmented
             value={tool}
             options={TOOLS.map(({ value, label }) => ({ value, label: t(label) }))}
             onChange={setTool}
           />
           <Palette key={tool} brush={brush} setBrush={setBrush} tool={tool} />
-          <p className="text-2xs leading-relaxed text-gray-500">
+          <p className="text-2xs leading-relaxed text-faint">
             {tool === "object" || tool === "door" ? t("editor.helpPlace") : t("editor.helpPaint")}{" "}
             {t("editor.helpPan")}
           </p>
           {note === null ? null : (
-            <p className="text-2xs text-amber-300">
+            <p className="text-2xs text-warn">
               {t(note.key, { name: note.name === undefined ? "" : kindName("object", note.name) })}
             </p>
           )}
@@ -146,15 +146,15 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
           }}
         />
         {save.error === null ? null : (
-          <p className="text-2xs text-red-300">{errorMessage(save.error)}</p>
+          <p className="text-2xs text-bad">{errorMessage(save.error)}</p>
         )}
         {save.data === undefined ? null : (
-          <p className="font-mono text-2xs text-emerald-300">
+          <p className="font-mono text-2xs text-good">
             {t("editor.savedAs", { path: save.data.path })}
           </p>
         )}
       </aside>
-      <div className="min-w-0 flex-1 bg-white">
+      <div className="min-w-0 flex-1 bg-[#eceae4]">
         <EditorCanvas
           draft={draft}
           tool={tool}

@@ -16,7 +16,7 @@ function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX
         id="ho-editor-file"
         type="file"
         accept="application/json,.json"
-        className={`${CONTROL} file:mr-3 file:rounded file:border-0 file:bg-line file:px-2 file:py-1 file:text-gray-100`}
+        className={`${CONTROL} file:mr-3 file:rounded file:border-0 file:bg-line file:px-2 file:py-1 file:text-text`}
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file === undefined) {
@@ -33,7 +33,7 @@ function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX
           });
         }}
       />
-      {problem === null ? null : <span className="text-2xs text-red-300">{problem}</span>}
+      {problem === null ? null : <span className="text-2xs text-bad">{problem}</span>}
     </Field>
   );
 }
@@ -59,7 +59,7 @@ export function SavedOffices({
   const available = store.data?.available ?? false;
   return (
     <Section title={t("editor.saved")}>
-      {available ? null : <p className="text-2xs text-amber-300">{t("editor.noRepo")}</p>}
+      {available ? null : <p className="text-2xs text-warn">{t("editor.noRepo")}</p>}
       <div className="space-y-1">
         {(store.data?.layouts ?? []).map((office) => (
           <button
@@ -71,7 +71,7 @@ export function SavedOffices({
             }}
           >
             {office.name}{" "}
-            <span className="font-mono text-2xs text-gray-500">
+            <span className="font-mono text-2xs text-faint">
               {office.id} · {office.width}×{office.height}
             </span>
           </button>

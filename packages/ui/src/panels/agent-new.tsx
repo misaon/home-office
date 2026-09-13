@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GENDER_KEY, ROLE_KEY } from "../i18n/labels.ts";
-import { Button, CONTROL, Failure, Field } from "../kit/controls.tsx";
+import { Button, CARD, CONTROL, Failure, Field } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
 
@@ -23,7 +23,13 @@ const EMPTY: AgentDraft = {
 };
 
 /** The "new agent" form of a floor: a draft plus the provider catalog's valid combinations. */
-export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element {
+export function NewAgent({
+  floorId,
+  onAdded,
+}: {
+  floorId: ProjectId;
+  onAdded?: () => void;
+}): React.JSX.Element {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<AgentDraft>(EMPTY);
   const create = useMutation({
@@ -42,6 +48,7 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
       }),
     onSuccess: () => {
       setDraft(EMPTY);
+      onAdded?.();
     },
   });
   const add = (): void => {
@@ -50,7 +57,7 @@ export function NewAgent({ floorId }: { floorId: ProjectId }): React.JSX.Element
     }
   };
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-md border border-dashed border-line p-4 text-xs">
+    <div className={`${CARD} grid grid-cols-2 gap-x-4 gap-y-3 p-4 text-xs`}>
       <div className="col-span-2">
         <Field id="ho-new-agent-name" label={t("agent.name")}>
           <input

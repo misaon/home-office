@@ -2,7 +2,7 @@ import type { IntakePolicy, IntakeStatus, Project } from "@ho/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import { Button, CONTROL_DENSE, Failure } from "../kit/controls.tsx";
+import { Button, CONTROL_DENSE, Failure, Switch } from "../kit/controls.tsx";
 import { intakeStatusQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { useOnline } from "../store.ts";
@@ -26,14 +26,15 @@ function IntakeFields({ intake, update }: FieldsProps): React.JSX.Element {
   const { t } = useTranslation();
   const labels = intake.labels.join(", ");
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-      <label className="flex items-center gap-2">
-        {t("settings.intakeEvery")}
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2 text-2xs text-muted">
+        <span>{t("settings.intakeEvery")}</span>
         <input
           key={intake.intervalSeconds}
           type="number"
           min={MIN_INTERVAL_S}
           max={MAX_INTERVAL_S}
+          aria-label={t("settings.intakeEvery")}
           className={`${CONTROL_DENSE} w-16`}
           defaultValue={intake.intervalSeconds}
           onBlur={(e) => {
@@ -48,23 +49,26 @@ function IntakeFields({ intake, update }: FieldsProps): React.JSX.Element {
             }
           }}
         />
-        {t("settings.intakeSeconds")}
-      </label>
-      <label className="flex items-center gap-2">
+        <span>{t("settings.intakeSeconds")}</span>
+        <span className="ml-3">{t("settings.intakeAckLabel")}</span>
         <input
-          type="checkbox"
-          checked={intake.dryRun}
-          onChange={(e) => {
-            update({ dryRun: e.target.checked });
+          key={intake.ackLabel}
+          aria-label={t("settings.intakeAckLabel")}
+          className={`${CONTROL_DENSE} w-28 font-mono`}
+          defaultValue={intake.ackLabel}
+          onBlur={(e) => {
+            const ackLabel = e.target.value.trim();
+            if (ackLabel !== intake.ackLabel) {
+              update({ ackLabel });
+            }
           }}
         />
-        {t("settings.intakeDry")}
-      </label>
-      <label className="col-span-2 flex items-center gap-2">
-        {t("settings.intakeLabels")}
+      </div>
+      <label className="flex items-center gap-2 text-2xs text-muted">
+        <span className="shrink-0">{t("settings.intakeLabels")}</span>
         <input
           key={labels}
-          className={`${CONTROL_DENSE} flex-1 font-mono`}
+          className={`${CONTROL_DENSE} min-w-0 flex-1 font-mono`}
           placeholder={t("settings.intakeAllIssues")}
           defaultValue={labels}
           onBlur={(e) => {
@@ -75,30 +79,22 @@ function IntakeFields({ intake, update }: FieldsProps): React.JSX.Element {
           }}
         />
       </label>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={intake.comment}
-          onChange={(e) => {
-            update({ comment: e.target.checked });
-          }}
-        />
-        {t("settings.intakeComment")}
-      </label>
-      <label className="flex items-center gap-2">
-        {t("settings.intakeAckLabel")}
-        <input
-          key={intake.ackLabel}
-          className={`${CONTROL_DENSE} w-24 font-mono`}
-          defaultValue={intake.ackLabel}
-          onBlur={(e) => {
-            const ackLabel = e.target.value.trim();
-            if (ackLabel !== intake.ackLabel) {
-              update({ ackLabel });
-            }
-          }}
-        />
-      </label>
+      <Switch
+        checked={intake.comment}
+        label={t("settings.intakeComment")}
+        hint={t("settings.intakeCommentHint")}
+        onChange={(comment) => {
+          update({ comment });
+        }}
+      />
+      <Switch
+        checked={intake.dryRun}
+        label={t("settings.intakeDry")}
+        hint={t("settings.intakeDryHint")}
+        onChange={(dryRun) => {
+          update({ dryRun });
+        }}
+      />
     </div>
   );
 }
@@ -109,7 +105,7 @@ function IntakeHealth({ status }: { status: IntakeStatus | null }): React.JSX.El
     return null;
   }
   return (
-    <p className="leading-relaxed text-gray-400">
+    <p className="text-2xs leading-relaxed text-faint">
       {t("settings.intakeLastPoll", { when: when(status.lastPollAt, t) })}
       {status.nextPollAt === null
         ? ""
@@ -169,18 +165,16 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
 
   const { intake } = project;
   return (
-    <div className="mt-3 space-y-3 border-t border-line pt-3 text-xs">
-      <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={intake.enabled}
-            onChange={(e) => {
-              save.mutate({ enabled: e.target.checked });
-            }}
-          />
-          {t("settings.intake")}
-        </label>
+    <div className="space-y-3 text-xs">
+      <div className="flex items-start justify-between gap-3">
+        <Switch
+          checked={intake.enabled}
+          label={t("settings.intakeLabel")}
+          hint={t("settings.intakeHint")}
+          onChange={(enabled) => {
+            save.mutate({ enabled });
+          }}
+        />
         <Button
           disabled={poll.isPending}
           onClick={() => {
@@ -197,7 +191,7 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
         }}
       />
       <IntakeHealth status={status} />
-      {message === null ? null : <p className="text-emerald-300">{message}</p>}
+      {message === null ? null : <p className="animate-fade text-2xs text-good">{message}</p>}
       <Failure error={save.error ?? poll.error} />
     </div>
   );

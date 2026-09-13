@@ -3,10 +3,22 @@
 @theme {
   --font-sans: ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
-  --color-ink: #0f1115;
-  --color-panel: #171a21;
-  --color-line: #262b36;
+
+  /* The office is one stack of surfaces: the ground, the panels on it, the cards on those. Each step is
+     a shade lighter, which is where depth comes from — not from heavier borders. */
+  --color-ink: #0c0e13;
+  --color-panel: #12151c;
+  --color-raised: #171b24;
+  --color-line: #232833;
+  --color-line-strong: #333a49;
   --color-accent: #ffd166;
+  --color-accent-dim: #b8944a;
+  --color-text: #e8eaf0;
+  --color-muted: #99a2b2;
+  --color-faint: #6b7483;
+  --color-good: #6ee7a8;
+  --color-warn: #f0b866;
+  --color-bad: #f28b8b;
 
   /* The office is a fixed desktop window, so both scales are absolute. A rem scale hung off a 13px
      root turned `text-xs` into 9.75px and `p-2` into 7px, which is what made every panel look glued
@@ -22,6 +34,68 @@
   --text-base--line-height: 1.5;
   --text-lg: 17px;
   --text-lg--line-height: 1.4;
+  --text-xl: 21px;
+  --text-xl--line-height: 1.3;
+
+  /* Motion is a token like a colour is. Feedback is instant, state settles, arrivals take their time. */
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.45), 0 16px 40px -16px rgb(0 0 0 / 0.7);
+  --shadow-glow: 0 0 0 1px rgb(255 209 102 / 0.25), 0 8px 32px -12px rgb(255 209 102 / 0.35);
+
+  --animate-rise: rise var(--duration-slow) var(--ease-overshoot) both;
+  --animate-fade: fade var(--duration-base) var(--ease-soft) both;
+  --animate-slide: slide var(--duration-base) var(--ease-soft) both;
+  --animate-pop: pop var(--duration-base) var(--ease-overshoot) both;
+}
+
+/* What arrives from below and settles: a chat bubble, a card, a row added to a list. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* A panel replacing another: it comes from the side it was reached from. */
+@keyframes slide {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 html,
@@ -30,21 +104,81 @@ body,
   height: 100%;
   margin: 0;
   background: var(--color-ink);
-  color: #e6e6e6;
+  color: var(--color-text);
   font-family: var(--font-sans);
   font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  /* The controls the platform draws for itself — a checkbox, a number's spinner, a select's arrow —
+     take their colours from here, and a white checkbox in a dark panel is the one thing the office
+     cannot restyle from the outside. */
+  color-scheme: dark;
+  accent-color: var(--color-accent);
 }
 
 canvas {
   display: block;
 }
 
-/* A dropdown's own list is drawn by the platform, so it needs the office's ground stated explicitly.
-   Everything else about native controls is already handled by Tailwind's base reset, and this belongs in
-   `base` for the same reason: unlayered rules outrank every utility, which is how `text-black` on the
-   accent buttons lost to a stray `color: inherit`. */
 @layer base {
+  /* A dropdown's own list is drawn by the platform, so it needs the office's ground stated explicitly.
+     This belongs in `base` for the same reason the rule below does: unlayered rules outrank every
+     utility, which is how `text-black` on the accent buttons lost to a stray `color: inherit`. */
   select option {
     background: var(--color-ink);
+  }
+
+  /* Nothing in the office changes colour, size or position in a single frame. Anything that needs more
+     than this says so itself; anything that needs less is not interactive. */
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  label,
+  summary {
+    transition:
+      color var(--duration-fast) var(--ease-soft),
+      background-color var(--duration-fast) var(--ease-soft),
+      border-color var(--duration-fast) var(--ease-soft),
+      box-shadow var(--duration-fast) var(--ease-soft),
+      transform var(--duration-fast) var(--ease-soft),
+      opacity var(--duration-fast) var(--ease-soft);
+  }
+
+  /* One focus ring everywhere, and only for the keyboard: a mouse user has the pointer to tell them. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-line);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-line-strong);
+    background-clip: content-box;
+  }
+}
+
+/* Motion sickness is not a style choice: the office keeps its fades and drops every movement. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
 }

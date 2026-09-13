@@ -53,7 +53,7 @@ function ImportPicker({
       <div className="max-h-44 space-y-3 overflow-y-auto rounded-md border border-line bg-ink p-3">
         {groups.map((g) => (
           <div key={g.floor} className="space-y-1">
-            <div className="text-2xs tracking-widest text-gray-500 uppercase">{g.floor}</div>
+            <div className="text-2xs tracking-widest text-faint uppercase">{g.floor}</div>
             {g.agents.map((a) => (
               <label key={a.id} className="flex items-center gap-2.5 py-1">
                 <input
@@ -65,7 +65,7 @@ function ImportPicker({
                   }}
                 />
                 <span className="text-xs">{a.name}</span>
-                <span className="text-2xs text-gray-500">
+                <span className="text-2xs text-faint">
                   {t(ROLE_KEY[a.role])} · {a.model}/{a.effort}
                 </span>
               </label>

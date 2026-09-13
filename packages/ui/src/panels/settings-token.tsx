@@ -2,7 +2,7 @@ import type { SecretKeyName } from "@ho/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, CONTROL, Failure, Section } from "../kit/controls.tsx";
+import { Badge, Button, CARD, CONTROL, Failure, Section } from "../kit/controls.tsx";
 import { doctorQuery, secretsStatusQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { useOnline } from "../store.ts";
@@ -99,14 +99,14 @@ export function TokenSettings(): React.JSX.Element {
   return (
     <Section title={t("settings.credentials")}>
       {KEYS.map(({ key, label, hint }) => (
-        <div key={key} className="space-y-2 rounded-md border border-line bg-panel p-3 text-xs">
+        <div key={key} className={`${CARD} animate-rise space-y-2.5 p-4 text-xs`}>
           <div className="flex items-center justify-between">
             <span className="font-medium">{t(label)}</span>
-            <span className={present.includes(key) ? "text-emerald-300" : "text-gray-400"}>
+            <Badge tone={present.includes(key) ? "good" : "neutral"}>
               {present.includes(key) ? t("tokens.stored") : t("tokens.missing")}
-            </span>
+            </Badge>
           </div>
-          <p className="leading-relaxed text-gray-400">{t(hint)}</p>
+          <p className="text-2xs leading-relaxed text-faint">{t(hint)}</p>
           <SecretField secret={key} label={t(label)} stored={present.includes(key)} />
         </div>
       ))}

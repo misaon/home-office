@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 
 import { requireClient } from "../rpc.ts";
 import { bossOnFloor, type Snapshot, useUi } from "../store.ts";
+import { Badge, Empty } from "../kit/controls.tsx";
 import { Composer } from "./chat-composer.tsx";
 import { MessageFiles } from "./chat-files.tsx";
 
@@ -30,7 +31,7 @@ const authorName = (
     ? translate("chat.you")
     : (agents.get(message.author.agentId)?.name ?? translate("chat.agent"));
 
-const CHIP = "rounded bg-line px-1.5 py-px font-mono text-2xs text-gray-300";
+const CHIP = "rounded-md border border-line bg-ink/60 px-1.5 py-px font-mono text-2xs text-muted";
 
 /** What the colleague who wrote this runs on; the effort level only where the provider offers one. */
 function AgentChips({ agent }: { agent: Agent | undefined }): React.JSX.Element | null {
@@ -52,7 +53,7 @@ function AgentChips({ agent }: { agent: Agent | undefined }): React.JSX.Element 
   );
 }
 
-const DOT = "h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400";
+const DOT = "h-1.5 w-1.5 animate-bounce rounded-full bg-accent/70";
 
 /** What the colleague is doing right now, when the live stream says something worth a word. */
 const activityOf = (events: readonly LiveEvent[] | undefined, t: TFunction): string | null => {
@@ -73,8 +74,8 @@ function Thinking({ name, sessionId }: { name: string; sessionId: SessionId }): 
     t,
   );
   return (
-    <div className="max-w-[92%] rounded-lg bg-panel px-3 py-2 text-sm">
-      <div className="flex items-center gap-2 text-2xs text-gray-400">
+    <div className="animate-rise max-w-[92%] rounded-2xl rounded-bl-md border border-line bg-raised px-3.5 py-2.5 text-sm shadow-card">
+      <div className="flex items-center gap-2 text-2xs text-faint">
         <span>
           {name} {t("chat.thinking")}
         </span>
@@ -85,7 +86,7 @@ function Thinking({ name, sessionId }: { name: string; sessionId: SessionId }): 
         </span>
       </div>
       {activity === null ? null : (
-        <div className="mt-1 truncate font-mono text-2xs text-gray-500">{activity}</div>
+        <div className="mt-1.5 truncate font-mono text-2xs text-faint">{activity}</div>
       )}
     </div>
   );
@@ -126,21 +127,30 @@ function Messages({
 }): React.JSX.Element {
   const { t } = useTranslation();
   const bottom = useRef<HTMLDivElement>(null);
+  const arrived = useRef(false);
   const waiting = thinking !== null;
+  /** The history is already there when the panel opens, so it belongs at the end at once; what arrives
+   * afterwards is news, and news is worth watching travel. */
+  const [backlog] = useState(messages.length);
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
+    bottom.current?.scrollIntoView({ block: "end", behavior: arrived.current ? "smooth" : "auto" });
+    arrived.current = true;
   }, [messages.length, waiting]);
   return (
     <div className="flex-1 space-y-3 overflow-y-auto p-4">
-      {messages.length === 0 ? <p className="text-xs text-gray-500">{t("chat.empty")}</p> : null}
-      {messages.map((m) => (
+      {messages.length === 0 ? <Empty>{t("chat.empty")}</Empty> : null}
+      {messages.map((m, i) => (
         <div
           key={m.id}
-          className={`max-w-[92%] rounded-lg px-3 py-2 text-sm ${
-            m.author.kind === "human" ? "ml-auto bg-accent/20" : "bg-panel"
+          className={`max-w-[92%] rounded-2xl px-3.5 py-2.5 text-sm shadow-card ring-1 ring-white/[0.03] ring-inset ${
+            i < backlog ? "" : "animate-rise"
+          } ${
+            m.author.kind === "human"
+              ? "ml-auto rounded-br-md border border-accent/25 bg-accent/12"
+              : "rounded-bl-md border border-line bg-raised"
           }`}
         >
-          <div className="mb-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-2xs text-gray-400">
+          <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs text-faint">
             <span>
               {authorName(agents, m, t)} · {new Date(m.at).toLocaleTimeString()}
             </span>
@@ -172,23 +182,23 @@ function Questions({
     return null;
   }
   return (
-    <div className="space-y-1 border-t border-line bg-amber-950/40 p-3 text-xs">
+    <div className="animate-rise shrink-0 space-y-1 border-t border-warn/20 bg-warn/[0.06] p-3 text-xs">
       {questions.map((q) => (
         <button
           key={q.taskId}
           type="button"
           aria-pressed={answering === q.taskId}
-          className={`block w-full rounded-md px-3 py-2 text-left hover:bg-line ${
-            answering === q.taskId ? "bg-line" : ""
+          className={`block w-full rounded-lg px-3 py-2 text-left hover:bg-line/50 ${
+            answering === q.taskId ? "bg-line/70" : ""
           }`}
           onClick={() => {
             setAnswering(answering === q.taskId ? null : q.taskId);
           }}
         >
-          <span className="text-amber-300">
+          <span className="text-warn">
             {t("chat.question", { asker: q.asker, title: q.title })}
           </span>
-          <div className="mt-1 text-gray-300">{q.text}</div>
+          <div className="mt-1 text-muted">{q.text}</div>
         </button>
       ))}
     </div>
@@ -216,7 +226,11 @@ export function ChatPanel(): React.JSX.Element {
   });
 
   if (floorId === null) {
-    return <p className="p-4 text-xs text-gray-400">{t("project.needFirst")}</p>;
+    return (
+      <div className="p-4">
+        <Empty>{t("project.needFirst")}</Empty>
+      </div>
+    );
   }
   const floor = projects.get(floorId);
   const boss = bossOnFloor(agents, floorId);
@@ -244,9 +258,10 @@ export function ChatPanel(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-line px-4 py-3 text-xs text-gray-400">
-        {t("chat.with")} <span className="text-gray-200">{bossName}</span>
-        {floor === undefined ? "" : t("chat.floorSuffix", { name: floor.name })}
+      <div className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-3 text-xs text-muted">
+        <span>{t("chat.with")}</span>
+        <span className="font-medium text-text">{bossName}</span>
+        {floor === undefined ? null : <Badge>{floor.name}</Badge>}
       </div>
       <Messages messages={chatOf({ chat }, floorId)} agents={agents} thinking={thinking} />
       <Questions questions={questions} answering={answering} setAnswering={setAnswering} />
@@ -259,7 +274,7 @@ export function ChatPanel(): React.JSX.Element {
               <span>{t("chat.answerTo", { name: question.asker })}</span>
               <button
                 type="button"
-                className="text-gray-300 hover:underline"
+                className="text-muted hover:underline"
                 onClick={() => {
                   setAnswering(null);
                 }}

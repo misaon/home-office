@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Section, Segmented } from "../kit/controls.tsx";
+import { CARD, Section, Segmented } from "../kit/controls.tsx";
 import { type Language, LANGUAGES, setLanguage, storedLanguage } from "../i18n/index.ts";
 
 const LABEL: Record<Language, string> = { en: "English", cs: "Čeština" };
@@ -14,7 +14,7 @@ export function LanguageSettings(): React.JSX.Element {
   const current = LANGUAGES.find((language) => language === i18n.language) ?? storedLanguage();
   return (
     <Section title={t("settings.language")}>
-      <div className="space-y-2 rounded-md border border-line bg-panel p-3 text-xs">
+      <div className={`${CARD} space-y-3 p-4 text-xs`}>
         <Segmented
           value={current}
           options={OPTIONS}
@@ -22,7 +22,7 @@ export function LanguageSettings(): React.JSX.Element {
             void setLanguage(language);
           }}
         />
-        <p className="text-gray-400">{t("settings.languageHint")}</p>
+        <p className="text-2xs leading-relaxed text-faint">{t("settings.languageHint")}</p>
       </div>
     </Section>
   );

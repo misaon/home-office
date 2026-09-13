@@ -1,10 +1,10 @@
 /** The office has no art yet, so every material is a colour. Unknown ids fall back to the defaults. */
-export const GROUND = 0xf1f2f4;
+export const GROUND = 0xeceae4;
 /** One colour and one weight for every line of the grid, the map's own edge included. */
-export const GRID_LINE = 0xe3e6eb;
+export const GRID_LINE = 0xdedbd3;
 
 export const FLOOR: Readonly<Record<string, number>> = { office: 0xffffff };
-export const FLOOR_DEFAULT = 0xffffff;
+export const FLOOR_DEFAULT = 0xf7f6f2;
 
 export const WALL: Readonly<Record<string, number>> = { wall: 0x2b3140, glass: 0x8fb8c9 };
 export const WALL_DEFAULT = 0x2b3140;

@@ -1,7 +1,7 @@
 import type { Project, ServicesPolicy } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Failure, Segmented } from "../kit/controls.tsx";
+import { Failure, Segmented, Switch } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 
 type Props = { project: Project };
@@ -31,19 +31,17 @@ export function ServicesSettings({ project }: Props): React.JSX.Element {
   });
   const { services } = project;
   return (
-    <div className="mt-3 space-y-2 border-t border-line pt-3 text-xs">
-      <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={services.enabled}
-            onChange={(e) => {
-              save.mutate({ enabled: e.target.checked });
-            }}
-          />
-          {t("settings.services")}
-        </label>
-        {services.enabled ? (
+    <div className="space-y-3 text-xs">
+      <Switch
+        checked={services.enabled}
+        label={t("settings.servicesLabel")}
+        hint={t("settings.servicesHint")}
+        onChange={(enabled) => {
+          save.mutate({ enabled });
+        }}
+      />
+      {services.enabled ? (
+        <div className="animate-rise space-y-2 pl-12">
           <Segmented
             value={services.mode}
             options={MODES}
@@ -51,9 +49,9 @@ export function ServicesSettings({ project }: Props): React.JSX.Element {
               save.mutate({ mode });
             }}
           />
-        ) : null}
-      </div>
-      {services.enabled ? <p className="text-gray-400">{t(NOTE[services.mode])}</p> : null}
+          <p className="text-2xs leading-relaxed text-faint">{t(NOTE[services.mode])}</p>
+        </div>
+      ) : null}
       <Failure error={save.error} />
     </div>
   );

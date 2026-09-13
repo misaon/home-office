@@ -1,6 +1,7 @@
 // The office speaks English by default. Every other language is checked against these keys by the
 // compiler, so a missing translation is a type error rather than a blank label.
 import { enEditor } from "./en-editor.ts";
+import { enSetup } from "./en-setup.ts";
 
 export const en = {
   common: {
@@ -13,14 +14,21 @@ export const en = {
     search: "search…",
     ofTotal: "{{shown}} of {{total}}",
     custom: "custom…",
+    on: "on",
+    off: "off",
   },
   nav: {
+    label: "Panels",
     chat: "Chat",
+    chatHint: "Talk to this floor's boss",
     board: "Board",
-    agent: "Agent",
+    boardHint: "This floor's work, by status",
+    team: "Team",
+    teamHint: "Who is on this floor and what they are doing",
     usage: "Usage",
-    resources: "Resources",
+    usageHint: "Tokens spent and disk held",
     settings: "Settings",
+    settingsHint: "Language, credentials and each floor's connections",
   },
   app: {
     connecting: "Connecting to the daemon…",
@@ -31,53 +39,12 @@ export const en = {
     editor: "Internal office editor (development builds only)",
     setupSummary: "Docker, images, token, smoke test",
     setup: "Setup",
+    emptyTitle: "Your office is empty",
+    emptyBody:
+      "A project becomes a floor with its own boss, Andrew, and Lola at the reception. Point it at a repository and they start work.",
     editorButton: "Editor",
     rejected:
       "The daemon refused this page's token — it mints a new one every launch. Run `ho ui` again to reconnect.",
-  },
-  setup: {
-    bossAnswered: "the boss answered in {{seconds}} s",
-    smokeIntro:
-      "Sends a hello to {{boss}} of the selected floor: the first sandbox starts, Claude Code signs in with your token and the reply lands in Chat. Expect 20–60 seconds and a few hundred tokens on {{model}}.",
-    done: "done",
-    problem: "problem",
-    intro: "Three things make the office work; the fourth is a hello to a floor’s boss.",
-    dockerIntro:
-      "Agents run in isolated Alpine containers. Install and start Docker Desktop (or another Docker Engine), then check again.",
-    dockerOk: "Docker {{version}}, API {{api}}, {{os}}/{{arch}}",
-    dockerOld: "Docker API {{api}} is too old; {{min}} or newer is required",
-    imagesIntro:
-      "The agent image bundles Claude Code, git, RTK, headless Chromium and the browser MCP servers. The first build downloads everything and takes a few minutes; later builds reuse cached layers.",
-    imagesWaiting: "waiting for Docker",
-    imagesNoContexts: "this build carries no image build contexts",
-    imagesMissing: "missing: {{refs}}",
-    imagesStale: "out of date: {{refs}}",
-    tokenIntro:
-      "Agents sign in with your Claude subscription. In a terminal run <code>claude setup-token</code>, finish the browser login it opens and paste the token it prints. It is stored in this machine’s credential store (Keychain, libsecret or Credential Manager) and only ever handed to the <code>claude</code> process inside a sandbox.",
-    tokenStored: "stored in the configured secret store",
-    tokenMissing: "no Claude subscription token yet",
-    title: "Set up your office",
-    recheck: "Re-check",
-    skip: "Skip for now",
-    todo: "to do",
-    docker: "Docker",
-    checkAgain: "Check again",
-    images: "Agent images",
-    buildImages: "Build images",
-    building: "Building… {{seconds}} s",
-    token: "Claude subscription token",
-    smokeTest: "Smoke test",
-    sayHello: "Say hello",
-    tryAgain: "Try again",
-    theBoss: "the boss",
-    bossModel: "the boss's model",
-    needProject: "add a project (floor) first; its boss answers the hello",
-    triageHint: "one short triage session with the floor's boss",
-    finishFirst: "finish the steps above first",
-    messageSent: "message sent, waiting for the boss…",
-    triageStatus: "triage {{status}}",
-    taskQueued: "task {{status}}, session queued…",
-    sessionTurns: "session {{state}} ({{turns}} turns)…",
   },
   project: {
     gitRepo_one: "git repository · {{count}} branch",
@@ -108,6 +75,9 @@ export const en = {
     importAgents: "Import characters from other floors",
     floors: "Floors (projects)",
     delivery: "delivery: {{mode}}",
+    pullRequests: "Open a pull request",
+    pullRequestsHint:
+      "On: finished work arrives as a pull request. Off: the branch is pushed and nothing else happens.",
     confirmRemove:
       "Remove floor {{name}} with its boss and staff? Tasks and history stay in the log.",
     needFirst: "Add a project (floor) first.",
@@ -119,6 +89,7 @@ export const en = {
     runsFloor: "runs this floor",
     confirmRemove: "Remove {{name}}?",
     team: "Team of floor {{floor}}",
+    copyHint: "The same persona and model, a new colleague on that floor.",
     role: "Role",
     provider: "Provider",
     auth: "Sign-in",
@@ -155,6 +126,7 @@ export const en = {
     done: "Done",
     triage: "triage",
     floor: "Floor",
+    empty: "Nothing on this floor yet. Write to the boss in Chat and he turns it into tasks.",
   },
   chat: {
     thinking: "is thinking…",
@@ -179,7 +151,7 @@ export const en = {
     empty:
       "Write to the boss of this floor. Lola brings him your message; he plans, delegates and reports back here.",
   },
-  inspector: {
+  session: {
     usage: "{{input}} in · {{output}} out · {{cache}} cache · {{turns}} turns",
     session: "session {{id}} on {{model}}",
     call: "→ {{name}}",
@@ -190,9 +162,6 @@ export const en = {
     resultFailed: "failed",
     result: "{{outcome}}: {{text}}",
     error: "error {{code}}: {{message}}",
-    skills: "skills {{pack}}",
-    floor: "floor: {{name}}",
-    pick: "Click a character in the office or pick an agent:",
     noSessions: "No sessions yet.",
     services: "services: {{state}}",
   },
@@ -204,6 +173,10 @@ export const en = {
     prune: "Prune now",
     pruning: "Pruning…",
     noInventory: "No inventory yet.",
+    images: "Images",
+    noneRunning: "No containers right now.",
+    noneStored: "No volumes right now.",
+    pruneHint: "Removes stopped sandboxes, expired task volumes and dangling images.",
     containers: "Containers",
     volumes: "Volumes",
   },
@@ -234,6 +207,14 @@ export const en = {
     intakePoll: "Poll now",
     intakePolling: "Polling…",
     intakeAllIssues: "all open issues",
+    intro: "The office itself. The people on each floor are in Team.",
+    intakeLabel: "Take GitHub issues as mail",
+    intakeHint: "The postman brings matching issues to the reception and the boss triages them.",
+    intakeDryHint: "Nothing is created; the log says what would have been taken.",
+    intakeCommentHint: "The office replies on the issue when the work is done or blocked.",
+    servicesLabel: "Own container engine",
+    servicesHint:
+      "The repository's docker compose runs inside the sandbox. A session with services takes two of the daemon's slots.",
   },
   tokens: {
     claudeHint:
@@ -268,10 +249,20 @@ export const en = {
     byProject: "By project",
     byDay: "By day",
     noData: "No data yet.",
+    tokens: "Tokens",
+    resources: "Resources",
+    limits: "{{count}} rate limits",
     name: "name",
     out: "out",
     cache: "cache",
     sessions: "sessions",
   },
+  team: {
+    intro: "Everyone on this floor. Open a card to see what they are doing, or configure them.",
+    onFloor: "On floor {{floor}}",
+    working: "working",
+    configure: "Configure",
+  },
+  ...enSetup,
   ...enEditor,
 };

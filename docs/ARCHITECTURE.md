@@ -32,7 +32,7 @@ appears in a sandbox, and one task's engine cannot see another's containers. The
 the whole environment's limit, because nested containers share its cgroup. It is off unless the owner
 enables it per project, and a session that has it costs two of the daemon's session slots. Whether a
 session got its engine is part of the session record (`services`: `ready` or `failed`, absent when the
-project asks for none), so the inspector, the CLI and the history all say so; an engine that cannot
+project asks for none), so the Team panel, the CLI and the history all say so; an engine that cannot
 start does not fail the session, it only tells the agent in its brief. The design, the alternatives and
 the measurements are in the
 [service-environment plan](plans/2026-09-09-task-service-environments.md).

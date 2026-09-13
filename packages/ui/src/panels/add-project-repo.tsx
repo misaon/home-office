@@ -176,7 +176,7 @@ function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
         />
         <button
           type="button"
-          className="shrink-0 rounded-md border border-line bg-ink px-3 text-gray-400 transition hover:border-accent/60 hover:text-white disabled:opacity-40"
+          className="shrink-0 rounded-md border border-line bg-ink px-3 text-muted transition hover:border-accent/60 hover:text-text disabled:opacity-40"
           title={t("project.chooseFolder")}
           disabled={pick.isPending}
           onClick={() => {

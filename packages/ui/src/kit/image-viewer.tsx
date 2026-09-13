@@ -36,17 +36,17 @@ export function ImageViewer({
     <dialog
       ref={dialog}
       aria-label={name}
-      className="m-auto h-[90vh] max-h-none w-[90vw] max-w-none overflow-hidden rounded-xl border border-line bg-panel p-0 text-gray-100 shadow-2xl backdrop:bg-black/85"
+      className="animate-pop m-auto h-[90vh] max-h-none w-[90vw] max-w-none overflow-hidden rounded-2xl border border-line bg-panel p-0 text-text shadow-lift backdrop:bg-black/85 backdrop:backdrop-blur-sm"
       onClose={onClose}
     >
       <div className="flex h-full flex-col">
         <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-2 text-xs">
           <span className="truncate font-medium">{name}</span>
-          <span className="font-mono text-2xs text-gray-400">{Math.round(view.scale * 100)} %</span>
+          <span className="font-mono text-2xs text-faint">{Math.round(view.scale * 100)} %</span>
           <span className="ml-auto flex items-center gap-3">
             <button
               type="button"
-              className="text-gray-400 hover:text-white"
+              className="text-muted hover:text-text"
               onClick={() => {
                 setView({ scale: 1, x: 0, y: 0 });
               }}
@@ -55,7 +55,7 @@ export function ImageViewer({
             </button>
             <button
               type="button"
-              className="text-gray-400 hover:text-white"
+              className="text-muted hover:text-text"
               onClick={() => {
                 dialog.current?.close();
               }}

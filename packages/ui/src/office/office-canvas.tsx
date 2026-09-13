@@ -15,15 +15,15 @@ export function OfficeCanvas(): React.JSX.Element {
   }, []);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-white">
+    <div className="relative h-full w-full overflow-hidden bg-[#eceae4]">
       <div ref={host} className="h-full w-full" />
       {lastError !== null ? (
-        <div className="absolute inset-x-0 top-0 bg-red-900/80 px-3 py-1 font-mono text-xs text-red-100">
+        <div className="animate-rise absolute inset-x-0 top-0 border-b border-bad/30 bg-ink/90 px-3 py-1.5 font-mono text-xs text-bad">
           {lastError}
         </div>
       ) : null}
       {connection !== "online" ? (
-        <div className="absolute inset-x-0 bottom-0 bg-black/60 px-3 py-1 text-xs text-amber-200">
+        <div className="animate-rise absolute inset-x-0 bottom-0 border-t border-warn/30 bg-ink/90 px-3 py-1.5 text-xs text-warn">
           {t(CONNECTION_KEY[connection])}
         </div>
       ) : null}

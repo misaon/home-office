@@ -1,14 +1,18 @@
 import { useTranslation } from "react-i18next";
+import { Badge, CARD } from "../kit/controls.tsx";
 import type { StepState } from "./status.ts";
 
 export type StepStatus = { state: StepState; text: string };
 
 const BADGE = {
-  ok: { label: "setup.done", className: "bg-emerald-900/60 text-emerald-300" },
-  todo: { label: "setup.todo", className: "bg-amber-900/60 text-amber-200" },
-  error: { label: "setup.problem", className: "bg-red-900/60 text-red-200" },
-  unknown: { label: null, className: "bg-line text-gray-300" },
-} as const satisfies Record<StepState, { label: string | null; className: string }>;
+  ok: { label: "setup.done", tone: "good" },
+  todo: { label: "setup.todo", tone: "warn" },
+  error: { label: "setup.problem", tone: "bad" },
+  unknown: { label: null, tone: "neutral" },
+} as const satisfies Record<
+  StepState,
+  { label: string | null; tone: "good" | "warn" | "bad" | "neutral" }
+>;
 
 type Props = {
   index: number;
@@ -22,17 +26,22 @@ export function SetupStep({ index, title, status, children }: Props): React.JSX.
   const { t } = useTranslation();
   const badge = BADGE[status.state];
   return (
-    <section className="rounded-md border border-line bg-panel p-4">
+    <section
+      className={`${CARD} animate-rise p-4`}
+      style={{ animationDelay: `${String(index * 60)}ms` }}
+    >
       <div className="flex items-center gap-3">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-xs text-gray-300">
-          {index}
+        <span
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-2xs ${
+            status.state === "ok" ? "bg-good/15 text-good" : "bg-ink text-muted"
+          }`}
+        >
+          {status.state === "ok" ? "✓" : index}
         </span>
-        <h3 className="flex-1 font-medium">{title}</h3>
-        <span className={`rounded px-2 py-0.5 text-2xs tracking-wide uppercase ${badge.className}`}>
-          {badge.label === null ? "…" : t(badge.label)}
-        </span>
+        <h3 className="flex-1 text-sm font-medium">{title}</h3>
+        <Badge tone={badge.tone}>{badge.label === null ? "…" : t(badge.label)}</Badge>
       </div>
-      <p className="mt-2 pl-9 text-xs leading-relaxed text-gray-400">{status.text}</p>
+      <p className="mt-2 pl-9 text-xs leading-relaxed text-muted">{status.text}</p>
       {children === undefined ? null : <div className="mt-3 pl-9 text-xs">{children}</div>}
     </section>
   );

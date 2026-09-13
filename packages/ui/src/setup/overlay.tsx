@@ -61,12 +61,12 @@ export function SetupOverlay(): React.JSX.Element | null {
     setSetupOpen(false);
   };
   return (
-    <div className="absolute inset-0 z-20 flex items-start justify-center overflow-y-auto bg-ink/85 p-8 text-xs">
+    <div className="animate-fade absolute inset-0 z-20 flex items-start justify-center overflow-y-auto bg-ink/90 p-8 text-xs backdrop-blur-sm">
       <div className="w-full max-w-2xl space-y-4">
         <header className="flex items-start justify-between gap-6">
           <div>
-            <h2 className="text-base font-semibold">{t("setup.title")}</h2>
-            <p className="mt-2 leading-relaxed text-gray-400">{t("setup.intro")}</p>
+            <h2 className="text-xl font-semibold tracking-tight">{t("setup.title")}</h2>
+            <p className="mt-2 max-w-md leading-relaxed text-muted">{t("setup.intro")}</p>
           </div>
           <div className="flex shrink-0 gap-3">
             <Button onClick={refresh}>{t("setup.recheck")}</Button>

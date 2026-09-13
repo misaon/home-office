@@ -1,6 +1,7 @@
 // Czech: the office's own vocabulary is translated, while the words a developer reads in git, Docker
 // and the provider CLIs stay as they are — commit, branch, pull request, token, session, prune.
 import { csEditor } from "./cs-editor.ts";
+import { csSetup } from "./cs-setup.ts";
 import type { en } from "./en.ts";
 
 export const cs: typeof en = {
@@ -14,14 +15,21 @@ export const cs: typeof en = {
     search: "hledat…",
     ofTotal: "{{shown}} z {{total}}",
     custom: "vlastní…",
+    on: "zap",
+    off: "vyp",
   },
   nav: {
+    label: "Panely",
     chat: "Chat",
+    chatHint: "Mluvte se šéfem tohoto podlaží",
     board: "Tabule",
-    agent: "Zaměstnanec",
+    boardHint: "Práce na tomto podlaží podle stavu",
+    team: "Tým",
+    teamHint: "Kdo je na podlaží a co zrovna dělá",
     usage: "Spotřeba",
-    resources: "Zdroje",
+    usageHint: "Utracené tokeny a zabraný disk",
     settings: "Nastavení",
+    settingsHint: "Jazyk, přihlašovací údaje a napojení podlaží",
   },
   app: {
     connecting: "Připojuji se k daemonovi…",
@@ -32,53 +40,12 @@ export const cs: typeof en = {
     editor: "Interní editor kanceláře (jen vývojové buildy)",
     setupSummary: "Docker, image, token, kouřová zkouška",
     setup: "Průvodce",
+    emptyTitle: "Kancelář je zatím prázdná",
+    emptyBody:
+      "Z projektu se stane podlaží s vlastním šéfem Andrewem a Lolou na recepci. Ukažte jim repozitář a pustí se do práce.",
     editorButton: "Editor",
     rejected:
       "Daemon odmítl token této stránky — vytváří nový při každém spuštění. Spusťte znovu `ho ui`.",
-  },
-  setup: {
-    bossAnswered: "šéf odpověděl za {{seconds}} s",
-    smokeIntro:
-      "Pošle pozdrav {{boss}} na vybraném podlaží: nastartuje první sandbox, Claude Code se přihlásí vaším tokenem a odpověď přijde do Chatu. Počítejte s 20–60 sekundami a několika stovkami tokenů na {{model}}.",
-    done: "hotovo",
-    problem: "problém",
-    intro: "Tři věci rozhýbou kancelář; čtvrtá je pozdrav šéfovi podlaží.",
-    dockerIntro:
-      "Zaměstnanci běží v izolovaných Alpine kontejnerech. Nainstalujte a spusťte Docker Desktop (nebo jiný Docker Engine) a zkontrolujte znovu.",
-    dockerOk: "Docker {{version}}, API {{api}}, {{os}}/{{arch}}",
-    dockerOld: "Docker API {{api}} je příliš staré; potřeba je {{min}} nebo novější",
-    imagesIntro:
-      "Image zaměstnance obsahuje Claude Code, git, RTK, headless Chromium a browser MCP servery. První build všechno stahuje a trvá několik minut; další využijí cache.",
-    imagesWaiting: "čekám na Docker",
-    imagesNoContexts: "tento build neobsahuje build kontexty pro image",
-    imagesMissing: "chybí: {{refs}}",
-    imagesStale: "neaktuální: {{refs}}",
-    tokenIntro:
-      "Zaměstnanci se přihlašují vaším předplatným Claude. V terminálu spusťte <code>claude setup-token</code>, dokončete přihlášení v prohlížeči a vložte vypsaný token. Uloží se do úložiště přihlašovacích údajů tohoto stroje (Keychain, libsecret nebo Credential Manager) a předá se jedině procesu <code>claude</code> v sandboxu.",
-    tokenStored: "uloženo v nastaveném úložišti tajemství",
-    tokenMissing: "token předplatného Claude ještě není",
-    title: "Nastavte si kancelář",
-    recheck: "Zkontrolovat znovu",
-    skip: "Teď přeskočit",
-    todo: "zbývá",
-    docker: "Docker",
-    checkAgain: "Zkontrolovat znovu",
-    images: "Image zaměstnanců",
-    buildImages: "Postavit image",
-    building: "Stavím… {{seconds}} s",
-    token: "Token předplatného Claude",
-    smokeTest: "Kouřová zkouška",
-    sayHello: "Pozdravit",
-    tryAgain: "Zkusit znovu",
-    theBoss: "šéf",
-    bossModel: "model šéfa",
-    needProject: "nejdřív přidejte projekt (podlaží); pozdrav vyřídí jeho šéf",
-    triageHint: "jedna krátká triage session se šéfem podlaží",
-    finishFirst: "nejdřív dokončete kroky výše",
-    messageSent: "zpráva odeslána, čekám na šéfa…",
-    triageStatus: "triage {{status}}",
-    taskQueued: "úkol {{status}}, session ve frontě…",
-    sessionTurns: "session {{state}} ({{turns}} turns)…",
   },
   project: {
     gitRepo_one: "git repozitář · {{count}} branch",
@@ -109,6 +76,9 @@ export const cs: typeof en = {
     importAgents: "Převzít postavy z jiných podlaží",
     floors: "Podlaží (projekty)",
     delivery: "doručení: {{mode}}",
+    pullRequests: "Otevírat pull request",
+    pullRequestsHint:
+      "Zapnuto: hotová práce přijde jako pull request. Vypnuto: branch se jen pushne a nic dalšího se neděje.",
     confirmRemove:
       "Odebrat podlaží {{name}} i s jeho šéfem a lidmi? Úkoly a historie zůstanou v logu.",
     needFirst: "Nejdřív přidejte projekt (podlaží).",
@@ -120,6 +90,7 @@ export const cs: typeof en = {
     runsFloor: "vede toto podlaží",
     confirmRemove: "Odebrat {{name}}?",
     team: "Tým podlaží {{floor}}",
+    copyHint: "Stejná povaha i model, nový kolega na tom podlaží.",
     role: "Role",
     provider: "Poskytovatel",
     auth: "Přihlášení",
@@ -156,6 +127,7 @@ export const cs: typeof en = {
     done: "Hotovo",
     triage: "triage",
     floor: "Podlaží",
+    empty: "Na tomto podlaží zatím nic není. Napište šéfovi do chatu a on z toho udělá úkoly.",
   },
   chat: {
     thinking: "přemýšlí…",
@@ -180,7 +152,7 @@ export const cs: typeof en = {
     empty:
       "Napište šéfovi tohoto podlaží. Lola mu vaši zprávu donese; on ji naplánuje, rozdělí kolegům a sem napíše, jak to dopadlo.",
   },
-  inspector: {
+  session: {
     usage: "{{input}} in · {{output}} out · {{cache}} cache · turns {{turns}}",
     session: "session {{id}} na {{model}}",
     call: "→ {{name}}",
@@ -191,9 +163,6 @@ export const cs: typeof en = {
     resultFailed: "selhalo",
     result: "{{outcome}}: {{text}}",
     error: "chyba {{code}}: {{message}}",
-    skills: "skills {{pack}}",
-    floor: "podlaží: {{name}}",
-    pick: "Klikněte na postavu v kanceláři, nebo vyberte zaměstnance:",
     noSessions: "Zatím žádné session.",
     services: "služby: {{state}}",
   },
@@ -205,6 +174,10 @@ export const cs: typeof en = {
     prune: "Uklidit",
     pruning: "Uklízím…",
     noInventory: "Zatím není co ukázat.",
+    images: "Image",
+    noneRunning: "Žádné kontejnery.",
+    noneStored: "Žádné volumes.",
+    pruneHint: "Odebere zastavené sandboxy, prošlé volumes úkolů a osiřelé image.",
     containers: "Kontejnery",
     volumes: "Volumes",
   },
@@ -235,6 +208,14 @@ export const cs: typeof en = {
     intakePoll: "Zkontrolovat",
     intakePolling: "Kontroluji…",
     intakeAllIssues: "všechna otevřená issues",
+    intro: "Samotná kancelář. Lidé na podlažích jsou v panelu Tým.",
+    intakeLabel: "Brát GitHub issues jako poštu",
+    intakeHint: "Pošťák nosí odpovídající issues na recepci a šéf je roztřídí.",
+    intakeDryHint: "Nic se nevytvoří, jen se do logu zapíše, co by se vzalo.",
+    intakeCommentHint: "Kancelář napíše k issue, až bude práce hotová nebo zablokovaná.",
+    servicesLabel: "Vlastní kontejnerový engine",
+    servicesHint:
+      "Docker compose z repozitáře běží uvnitř sandboxu. Session se službami zabere dva sloty daemona.",
   },
   tokens: {
     claudeHint:
@@ -269,10 +250,20 @@ export const cs: typeof en = {
     byProject: "Po projektech",
     byDay: "Po dnech",
     noData: "Zatím žádná data.",
+    tokens: "Tokeny",
+    resources: "Zdroje",
+    limits: "rate limitů: {{count}}",
     name: "jméno",
     out: "out",
     cache: "cache",
     sessions: "sessions",
   },
+  team: {
+    intro: "Všichni na tomto podlaží. Kliknutím na kartu uvidíte, co dělají, nebo je nastavíte.",
+    onFloor: "Na podlaží {{floor}}",
+    working: "pracuje",
+    configure: "Nastavit",
+  },
+  ...csSetup,
   ...csEditor,
 };

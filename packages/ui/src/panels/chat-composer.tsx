@@ -66,7 +66,9 @@ export function Composer({
 
   return (
     <div
-      className={`space-y-2 border-t p-4 ${dropping ? "border-accent bg-accent/5" : "border-line"}`}
+      className={`shrink-0 space-y-2 border-t p-4 transition-colors duration-[var(--duration-base)] ${
+        dropping ? "border-accent/60 bg-accent/[0.07]" : "border-line"
+      }`}
       onDragOver={(e) => {
         e.preventDefault();
         setDropping(true);
@@ -87,9 +89,9 @@ export function Composer({
           setFiles((current) => current.filter((f) => f.id !== id));
         }}
       />
-      <div className="flex items-center gap-3 text-xs text-gray-400">
+      <div className="flex items-center gap-3 text-xs text-muted">
         {to}
-        <label className="ml-auto cursor-pointer text-gray-300 hover:underline">
+        <label className="ml-auto cursor-pointer rounded-lg px-2 py-1 text-2xs text-muted hover:bg-line/40 hover:text-text">
           {t("chat.attach")}
           <input
             type="file"
