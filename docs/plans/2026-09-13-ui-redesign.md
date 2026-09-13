@@ -22,6 +22,12 @@ movement off and keeps the fades, because motion sickness is not a style choice.
 it to 0.98; focus draws a gold ring. A list that grows animates the new row in rather than snapping the
 rest down.
 
+**Opening and closing are the same gesture, backwards.** A settings drawer or a colleague's card used to
+animate open and then vanish in one frame, which is half an animation. Both directions now run at the
+same speed through one `Reveal`: the content sits in a grid row that goes from nothing to its own height
+and back, which is how a height CSS cannot know in advance becomes something it can interpolate. Closed
+content stays in the document and is marked inert, so the keyboard cannot reach what the eye cannot.
+
 ## The rearrangement
 
 The right rail had six tabs, and the floor's people lived in two of them: one to watch, another to edit.
@@ -60,6 +66,11 @@ in Czech and in English. A message sent during the pass confirmed the arrival an
 itself — `rise`, 0.32 s, on the overshoot easing — while the messages already on screen carried none.
 `bun run check` — six typecheck programs, `oxlint --deny-warnings`, `oxfmt --check` over 309 files,
 `knip`, and the production UI build — passes.
+
+What the browser here cannot show is a transition's frames: the pane renders at about one frame a second
+while it is hidden, measured at 960 ms and then 1009 ms between two `requestAnimationFrame` callbacks on
+a visible, focused document. So a transition was verified by what it declares — property, duration and
+easing on the element, and the start and end states it moves between — not by watching it move.
 
 Two states were not exercised in a browser. **Reduced motion** was confirmed in the built stylesheet
 rather than under a browser reporting the preference: the production CSS carries one

@@ -135,6 +135,32 @@ export function Switch({
   );
 }
 
+/**
+ * Something that opens and closes without the page jumping. A height cannot be transitioned to a value
+ * the browser only learns at layout time, but a grid row can: the row goes from nothing to the content's
+ * own height and back, at the same speed in both directions. Closed content stays in the document, so it
+ * is marked inert — otherwise the pointer would find nothing there and the keyboard would.
+ */
+export function Reveal({
+  open,
+  children,
+}: {
+  open: boolean;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <div
+      className={`grid transition-[grid-template-rows] duration-[var(--duration-base)] ease-[var(--ease-soft)] ${
+        open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+      }`}
+    >
+      <div className="overflow-hidden" inert={!open}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /** Two or three exclusive choices side by side, for a switch that changes which fields apply. */
 export function Segmented<T extends string>({
   value,

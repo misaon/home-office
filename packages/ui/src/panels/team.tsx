@@ -20,6 +20,7 @@ import {
   Empty,
   Failure,
   Field,
+  Reveal,
   Section,
 } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
@@ -57,7 +58,7 @@ function AgentSettings({
     mutationFn: () => requireClient().agents.remove({ id: agent.id }),
   });
   return (
-    <div className="animate-rise space-y-4 border-t border-line pt-4">
+    <div className="space-y-4 border-t border-line pt-4">
       <div className="grid grid-cols-2 gap-x-4 gap-y-3">
         <ProviderModelFields
           role={agent.role}
@@ -183,8 +184,10 @@ function AgentCard({
           {editing ? t("common.close") : t("team.configure")}
         </button>
       </div>
-      {editing ? <AgentSettings agent={agent} projects={projects} /> : null}
-      {open && !editing ? (
+      <Reveal open={editing}>
+        <AgentSettings agent={agent} projects={projects} />
+      </Reveal>
+      <Reveal open={open && !editing}>
         <div className="mt-3 space-y-2">
           {sessions.length === 0 ? (
             <p className="text-2xs text-faint">{t("session.noSessions")}</p>
@@ -192,7 +195,7 @@ function AgentCard({
             sessions.slice(0, 6).map((s) => <SessionBlock key={s.id} session={s} tasks={tasks} />)
           )}
         </div>
-      ) : null}
+      </Reveal>
     </div>
   );
 }

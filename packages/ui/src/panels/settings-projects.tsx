@@ -2,7 +2,7 @@ import type { Project } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Button, CARD, Failure, Section, Switch } from "../kit/controls.tsx";
+import { Badge, Button, CARD, Failure, Reveal, Section, Switch } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { sortedFloors, useUi } from "../store.ts";
 import { IntakeSettings } from "./settings-intake.tsx";
@@ -41,7 +41,9 @@ function Drawer({
           ›
         </span>
       </button>
-      {open ? <div className="animate-rise mt-3">{children}</div> : null}
+      <Reveal open={open}>
+        <div className="mt-3">{children}</div>
+      </Reveal>
     </div>
   );
 }
