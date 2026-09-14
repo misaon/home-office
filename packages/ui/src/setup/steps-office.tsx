@@ -4,10 +4,10 @@ import { useMutation } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Failure } from "../kit/controls.tsx";
+import { Button, Failure } from "../design/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { bossOnFloor, type Snapshot, useUi } from "../store.ts";
-import { SetupStep, type StepStatus } from "./step.tsx";
+import { SetupStep, type StepStatus } from "../design/setup-step.tsx";
 
 const HELLO =
   "Hello! This is the first-run check of Home Office. Reply with one short sentence confirming you are online; do not delegate anything.";
@@ -90,20 +90,31 @@ export function SmokeStep({ ready }: { ready: boolean }): React.JSX.Element {
     sent === null || floorId === null ? undefined : replyTo(snapshot.chat, sent, floorId);
   return (
     <SetupStep index={4} title={t("setup.smokeTest")} status={status}>
-      <div className="space-y-3">
-        <p className="leading-relaxed text-foreground/80">
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <p style={{ fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
           {t("setup.smokeIntro", {
             boss: boss?.name ?? t("setup.theBoss"),
             model: boss?.model ?? t("setup.bossModel"),
           })}
         </p>
         {reply !== undefined ? (
-          <blockquote className="animate-rise rounded-lg border border-border bg-background p-3 leading-relaxed text-foreground">
+          <blockquote
+            style={{
+              animation: "riseIn .3s ease both",
+              borderRadius: "11px",
+              border: "1px solid #26262C",
+              background: "#0A0A0C",
+              padding: "12px",
+              fontSize: "12px",
+              lineHeight: "1.7",
+              color: "#E9E7E2",
+            }}
+          >
             {reply.text}
           </blockquote>
         ) : (
           <Button
-            variant="primary"
+            tone="primary"
             disabled={
               hello.isPending ||
               !ready ||

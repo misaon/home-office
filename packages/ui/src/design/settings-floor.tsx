@@ -1,7 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
+import { Confirm } from "./confirm.tsx";
 import { FloorSwitches } from "./settings-floor-switches.tsx";
 import { useUi } from "../store.ts";
 import { MONO, separator } from "./tokens.ts";
@@ -87,6 +89,7 @@ export function SettingsFloor({
   const set = useDesign((s) => s.set);
   const flash = useDesign((s) => s.flash);
   const open = floorRowOpen === floor.id;
+  const [asking, setAsking] = useState(false);
   const openTasks = floor.cards.filter((x) => x.s !== "done").length;
 
   const remove = useMutation({
@@ -156,13 +159,26 @@ export function SettingsFloor({
               type="button"
               disabled={remove.isPending}
               onClick={() => {
-                remove.mutate();
+                setAsking(true);
               }}
               style={REMOVE}
               className="hopp"
             >
               {t("settings.removeFloor")}
             </button>
+            <Confirm
+              open={asking}
+              title={t("project.removeTitle")}
+              body={t("project.confirmRemove", { name: floor.name })}
+              action={t("settings.removeFloor")}
+              onCancel={() => {
+                setAsking(false);
+              }}
+              onConfirm={() => {
+                setAsking(false);
+                remove.mutate();
+              }}
+            />
           </div>
         ) : null}
       </div>

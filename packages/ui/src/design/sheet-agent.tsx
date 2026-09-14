@@ -1,8 +1,10 @@
 import { AgentRole, EffortLevel, ProviderId } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Floor, Member } from "./data.ts";
 import { requireClient } from "../rpc.ts";
+import { Confirm } from "./confirm.tsx";
 import { AgentStatus } from "./sheet-agent-status.tsx";
 import { AgentFields } from "./sheet-agent-fields.tsx";
 import { CAPS, FIELD, PRIMARY, SheetShell } from "./sheet-shell.tsx";
@@ -26,6 +28,7 @@ export function AgentSheet({ draft, floor }: { draft: Member; floor: Floor }): R
   const set = useDesign((s) => s.set);
   const update = useDesign((s) => s.update);
   const flash = useDesign((s) => s.flash);
+  const [asking, setAsking] = useState(false);
   const done = (message: string): void => {
     set({ sheet: null, sheetDraft: null });
     flash(message);
@@ -111,7 +114,7 @@ export function AgentSheet({ draft, floor }: { draft: Member; floor: Floor }): R
           type="button"
           disabled={remove.isPending}
           onClick={() => {
-            remove.mutate();
+            setAsking(true);
           }}
           style={DANGER}
           className="hopp"
@@ -119,6 +122,19 @@ export function AgentSheet({ draft, floor }: { draft: Member; floor: Floor }): R
           {t("common.remove")}
         </button>
       </div>
+      <Confirm
+        open={asking}
+        title={t("agent.removeTitle")}
+        body={t("agent.confirmRemove", { name: draft.name })}
+        action={t("common.remove")}
+        onCancel={() => {
+          setAsking(false);
+        }}
+        onConfirm={() => {
+          setAsking(false);
+          remove.mutate();
+        }}
+      />
     </SheetShell>
   );
 }

@@ -4,9 +4,8 @@ import type { TFunction } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useKindName } from "../i18n/kinds.ts";
-import { Button } from "../kit/controls.tsx";
+import { Button, FIELD } from "../design/controls.tsx";
 import { type Brush, rotate, type Tool } from "./draft.ts";
-import { Input } from "@/components/ui/input";
 
 const KIND_LABEL = {
   wall: "editor.material",
@@ -38,7 +37,7 @@ function Choices({
   pick: (option: string) => void;
 }): React.JSX.Element {
   return (
-    <div className="grid grid-cols-2 gap-1.5">
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
       {options.map((option) => {
         const footprint = size(option);
         return (
@@ -46,18 +45,35 @@ function Choices({
             key={option}
             type="button"
             aria-pressed={option === value}
-            className={`rounded-lg border px-2 py-1.5 text-left text-2xs leading-tight break-words ${
-              option === value
-                ? "border-primary/60 bg-primary/10 text-foreground"
-                : "border-border text-foreground/80 hover:border-input hover:text-foreground"
-            }`}
+            style={{
+              borderRadius: "9px",
+              padding: "7px 9px",
+              textAlign: "left",
+              fontSize: "11px",
+              lineHeight: "1.35",
+              overflowWrap: "break-word",
+              cursor: "pointer",
+              transition: "all .2s",
+              border: `1px solid ${option === value ? "rgba(255,197,49,.55)" : "#2C2C32"}`,
+              background: option === value ? "rgba(255,197,49,.1)" : "#101013",
+              color: option === value ? "#FFD666" : "#CFCCC6",
+            }}
             onClick={() => {
               pick(option);
             }}
           >
             {name(option)}
             {footprint === null ? null : (
-              <span className="mt-0.5 block font-mono text-muted-foreground">{footprint}</span>
+              <span
+                style={{
+                  display: "block",
+                  marginTop: "3px",
+                  fontFamily: "'JetBrains Mono',monospace",
+                  color: "#A6A39C",
+                }}
+              >
+                {footprint}
+              </span>
             )}
           </button>
         );
@@ -103,25 +119,36 @@ export function Palette({
   const spec = OBJECT_SPEC[brush.object];
   return (
     <>
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-2xs font-medium text-foreground/80">{t(KIND_LABEL[tool])}</p>
-        <span className="font-mono text-2xs text-muted-foreground">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          gap: "12px",
+        }}
+      >
+        <p style={{ fontSize: "11.5px", fontWeight: "500", color: "#CFCCC6", margin: "0" }}>
+          {t(KIND_LABEL[tool])}
+        </p>
+        <span
+          style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: "11px", color: "#A6A39C" }}
+        >
           {options.length === all.length
             ? all.length
             : t("common.ofTotal", { shown: options.length, total: all.length })}
         </span>
       </div>
-      <Input
+      <input
         aria-label={t("editor.searchIn", { what: t(KIND_LABEL[tool]) })}
-        className="py-1.5 text-xs"
         placeholder={t("common.search")}
         value={search}
         onChange={(e) => {
           setSearch(e.target.value);
         }}
+        style={FIELD}
       />
       {options.length === 0 ? (
-        <p className="text-2xs text-muted-foreground">
+        <p style={{ fontSize: "11.5px", color: "#A6A39C" }}>
           {t("editor.noMatch", { needle: search.trim() })}
         </p>
       ) : null}
@@ -135,7 +162,7 @@ export function Palette({
         }}
       />
       {tool === "object" || tool === "door" ? (
-        <div className="flex items-center gap-3">
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <Button
             onClick={() => {
               setBrush(rotate(brush));
@@ -143,7 +170,9 @@ export function Palette({
           >
             {t("editor.rotate")}
           </Button>
-          <span className="font-mono text-2xs text-foreground/80">
+          <span
+            style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: "11px", color: "#CFCCC6" }}
+          >
             {t("editor.facing", { facing: brush.facing })}
             {tool === "door"
               ? ""

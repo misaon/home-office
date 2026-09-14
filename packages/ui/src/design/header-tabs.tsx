@@ -1,6 +1,13 @@
+import { useTranslation } from "react-i18next";
 import { useDesign, type Tab } from "./store.ts";
 
-const TABS: Tab[] = ["Chat", "Board", "Team", "Usage", "Settings"];
+const TABS = [
+  ["Chat", "nav.chat", "nav.chatHint"],
+  ["Board", "nav.board", "nav.boardHint"],
+  ["Team", "nav.team", "nav.teamHint"],
+  ["Usage", "nav.usage", "nav.usageHint"],
+  ["Settings", "nav.settings", "nav.settingsHint"],
+] as const satisfies readonly [Tab, string, string][];
 
 const MARKER: React.CSSProperties = {
   position: "absolute",
@@ -12,12 +19,14 @@ const MARKER: React.CSSProperties = {
 
 /** The five panels, and the lit bar that slides to whichever one is open. */
 export function HeaderTabs(): React.JSX.Element {
+  const { t } = useTranslation();
   const tab = useDesign((s) => s.tab);
   const set = useDesign((s) => s.set);
-  const slide = `translateX(${String(TABS.indexOf(tab) * 100)}%)`;
+  const slide = `translateX(${String(TABS.findIndex(([name]) => name === tab) * 100)}%)`;
 
   return (
     <nav
+      aria-label={t("nav.label")}
       style={{
         width: "var(--pw,420px)",
         flex: "0 0 var(--pw,420px)",
@@ -44,10 +53,11 @@ export function HeaderTabs(): React.JSX.Element {
           pointerEvents: "none",
         }}
       />
-      {TABS.map((name) => (
+      {TABS.map(([name, label, hint]) => (
         <button
           type="button"
           key={name}
+          title={t(hint)}
           onClick={() => {
             set({ tab: name, sheet: null, openSelect: null });
           }}
@@ -66,7 +76,7 @@ export function HeaderTabs(): React.JSX.Element {
           }}
           className="hop4"
         >
-          {name}
+          {t(label)}
         </button>
       ))}
     </nav>

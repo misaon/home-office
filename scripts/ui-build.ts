@@ -2,7 +2,6 @@ import type { BunPlugin } from "bun";
 import { existsSync, renameSync, watch as fsWatch } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { resolve } from "node:path";
-import tailwind from "bun-plugin-tailwind";
 
 const root = resolve(import.meta.dir, "..");
 const outdir = resolve(root, "packages/ui/dist");
@@ -39,7 +38,7 @@ async function build(): Promise<void> {
       sourcemap: watch ? "inline" : "none",
       reactCompiler: true,
       naming: { asset: "[name]-[hash].[ext]", chunk: "[name]-[hash].[ext]", entry: "[name].[ext]" },
-      plugins: watch ? [tailwind] : [tailwind, withoutEditor],
+      plugins: watch ? [] : [withoutEditor],
       define: { "process.env.NODE_ENV": JSON.stringify(watch ? "development" : "production") },
     });
     if (!result.success) {

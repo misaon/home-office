@@ -128,41 +128,24 @@ No tests were added in the September 2026 audits at the owner's request; a test 
 decision. Existing checks and verification spikes may be run. Code signing/notarization, new terminal UI,
 remote hosting and automatic merging are not implemented.
 
-## UI components: shadcn/ui, adopted 2026-09-14
+## UI components: shadcn/ui, adopted and removed 2026-09-14
 
-The office's controls are shadcn/ui, at the owner's instruction, rather than components written here.
-shadcn is not a dependency you install and import: its CLI copies component source into the repository,
-so `packages/ui/src/components/ui/*` is vendored third-party code that `shadcn add` can rewrite at any
-time. Everything that follows from that:
+The office's controls were shadcn/ui for a day. The owner then had the office drawn and asked for that
+drawing to _be_ the office, and the drawing is expressed in inline styles and thirty `:hover` rules —
+so every shadcn component was replaced by the thing the drawing shows, and the vendored tree went with
+them. `packages/ui/src/design/controls.tsx` holds what is left: the three button tones, a field, a
+caption and an error box, which are the only shapes the dialogs repeat.
 
-| Package                    | Version | Why                                                         |
-| -------------------------- | ------- | ----------------------------------------------------------- |
-| `radix-ui`                 | 1.6.7   | The primitives every vendored component is built on         |
-| `class-variance-authority` | 0.7.1   | How those components express their variants                 |
-| `cn`                       | 0.3.0   | The class merge helper they import                          |
-| `cmdk`                     | 1.1.1   | Behind `command`, which the floor picker uses               |
-| `lucide-react`             | 1.45.0  | The icon set shadcn's own examples use                      |
-| `shadcn`                   | 4.21.0  | Ships `shadcn/tailwind.css`, the base layer its CSS expects |
-| `tw-animate-css`           | 1.4.0   | The animation utilities that base layer references          |
+Removed with it: `radix-ui`, `class-variance-authority`, `cn`, `cmdk`, `shadcn`, `tw-animate-css`,
+`lucide-react`, `tailwindcss` and `bun-plugin-tailwind`, plus `packages/ui/src/styles.css` and
+`components.json`. The three concessions that vendored code needed are gone with the code that needed
+them: the fourteen lint rules turned off for `src/components/ui/**`, `exactOptionalPropertyTypes: false`
+on the UI program, and knip's ignore for that directory. The UI program is now as strict as the rest of
+the repository.
 
-Configuration lives in `packages/ui/components.json`: style `radix-nova` (Radix primitives, which are the
-mature base of the three the registry offers), icons from lucide, CSS variables on, and the alias `@/*`,
-which `packages/ui/tsconfig.json` resolves to `packages/ui/src/*` so the CLI's own import paths work
-unedited.
-
-Three concessions the vendored code needs, each scoped to its directory so nothing else loosens:
-
-- `.oxlintrc.json` turns off fourteen rules for `packages/ui/src/components/ui/*.tsx`. shadcn is written
-  against TypeScript's ordinary strictness, not this repository's; patching it would have to be redone
-  on every `shadcn add`.
-- `packages/ui/tsconfig.json` sets `exactOptionalPropertyTypes: false` for the UI program. It is the one
-  flag the vendored components trip, and a program cannot scope a compiler option to a subdirectory.
-- `knip.json` ignores that directory, because vendored components export their whole surface whether or
-  not this office calls for it.
-
-The office's palette is expressed in shadcn's own variables in `packages/ui/src/styles.css`: gold is
-`--primary`, hover stays neutral in `--accent`, and the office is dark only, so shadcn's dark values sit
-on `:root` rather than behind `.dark`.
+Overlays are real `<dialog>` elements (`.ho-dialog` in `design.css` takes the UA chrome off and paints
+`::backdrop`), so the platform still provides the focus trap, Escape and the backdrop that shadcn's
+dialog used to.
 
 ## The drawn design: fonts vendored, 2026-09-14
 

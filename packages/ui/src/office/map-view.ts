@@ -99,6 +99,27 @@ export class MapView {
     this.applyCamera();
   }
 
+  /**
+   * Zooming and fitting from outside the canvas — the camera bar's buttons. The wheel handler above does
+   * the same thing about the pointer; these go about the middle of the view, and both have to push the
+   * result into the scene, which is what `applyCamera` is for.
+   */
+  zoomView(factor: number): void {
+    this.camera.zoomStep(factor);
+    this.applyCamera();
+  }
+
+  fitView(): void {
+    this.camera.fit();
+    this.applyCamera();
+  }
+
+  /** Keeps a world point in the middle of the view; the camera bar's follow uses it every frame. */
+  centreOnWorld(worldX: number, worldY: number): void {
+    this.camera.centreOn(worldX, worldY);
+    this.applyCamera();
+  }
+
   /** The cell under a pointer, or null off the map. */
   protected cellAt(event: { clientX: number; clientY: number }): { x: number; y: number } | null {
     const template = this.#template;

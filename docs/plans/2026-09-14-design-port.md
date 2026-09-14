@@ -99,7 +99,7 @@ forces `:hover` on each button in turn through `CSS.forcePseudoState` and diffs 
 ## What happened next
 
 The owner did not want two offices, so the fixtures and the preview entry are gone and these components
-are now *the* office: `index.html` renders them against the daemon. The measurements above therefore
+are now _the_ office: `index.html` renders them against the daemon. The measurements above therefore
 describe the port at the moment it was made, and they are no longer re-runnable — real content is not
 the fixture content, which is exactly why the verification landed before the wiring rather than after.
 
@@ -123,3 +123,27 @@ where a row is drawn as a `div` with `role="button"`. The board's row carries it
 a `<button>` may not contain another, so that row cannot be the tag the rule asks for; the team's row is
 kept the same element for consistency. Both take Enter and Space and carry a label. Recorded in
 `audit/SUPPRESSIONS.md`.
+
+## What the swap dropped
+
+Making the drawing the office lost capability the old panels had, because the drawing never showed it.
+Found by checking which dictionary keys nothing reads any more — 109 of 411 — since a key with no reader
+is a feature with no screen. Restored the same day: the tab labels (they were rendering hard-coded
+English), and the confirmations before deleting a task, clearing finished work, removing a floor and
+removing a colleague.
+
+Still missing, each with its dictionary entries kept so the gap stays visible:
+
+| Gone                     | Keys                                                                     | What it was                                                                       |
+| ------------------------ | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| Live session log         | `session.*` (12)                                                         | Team showed a running session's calls, permissions, context and result.           |
+| Answering a blocked task | `chat.question`, `chat.answerTo`, … (7)                                  | Chat listed open questions and answering one resumed the task.                    |
+| Intake configuration     | `settings.intake*` (20)                                                  | Labels, interval, dry run, ack label, comment, last poll — now one on/off switch. |
+| Services mode            | `settings.servicesRootless/Rootful` (3)                                  | Rootless or rootful per floor — now on/off.                                       |
+| Copying a colleague      | `agent.copy*`, `agent.pickFloor` (4)                                     | Copy a character onto another floor.                                              |
+| Pruning resources        | `resources.prune*`, `resources.images`, … (9)                            | The GC button and the images/volumes detail.                                      |
+| Board card detail        | `board.rounds`, `board.issue`, `board.pullRequest`, `board.reviewer` (4) | Review rounds, issue link, PR link and reviewer on a card.                        |
+| Usage detail             | `usage.turns`, `usage.retryAt`, `usage.limits`, … (10)                   | Turns, rate-limit retry time and the per-window figures.                          |
+
+None of this is a design decision — the drawing simply did not draw it, and the swap followed the
+drawing. Each needs designing in the drawing's language before it comes back.

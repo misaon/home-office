@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentId } from "@ho/protocol";
 import type { OfficeHandle } from "../office/scene.ts";
-import { useUi } from "../store.ts";
 import { bossOf, useFloor } from "./live.ts";
 import { useDesign } from "./store.ts";
 
@@ -76,19 +75,27 @@ function Round({
   );
 }
 
-/** Keeping the boss selected is what the office already means by following someone. */
-function FollowBoss({ id, name }: { id: AgentId; name: string }): React.JSX.Element {
+/** The camera keeps this colleague in the middle of the floor until it is let go. */
+function FollowBoss({
+  id,
+  name,
+  office,
+}: {
+  id: AgentId;
+  name: string;
+  office: OfficeHandle | null;
+}): React.JSX.Element {
   const { t } = useTranslation();
-  const selected = useUi((s) => s.selectedAgentId);
-  const selectAgent = useUi((s) => s.selectAgent);
   const flash = useDesign((s) => s.flash);
-  const on = selected === id;
+  const [on, setOn] = useState(office?.following() === id);
   return (
     <button
       type="button"
       onClick={() => {
-        selectAgent(on ? null : id);
-        flash(on ? t("stage.released") : t("stage.following", { name }));
+        const next = !on;
+        setOn(next);
+        office?.follow(next ? id : null);
+        flash(next ? t("stage.following", { name }) : t("stage.released"));
       }}
       style={{
         ...WIDE,
@@ -174,7 +181,7 @@ export function StageCamera({
       >
         {t("stage.fit")}
       </button>
-      {boss === undefined ? null : <FollowBoss id={boss.id} name={boss.name} />}
+      {boss === undefined ? null : <FollowBoss id={boss.id} name={boss.name} office={office} />}
       {internal ? (
         <button
           type="button"

@@ -1,14 +1,12 @@
-import { errorMessage, type OfficeLayout } from "@ho/protocol";
+import type { OfficeLayout } from "@ho/protocol";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OFFICE_SIZE } from "@ho/sim";
-import { useKindName } from "../i18n/kinds.ts";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Button, Field, Section, Segmented } from "../kit/controls.tsx";
 import { layoutsQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { EditorCanvas } from "./canvas.tsx";
+import { EditorDrawer } from "./drawer.tsx";
 import {
   type Brush,
   emptyDraft,
@@ -17,63 +15,8 @@ import {
   type OfficeDraft,
   paint,
   rotate,
-  slugify,
   type Tool,
 } from "./draft.ts";
-import { fromOffice, toOffice } from "./office-file.ts";
-import { SavedOffices } from "./offices.tsx";
-import { Palette } from "./palette.tsx";
-import { Input } from "@/components/ui/input";
-
-const TOOLS = [
-  { value: "wall", label: "editor.wall" },
-  { value: "room", label: "editor.room" },
-  { value: "door", label: "editor.door" },
-  { value: "object", label: "editor.furniture" },
-] as const satisfies readonly { value: Tool; label: string }[];
-
-/** The office's own fields. The file name is the name, slugified, so it cannot drift from it. */
-function OfficeFields({
-  draft,
-  setDraft,
-}: {
-  draft: OfficeDraft;
-  setDraft: (draft: OfficeDraft) => void;
-}): React.JSX.Element {
-  const { t } = useTranslation();
-  const office = toOffice(draft);
-  return (
-    <Section title={t("editor.office")}>
-      <Field id="ho-editor-name" label={t("editor.name")}>
-        <Input
-          id="ho-editor-name"
-          value={draft.name}
-          onChange={(e) => {
-            setDraft({ ...draft, name: e.target.value, id: slugify(e.target.value) });
-          }}
-        />
-      </Field>
-      <Field id="ho-editor-id" label={t("editor.file")} hint={t("editor.fileHint")}>
-        <Input
-          id="ho-editor-id"
-          className="font-mono text-foreground/80"
-          readOnly
-          value={`layouts/${draft.id}.json`}
-        />
-      </Field>
-      <p className="text-2xs text-muted-foreground">
-        {t("editor.stats", {
-          width: draft.width,
-          height: draft.height,
-          walls: office.walls.length,
-          rooms: office.rooms.length,
-          doors: draft.doors.length,
-          objects: draft.objects.length,
-        })}
-      </p>
-    </Section>
-  );
-}
 
 /**
  * The internal office editor. Compiled into development bundles only — `ui-build.ts` resolves this
@@ -82,7 +25,6 @@ function OfficeFields({
  */
 export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.Element {
   const { t } = useTranslation();
-  const kindName = useKindName();
   const queries = useQueryClient();
   const [draft, setDraft] = useState<OfficeDraft>(() =>
     emptyDraft(t("editor.newOffice"), OFFICE_SIZE.width, OFFICE_SIZE.height),
@@ -113,64 +55,35 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
     mutationFn: (office: OfficeLayout) => requireClient().layouts.save(office),
     onSuccess: () => queries.invalidateQueries({ queryKey: layoutsQuery.queryKey }),
   });
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    dialog.current?.showModal();
+  }, []);
+
   return (
-    <Dialog
-      open
-      onOpenChange={(next) => {
-        if (!next) {
-          onClose();
-        }
+    <dialog
+      ref={dialog}
+      className="ho-dialog"
+      aria-label={t("editor.title")}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
       }}
     >
-      <DialogContent
-        showCloseButton={false}
-        className="flex h-full w-full max-w-none gap-0 p-0 sm:max-w-none"
-      >
-        <DialogTitle className="sr-only">{t("editor.title")}</DialogTitle>
-        <aside className="flex w-[360px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-border bg-card p-5 text-xs">
-          <header className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">{t("editor.title")}</h2>
-            <Button onClick={onClose}>{t("common.close")}</Button>
-          </header>
-          <OfficeFields draft={draft} setDraft={setDraft} />
-          <Section title={t("editor.tool")}>
-            <Segmented
-              value={tool}
-              options={TOOLS.map(({ value, label }) => ({ value, label: t(label) }))}
-              onChange={setTool}
-            />
-            <Palette key={tool} brush={brush} setBrush={setBrush} tool={tool} />
-            <p className="text-2xs leading-relaxed text-muted-foreground">
-              {tool === "object" || tool === "door" ? t("editor.helpPlace") : t("editor.helpPaint")}{" "}
-              {t("editor.helpPan")}
-            </p>
-            {note === null ? null : (
-              <p className="text-2xs text-warn">
-                {t(note.key, {
-                  name: note.name === undefined ? "" : kindName("object", note.name),
-                })}
-              </p>
-            )}
-          </Section>
-          <SavedOffices
-            load={(office) => {
-              setDraft(fromOffice(office));
-              setNote(null);
-            }}
-            save={() => {
-              save.mutate(toOffice(draft));
-            }}
-          />
-          {save.error === null ? null : (
-            <p className="text-2xs text-destructive">{errorMessage(save.error)}</p>
-          )}
-          {save.data === undefined ? null : (
-            <p className="font-mono text-2xs text-good">
-              {t("editor.savedAs", { path: save.data.path })}
-            </p>
-          )}
-        </aside>
-        <div className="min-w-0 flex-1 bg-[#eceae4]">
+      <div style={{ height: "100%", display: "flex", background: "#0A0A0B" }}>
+        <EditorDrawer
+          draft={draft}
+          setDraft={setDraft}
+          tool={tool}
+          setTool={setTool}
+          brush={brush}
+          setBrush={setBrush}
+          note={note}
+          setNote={setNote}
+          save={save}
+          onClose={onClose}
+        />
+        <div style={{ minWidth: "0", flex: "1", background: "#EDEBE4" }}>
           <EditorCanvas
             draft={draft}
             tool={tool}
@@ -185,7 +98,7 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
             }}
           />
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </dialog>
   );
 }

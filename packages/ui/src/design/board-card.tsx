@@ -1,7 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Card, Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
+import { Confirm } from "./confirm.tsx";
 import { MONO, priority, separator } from "./tokens.ts";
 import { bossOf } from "./live.ts";
 import { useDesign } from "./store.ts";
@@ -66,6 +68,7 @@ export function BoardCard({
   stripe: string;
 }): React.JSX.Element {
   const { t } = useTranslation();
+  const [asking, setAsking] = useState(false);
   const set = useDesign((s) => s.set);
   const flash = useDesign((s) => s.flash);
   const remove = useMutation({
@@ -104,6 +107,19 @@ export function BoardCard({
       }}
       className="hopg"
     >
+      <Confirm
+        open={asking}
+        title={t("board.remove")}
+        body={t("board.removeConfirm", { title: card.t })}
+        action={t("board.remove")}
+        onCancel={() => {
+          setAsking(false);
+        }}
+        onConfirm={() => {
+          setAsking(false);
+          remove.mutate();
+        }}
+      />
       <div style={{ width: "3px", flex: "0 0 3px", background: stripe }} />
       <div style={BODY}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
@@ -123,7 +139,7 @@ export function BoardCard({
             disabled={remove.isPending}
             onClick={(e) => {
               e.stopPropagation();
-              remove.mutate();
+              setAsking(true);
             }}
             title={t("board.remove")}
             style={BIN}

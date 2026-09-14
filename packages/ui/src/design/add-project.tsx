@@ -3,17 +3,12 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ROLE_KEY } from "../i18n/labels.ts";
-import { Button, Failure, Section } from "../kit/controls.tsx";
-import { Modal } from "../kit/modal.tsx";
+import { Button, Failure } from "./controls.tsx";
+import { Modal, Section } from "./modal.tsx";
 import { type Client, requireClient } from "../rpc.ts";
 import { type Snapshot, sortedFloors, useUi } from "../store.ts";
-import {
-  Details,
-  type RepoDraft,
-  RepoFields,
-  typedIn,
-  useRepoInspection,
-} from "./add-project-repo.tsx";
+import { typedIn, useRepoInspection, type RepoDraft } from "./add-project-inspect.ts";
+import { Details, RepoFields } from "./add-project-repo.tsx";
 
 const EMPTY: RepoDraft = {
   kind: "local",
@@ -50,24 +45,57 @@ function ImportPicker({
   }
   return (
     <Section title={t("project.importAgents")}>
-      <div className="max-h-44 space-y-3 overflow-y-auto rounded-md border border-border bg-background p-3">
+      <div
+        style={{
+          maxHeight: "176px",
+          overflowY: "auto",
+          borderRadius: "11px",
+          border: "1px solid #26262C",
+          background: "#0A0A0C",
+          padding: "12px",
+        }}
+      >
         {groups.map((g) => (
-          <div key={g.floor} className="space-y-1">
-            <div className="text-2xs tracking-widest text-muted-foreground uppercase">
+          <div key={g.floor} style={{ marginBottom: "10px" }}>
+            <div
+              style={{
+                fontFamily: "'JetBrains Mono',monospace",
+                fontSize: "9.5px",
+                letterSpacing: ".14em",
+                textTransform: "uppercase",
+                color: "#ABA8A1",
+                marginBottom: "6px",
+              }}
+            >
               {g.floor}
             </div>
             {g.agents.map((a) => (
-              <label key={a.id} className="flex items-center gap-2.5 py-1">
+              <label
+                key={a.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "9px",
+                  padding: "4px 0",
+                  cursor: "pointer",
+                }}
+              >
                 <input
                   type="checkbox"
-                  className="accent-accent"
                   checked={imports.has(a.id)}
                   onChange={() => {
                     toggle(a.id);
                   }}
+                  style={{ accentColor: "#FFC531" }}
                 />
-                <span className="text-xs">{a.name}</span>
-                <span className="text-2xs text-muted-foreground">
+                <span style={{ fontSize: "12.5px" }}>{a.name}</span>
+                <span
+                  style={{
+                    fontFamily: "'JetBrains Mono',monospace",
+                    fontSize: "10px",
+                    color: "#A6A39C",
+                  }}
+                >
                   {t(ROLE_KEY[a.role])} · {a.model}/{a.effort}
                 </span>
               </label>
@@ -84,7 +112,7 @@ function ImportPicker({
  * (git, name, branches), optional characters imported from other floors, and Create. The new floor
  * gets its own Andrew and Lola.
  */
-export function AddProjectModal(): React.JSX.Element {
+export function AddProject(): React.JSX.Element | null {
   const { t } = useTranslation();
   const open = useUi((s) => s.addProjectOpen);
   const setOpen = useUi((s) => s.setAddProjectOpen);
@@ -135,12 +163,12 @@ export function AddProjectModal(): React.JSX.Element {
       onClose={close}
       footer={
         <>
-          <div className="mr-auto">
+          <div style={{ marginRight: "auto" }}>
             <Failure error={create.error} />
           </div>
           <Button onClick={close}>{t("common.cancel")}</Button>
           <Button
-            variant="primary"
+            tone="primary"
             disabled={create.isPending || inspecting.busy || inspection === null || name === ""}
             onClick={submit}
           >

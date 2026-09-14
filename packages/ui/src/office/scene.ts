@@ -148,12 +148,18 @@ class OfficeScene extends MapView {
  * Pixi ticker (stopped while the document is hidden, where a still frame is drawn on every store change
  * instead), the visibility watch and the dev console handle.
  */
+/** One press of the camera bar's + or −. */
+const ZOOM_STEP = 1.3;
+
 /** What React can do to the office once it is running: the camera, and stopping it. */
 export type OfficeHandle = {
   stop: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
   fit: () => void;
+  /** Keeps the camera on one colleague until it is called with null. */
+  follow: (agentId: AgentId | null) => void;
+  following: () => AgentId | null;
   /** How close the floor is, for the camera bar's read-out. */
   percent: () => number;
 };
@@ -161,6 +167,7 @@ export type OfficeHandle = {
 export function startOffice(host: HTMLElement): OfficeHandle {
   const scene = new OfficeScene();
   let disposed = false;
+  let followed: AgentId | null = null;
   let unsubscribe: (() => void) | null = null;
   const drawFrame = (dtMs: number): void => {
     try {
@@ -168,6 +175,12 @@ export function startOffice(host: HTMLElement): OfficeHandle {
       const { floorId, selectedAgentId } = useUi.getState();
       scene.showFloor(floorId);
       scene.update(bridge.world, selectedAgentId);
+      if (followed !== null) {
+        const actor = bridge.world.actors.get(followed);
+        if (actor !== undefined && !actor.hidden) {
+          scene.centreOnWorld((actor.pos.x + 0.5) * CELL_PX, (actor.pos.y + 0.5) * CELL_PX);
+        }
+      }
     } catch (error) {
       useUi.getState().setError(errorMessage(error));
     }
@@ -222,14 +235,19 @@ export function startOffice(host: HTMLElement): OfficeHandle {
       scene.destroy();
     },
     zoomIn: () => {
-      scene.camera.zoomStep(1.25);
+      scene.zoomView(ZOOM_STEP);
     },
     zoomOut: () => {
-      scene.camera.zoomStep(1 / 1.25);
+      scene.zoomView(1 / ZOOM_STEP);
     },
     fit: () => {
-      scene.camera.fit();
+      followed = null;
+      scene.fitView();
     },
+    follow: (agentId) => {
+      followed = agentId;
+    },
+    following: () => followed,
     percent: () => scene.camera.percent,
   };
 }

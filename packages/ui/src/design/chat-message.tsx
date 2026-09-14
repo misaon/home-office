@@ -1,7 +1,7 @@
 import type { Message } from "./data.ts";
 import { MONO } from "./tokens.ts";
 import { useTranslation } from "react-i18next";
-import { useDesign } from "./store.ts";
+import { ChatThumb } from "./chat-thumb.tsx";
 
 const META: React.CSSProperties = { ...MONO, fontSize: "10px", letterSpacing: ".04em" };
 const BODY: React.CSSProperties = { fontSize: "13.5px", lineHeight: "1.55", textWrap: "pretty" };
@@ -24,19 +24,6 @@ const THEIRS: React.CSSProperties = {
   border: "1px solid #26262C",
 };
 
-const THUMB: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  marginTop: "10px",
-  height: "118px",
-  borderRadius: "10px",
-  cursor: "pointer",
-  border: "1px solid rgba(255,197,49,.3)",
-  backgroundImage:
-    "repeating-linear-gradient(135deg,rgba(255,197,49,.14) 0 8px,rgba(255,197,49,.04) 8px 16px)",
-  transition: "all .22s",
-};
-
 /** One thing that was said: yours on the right in gold, theirs on the left in grey. */
 export function ChatMessage({
   message,
@@ -46,7 +33,6 @@ export function ChatMessage({
   boss: string;
 }): React.JSX.Element {
   const { t } = useTranslation();
-  const set = useDesign((s) => s.set);
   return (
     <div
       style={{
@@ -61,22 +47,7 @@ export function ChatMessage({
             {t("chat.you")} · <span>{message.time}</span>
           </div>
           <div style={{ ...BODY, color: "#F9F4E7" }}>{message.text}</div>
-          {message.img === undefined ? null : (
-            <button
-              type="button"
-              onClick={() => {
-                if (message.attachment !== undefined) {
-                  set({ lightbox: message.attachment });
-                }
-              }}
-              style={THUMB}
-              className="hop9"
-            >
-              <span style={{ ...MONO, fontSize: "10px", color: "#E4C778" }}>
-                <span>{message.img}</span> · {t("chat.imageOpen")}
-              </span>
-            </button>
-          )}
+          {message.attachment === undefined ? null : <ChatThumb attachment={message.attachment} />}
         </div>
       ) : (
         <div style={THEIRS}>

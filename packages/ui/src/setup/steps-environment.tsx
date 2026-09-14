@@ -3,8 +3,8 @@ import { useMutation } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { Button, Failure } from "../kit/controls.tsx";
-import { SecretField } from "../panels/settings-token.tsx";
+import { Button, Failure } from "../design/controls.tsx";
+import { SecretField } from "../design/setup-token-field.tsx";
 import { requireClient } from "../rpc.ts";
 import {
   dockerState,
@@ -14,7 +14,7 @@ import {
   staleImages,
   tokenState,
 } from "./status.ts";
-import { SetupStep, type StepStatus } from "./step.tsx";
+import { SetupStep, type StepStatus } from "../design/setup-step.tsx";
 
 type EnvProps = { doctor: Doctor | null; refresh: () => void };
 
@@ -68,8 +68,10 @@ export function DockerStep({ doctor, refresh }: EnvProps): React.JSX.Element {
   return (
     <SetupStep index={1} title={t("setup.docker")} status={status}>
       {status.state === "ok" ? null : (
-        <div className="space-y-3">
-          <p className="leading-relaxed text-foreground/80">{t("setup.dockerIntro")}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <p style={{ fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
+            {t("setup.dockerIntro")}
+          </p>
           <Button onClick={refresh}>{t("setup.checkAgain")}</Button>
         </div>
       )}
@@ -133,11 +135,13 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
 
   return (
     <SetupStep index={2} title={t("setup.images")} status={status}>
-      <div className="space-y-3">
-        <p className="leading-relaxed text-foreground/80">{t("setup.imagesIntro")}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <p style={{ fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
+          {t("setup.imagesIntro")}
+        </p>
         {status.state === "ok" && !build.isPending ? null : (
           <Button
-            variant="primary"
+            tone="primary"
             disabled={build.isPending || doctor?.provider.ok !== true}
             onClick={() => {
               build.mutate();
@@ -151,7 +155,17 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
         {lines.length > 0 ? (
           <pre
             ref={log}
-            className="max-h-44 overflow-y-auto rounded-lg border border-border bg-background p-3 font-mono text-2xs text-foreground/80"
+            style={{
+              maxHeight: "176px",
+              overflowY: "auto",
+              borderRadius: "11px",
+              border: "1px solid #26262C",
+              background: "#0A0A0C",
+              padding: "12px",
+              fontFamily: "'JetBrains Mono',monospace",
+              fontSize: "11px",
+              color: "#CFCCC6",
+            }}
           >
             {lines.join("\n")}
           </pre>
@@ -167,15 +181,18 @@ export function TokenStep({ doctor }: { doctor: Doctor | null }): React.JSX.Elem
   const status = tokenStatus(doctor, t);
   return (
     <SetupStep index={3} title={t("setup.token")} status={status}>
-      <div className="space-y-3">
-        <p className="leading-relaxed text-foreground/80">
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <p style={{ fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
           <Trans
             i18nKey="setup.tokenIntro"
-            components={{ code: <code className="rounded bg-background px-1 font-mono" /> }}
+            components={{
+              code: (
+                <code style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: "11.5px" }} />
+              ),
+            }}
           />
         </p>
         <SecretField
-          compact
           secret="anthropic-oauth-token"
           label={t("setup.token")}
           stored={status.state === "ok"}

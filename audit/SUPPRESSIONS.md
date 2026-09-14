@@ -20,6 +20,13 @@ that is only masking a rule we do not want is not listed here — the rule gets 
 | --- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 7   | `packages/ui/src/i18n/index.ts:47` | `oxlint-disable-next-line typescript/consistent-type-definitions` | i18next's typed keys are reached by augmenting its own `CustomTypeOptions` **interface**; a `type` cannot merge into an interface, so the rule cannot be met here |
 
+## Removed 2026-09-14
+
+Entries 8 and 9 below, and the three scoped concessions shadcn/ui needed (fourteen lint rules off for
+`packages/ui/src/components/ui/**`, `exactOptionalPropertyTypes: false` for the UI program, and knip's
+ignore of that directory) are gone: the vendored components were replaced by the drawn design and
+deleted, so nothing needs them. The UI program is as strict as every other program again.
+
 ## Added 2026-09-14
 
 | #   | Where                                      | Suppression                                              | Assessment                                                                                                                                                                                                            |

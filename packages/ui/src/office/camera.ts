@@ -77,6 +77,13 @@ export class Camera {
     return Math.min(byWidth, byHeight) * CELL_PX;
   }
 
+  /** Puts a world point in the middle of the view, which is what following someone means. */
+  centreOn(worldX: number, worldY: number): void {
+    this.#x = worldX - this.#view.width / this.scale / 2;
+    this.#y = worldY - this.#view.height / this.scale / 2;
+    this.#clamp();
+  }
+
   /** Drag: the map follows the pointer, so the offset moves against it. */
   panBy(dxCanvas: number, dyCanvas: number): void {
     this.#x -= dxCanvas / this.scale;

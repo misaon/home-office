@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AddProjectModal } from "../panels/add-project.tsx";
+import { AddProject } from "./add-project.tsx";
 import { EditorOverlay } from "../editor/overlay.tsx";
 import { useDevReload } from "../dev-reload.ts";
-import { SetupOverlay, useSetupAutoOpen } from "../setup/overlay.tsx";
+import { Setup, useSetupAutoOpen } from "./setup.tsx";
 import { CONNECTION_KEY, useUi } from "../store.ts";
 import { Header } from "./header.tsx";
 import { Lightbox } from "./lightbox.tsx";
@@ -179,8 +179,8 @@ export function App(): React.JSX.Element {
         />
       ) : null}
       {lightbox === null ? null : <Lightbox attachment={lightbox} />}
-      <AddProjectModal />
-      <SetupOverlay />
+      <AddProject />
+      <Setup />
       <Toast />
     </div>
   );
