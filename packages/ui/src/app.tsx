@@ -19,7 +19,7 @@ import { CONNECTION_KEY, type Panel, useUi } from "./store.ts";
 const DEV = process.env.NODE_ENV === "development";
 
 /** The bar above the office and the panel tabs beside it are one line of chrome, so they are one height. */
-const BAR = "h-13 shrink-0 border-b border-line bg-panel/80 backdrop-blur-sm";
+const BAR = "h-13 shrink-0 border-b border-border bg-card/80 backdrop-blur-sm";
 
 const PANELS = [
   { id: "chat", label: "nav.chat", hint: "nav.chatHint" },
@@ -60,10 +60,10 @@ function EmptyOffice(): React.JSX.Element {
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
   const ready = connection === "online" && replayed;
   return (
-    <div className="flex h-full items-center justify-center bg-ink">
+    <div className="flex h-full items-center justify-center bg-background">
       <div className="animate-rise flex max-w-sm flex-col items-center gap-4 px-8 text-center">
         <p className="text-lg font-semibold">{t("app.emptyTitle")}</p>
-        <p className="text-xs leading-relaxed text-muted">{t("app.emptyBody")}</p>
+        <p className="text-xs leading-relaxed text-foreground/80">{t("app.emptyBody")}</p>
         {ready ? (
           <Button
             variant="primary"
@@ -74,7 +74,7 @@ function EmptyOffice(): React.JSX.Element {
             {t("project.add")}
           </Button>
         ) : (
-          <p className="text-xs text-faint">{t(CONNECTION_KEY[connection])}</p>
+          <p className="text-xs text-muted-foreground">{t(CONNECTION_KEY[connection])}</p>
         )}
       </div>
     </div>
@@ -159,7 +159,7 @@ export function App(): React.JSX.Element {
         <div className="min-h-0 flex-1">{hasFloors ? <OfficeCanvas /> : <EmptyOffice />}</div>
       </main>
       {hasFloors ? (
-        <aside className="flex w-[500px] shrink-0 flex-col border-l border-line bg-ink">
+        <aside className="flex w-[500px] shrink-0 flex-col border-l border-border bg-background">
           <nav className={`flex ${BAR}`} aria-label={t("nav.label")}>
             {PANELS.map((p) => (
               <button
@@ -168,7 +168,7 @@ export function App(): React.JSX.Element {
                 aria-pressed={p.id === panel}
                 title={t(p.hint)}
                 className={`group relative flex-1 px-2 text-xs ${
-                  p.id === panel ? "text-text" : "text-muted hover:text-text"
+                  p.id === panel ? "text-foreground" : "text-foreground/80 hover:text-foreground"
                 }`}
                 onClick={() => {
                   selectPanel(p.id);
@@ -177,7 +177,7 @@ export function App(): React.JSX.Element {
                 {t(p.label)}
                 {/* The mark under the open tab grows into place instead of jumping between tabs. */}
                 <span
-                  className={`absolute inset-x-3 bottom-0 h-0.5 origin-center rounded-full bg-accent transition-transform duration-[var(--duration-base)] ease-[var(--ease-soft)] ${
+                  className={`absolute inset-x-3 bottom-0 h-0.5 origin-center rounded-full bg-primary transition-transform duration-[var(--duration-base)] ease-[var(--ease-soft)] ${
                     p.id === panel ? "scale-x-100" : "scale-x-0 group-hover:scale-x-50"
                   }`}
                 />

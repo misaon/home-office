@@ -2,10 +2,11 @@ import { formatBytes, type UsageSummary } from "@ho/protocol";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Button, CARD, Empty, Failure, Section, Segmented } from "../kit/controls.tsx";
+import { Badge, Button, Empty, Failure, Section, Segmented } from "../kit/controls.tsx";
 import { resourcesQuery, usageQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { useOnline } from "../store.ts";
+import { Card } from "@/components/ui/card";
 
 const fmt = (n: number): string => n.toLocaleString();
 
@@ -20,11 +21,11 @@ function Stat({
   hint?: string;
 }): React.JSX.Element {
   return (
-    <div className={`${CARD} animate-rise p-3`}>
+    <Card className="animate-rise p-3">
       <div className="font-mono text-lg tracking-tight">{value}</div>
-      <div className="mt-0.5 text-2xs text-faint">{label}</div>
-      {hint === undefined ? null : <div className="text-2xs text-faint">{hint}</div>}
-    </div>
+      <div className="mt-0.5 text-2xs text-muted-foreground">{label}</div>
+      {hint === undefined ? null : <div className="text-2xs text-muted-foreground">{hint}</div>}
+    </Card>
   );
 }
 
@@ -36,11 +37,11 @@ function Stat({
 function Bar({ usage, of }: { usage: UsageSummary["totals"]; of: number }): React.JSX.Element {
   const { t } = useTranslation();
   const parts = [
-    { key: "in", value: usage.inputTokens, tone: "bg-accent" },
-    { key: "out", value: usage.outputTokens, tone: "bg-accent/50" },
+    { key: "in", value: usage.inputTokens, tone: "bg-primary" },
+    { key: "out", value: usage.outputTokens, tone: "bg-primary/50" },
   ] as const;
   return (
-    <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-line/60">
+    <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-border/60">
       {parts.map((part) => (
         <span
           key={part.key}
@@ -70,15 +71,17 @@ function Bars({
   const most = Math.max(1, ...rows.map((r) => spend(r.usage)));
   return (
     <Section title={title}>
-      <div className={`${CARD} space-y-3 p-3`}>
+      <Card className="space-y-3 p-3">
         {rows.map((r) => (
           <div key={r.key}>
             <div className="flex items-baseline justify-between gap-3">
-              <span className="min-w-0 truncate text-xs text-text">{r.label}</span>
-              <span className="shrink-0 font-mono text-2xs text-faint">{fmt(spend(r.usage))}</span>
+              <span className="min-w-0 truncate text-xs text-foreground">{r.label}</span>
+              <span className="shrink-0 font-mono text-2xs text-muted-foreground">
+                {fmt(spend(r.usage))}
+              </span>
             </div>
             <Bar usage={r.usage} of={most} />
-            <div className="mt-1 flex justify-between gap-3 font-mono text-2xs text-faint">
+            <div className="mt-1 flex justify-between gap-3 font-mono text-2xs text-muted-foreground">
               <span>
                 {t("usage.in")} {fmt(r.usage.inputTokens)} · {t("usage.out")}{" "}
                 {fmt(r.usage.outputTokens)}
@@ -89,7 +92,7 @@ function Bars({
             </div>
           </div>
         ))}
-      </div>
+      </Card>
     </Section>
   );
 }
@@ -110,7 +113,7 @@ function Tokens(): React.JSX.Element {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <span className="text-2xs text-faint">{t("usage.window")}</span>
+        <span className="text-2xs text-muted-foreground">{t("usage.window")}</span>
         <Segmented
           value={String(hours)}
           options={WINDOWS.map(({ value, label }) => ({ value, label: t(label) }))}
@@ -137,7 +140,7 @@ function Tokens(): React.JSX.Element {
           <Bars title={t("usage.byAgent")} rows={summary.byAgent} />
           <Bars title={t("usage.byProject")} rows={summary.byProject} />
           <Bars title={t("usage.byDay")} rows={summary.byDay} />
-          <p className="text-2xs leading-relaxed text-faint">{t("usage.note")}</p>
+          <p className="text-2xs leading-relaxed text-muted-foreground">{t("usage.note")}</p>
         </>
       )}
     </div>
@@ -183,7 +186,7 @@ function Resources(): React.JSX.Element {
             </span>
           )}
         </div>
-        <p className="text-2xs leading-relaxed text-faint">{t("resources.pruneHint")}</p>
+        <p className="text-2xs leading-relaxed text-muted-foreground">{t("resources.pruneHint")}</p>
       </div>
       <Failure error={query.error ?? prune.error} />
       {inventory === null ? (
@@ -209,11 +212,11 @@ function Resources(): React.JSX.Element {
             {inventory.containers.length === 0 ? (
               <Empty>{t("resources.noneRunning")}</Empty>
             ) : (
-              <div className={`${CARD} divide-y divide-line/60`}>
+              <div className="divide-y divide-border/60">
                 {inventory.containers.map((c) => (
                   <div key={c.name} className="flex justify-between gap-3 px-3 py-2 text-xs">
                     <span className="truncate font-mono text-2xs">{c.name}</span>
-                    <span className="shrink-0 text-2xs text-faint">
+                    <span className="shrink-0 text-2xs text-muted-foreground">
                       {c.kind} · {c.state}
                     </span>
                   </div>
@@ -225,11 +228,11 @@ function Resources(): React.JSX.Element {
             {inventory.volumes.length === 0 ? (
               <Empty>{t("resources.noneStored")}</Empty>
             ) : (
-              <div className={`${CARD} divide-y divide-line/60`}>
+              <div className="divide-y divide-border/60">
                 {inventory.volumes.map((v) => (
                   <div key={v.name} className="flex justify-between gap-3 px-3 py-2 text-xs">
                     <span className="truncate font-mono text-2xs">{v.name}</span>
-                    <span className="shrink-0 text-2xs text-faint">
+                    <span className="shrink-0 text-2xs text-muted-foreground">
                       {v.kind} · {formatBytes(v.sizeBytes)}
                     </span>
                   </div>

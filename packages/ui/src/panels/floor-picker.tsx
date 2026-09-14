@@ -1,74 +1,23 @@
-import type { Project, ProjectId } from "@ho/protocol";
-import { useEffect, useRef, useState } from "react";
+import { ChevronsUpDown, Plus } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Popover, usePopover } from "../kit/popover.tsx";
-import { Chevron, Option } from "../kit/select.tsx";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { sortedFloors, useUi } from "../store.ts";
-
-const MENU_WIDTH = 300;
-
-/** Name and repository both, so two floors with the same name are still told apart by what they are. */
-const haystack = (floor: Project): string =>
-  `${floor.name} ${floor.repo.kind === "local" ? floor.repo.path : floor.repo.url}`.toLowerCase();
-
-/** What the picker opens: adding a floor first, then the floors themselves. */
-function FloorList({
-  floors,
-  shown,
-  floorId,
-  active,
-  onAdd,
-  onHover,
-  onPick,
-}: {
-  floors: readonly Project[];
-  shown: readonly Project[];
-  floorId: ProjectId | null;
-  active: number;
-  onAdd: () => void;
-  onHover: (index: number) => void;
-  onPick: (index: number) => void;
-}): React.JSX.Element {
-  const { t } = useTranslation();
-  return (
-    <div className="p-1">
-      <button
-        type="button"
-        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm text-accent hover:bg-line/70"
-        onClick={onAdd}
-      >
-        <span aria-hidden="true" className="w-3 text-center">
-          +
-        </span>
-        <span className="min-w-0 flex-1 truncate">{t("project.add")}</span>
-      </button>
-      <div className="my-1 h-px bg-line" />
-      {shown.length === 0 ? (
-        <p className="px-2 py-3 text-center text-2xs text-faint">{t("project.noMatch")}</p>
-      ) : (
-        shown.map((floor, index) => (
-          <Option
-            key={floor.id}
-            label={floor.name}
-            hint={String(floors.indexOf(floor) + 1)}
-            selected={floor.id === floorId}
-            active={index === active}
-            onHover={() => {
-              onHover(index);
-            }}
-            onPick={() => {
-              onPick(index);
-            }}
-          />
-        ))
-      )}
-    </div>
-  );
-}
 
 /**
  * Which floor the office is showing. A row of tabs is fine for three projects and unusable for thirty,
- * so this is one button and a list you can type into.
+ * so this is shadcn's combobox: one button, and a list that takes typing. The search reads the
+ * repository as well as the name, so two floors called `api` are still told apart.
  */
 export function FloorPicker(): React.JSX.Element {
   const { t } = useTranslation();
@@ -76,104 +25,65 @@ export function FloorPicker(): React.JSX.Element {
   const floorId = useUi((s) => s.floorId);
   const selectFloor = useUi((s) => s.selectFloor);
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
-  const button = useRef<HTMLButtonElement>(null);
-  const surface = useRef<HTMLDivElement>(null);
-  const search = useRef<HTMLInputElement>(null);
-  const menu = usePopover(button, surface, { width: MENU_WIDTH });
-  const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
+  const [open, setOpen] = useState(false);
 
   const floors = sortedFloors(projects);
-  const needle = query.trim().toLowerCase();
-  const shown = needle === "" ? floors : floors.filter((p) => haystack(p).includes(needle));
   const current = floors.findIndex((p) => p.id === floorId);
   const label = floors[current]?.name ?? t("project.floors");
 
-  useEffect(() => {
-    if (menu.open) {
-      search.current?.focus();
-    }
-  }, [menu.open]);
-
-  const show = (): void => {
-    setQuery("");
-    setActive(Math.max(0, current));
-    menu.start();
-  };
-  const pick = (index: number): void => {
-    const floor = shown[index];
-    if (floor !== undefined) {
-      selectFloor(floor.id);
-    }
-    menu.close();
-    button.current?.focus();
-  };
-
-  const onKeyDown = (event: React.KeyboardEvent): void => {
-    const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
-    if (step !== 0) {
-      event.preventDefault();
-      setActive((now) => Math.min(shown.length - 1, Math.max(0, now + step)));
-    } else if (event.key === "Enter") {
-      event.preventDefault();
-      pick(active);
-    } else if (event.key === "Escape") {
-      menu.close();
-      button.current?.focus();
-    }
-  };
-
   return (
-    <>
-      <button
-        ref={button}
-        type="button"
-        aria-haspopup="listbox"
-        aria-expanded={menu.open}
-        title={label}
-        className={`flex max-w-56 shrink-0 items-center gap-2 rounded-lg border border-accent/50 bg-accent-soft px-3 py-1.5 text-xs text-accent active:scale-[0.98] ${
-          menu.open ? "border-accent/70" : "shadow-glow"
-        }`}
-        onClick={() => {
-          if (menu.open) {
-            menu.close();
-          } else {
-            show();
-          }
-        }}
-      >
-        <span className="font-mono text-2xs opacity-70">{String(current + 1)}</span>
-        <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-        <Chevron open={menu.open} />
-      </button>
-      <Popover popover={menu} surface={surface} label={t("project.floors")}>
-        <div className="sticky top-0 border-b border-line bg-raised p-2">
-          <input
-            ref={search}
-            value={query}
-            placeholder={t("project.search")}
-            aria-label={t("project.search")}
-            className="w-full rounded-lg border border-line bg-ink/60 px-2.5 py-1.5 text-xs text-text placeholder:text-faint focus:border-accent/60 focus:outline-none"
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setActive(0);
-            }}
-            onKeyDown={onKeyDown}
-          />
-        </div>
-        <FloorList
-          floors={floors}
-          shown={shown}
-          floorId={floorId}
-          active={active}
-          onAdd={() => {
-            menu.close();
-            setAddProjectOpen(true);
-          }}
-          onHover={setActive}
-          onPick={pick}
-        />
-      </Popover>
-    </>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          aria-expanded={open}
+          title={label}
+          className="max-w-56 justify-between border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
+        >
+          <span className="font-mono text-2xs opacity-70">{String(current + 1)}</span>
+          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+          <ChevronsUpDown className="opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 p-0">
+        <Command>
+          <CommandInput placeholder={t("project.search")} />
+          <CommandList>
+            <CommandEmpty>{t("project.noMatch")}</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value={t("project.add")}
+                className="text-primary"
+                onSelect={() => {
+                  setOpen(false);
+                  setAddProjectOpen(true);
+                }}
+              >
+                <Plus />
+                {t("project.add")}
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup>
+              {floors.map((floor, index) => (
+                <CommandItem
+                  key={floor.id}
+                  value={`${floor.name} ${floor.repo.kind === "local" ? floor.repo.path : floor.repo.url}`}
+                  onSelect={() => {
+                    selectFloor(floor.id);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="min-w-0 flex-1 truncate">{floor.name}</span>
+                  <span className="font-mono text-2xs text-muted-foreground">
+                    {String(index + 1)}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

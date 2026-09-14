@@ -73,11 +73,11 @@ export function SessionBlock({
   const events = (live ?? []).filter((l) => l.event.kind !== "usage").slice(-40);
   const active = isSessionActive(session.state);
   return (
-    <div className="animate-rise space-y-2 rounded-lg border border-line bg-ink/40 p-3 text-xs">
+    <div className="animate-rise space-y-2 rounded-lg border border-border bg-background/40 p-3 text-xs">
       <div className="flex items-start justify-between gap-3">
         <span className="min-w-0">
           <span className="block truncate font-medium">{task?.title ?? session.taskId}</span>
-          <span className="text-2xs text-faint">{usageLine(session.usage, t)}</span>
+          <span className="text-2xs text-muted-foreground">{usageLine(session.usage, t)}</span>
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
           {session.services === undefined ? null : (
@@ -90,15 +90,19 @@ export function SessionBlock({
         </span>
       </div>
       {task?.artifacts.branch === undefined ? null : (
-        <div className="truncate font-mono text-2xs text-muted">{task.artifacts.branch}</div>
+        <div className="truncate font-mono text-2xs text-foreground/80">
+          {task.artifacts.branch}
+        </div>
       )}
       {events.length === 0 ? null : (
         <ul className="max-h-48 space-y-1 overflow-y-auto font-mono text-2xs">
           {events.map((l, i) => {
             const text = describe(l, t);
             return text === "" ? null : (
-              <li key={`${l.at}-${String(i)}`} className="truncate text-muted">
-                <span className="text-faint">{new Date(l.at).toLocaleTimeString()} </span>
+              <li key={`${l.at}-${String(i)}`} className="truncate text-foreground/80">
+                <span className="text-muted-foreground">
+                  {new Date(l.at).toLocaleTimeString()}{" "}
+                </span>
                 {text}
               </li>
             );

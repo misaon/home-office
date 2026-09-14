@@ -2,10 +2,12 @@ import type { SecretKeyName } from "@ho/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Button, CARD, CONTROL, Failure, Section } from "../kit/controls.tsx";
+import { Badge, Button, Failure, Section } from "../kit/controls.tsx";
 import { doctorQuery, secretsStatusQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { useOnline } from "../store.ts";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 const KEYS = [
   { key: "anthropic-oauth-token", label: "tokens.claude", hint: "tokens.claudeHint" },
@@ -56,11 +58,11 @@ export function SecretField({
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
-        <input
+        <Input
           type="password"
           aria-label={label}
           autoComplete="off"
-          className={`${CONTROL} font-mono`}
+          className="font-mono"
           placeholder={stored ? t("tokens.replace") : t("tokens.paste")}
           value={value}
           onChange={(e) => {
@@ -99,16 +101,16 @@ export function TokenSettings(): React.JSX.Element {
   return (
     <Section title={t("settings.credentials")}>
       {KEYS.map(({ key, label, hint }) => (
-        <div key={key} className={`${CARD} animate-rise space-y-2.5 p-4 text-xs`}>
+        <Card key={key} className="animate-rise space-y-2.5 p-4 text-xs">
           <div className="flex items-center justify-between">
             <span className="font-medium">{t(label)}</span>
             <Badge tone={present.includes(key) ? "good" : "neutral"}>
               {present.includes(key) ? t("tokens.stored") : t("tokens.missing")}
             </Badge>
           </div>
-          <p className="text-2xs leading-relaxed text-faint">{t(hint)}</p>
+          <p className="text-2xs leading-relaxed text-muted-foreground">{t(hint)}</p>
           <SecretField secret={key} label={t(label)} stored={present.includes(key)} />
-        </div>
+        </Card>
       ))}
     </Section>
   );

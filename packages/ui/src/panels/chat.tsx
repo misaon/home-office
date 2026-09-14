@@ -61,8 +61,8 @@ function Questions({
           key={q.taskId}
           type="button"
           aria-pressed={answering === q.taskId}
-          className={`block w-full rounded-lg px-3 py-2 text-left hover:bg-line/50 ${
-            answering === q.taskId ? "bg-line/70" : ""
+          className={`block w-full rounded-lg px-3 py-2 text-left hover:bg-border/50 ${
+            answering === q.taskId ? "bg-border/70" : ""
           }`}
           onClick={() => {
             setAnswering(answering === q.taskId ? null : q.taskId);
@@ -71,7 +71,7 @@ function Questions({
           <span className="text-warn">
             {t("chat.question", { asker: q.asker, title: q.title })}
           </span>
-          <div className="mt-1 text-muted">{q.text}</div>
+          <div className="mt-1 text-foreground/80">{q.text}</div>
         </button>
       ))}
     </div>
@@ -131,9 +131,9 @@ export function ChatPanel(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-3 text-xs text-muted">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3 text-xs text-foreground/80">
         <span>{t("chat.with")}</span>
-        <span className="font-medium text-text">{bossName}</span>
+        <span className="font-medium text-foreground">{bossName}</span>
         {floor === undefined ? null : <Badge>{floor.name}</Badge>}
       </div>
       <Messages messages={chatOf({ chat }, floorId)} agents={agents} thinking={thinking} />
@@ -145,7 +145,7 @@ export function ChatPanel(): React.JSX.Element {
               <span>{t("chat.answerTo", { name: question.asker })}</span>
               <button
                 type="button"
-                className="text-muted hover:underline"
+                className="text-foreground/80 hover:underline"
                 onClick={() => {
                   setAnswering(null);
                 }}

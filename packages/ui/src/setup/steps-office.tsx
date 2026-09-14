@@ -91,14 +91,14 @@ export function SmokeStep({ ready }: { ready: boolean }): React.JSX.Element {
   return (
     <SetupStep index={4} title={t("setup.smokeTest")} status={status}>
       <div className="space-y-3">
-        <p className="leading-relaxed text-muted">
+        <p className="leading-relaxed text-foreground/80">
           {t("setup.smokeIntro", {
             boss: boss?.name ?? t("setup.theBoss"),
             model: boss?.model ?? t("setup.bossModel"),
           })}
         </p>
         {reply !== undefined ? (
-          <blockquote className="animate-rise rounded-lg border border-line bg-ink p-3 leading-relaxed text-text">
+          <blockquote className="animate-rise rounded-lg border border-border bg-background p-3 leading-relaxed text-foreground">
             {reply.text}
           </blockquote>
         ) : (

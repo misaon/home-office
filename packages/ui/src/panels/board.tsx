@@ -2,9 +2,10 @@ import { isTerminal, mailForTask } from "@ho/core";
 import type { ProjectId, Task, TaskStatus } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Badge, Button, CARD_LIFT, Empty, Failure, Section } from "../kit/controls.tsx";
+import { Badge, Button, Empty, Failure, Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
+import { Card } from "@/components/ui/card";
 
 const COLUMNS = [
   { status: ["inbox", "planned"], title: "board.inbox", tone: "neutral" },
@@ -19,7 +20,7 @@ const COLUMNS = [
 }[];
 
 const LINK =
-  "rounded-md border border-line px-1.5 py-px text-2xs text-muted hover:border-accent/50 hover:text-accent";
+  "rounded-md border border-border px-1.5 py-px text-2xs text-foreground/80 hover:border-primary/50 hover:text-primary";
 
 type CardProps = {
   task: Task;
@@ -35,7 +36,7 @@ function TaskCard({ task, agents, tasks, inbox }: CardProps): React.JSX.Element 
   const reviewer = task.reviewerId === undefined ? undefined : agents.get(task.reviewerId);
   const mail = mailForTask({ tasks, mail: inbox }, task);
   return (
-    <article className={`${CARD_LIFT} animate-rise space-y-2 p-3 text-xs`}>
+    <Card className="animate-rise space-y-2 p-3 text-xs">
       <div className="font-medium">{task.title}</div>
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge tone={task.priority === "high" ? "warn" : "neutral"}>{task.priority}</Badge>
@@ -57,7 +58,7 @@ function TaskCard({ task, agents, tasks, inbox }: CardProps): React.JSX.Element 
       {assignee === undefined ? null : (
         <button
           type="button"
-          className="block text-2xs text-accent hover:underline"
+          className="block text-2xs text-primary hover:underline"
           onClick={() => {
             selectAgent(assignee.id);
           }}
@@ -67,9 +68,11 @@ function TaskCard({ task, agents, tasks, inbox }: CardProps): React.JSX.Element 
         </button>
       )}
       {task.artifacts.branch === undefined ? null : (
-        <div className="truncate font-mono text-2xs text-faint">{task.artifacts.branch}</div>
+        <div className="truncate font-mono text-2xs text-muted-foreground">
+          {task.artifacts.branch}
+        </div>
       )}
-    </article>
+    </Card>
   );
 }
 

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Button } from "./controls.tsx";
-import { EXIT_MS } from "./motion.ts";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 const ZOOM_STEP = 1.15;
 const ZOOM_MIN = 0.2;
@@ -31,15 +32,16 @@ function Step({
   onClick: () => void;
 }): React.JSX.Element {
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
+      size="icon-xs"
       title={label}
       aria-label={label}
-      className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-raised text-muted hover:border-line-strong hover:text-text active:scale-[0.94]"
       onClick={onClick}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -58,7 +60,7 @@ function Toolbar({
 }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-2.5">
+    <header className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-2.5">
       <span className="truncate text-xs font-medium">{name}</span>
       <Badge>{`${String(Math.round(scale * 100))} %`}</Badge>
       <span className="ml-auto flex shrink-0 items-center gap-2">
@@ -78,8 +80,10 @@ function Toolbar({
         >
           +
         </Step>
-        <Button onClick={onFit}>{t("chat.imageFit")}</Button>
-        <Button variant="ghost" onClick={onClose}>
+        <Button type="button" variant="outline" size="xs" onClick={onFit}>
+          {t("chat.imageFit")}
+        </Button>
+        <Button type="button" variant="ghost" size="xs" onClick={onClose}>
           {t("common.close")}
         </Button>
       </span>
@@ -107,7 +111,7 @@ function Stage({
   };
   return (
     <div
-      className={`flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-ink ${
+      className={`flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-background ${
         dragging ? "cursor-grabbing" : "cursor-grab"
       }`}
       onWheel={(e) => {
@@ -172,34 +176,23 @@ export function ImageViewer({
   name: string;
   onClose: () => void;
 }): React.JSX.Element {
-  const dialog = useRef<HTMLDialogElement>(null);
   const [view, setView] = useState<View>(FIT);
-  const [leaving, setLeaving] = useState(false);
-
-  useEffect(() => {
-    dialog.current?.showModal();
-  }, []);
-
-  /** The dialog closes first and leaves the document after, so its transition has something to play on. */
-  useEffect(() => {
-    const timer = leaving ? setTimeout(onClose, EXIT_MS) : null;
-    return () => {
-      if (timer !== null) {
-        clearTimeout(timer);
-      }
-    };
-  }, [leaving, onClose]);
-
+  const [open, setOpen] = useState(true);
   return (
-    <dialog
-      ref={dialog}
-      aria-label={name}
-      className="m-auto h-[90vh] max-h-none w-[90vw] max-w-none overflow-hidden rounded-2xl border border-line bg-panel p-0 text-text shadow-lift backdrop:bg-black/85 backdrop:backdrop-blur-sm"
-      onClose={() => {
-        setLeaving(true);
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
+          onClose();
+        }
       }}
     >
-      <div className="flex h-full flex-col">
+      <DialogContent
+        showCloseButton={false}
+        className="flex h-[90vh] w-[90vw] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none"
+      >
+        <DialogTitle className="sr-only">{name}</DialogTitle>
         <Toolbar
           name={name}
           scale={view.scale}
@@ -210,11 +203,12 @@ export function ImageViewer({
             setView(FIT);
           }}
           onClose={() => {
-            dialog.current?.close();
+            setOpen(false);
+            onClose();
           }}
         />
         <Stage src={src} name={name} view={view} setView={setView} />
-      </div>
-    </dialog>
+      </DialogContent>
+    </Dialog>
   );
 }

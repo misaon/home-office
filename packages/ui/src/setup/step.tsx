@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Badge, CARD } from "../kit/controls.tsx";
+import { Badge } from "../kit/controls.tsx";
 import type { StepState } from "./status.ts";
 
 export type StepStatus = { state: StepState; text: string };
@@ -26,14 +26,11 @@ export function SetupStep({ index, title, status, children }: Props): React.JSX.
   const { t } = useTranslation();
   const badge = BADGE[status.state];
   return (
-    <section
-      className={`${CARD} animate-rise p-4`}
-      style={{ animationDelay: `${String(index * 60)}ms` }}
-    >
+    <section className="animate-rise p-4" style={{ animationDelay: `${String(index * 60)}ms` }}>
       <div className="flex items-center gap-3">
         <span
           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-2xs ${
-            status.state === "ok" ? "bg-good/15 text-good" : "bg-ink text-muted"
+            status.state === "ok" ? "bg-good/15 text-good" : "bg-background text-foreground/80"
           }`}
         >
           {status.state === "ok" ? "✓" : index}
@@ -41,7 +38,7 @@ export function SetupStep({ index, title, status, children }: Props): React.JSX.
         <h3 className="flex-1 text-sm font-medium">{title}</h3>
         <Badge tone={badge.tone}>{badge.label === null ? "…" : t(badge.label)}</Badge>
       </div>
-      <p className="mt-2 pl-9 text-xs leading-relaxed text-muted">{status.text}</p>
+      <p className="mt-2 pl-9 text-xs leading-relaxed text-foreground/80">{status.text}</p>
       {children === undefined ? null : <div className="mt-3 pl-9 text-xs">{children}</div>}
     </section>
   );

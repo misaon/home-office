@@ -2,10 +2,11 @@ import type { IntakePolicy, IntakeStatus, Project } from "@ho/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import { Button, CONTROL_DENSE, Failure, Switch } from "../kit/controls.tsx";
+import { Button, Failure, Switch } from "../kit/controls.tsx";
 import { intakeStatusQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { useOnline } from "../store.ts";
+import { Input } from "@/components/ui/input";
 
 const when = (iso: string | null, t: TFunction): string =>
   iso === null ? t("settings.intakeNever") : new Date(iso).toLocaleTimeString();
@@ -27,15 +28,15 @@ function IntakeFields({ intake, update }: FieldsProps): React.JSX.Element {
   const labels = intake.labels.join(", ");
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 text-2xs text-muted">
+      <div className="flex flex-wrap items-center gap-2 text-2xs text-foreground/80">
         <span>{t("settings.intakeEvery")}</span>
-        <input
+        <Input
           key={intake.intervalSeconds}
           type="number"
           min={MIN_INTERVAL_S}
           max={MAX_INTERVAL_S}
           aria-label={t("settings.intakeEvery")}
-          className={`${CONTROL_DENSE} w-16`}
+          className="h-7 text-xs w-16"
           defaultValue={intake.intervalSeconds}
           onBlur={(e) => {
             const seconds = Number(e.target.value);
@@ -51,10 +52,10 @@ function IntakeFields({ intake, update }: FieldsProps): React.JSX.Element {
         />
         <span>{t("settings.intakeSeconds")}</span>
         <span className="ml-3">{t("settings.intakeAckLabel")}</span>
-        <input
+        <Input
           key={intake.ackLabel}
           aria-label={t("settings.intakeAckLabel")}
-          className={`${CONTROL_DENSE} w-28 font-mono`}
+          className="h-7 text-xs w-28 font-mono"
           defaultValue={intake.ackLabel}
           onBlur={(e) => {
             const ackLabel = e.target.value.trim();
@@ -64,11 +65,11 @@ function IntakeFields({ intake, update }: FieldsProps): React.JSX.Element {
           }}
         />
       </div>
-      <label className="flex items-center gap-2 text-2xs text-muted">
+      <label className="flex items-center gap-2 text-2xs text-foreground/80">
         <span className="shrink-0">{t("settings.intakeLabels")}</span>
-        <input
+        <Input
           key={labels}
-          className={`${CONTROL_DENSE} min-w-0 flex-1 font-mono`}
+          className="h-7 text-xs min-w-0 flex-1 font-mono"
           placeholder={t("settings.intakeAllIssues")}
           defaultValue={labels}
           onBlur={(e) => {
@@ -105,7 +106,7 @@ function IntakeHealth({ status }: { status: IntakeStatus | null }): React.JSX.El
     return null;
   }
   return (
-    <p className="text-2xs leading-relaxed text-faint">
+    <p className="text-2xs leading-relaxed text-muted-foreground">
       {t("settings.intakeLastPoll", { when: when(status.lastPollAt, t) })}
       {status.nextPollAt === null
         ? ""

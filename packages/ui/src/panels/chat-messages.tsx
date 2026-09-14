@@ -21,7 +21,8 @@ const authorName = (
     ? translate("chat.you")
     : (agents.get(message.author.agentId)?.name ?? translate("chat.agent"));
 
-const CHIP = "rounded-md border border-line bg-ink/60 px-1.5 py-px font-mono text-2xs text-muted";
+const CHIP =
+  "rounded-md border border-border bg-background/60 px-1.5 py-px font-mono text-2xs text-foreground/80";
 
 /** What the colleague who wrote this runs on; the effort level only where the provider offers one. */
 function AgentChips({ agent }: { agent: Agent | undefined }): React.JSX.Element | null {
@@ -43,7 +44,7 @@ function AgentChips({ agent }: { agent: Agent | undefined }): React.JSX.Element 
   );
 }
 
-const DOT = "h-1.5 w-1.5 animate-bounce rounded-full bg-accent/70";
+const DOT = "h-1.5 w-1.5 animate-bounce rounded-full bg-primary/70";
 
 /** What the colleague is doing right now, when the live stream says something worth a word. */
 const activityOf = (events: readonly LiveEvent[] | undefined, t: TFunction): string | null => {
@@ -64,8 +65,8 @@ function Thinking({ name, sessionId }: { name: string; sessionId: SessionId }): 
     t,
   );
   return (
-    <div className="animate-rise max-w-[92%] rounded-2xl rounded-bl-md border border-line bg-raised px-3.5 py-2.5 text-sm shadow-card">
-      <div className="flex items-center gap-2 text-2xs text-faint">
+    <div className="animate-rise max-w-[92%] rounded-2xl rounded-bl-md border border-border bg-secondary px-3.5 py-2.5 text-sm shadow-card">
+      <div className="flex items-center gap-2 text-2xs text-muted-foreground">
         <span>
           {name} {t("chat.thinking")}
         </span>
@@ -76,7 +77,7 @@ function Thinking({ name, sessionId }: { name: string; sessionId: SessionId }): 
         </span>
       </div>
       {activity === null ? null : (
-        <div className="mt-1.5 truncate font-mono text-2xs text-faint">{activity}</div>
+        <div className="mt-1.5 truncate font-mono text-2xs text-muted-foreground">{activity}</div>
       )}
     </div>
   );
@@ -117,13 +118,13 @@ export function Messages({
               i < backlog ? "" : "animate-rise"
             } ${
               mine
-                ? "ml-auto rounded-br-md border border-accent/40 bg-accent/20"
-                : "rounded-bl-md border border-line-strong bg-raised"
+                ? "ml-auto rounded-br-md border border-primary/40 bg-primary/20"
+                : "rounded-bl-md border border-input bg-secondary"
             }`}
           >
             <div
               className={`mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs ${
-                mine ? "text-accent/80" : "text-faint"
+                mine ? "text-primary/80" : "text-muted-foreground"
               }`}
             >
               <span>

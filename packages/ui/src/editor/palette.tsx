@@ -4,8 +4,9 @@ import type { TFunction } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useKindName } from "../i18n/kinds.ts";
-import { Button, CONTROL } from "../kit/controls.tsx";
+import { Button } from "../kit/controls.tsx";
 import { type Brush, rotate, type Tool } from "./draft.ts";
+import { Input } from "@/components/ui/input";
 
 const KIND_LABEL = {
   wall: "editor.material",
@@ -47,8 +48,8 @@ function Choices({
             aria-pressed={option === value}
             className={`rounded-lg border px-2 py-1.5 text-left text-2xs leading-tight break-words ${
               option === value
-                ? "border-accent/60 bg-accent/10 text-text"
-                : "border-line text-muted hover:border-line-strong hover:text-text"
+                ? "border-primary/60 bg-primary/10 text-foreground"
+                : "border-border text-foreground/80 hover:border-input hover:text-foreground"
             }`}
             onClick={() => {
               pick(option);
@@ -56,7 +57,7 @@ function Choices({
           >
             {name(option)}
             {footprint === null ? null : (
-              <span className="mt-0.5 block font-mono text-faint">{footprint}</span>
+              <span className="mt-0.5 block font-mono text-muted-foreground">{footprint}</span>
             )}
           </button>
         );
@@ -103,16 +104,16 @@ export function Palette({
   return (
     <>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-2xs font-medium text-muted">{t(KIND_LABEL[tool])}</p>
-        <span className="font-mono text-2xs text-faint">
+        <p className="text-2xs font-medium text-foreground/80">{t(KIND_LABEL[tool])}</p>
+        <span className="font-mono text-2xs text-muted-foreground">
           {options.length === all.length
             ? all.length
             : t("common.ofTotal", { shown: options.length, total: all.length })}
         </span>
       </div>
-      <input
+      <Input
         aria-label={t("editor.searchIn", { what: t(KIND_LABEL[tool]) })}
-        className={`${CONTROL} py-1.5 text-xs`}
+        className="py-1.5 text-xs"
         placeholder={t("common.search")}
         value={search}
         onChange={(e) => {
@@ -120,7 +121,9 @@ export function Palette({
         }}
       />
       {options.length === 0 ? (
-        <p className="text-2xs text-faint">{t("editor.noMatch", { needle: search.trim() })}</p>
+        <p className="text-2xs text-muted-foreground">
+          {t("editor.noMatch", { needle: search.trim() })}
+        </p>
       ) : null}
       <Choices
         options={options}
@@ -140,7 +143,7 @@ export function Palette({
           >
             {t("editor.rotate")}
           </Button>
-          <span className="font-mono text-2xs text-muted">
+          <span className="font-mono text-2xs text-foreground/80">
             {t("editor.facing", { facing: brush.facing })}
             {tool === "door"
               ? ""

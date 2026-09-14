@@ -43,11 +43,11 @@ function Toolbar({
 }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-1 px-1.5 pb-1.5 text-2xs text-muted">
+    <div className="flex items-center gap-1 px-1.5 pb-1.5 text-2xs text-foreground/80">
       <span className="min-w-0 flex-1 truncate px-1">{to}</span>
       <UsageChip />
       <label
-        className="flex shrink-0 cursor-pointer items-center rounded-lg px-2 py-1 text-muted hover:bg-line/50 hover:text-text"
+        className="flex shrink-0 cursor-pointer items-center rounded-lg px-2 py-1 text-foreground/80 hover:bg-border/50 hover:text-foreground"
         title={t("chat.attach")}
       >
         <ClipIcon />
@@ -135,7 +135,7 @@ export function Composer({
 
   return (
     <div
-      className="shrink-0 border-t border-line bg-panel px-3 py-2.5"
+      className="shrink-0 border-t border-border bg-card px-3 py-2.5"
       onDragOver={(e) => {
         e.preventDefault();
         setDropping(true);
@@ -166,10 +166,10 @@ export function Composer({
         </div>
       </Reveal>
       <div
-        className={`rounded-xl border bg-ink/60 px-1.5 pt-1 pb-0.5 transition-colors duration-[var(--duration-base)] ${
+        className={`rounded-xl border bg-background/60 px-1.5 pt-1 pb-0.5 transition-colors duration-[var(--duration-base)] ${
           dropping
-            ? "border-accent/60 bg-accent/[0.09]"
-            : "border-line focus-within:border-line-strong"
+            ? "border-primary/60 bg-primary/[0.09]"
+            : "border-border focus-within:border-input"
         }`}
       >
         <textarea
@@ -179,7 +179,7 @@ export function Composer({
           maxLength={20_000}
           rows={2}
           disabled={disabled}
-          className="block w-full resize-none bg-transparent px-1.5 pt-1.5 pb-1 text-sm text-text placeholder:text-faint focus:outline-none"
+          className="block w-full resize-none bg-transparent px-1.5 pt-1.5 pb-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
           placeholder={placeholder}
           value={text}
           onChange={(e) => {

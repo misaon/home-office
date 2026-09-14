@@ -4,10 +4,13 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GENDER_KEY, ROLE_KEY } from "../i18n/labels.ts";
-import { Button, CARD, CONTROL, Failure, Field } from "../kit/controls.tsx";
+import { Button, Failure, Field } from "../kit/controls.tsx";
 import { Select } from "../kit/select.tsx";
 import { requireClient } from "../rpc.ts";
 import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 /** Roles a floor hires; the boss comes with the floor. */
 const ROLES = AgentRole.options.filter((r) => r !== "boss");
@@ -58,12 +61,11 @@ export function NewAgent({
     }
   };
   return (
-    <div className={`${CARD} grid grid-cols-2 gap-x-4 gap-y-3 p-4 text-xs`}>
+    <Card className="grid grid-cols-2 gap-x-4 gap-y-3 p-4 text-xs">
       <div className="col-span-2">
         <Field id="ho-new-agent-name" label={t("agent.name")}>
-          <input
+          <Input
             id="ho-new-agent-name"
-            className={CONTROL}
             value={draft.name}
             onChange={(e) => {
               setDraft({ ...draft, name: e.target.value });
@@ -103,9 +105,9 @@ export function NewAgent({
       />
       <div className="col-span-2">
         <Field id="ho-new-agent-prompt" label={t("agent.basePrompt")}>
-          <textarea
+          <Textarea
             id="ho-new-agent-prompt"
-            className={`${CONTROL} h-20 resize-none`}
+            className="h-20 resize-none"
             value={draft.basePrompt}
             onChange={(e) => {
               setDraft({ ...draft, basePrompt: e.target.value });
@@ -121,6 +123,6 @@ export function NewAgent({
       <div className="col-span-2">
         <Failure error={create.error} />
       </div>
-    </div>
+    </Card>
   );
 }

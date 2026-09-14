@@ -8,8 +8,9 @@ import {
 } from "@ho/protocol";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CONTROL, Field } from "../kit/controls.tsx";
+import { Field } from "../kit/controls.tsx";
 import { Select } from "../kit/select.tsx";
+import { Input } from "@/components/ui/input";
 
 export type Choice = { provider: ProviderId; auth: AuthKind; model: string; effort: EffortLevel };
 
@@ -68,9 +69,9 @@ export function ProviderModelFields({ value, onChange, role }: Props): React.JSX
       ) : null}
       <Field id={`${id}-model`} label={t("agent.model")}>
         {custom ? (
-          <input
+          <Input
             id={`${id}-model`}
-            className={`${CONTROL} font-mono`}
+            className="font-mono"
             placeholder={catalog.defaultModel}
             defaultValue={value.model}
             onBlur={(e) => {

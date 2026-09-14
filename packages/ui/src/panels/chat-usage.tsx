@@ -1,15 +1,16 @@
 import { isSessionActive, type LiveEvent, type UsageSummary } from "@ho/protocol";
 import { useQuery } from "@tanstack/react-query";
-import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge } from "../kit/controls.tsx";
-import { Popover, usePopover } from "../kit/popover.tsx";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { usageQuery } from "../queries.ts";
 import { useOnline, useUi } from "../store.ts";
 
 /** The window the chip reports on, in hours; other windows live in the Usage panel. */
 const WINDOW_HOURS = 24;
-const PANEL_WIDTH = 300;
 
 const short = (n: number): string =>
   n >= 1_000_000
@@ -33,19 +34,13 @@ const limitedUntil = (events: readonly LiveEvent[] | undefined): string | null =
   return last === undefined || last.event.kind !== "rate_limited" ? null : last.event.retryAt;
 };
 
-/** A bar for the one thing here with a real denominator: how full a running context window is. */
-function Meter({ fill }: { fill: number }): React.JSX.Element {
-  return (
-    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line/60">
-      <div
-        className={`h-full transition-[width] duration-[var(--duration-slow)] ease-[var(--ease-soft)] ${
-          fill > 0.9 ? "bg-bad" : fill > 0.7 ? "bg-warn" : "bg-accent"
-        }`}
-        style={{ width: `${String(Math.min(100, Math.round(fill * 100)))}%` }}
-      />
-    </div>
-  );
-}
+/** shadcn's progress paints its own indicator, so the colour is handed to it from the outside. */
+const bar = (fill: number): string =>
+  fill > 0.9
+    ? "[&_[data-slot=progress-indicator]]:bg-destructive"
+    : fill > 0.7
+      ? "[&_[data-slot=progress-indicator]]:bg-warn"
+      : "";
 
 /** One reading: its name on the left and its number on the right, the way a meter is read. */
 function Reading({
@@ -59,8 +54,22 @@ function Reading({
 }): React.JSX.Element {
   return (
     <div className="flex items-baseline justify-between gap-3 py-0.5">
-      <span className="text-2xs text-faint">{label}</span>
-      <span className={`font-mono text-2xs ${warn ? "text-warn" : "text-muted"}`}>{value}</span>
+      <span className="text-2xs text-muted-foreground">{label}</span>
+      <span className={`font-mono text-2xs ${warn ? "text-warn" : "text-foreground"}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/** How full a running context window is: the one number here with a denominator worth a bar. */
+function ContextBar({ name, fill }: { name: string; fill: number }): React.JSX.Element {
+  const { t } = useTranslation();
+  const percent = Math.min(100, Math.round(fill * 100));
+  return (
+    <div className="space-y-1">
+      <Reading label={name} value={t("usage.context", { percent })} warn={fill > 0.7} />
+      <Progress value={percent} className={`h-1.5 ${bar(fill)}`} />
     </div>
   );
 }
@@ -74,9 +83,6 @@ function Reading({
 export function UsageChip(): React.JSX.Element {
   const { t } = useTranslation();
   const online = useOnline();
-  const chip = useRef<HTMLButtonElement>(null);
-  const surface = useRef<HTMLDivElement>(null);
-  const panel = usePopover(chip, surface, { width: PANEL_WIDTH, align: "end" });
   const sessions = useUi((s) => s.snapshot.sessions);
   const agents = useUi((s) => s.snapshot.agents);
   const live = useUi((s) => s.live);
@@ -86,41 +92,50 @@ export function UsageChip(): React.JSX.Element {
   const running = [...sessions.values()].filter((s) => isSessionActive(s.state));
   const waiting =
     running.map((s) => limitedUntil(live.get(s.id))).find((at) => at !== null) ?? null;
+  const fills = running
+    .map((s) => ({
+      name: agents.get(s.agentId)?.name ?? t("chat.colleague"),
+      fill: contextOf(live.get(s.id)),
+    }))
+    .filter((row): row is { name: string; fill: number } => row.fill !== null);
+  const fullest = fills.length === 0 ? 0 : Math.max(...fills.map((row) => row.fill));
   const tokens = summary === null ? 0 : spent(summary.totals);
-  const dot = waiting !== null ? "bg-warn" : running.length > 0 ? "bg-good" : "bg-line-strong";
+  const dot = waiting !== null ? "bg-warn" : running.length > 0 ? "bg-good" : "bg-input";
 
   return (
-    <>
-      <button
-        ref={chip}
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={panel.open}
-        title={t("usage.chipTitle")}
-        className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-2xs ${
-          panel.open ? "bg-line/70 text-text" : "text-muted hover:bg-line/50 hover:text-text"
-        }`}
-        onClick={panel.toggle}
-      >
-        <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-        <span className="font-mono">{short(tokens)}</span>
-      </button>
-      <Popover popover={panel} surface={surface} label={t("usage.chipTitle")} className="p-3">
-        <div className="flex items-center gap-2 pb-2">
-          <span className="text-2xs font-semibold tracking-widest text-faint uppercase">
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="xs" title={t("usage.chipTitle")} className="gap-1.5">
+          <span aria-hidden="true" className={`size-1.5 rounded-full ${dot}`} />
+          <span className="font-mono">{short(tokens)}</span>
+          {fills.length === 0 ? null : (
+            <>
+              <Progress
+                value={Math.round(fullest * 100)}
+                aria-label={t("usage.contextLabel")}
+                className={`h-1 w-8 ${bar(fullest)}`}
+              />
+              <span className="font-mono">{`${String(Math.round(fullest * 100))}%`}</span>
+            </>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-76 space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
             {t("usage.chipTitle")}
           </span>
-          <Badge>{t("usage.day")}</Badge>
+          <Badge variant="outline">{t("usage.day")}</Badge>
         </div>
         {summary === null ? (
-          <p className="text-2xs text-faint">{t("usage.noData")}</p>
+          <p className="text-2xs text-muted-foreground">{t("usage.noData")}</p>
         ) : (
           <>
             <Reading label={t("usage.in")} value={short(summary.totals.inputTokens)} />
             <Reading label={t("usage.out")} value={short(summary.totals.outputTokens)} />
             <Reading label={t("usage.cache")} value={short(summary.totals.cacheReadTokens)} />
             <Reading label={t("usage.turns")} value={String(summary.totals.turns)} />
-            <div className="my-2 h-px bg-line" />
+            <Separator />
             <Reading label={t("usage.running")} value={String(running.length)} />
             <Reading label={t("usage.sessions")} value={String(summary.sessions)} />
             <Reading
@@ -135,30 +150,20 @@ export function UsageChip(): React.JSX.Element {
                 warn
               />
             )}
-            {running.length === 0 ? null : (
-              <div className="mt-2 space-y-2 border-t border-line pt-2">
-                {running.map((s) => {
-                  const fill = contextOf(live.get(s.id));
-                  return (
-                    <div key={s.id}>
-                      <Reading
-                        label={agents.get(s.agentId)?.name ?? t("chat.colleague")}
-                        value={
-                          fill === null
-                            ? short(spent(s.usage))
-                            : t("usage.context", { percent: Math.round(fill * 100) })
-                        }
-                      />
-                      {fill === null ? null : <Meter fill={fill} />}
-                    </div>
-                  );
-                })}
-              </div>
+            {fills.length === 0 ? null : (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  {fills.map((row) => (
+                    <ContextBar key={row.name} name={row.name} fill={row.fill} />
+                  ))}
+                </div>
+              </>
             )}
-            <p className="mt-2 text-2xs leading-relaxed text-faint">{t("usage.chipNote")}</p>
+            <p className="text-2xs leading-relaxed text-muted-foreground">{t("usage.chipNote")}</p>
           </>
         )}
-      </Popover>
-    </>
+      </PopoverContent>
+    </Popover>
   );
 }

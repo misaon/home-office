@@ -49,7 +49,7 @@ export function ServicesSettings({ project }: Props): React.JSX.Element {
               save.mutate({ mode });
             }}
           />
-          <p className="text-2xs leading-relaxed text-faint">{t(NOTE[services.mode])}</p>
+          <p className="text-2xs leading-relaxed text-muted-foreground">{t(NOTE[services.mode])}</p>
         </div>
       ) : null}
       <Failure error={save.error} />

@@ -69,7 +69,7 @@ export function DockerStep({ doctor, refresh }: EnvProps): React.JSX.Element {
     <SetupStep index={1} title={t("setup.docker")} status={status}>
       {status.state === "ok" ? null : (
         <div className="space-y-3">
-          <p className="leading-relaxed text-muted">{t("setup.dockerIntro")}</p>
+          <p className="leading-relaxed text-foreground/80">{t("setup.dockerIntro")}</p>
           <Button onClick={refresh}>{t("setup.checkAgain")}</Button>
         </div>
       )}
@@ -134,7 +134,7 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
   return (
     <SetupStep index={2} title={t("setup.images")} status={status}>
       <div className="space-y-3">
-        <p className="leading-relaxed text-muted">{t("setup.imagesIntro")}</p>
+        <p className="leading-relaxed text-foreground/80">{t("setup.imagesIntro")}</p>
         {status.state === "ok" && !build.isPending ? null : (
           <Button
             variant="primary"
@@ -151,7 +151,7 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
         {lines.length > 0 ? (
           <pre
             ref={log}
-            className="max-h-44 overflow-y-auto rounded-lg border border-line bg-ink p-3 font-mono text-2xs text-muted"
+            className="max-h-44 overflow-y-auto rounded-lg border border-border bg-background p-3 font-mono text-2xs text-foreground/80"
           >
             {lines.join("\n")}
           </pre>
@@ -168,10 +168,10 @@ export function TokenStep({ doctor }: { doctor: Doctor | null }): React.JSX.Elem
   return (
     <SetupStep index={3} title={t("setup.token")} status={status}>
       <div className="space-y-3">
-        <p className="leading-relaxed text-muted">
+        <p className="leading-relaxed text-foreground/80">
           <Trans
             i18nKey="setup.tokenIntro"
-            components={{ code: <code className="rounded bg-ink px-1 font-mono" /> }}
+            components={{ code: <code className="rounded bg-background px-1 font-mono" /> }}
           />
         </p>
         <SecretField

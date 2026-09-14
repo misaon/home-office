@@ -19,7 +19,8 @@
     },
     "packages/ui": {
       "entry": ["src/main.tsx", "src/styles.css"],
-      "project": ["src/**/*.{ts,tsx,css}"]
+      "project": ["src/**/*.{ts,tsx,css}"],
+      "ignore": ["src/components/ui/**"]
     },
     "apps/cli": {
       "project": ["src/**/*.ts"]

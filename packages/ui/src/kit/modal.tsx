@@ -1,12 +1,15 @@
-import { useEffect, useRef } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 /**
- * A real modal dialog: the browser puts it in the top layer, makes the page behind it inert, moves focus
- * into it and restores focus on close, and closes it on Escape. A header, a body on its own rhythm and a
- * footer for its actions.
- *
- * It stays in the document while it is closed, because an element removed the moment it is dismissed has
- * nothing left to animate; `styles.css` transitions every dialog in and out from there.
+ * shadcn's dialog, under the office's own name. It brings its own overlay, focus trap, Escape handling
+ * and the animation both ways, which is why nothing here draws or times any of that.
  */
 export function Modal({
   open,
@@ -23,31 +26,23 @@ export function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const element = dialog.current;
-    if (open) {
-      element?.showModal();
-    } else {
-      element?.close();
-    }
-  }, [open]);
   return (
-    <dialog
-      ref={dialog}
-      aria-label={title}
-      className="m-auto w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-panel p-0 text-text shadow-lift backdrop:bg-black/70 backdrop:backdrop-blur-sm"
-      // Escape closes a modal dialog itself; this is how the office hears about it.
-      onClose={onClose}
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          onClose();
+        }
+      }}
     >
-      <header className="border-b border-line px-6 py-5">
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-        <p className="mt-2 text-xs leading-relaxed text-muted">{description}</p>
-      </header>
-      <div className="space-y-6 px-6 py-6">{children}</div>
-      <footer className="flex items-center justify-end gap-3 border-t border-line bg-ink/40 px-6 py-4">
-        {footer}
-      </footer>
-    </dialog>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-6">{children}</div>
+        <DialogFooter>{footer}</DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

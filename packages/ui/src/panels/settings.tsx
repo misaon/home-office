@@ -11,7 +11,7 @@ export function SettingsPanel(): React.JSX.Element {
   const { t } = useTranslation();
   return (
     <div className="h-full space-y-7 overflow-y-auto p-4 text-xs">
-      <p className="text-2xs leading-relaxed text-faint">{t("settings.intro")}</p>
+      <p className="text-2xs leading-relaxed text-muted-foreground">{t("settings.intro")}</p>
       <LanguageSettings />
       <TokenSettings />
       <ProjectsSettings />

@@ -66,7 +66,7 @@ export function SetupOverlay(): React.JSX.Element {
     <dialog
       ref={dialog}
       aria-label={t("setup.title")}
-      className="h-full max-h-none w-full max-w-none overflow-y-auto bg-ink/95 p-8 text-xs text-text backdrop-blur-sm backdrop:bg-black/60"
+      className="h-full max-h-none w-full max-w-none overflow-y-auto bg-background/95 p-8 text-xs text-foreground backdrop-blur-sm backdrop:bg-black/60"
       onClose={() => {
         dismiss();
         setSetupOpen(false);
@@ -76,7 +76,7 @@ export function SetupOverlay(): React.JSX.Element {
         <header className="flex items-start justify-between gap-6">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">{t("setup.title")}</h2>
-            <p className="mt-2 max-w-md leading-relaxed text-muted">{t("setup.intro")}</p>
+            <p className="mt-2 max-w-md leading-relaxed text-foreground/80">{t("setup.intro")}</p>
           </div>
           <div className="flex shrink-0 gap-3">
             <Button onClick={refresh}>{t("setup.recheck")}</Button>

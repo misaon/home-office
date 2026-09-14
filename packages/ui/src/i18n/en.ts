@@ -234,6 +234,7 @@ export const en = {
     github: "GitHub token",
   },
   usage: {
+    contextLabel: "Context window",
     turns: "turns",
     running: "sessions running",
     rateLimited: "rate limits",

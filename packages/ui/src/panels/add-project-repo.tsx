@@ -12,10 +12,12 @@ import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CONTROL, Field, FolderIcon, Segmented } from "../kit/controls.tsx";
+import { Field, Segmented } from "../kit/controls.tsx";
 import { Select } from "../kit/select.tsx";
 import { requireClient } from "../rpc.ts";
 import { useOnline } from "../store.ts";
+import { Folder } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 const INSPECT_DEBOUNCE_MS = 600;
 
@@ -166,9 +168,9 @@ function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
       tone={unavailable === null ? hint.tone : "error"}
     >
       <div className="flex gap-2">
-        <input
+        <Input
           id="ho-repo-path"
-          className={`${CONTROL} font-mono`}
+          className="font-mono"
           placeholder="/Users/you/projects/app"
           value={draft.path}
           onChange={(e) => {
@@ -177,14 +179,14 @@ function PathField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
         />
         <button
           type="button"
-          className="flex shrink-0 items-center rounded-lg border border-line bg-ink/60 px-3 text-muted hover:border-line-strong hover:text-text disabled:pointer-events-none disabled:opacity-40"
+          className="flex shrink-0 items-center rounded-lg border border-border bg-background/60 px-3 text-foreground/80 hover:border-input hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
           title={t("project.chooseFolder")}
           disabled={pick.isPending}
           onClick={() => {
             pick.mutate();
           }}
         >
-          <FolderIcon />
+          <Folder className="size-4" />
         </button>
       </div>
     </Field>
@@ -195,9 +197,9 @@ function UrlField({ draft, setDraft, hint }: FieldProps): React.JSX.Element {
   const { t } = useTranslation();
   return (
     <Field id="ho-repo-url" label={t("project.url")} hint={hint.text} tone={hint.tone}>
-      <input
+      <Input
         id="ho-repo-url"
-        className={`${CONTROL} font-mono`}
+        className="font-mono"
         placeholder="git@github.com:org/repo.git"
         value={draft.url}
         onChange={(e) => {
@@ -255,9 +257,8 @@ export function Details({
   return (
     <div className="grid grid-cols-2 gap-5">
       <Field id="ho-floor-name" label={t("project.name")}>
-        <input
+        <Input
           id="ho-floor-name"
-          className={CONTROL}
           placeholder={inspection?.name ?? t("project.nameHint")}
           value={draft.name}
           onChange={(e) => {

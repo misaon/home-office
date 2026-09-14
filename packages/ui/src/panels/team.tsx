@@ -12,7 +12,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GENDER_KEY, ROLE_KEY } from "../i18n/labels.ts";
-import { Badge, Button, CARD_LIFT, Empty, Failure, Field, Section } from "../kit/controls.tsx";
+import { Badge, Button, Empty, Failure, Field, Section } from "../kit/controls.tsx";
 import { Select } from "../kit/select.tsx";
 import { Reveal } from "../kit/reveal.tsx";
 import { requireClient } from "../rpc.ts";
@@ -20,6 +20,7 @@ import { type Snapshot, sortedFloors, useUi } from "../store.ts";
 import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
 import { NewAgent } from "./agent-new.tsx";
 import { SessionBlock } from "./team-sessions.tsx";
+import { Card } from "@/components/ui/card";
 
 const choiceOf = (agent: Agent): Choice => ({
   provider: agent.provider,
@@ -50,7 +51,7 @@ function AgentSettings({
     mutationFn: () => requireClient().agents.remove({ id: agent.id }),
   });
   return (
-    <div className="space-y-4 border-t border-line pt-4">
+    <div className="space-y-4 border-t border-border pt-4">
       <div className="grid grid-cols-2 gap-x-4 gap-y-3">
         <ProviderModelFields
           role={agent.role}
@@ -87,14 +88,14 @@ function AgentSettings({
         )}
       </div>
       {agent.basePrompt.trim() === "" ? null : (
-        <p className="rounded-lg bg-ink/40 p-3 text-2xs leading-relaxed whitespace-pre-wrap text-muted">
+        <p className="rounded-lg bg-background/40 p-3 text-2xs leading-relaxed whitespace-pre-wrap text-foreground/80">
           {agent.basePrompt}
         </p>
       )}
       <div className="flex items-center justify-between gap-3">
         <Failure error={save.error ?? copy.error ?? remove.error} />
         {agent.role === "boss" ? (
-          <span className="ml-auto text-2xs text-faint">{t("agent.runsFloor")}</span>
+          <span className="ml-auto text-2xs text-muted-foreground">{t("agent.runsFloor")}</span>
         ) : (
           <span className="ml-auto">
             <Button
@@ -133,7 +134,7 @@ function AgentCard({
   const open = selected === agent.id;
   const working = sessions.some((s) => isSessionActive(s.state));
   return (
-    <div className={`${CARD_LIFT} p-4 ${open ? "border-accent/40" : ""}`}>
+    <Card className={`p-4 ${open ? "border-primary/40" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <button
           type="button"
@@ -150,7 +151,7 @@ function AgentCard({
             </Badge>
             {working ? <Badge tone="good">{t("team.working")}</Badge> : null}
           </span>
-          <span className="mt-1 block truncate font-mono text-2xs text-faint">
+          <span className="mt-1 block truncate font-mono text-2xs text-muted-foreground">
             {agent.provider} · {agent.model} / {agent.effort}
           </span>
         </button>
@@ -171,13 +172,13 @@ function AgentCard({
       <Reveal open={open && !editing}>
         <div className="mt-3 space-y-2">
           {sessions.length === 0 ? (
-            <p className="text-2xs text-faint">{t("session.noSessions")}</p>
+            <p className="text-2xs text-muted-foreground">{t("session.noSessions")}</p>
           ) : (
             sessions.slice(0, 6).map((s) => <SessionBlock key={s.id} session={s} tasks={tasks} />)
           )}
         </div>
       </Reveal>
-    </div>
+    </Card>
   );
 }
 
@@ -209,7 +210,7 @@ export function TeamPanel(): React.JSX.Element {
       .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt));
   return (
     <div className="h-full space-y-5 overflow-y-auto p-4">
-      <p className="text-2xs leading-relaxed text-faint">{t("team.intro")}</p>
+      <p className="text-2xs leading-relaxed text-muted-foreground">{t("team.intro")}</p>
       <Section
         title={t("team.onFloor", { floor: projects.get(floorId)?.name ?? "" })}
         aside={<Badge>{agents.length}</Badge>}

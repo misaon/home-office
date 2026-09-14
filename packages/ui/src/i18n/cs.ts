@@ -235,6 +235,7 @@ export const cs: typeof en = {
     github: "GitHub token",
   },
   usage: {
+    contextLabel: "Kontextové okno",
     turns: "turns",
     running: "běžících session",
     rateLimited: "rate limity",

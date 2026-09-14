@@ -15,10 +15,10 @@ function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX
     <Field id="ho-editor-file" label={t("editor.load")}>
       {/* A file input draws its own button and its own "no file chosen" in the system's language,
           neither of which the office can restyle, so the label is the button and the input is hidden. */}
-      <label className="flex items-center gap-3 text-2xs text-faint">
+      <label className="flex items-center gap-3 text-2xs text-muted-foreground">
         <span
           id="ho-editor-file"
-          className="shrink-0 cursor-pointer rounded-lg border border-line bg-raised px-3 py-1.5 text-xs text-text hover:border-line-strong hover:bg-line/60"
+          className="shrink-0 cursor-pointer rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs text-foreground hover:border-input hover:bg-border/60"
         >
           {t("editor.chooseFile")}
         </span>
@@ -45,7 +45,7 @@ function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX
           }}
         />
       </label>
-      {problem === null ? null : <span className="text-2xs text-bad">{problem}</span>}
+      {problem === null ? null : <span className="text-2xs text-destructive">{problem}</span>}
     </Field>
   );
 }
@@ -77,13 +77,13 @@ export function SavedOffices({
           <button
             key={office.id}
             type="button"
-            className="block w-full rounded-md px-3 py-2 text-left hover:bg-line"
+            className="block w-full rounded-md px-3 py-2 text-left hover:bg-border"
             onClick={() => {
               load(office);
             }}
           >
             {office.name}{" "}
-            <span className="font-mono text-2xs text-faint">
+            <span className="font-mono text-2xs text-muted-foreground">
               {office.id} · {office.width}×{office.height}
             </span>
           </button>
