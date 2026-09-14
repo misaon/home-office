@@ -67,8 +67,9 @@ export function Composer({
 
   return (
     <div
+      // Writing is its own place rather than the end of the transcript, so it sits on the panel surface.
       className={`shrink-0 space-y-2 border-t p-4 transition-colors duration-[var(--duration-base)] ${
-        dropping ? "border-accent/60 bg-accent/[0.07]" : "border-line"
+        dropping ? "border-accent/60 bg-accent/[0.09]" : "border-line bg-panel"
       }`}
       onDragOver={(e) => {
         e.preventDefault();

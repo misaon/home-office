@@ -137,3 +137,24 @@ Three more came out of the sweep that followed: a `Reveal` that leaves the docum
 it cannot leave a gap behind in a parent that spaces its children; the same `Reveal` around the office's
 connection and error strips, which used to vanish in one frame; and the editor's file picker, which drew
 a native button and a "no file chosen" in the system's language.
+
+## The palette, repitched 2026-09-14
+
+The owner could not tell the surfaces apart: bubble, button and ground all read as the same dark. They
+were. The ramp moved by about five units a channel between one surface and the next, which is under a
+percent of lightness — a step the eye cannot find an edge in. It now roughly doubles at each step, from
+the ground through panels to cards, and the greys lost their blue cast, which is what had been turning
+every gold tint olive.
+
+Gold stopped being decoration and became the office's one piece of information. It says **yours** and
+**active**, in three strengths: solid for the message you wrote and the button that commits, a dark tint
+(`--color-accent-soft`) for a surface that belongs to you, such as the floor you are standing on, and
+the colour itself for a mark. The chat is where this pays: your own messages are solid gold with dark
+text and the floor's answers are grey cards, so the column reads as a conversation before a word of it
+is read. Warn moved from amber to orange for the same reason — a warning in the accent's own hue reads
+as the accent.
+
+The three weights of writing were measured rather than eyeballed: against a card, muted clears 7:1 and
+faint clears 4.5:1, where the old faint sat at about 2.9:1. A quiet button no longer borrows the surface
+of the card it stands on, and the composer sits on the panel surface, so writing is a place of its own
+rather than the end of the transcript.

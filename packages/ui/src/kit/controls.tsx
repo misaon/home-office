@@ -21,8 +21,9 @@ export const CARD_LIFT = `${CARD} transition-[transform,box-shadow,border-color]
 const VARIANTS = {
   primary:
     "bg-accent text-ink font-semibold hover:brightness-110 hover:shadow-glow active:scale-[0.98]",
+  // A quiet button sits on cards made of the surface it used to borrow, so it takes the step above.
   quiet:
-    "border border-line bg-raised text-text hover:border-line-strong hover:bg-line/60 active:scale-[0.98]",
+    "border border-line-strong bg-line/60 text-text hover:border-faint hover:bg-line active:scale-[0.98]",
   ghost: "text-muted hover:bg-line/40 hover:text-text active:scale-[0.98]",
   danger: "border border-bad/30 bg-bad/10 text-bad hover:bg-bad/20 active:scale-[0.98]",
 } as const;

@@ -68,7 +68,7 @@ function FloorTabs({ floorId }: { floorId: ProjectId | null }): React.JSX.Elemen
           title={p.repo.kind === "local" ? p.repo.path : p.repo.url}
           className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-xs active:scale-[0.98] ${
             p.id === floorId
-              ? "border-accent/40 bg-accent/15 text-accent shadow-glow"
+              ? "border-accent/50 bg-accent-soft text-accent shadow-glow"
               : "border-line bg-raised text-muted hover:border-line-strong hover:text-text"
           }`}
           onClick={() => {

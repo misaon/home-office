@@ -5,18 +5,29 @@
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
   /* The office is one stack of surfaces: the ground, the panels on it, the cards on those. Each step is
-     a shade lighter, which is where depth comes from — not from heavier borders. */
-  --color-ink: #0c0e13;
-  --color-panel: #12151c;
-  --color-raised: #171b24;
-  --color-line: #232833;
-  --color-line-strong: #333a49;
+     a shade lighter, which is where depth comes from — not from heavier borders. The steps roughly
+     double in lightness, because the first palette moved by five units a channel and the eye could not
+     find the edge between one surface and the next. The greys are neutral on purpose: the blue cast they
+     used to carry turned every gold tint olive. */
+  --color-ink: #0a0a0b;
+  --color-panel: #16161a;
+  --color-raised: #232327;
+  --color-line: #34343a;
+  --color-line-strong: #55555f;
+
+  /* Gold is the office's identity, in three strengths: solid for what the reader owns or should press,
+     a dark tint for a surface that belongs to it, and the colour itself for a mark. */
   --color-accent: #ffd166;
-  --color-text: #e8eaf0;
-  --color-muted: #99a2b2;
-  --color-faint: #6b7483;
+  --color-accent-soft: #2a2314;
+
+  /* Three weights of writing, far enough apart to rank and each still readable on the card it sits on:
+     measured against `--color-raised`, muted clears 7:1 and faint clears 4.5:1. */
+  --color-text: #f4f3f1;
+  --color-muted: #b3b2ad;
+  --color-faint: #8a8983;
   --color-good: #6ee7a8;
-  --color-warn: #f0b866;
+  /* Orange, not amber: a warning that shares the accent's hue reads as the accent. */
+  --color-warn: #f2994a;
   --color-bad: #f28b8b;
 
   /* The office is a fixed desktop window, so both scales are absolute. A rem scale hung off a 13px
