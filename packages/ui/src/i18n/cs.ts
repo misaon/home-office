@@ -111,6 +111,9 @@ export const cs: typeof en = {
     neutral: "neutrální",
   },
   board: {
+    clear: "Uklidit hotové",
+    clearConfirm: "Sundat z tabule {{count}} hotových úkolů? V logu zůstanou.",
+    cleared: "sundáno {{count}}",
     rounds: "kol {{count}}",
     issue: "issue #{{id}}",
     pullRequest: "pull request",

@@ -61,6 +61,8 @@ export const DomainEvent = z.discriminatedUnion("type", [
     verdict: z.enum(["approve", "request_changes"]),
     rounds: z.int().nonnegative(),
   }),
+  /** Finished work taken off the board. The log keeps how it went; the projection stops carrying it. */
+  event("task.removed", { taskId: TaskId }),
 
   /** Drives the office animation: the source agent walks over and hands the folder to the target. */
   event("handoff.requested", {

@@ -186,3 +186,25 @@ so two floors called `api` are still told apart. The panel beside the office wen
 All three lean on one new primitive, `kit/popover.tsx`: where a surface anchored to a control goes, when
 it leaves, and what closes it. The select's own dropdown was already that code, so it moved rather than
 being copied.
+
+## The second round of the owner's review, 2026-09-14
+
+**The board can be tidied, and that needed the log's permission.** A done column that only ever grows
+stops being a column. Clearing it is a real command rather than a filter: `task.removed` is a new event,
+`clearFinishedTasks` emits one per terminal task on a floor that no session is still holding, and the
+reducer drops the task, its place on the floor and its sessions the way removing a project already did.
+Nothing is lost — the log keeps every event of a removed task, including how it went.
+
+**The usage bars stopped being about cache.** The first cut stacked input, output and cache into one bar;
+cache reads run two orders of magnitude above the rest, so every row was a grey bar with a gold sliver on
+the end. The bar is now what the bucket actually spent, input and output in two shades, with the cache
+figure written underneath where it can be read but cannot flatten the chart.
+
+**The chip's panel gained the one meter it can honestly draw.** A running session's context window has a
+real denominator, so it gets a bar that turns amber past seventy per cent and red past ninety. Tokens
+spent do not: no provider tells the office a plan's quota, so the panel reports what it measured and says
+so rather than drawing a gauge against a number nobody gave it.
+
+Also: the recipient line left the composer, since the panel above it already says who you are talking to;
+adding a floor moved into the picker's first row and the header's "+" is gone; and muted and faint moved
+up once more, because the credential hints were still reading as disabled text.

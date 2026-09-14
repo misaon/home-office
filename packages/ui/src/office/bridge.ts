@@ -216,6 +216,7 @@ export class Bridge {
       case "session.usage_recorded":
       case "task.artifacts_changed":
       case "task.assigned":
+      case "task.removed":
       case "task.edited":
       case "task.review_recorded":
       case "task.reviewer_assigned": {

@@ -83,6 +83,10 @@ export const contract = {
     create: base.input(TaskCreateInput).output(Task),
     assign: base.input(TaskAssignInput).output(Task),
     transition: base.input(TaskTransitionInput).output(Task),
+    /** Takes a floor's finished work off the board; the log keeps every event of it. */
+    clear: base
+      .input(z.object({ projectId: ProjectId }))
+      .output(z.object({ removed: z.int().nonnegative() })),
   },
   chat: {
     send: base

@@ -1,4 +1,4 @@
-import type { Project } from "@ho/protocol";
+import type { Project, ProjectId } from "@ho/protocol";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Popover, usePopover } from "../kit/popover.tsx";
@@ -11,6 +11,61 @@ const MENU_WIDTH = 300;
 const haystack = (floor: Project): string =>
   `${floor.name} ${floor.repo.kind === "local" ? floor.repo.path : floor.repo.url}`.toLowerCase();
 
+/** What the picker opens: adding a floor first, then the floors themselves. */
+function FloorList({
+  floors,
+  shown,
+  floorId,
+  active,
+  onAdd,
+  onHover,
+  onPick,
+}: {
+  floors: readonly Project[];
+  shown: readonly Project[];
+  floorId: ProjectId | null;
+  active: number;
+  onAdd: () => void;
+  onHover: (index: number) => void;
+  onPick: (index: number) => void;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <div className="p-1">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm text-accent hover:bg-line/70"
+        onClick={onAdd}
+      >
+        <span aria-hidden="true" className="w-3 text-center">
+          +
+        </span>
+        <span className="min-w-0 flex-1 truncate">{t("project.add")}</span>
+      </button>
+      <div className="my-1 h-px bg-line" />
+      {shown.length === 0 ? (
+        <p className="px-2 py-3 text-center text-2xs text-faint">{t("project.noMatch")}</p>
+      ) : (
+        shown.map((floor, index) => (
+          <Option
+            key={floor.id}
+            label={floor.name}
+            hint={String(floors.indexOf(floor) + 1)}
+            selected={floor.id === floorId}
+            active={index === active}
+            onHover={() => {
+              onHover(index);
+            }}
+            onPick={() => {
+              onPick(index);
+            }}
+          />
+        ))
+      )}
+    </div>
+  );
+}
+
 /**
  * Which floor the office is showing. A row of tabs is fine for three projects and unusable for thirty,
  * so this is one button and a list you can type into.
@@ -20,6 +75,7 @@ export function FloorPicker(): React.JSX.Element {
   const projects = useUi((s) => s.snapshot.projects);
   const floorId = useUi((s) => s.floorId);
   const selectFloor = useUi((s) => s.selectFloor);
+  const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
   const button = useRef<HTMLButtonElement>(null);
   const surface = useRef<HTMLDivElement>(null);
   const search = useRef<HTMLInputElement>(null);
@@ -105,27 +161,18 @@ export function FloorPicker(): React.JSX.Element {
             onKeyDown={onKeyDown}
           />
         </div>
-        <div className="p-1">
-          {shown.length === 0 ? (
-            <p className="px-2 py-3 text-center text-2xs text-faint">{t("project.noMatch")}</p>
-          ) : (
-            shown.map((floor, index) => (
-              <Option
-                key={floor.id}
-                label={floor.name}
-                hint={String(floors.indexOf(floor) + 1)}
-                selected={floor.id === floorId}
-                active={index === active}
-                onHover={() => {
-                  setActive(index);
-                }}
-                onPick={() => {
-                  pick(index);
-                }}
-              />
-            ))
-          )}
-        </div>
+        <FloorList
+          floors={floors}
+          shown={shown}
+          floorId={floorId}
+          active={active}
+          onAdd={() => {
+            menu.close();
+            setAddProjectOpen(true);
+          }}
+          onHover={setActive}
+          onPick={pick}
+        />
       </Popover>
     </>
   );

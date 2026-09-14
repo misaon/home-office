@@ -5,6 +5,7 @@ import {
   type ProjectId,
   type Session,
   type StoredEvent,
+  type TaskId,
 } from "@ho/protocol";
 import {
   CHAT_TAIL,
@@ -29,6 +30,10 @@ function applyTaskEvent(model: ReadModel, event: TaskEvent): void {
   }
   const task = model.tasks.get(event.payload.taskId);
   if (task === undefined) {
+    return;
+  }
+  if (event.type === "task.removed") {
+    removeTask(model, task.id, task.projectId);
     return;
   }
   const { assigneeId: _assignee, reviewerId: _reviewer, ...bare } = task;
@@ -133,6 +138,21 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
  * The floor is gone: its staff left with `agent.removed`, and its tasks, their sessions, its chat and
  * its mail go with it. Sessions are keyed by task, so nothing else would ever clean them up.
  */
+/** Everything one task owns in the projection: the task, its place on a floor, and its sessions. */
+function removeTask(model: ReadModel, taskId: TaskId, projectId: ProjectId): void {
+  for (const sessionId of model.sessionsByTask.get(taskId) ?? []) {
+    const session = model.sessions.get(sessionId);
+    if (session !== undefined) {
+      dropFrom(model.sessionsByAgent, session.agentId, sessionId);
+    }
+    model.sessions.delete(sessionId);
+    model.activeSessions.delete(sessionId);
+  }
+  model.sessionsByTask.delete(taskId);
+  model.tasks.delete(taskId);
+  dropFrom(model.tasksByProject, projectId, taskId);
+}
+
 function removeProject(model: ReadModel, projectId: ProjectId): void {
   model.projects.delete(projectId);
   model.agentsByProject.delete(projectId);
@@ -174,6 +194,7 @@ const TOUCHES: Readonly<Record<StoredEvent["type"], Collection | null>> = {
   "task.artifacts_changed": "tasks",
   "task.note_added": "tasks",
   "task.review_recorded": "tasks",
+  "task.removed": "tasks",
   "handoff.requested": null,
   "chat.message_posted": "chat",
   "mail.received": "mail",
@@ -228,6 +249,7 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
     case "task.status_changed":
     case "task.artifacts_changed":
     case "task.note_added":
+    case "task.removed":
     case "task.review_recorded": {
       applyTaskEvent(model, event);
       break;

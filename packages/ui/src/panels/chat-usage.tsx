@@ -33,6 +33,20 @@ const limitedUntil = (events: readonly LiveEvent[] | undefined): string | null =
   return last === undefined || last.event.kind !== "rate_limited" ? null : last.event.retryAt;
 };
 
+/** A bar for the one thing here with a real denominator: how full a running context window is. */
+function Meter({ fill }: { fill: number }): React.JSX.Element {
+  return (
+    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line/60">
+      <div
+        className={`h-full transition-[width] duration-[var(--duration-slow)] ease-[var(--ease-soft)] ${
+          fill > 0.9 ? "bg-bad" : fill > 0.7 ? "bg-warn" : "bg-accent"
+        }`}
+        style={{ width: `${String(Math.min(100, Math.round(fill * 100)))}%` }}
+      />
+    </div>
+  );
+}
+
 /** One reading: its name on the left and its number on the right, the way a meter is read. */
 function Reading({
   label,
@@ -107,10 +121,8 @@ export function UsageChip(): React.JSX.Element {
             <Reading label={t("usage.cache")} value={short(summary.totals.cacheReadTokens)} />
             <Reading label={t("usage.turns")} value={String(summary.totals.turns)} />
             <div className="my-2 h-px bg-line" />
-            <Reading
-              label={t("usage.running")}
-              value={`${String(running.length)} / ${String(summary.sessions)}`}
-            />
+            <Reading label={t("usage.running")} value={String(running.length)} />
+            <Reading label={t("usage.sessions")} value={String(summary.sessions)} />
             <Reading
               label={t("usage.rateLimited")}
               value={summary.rateLimitIncidents === 0 ? "—" : String(summary.rateLimitIncidents)}
@@ -124,19 +136,21 @@ export function UsageChip(): React.JSX.Element {
               />
             )}
             {running.length === 0 ? null : (
-              <div className="mt-2 space-y-0.5 border-t border-line pt-2">
+              <div className="mt-2 space-y-2 border-t border-line pt-2">
                 {running.map((s) => {
                   const fill = contextOf(live.get(s.id));
                   return (
-                    <Reading
-                      key={s.id}
-                      label={agents.get(s.agentId)?.name ?? t("chat.colleague")}
-                      value={
-                        fill === null
-                          ? short(spent(s.usage))
-                          : t("usage.context", { percent: Math.round(fill * 100) })
-                      }
-                    />
+                    <div key={s.id}>
+                      <Reading
+                        label={agents.get(s.agentId)?.name ?? t("chat.colleague")}
+                        value={
+                          fill === null
+                            ? short(spent(s.usage))
+                            : t("usage.context", { percent: Math.round(fill * 100) })
+                        }
+                      />
+                      {fill === null ? null : <Meter fill={fill} />}
+                    </div>
                   );
                 })}
               </div>

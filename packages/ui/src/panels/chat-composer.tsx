@@ -33,7 +33,7 @@ function ClipIcon(): React.JSX.Element {
   );
 }
 
-/** The composer's own bottom edge: who it goes to, what it has cost, and the one way to add a file. */
+/** The composer's own bottom edge: what the draft has cost, and the one way to add a file to it. */
 function Toolbar({
   to,
   attach,
@@ -43,8 +43,8 @@ function Toolbar({
 }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-1 px-2 pb-1.5 text-2xs text-muted">
-      <span className="min-w-0 flex-1 truncate">{to}</span>
+    <div className="flex items-center gap-1 px-1.5 pb-1.5 text-2xs text-muted">
+      <span className="min-w-0 flex-1 truncate px-1">{to}</span>
       <UsageChip />
       <label
         className="flex shrink-0 cursor-pointer items-center rounded-lg px-2 py-1 text-muted hover:bg-line/50 hover:text-text"
@@ -68,7 +68,7 @@ function Toolbar({
 }
 
 type Props = {
-  /** Who the message goes to, said in the words the panel above chose. */
+  /** Only said when it is not obvious: answering a question names who asked it. */
   to: React.ReactNode;
   placeholder: string;
   text: string;
@@ -166,10 +166,10 @@ export function Composer({
         </div>
       </Reveal>
       <div
-        className={`rounded-xl border bg-ink/60 transition-colors duration-[var(--duration-base)] ${
+        className={`rounded-xl border bg-ink/60 px-1.5 pt-1 pb-0.5 transition-colors duration-[var(--duration-base)] ${
           dropping
             ? "border-accent/60 bg-accent/[0.09]"
-            : "border-line focus-within:border-accent/60"
+            : "border-line focus-within:border-line-strong"
         }`}
       >
         <textarea
@@ -179,7 +179,7 @@ export function Composer({
           maxLength={20_000}
           rows={2}
           disabled={disabled}
-          className="block w-full resize-none bg-transparent px-3 pt-2.5 pb-1 text-sm text-text placeholder:text-faint focus:outline-none"
+          className="block w-full resize-none bg-transparent px-1.5 pt-1.5 pb-1 text-sm text-text placeholder:text-faint focus:outline-none"
           placeholder={placeholder}
           value={text}
           onChange={(e) => {

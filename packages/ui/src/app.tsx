@@ -52,27 +52,6 @@ function PanelBody({ panel }: { panel: Panel }): React.JSX.Element {
   );
 }
 
-/** The floor the office is showing, and the one button that adds another. */
-function Floors(): React.JSX.Element {
-  const { t } = useTranslation();
-  const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
-  return (
-    <nav className="flex min-w-0 items-center gap-1.5">
-      <FloorPicker />
-      <button
-        type="button"
-        className="shrink-0 rounded-lg border border-dashed border-line px-2.5 py-1.5 text-xs text-faint hover:border-accent/50 hover:text-accent active:scale-[0.98]"
-        title={t("app.addProject")}
-        onClick={() => {
-          setAddProjectOpen(true);
-        }}
-      >
-        +
-      </button>
-    </nav>
-  );
-}
-
 /** Before the first project: one invitation, on the office's own ground. */
 function EmptyOffice(): React.JSX.Element {
   const { t } = useTranslation();
@@ -153,7 +132,7 @@ export function App(): React.JSX.Element {
         <header className={`flex items-center gap-4 px-4 ${BAR}`}>
           <span className="shrink-0 font-semibold tracking-tight">Home Office</span>
           <Connection />
-          {hasFloors ? <Floors /> : null}
+          {hasFloors ? <FloorPicker /> : null}
           <span className="ml-auto flex shrink-0 gap-2">
             {DEV ? (
               <Button

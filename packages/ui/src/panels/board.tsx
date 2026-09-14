@@ -1,7 +1,9 @@
-import { mailForTask } from "@ho/core";
-import type { Task, TaskStatus } from "@ho/protocol";
+import { isTerminal, mailForTask } from "@ho/core";
+import type { ProjectId, Task, TaskStatus } from "@ho/protocol";
+import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Badge, CARD_LIFT, Empty, Section } from "../kit/controls.tsx";
+import { Badge, Button, CARD_LIFT, Empty, Failure, Section } from "../kit/controls.tsx";
+import { requireClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
 
 const COLUMNS = [
@@ -71,7 +73,36 @@ function TaskCard({ task, agents, tasks, inbox }: CardProps): React.JSX.Element 
   );
 }
 
-/** The tasks of the selected floor by status; the floor tabs in the header pick the project. */
+/** Finished work is history, not a queue: this is how it leaves the board without leaving the log. */
+function ClearFinished({
+  floorId,
+  finished,
+}: {
+  floorId: ProjectId;
+  finished: number;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const clear = useMutation({
+    mutationFn: () => requireClient().tasks.clear({ projectId: floorId }),
+  });
+  return (
+    <span className="flex items-center gap-2">
+      <Failure error={clear.error} />
+      <Button
+        disabled={clear.isPending}
+        onClick={() => {
+          if (window.confirm(t("board.clearConfirm", { count: finished }))) {
+            clear.mutate();
+          }
+        }}
+      >
+        {t("board.clear")}
+      </Button>
+    </span>
+  );
+}
+
+/** The tasks of the selected floor by status; the picker in the header chooses the floor. */
 export function BoardPanel(): React.JSX.Element {
   const { t } = useTranslation();
   const allTasks = useUi((s) => s.snapshot.tasks);
@@ -81,9 +112,15 @@ export function BoardPanel(): React.JSX.Element {
   const tasks = [...allTasks.values()]
     .filter((task) => task.projectId === floorId)
     .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const finished = tasks.filter((task) => isTerminal(task.status)).length;
   return (
     <div className="h-full space-y-6 overflow-y-auto p-4">
       {tasks.length === 0 ? <Empty>{t("board.empty")}</Empty> : null}
+      {floorId === null || finished === 0 ? null : (
+        <div className="flex justify-end">
+          <ClearFinished floorId={floorId} finished={finished} />
+        </div>
+      )}
       {COLUMNS.map((column) => {
         const items = tasks.filter((task) =>
           column.status.some((status) => status === task.status),

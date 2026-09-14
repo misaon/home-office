@@ -140,9 +140,7 @@ export function ChatPanel(): React.JSX.Element {
       <Questions questions={questions} answering={answering} setAnswering={setAnswering} />
       <Composer
         to={
-          question === undefined ? (
-            <span>{t("chat.to", { name: bossName })}</span>
-          ) : (
+          question === undefined ? null : (
             <>
               <span>{t("chat.answerTo", { name: question.asker })}</span>
               <button

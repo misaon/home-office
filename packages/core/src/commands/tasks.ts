@@ -14,6 +14,7 @@ import {
   type TaskStatus,
   type TaskTransitionInput,
 } from "@ho/protocol";
+import { activeSessionOfTask, tasksOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import {
   type CommandContext,
@@ -201,4 +202,28 @@ export function patchTaskArtifacts(
     ],
     read: readTask(taskId),
   });
+}
+
+/**
+ * Takes finished work off a floor's board. Only terminal tasks go, and only ones no session is still
+ * holding: the board is a place of work in progress, and a done column that only ever grows stops being
+ * one. What happened is not lost — the log keeps every event of a removed task, and so does its history.
+ */
+export function clearFinishedTasks(
+  model: ReadModel,
+  projectId: ProjectId,
+  ctx: CommandContext,
+): CommandResult<TaskId[]> {
+  if (!model.projects.has(projectId)) {
+    return err(notFound("project", projectId));
+  }
+  const finished = tasksOf(model, projectId).filter(
+    (task) => isTerminal(task.status) && activeSessionOfTask(model, task.id) === undefined,
+  );
+  const events: NewEvent[] = finished.map((task) => ({
+    type: "task.removed",
+    actor: ctx.actor,
+    payload: { taskId: task.id },
+  }));
+  return ok({ events, read: () => finished.map((task) => task.id) });
 }

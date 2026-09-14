@@ -28,7 +28,35 @@ function Stat({
   );
 }
 
-function Buckets({
+/**
+ * A bar of what a bucket actually spent, split into what went in and what came back. Cache reads are
+ * left out of its length on purpose: they run two orders of magnitude above the rest, so a stack that
+ * included them was a grey bar with a gold sliver on the end, every time, for every row.
+ */
+function Bar({ usage, of }: { usage: UsageSummary["totals"]; of: number }): React.JSX.Element {
+  const { t } = useTranslation();
+  const parts = [
+    { key: "in", value: usage.inputTokens, tone: "bg-accent" },
+    { key: "out", value: usage.outputTokens, tone: "bg-accent/50" },
+  ] as const;
+  return (
+    <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-line/60">
+      {parts.map((part) => (
+        <span
+          key={part.key}
+          title={`${t(`usage.${part.key}`)} ${fmt(part.value)}`}
+          className={`${part.tone} transition-[width] duration-[var(--duration-slow)] ease-[var(--ease-soft)]`}
+          style={{ width: `${String((part.value / of) * 100)}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+const spend = (usage: UsageSummary["totals"]): number => usage.inputTokens + usage.outputTokens;
+
+/** A bucket list read as a chart: the name, what it spent, and how that compares with the rest. */
+function Bars({
   title,
   rows,
 }: {
@@ -39,33 +67,28 @@ function Buckets({
   if (rows.length === 0) {
     return null;
   }
+  const most = Math.max(1, ...rows.map((r) => spend(r.usage)));
   return (
     <Section title={title}>
-      <div className={`${CARD} overflow-hidden`}>
-        <table className="w-full text-left text-xs">
-          <thead className="text-2xs text-faint">
-            <tr className="border-b border-line">
-              <th className="px-3 py-2 font-normal">{t("usage.name")}</th>
-              <th className="px-2 py-2 text-right font-normal">{t("usage.in")}</th>
-              <th className="px-2 py-2 text-right font-normal">{t("usage.out")}</th>
-              <th className="px-2 py-2 text-right font-normal">{t("usage.cache")}</th>
-              <th className="px-3 py-2 text-right font-normal">{t("usage.sessions")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.key} className="border-t border-line/60 hover:bg-line/20">
-                <td className="max-w-40 truncate px-3 py-1.5">{r.label}</td>
-                <td className="px-2 text-right font-mono text-2xs">{fmt(r.usage.inputTokens)}</td>
-                <td className="px-2 text-right font-mono text-2xs">{fmt(r.usage.outputTokens)}</td>
-                <td className="px-2 text-right font-mono text-2xs">
-                  {fmt(r.usage.cacheReadTokens)}
-                </td>
-                <td className="px-3 text-right font-mono text-2xs">{String(r.sessions)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className={`${CARD} space-y-3 p-3`}>
+        {rows.map((r) => (
+          <div key={r.key}>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="min-w-0 truncate text-xs text-text">{r.label}</span>
+              <span className="shrink-0 font-mono text-2xs text-faint">{fmt(spend(r.usage))}</span>
+            </div>
+            <Bar usage={r.usage} of={most} />
+            <div className="mt-1 flex justify-between gap-3 font-mono text-2xs text-faint">
+              <span>
+                {t("usage.in")} {fmt(r.usage.inputTokens)} · {t("usage.out")}{" "}
+                {fmt(r.usage.outputTokens)}
+              </span>
+              <span>
+                {t("usage.cache")} {fmt(r.usage.cacheReadTokens)}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
     </Section>
   );
@@ -111,9 +134,9 @@ function Tokens(): React.JSX.Element {
               hint={t("usage.limits", { count: summary.rateLimitIncidents })}
             />
           </div>
-          <Buckets title={t("usage.byAgent")} rows={summary.byAgent} />
-          <Buckets title={t("usage.byProject")} rows={summary.byProject} />
-          <Buckets title={t("usage.byDay")} rows={summary.byDay} />
+          <Bars title={t("usage.byAgent")} rows={summary.byAgent} />
+          <Bars title={t("usage.byProject")} rows={summary.byProject} />
+          <Bars title={t("usage.byDay")} rows={summary.byDay} />
           <p className="text-2xs leading-relaxed text-faint">{t("usage.note")}</p>
         </>
       )}

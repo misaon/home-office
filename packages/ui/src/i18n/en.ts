@@ -110,6 +110,9 @@ export const en = {
     neutral: "neutral",
   },
   board: {
+    clear: "Clear finished",
+    clearConfirm: "Take {{count}} finished task(s) off this board? The log keeps them.",
+    cleared: "{{count}} taken off the board",
     rounds: "rounds {{count}}",
     issue: "issue #{{id}}",
     pullRequest: "pull request",

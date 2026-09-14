@@ -5,6 +5,7 @@ import {
   createAgent,
   createChannel,
   createProject,
+  clearFinishedTasks,
   createTask,
   removeAgent,
   removeProject,
@@ -210,6 +211,13 @@ export const router = base.router({
     transition: base.tasks.transition.handler(({ input, context }) =>
       context.office.execute(HUMAN_ACTOR, (m, ctx) => transitionTask(m, input, ctx)),
     ),
+    clear: base.tasks.clear.handler(async ({ input, context }) => ({
+      removed: (
+        await context.office.execute(HUMAN_ACTOR, (m, ctx) =>
+          clearFinishedTasks(m, input.projectId, ctx),
+        )
+      ).length,
+    })),
   },
   sessions: {
     list: base.sessions.list.handler(({ input, context }) =>
