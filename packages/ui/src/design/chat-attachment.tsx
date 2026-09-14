@@ -1,67 +1,31 @@
 import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
-const CHIP: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "9px",
-  padding: "7px 9px",
-  borderRadius: "10px",
-  background: "rgba(255,197,49,.09)",
-  border: "1px solid rgba(255,197,49,.28)",
-  marginBottom: "10px",
-  animation: "riseIn .3s ease both",
-};
+const CHIP =
+  "flex items-center gap-9 py-7 px-9 rounded-10 bg-accent-a09 border border-accent-a28 mb-10 animate-rise-300";
 
-const SWATCH: React.CSSProperties = {
-  width: "22px",
-  height: "22px",
-  flex: "0 0 22px",
-  borderRadius: "6px",
-  backgroundImage:
-    "repeating-linear-gradient(135deg,rgba(255,197,49,.4) 0 4px,rgba(255,197,49,.12) 4px 8px)",
-};
+const SWATCH =
+  "w-22 h-22 flex-[0_0_22px] rounded-6 bg-[repeating-linear-gradient(135deg,var(--color-accent-a40)_0_4px,var(--color-accent-a12)_4px_8px)]";
 
-const NAME: React.CSSProperties = {
-  flex: "1",
-  minWidth: "0",
-  ...MONO,
-  fontSize: "11px",
-  color: "#FFD666",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
+const NAME = `flex-1 min-w-0 ${MONO} text-11 text-accent-soft overflow-hidden text-ellipsis whitespace-nowrap`;
 
-const CLEAR: React.CSSProperties = {
-  width: "20px",
-  height: "20px",
-  flex: "0 0 20px",
-  display: "grid",
-  placeItems: "center",
-  border: "0",
-  borderRadius: "6px",
-  background: "transparent",
-  color: "#E4C778",
-  cursor: "pointer",
-  transition: "all .2s",
-};
+const CLEAR =
+  "w-20 h-20 flex-[0_0_20px] grid place-items-center border-0 rounded-6 bg-transparent text-accent-quote cursor-pointer transition-all duration-200";
 
 /** What is hanging on the message you have not sent yet. */
 export function ChatAttachment({ file }: { file: string }): React.JSX.Element {
   const set = useDesign((s) => s.set);
   return (
-    <div style={CHIP}>
-      <span style={SWATCH} />
-      <span style={NAME}>{file}</span>
+    <div className={CHIP}>
+      <span className={SWATCH} />
+      <span className={NAME}>{file}</span>
       <button
         type="button"
         aria-label="Remove the attachment"
         onClick={() => {
           set({ attachment: null });
         }}
-        style={CLEAR}
-        className="ho-ed6ec7"
+        className={`hover:bg-accent-a18 ${CLEAR}`}
       >
         <svg
           width="9"

@@ -5,19 +5,8 @@ import { attachmentUrl } from "../attachments.ts";
 import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
-const FRAME: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  marginTop: "10px",
-  height: "118px",
-  borderRadius: "10px",
-  cursor: "pointer",
-  overflow: "hidden",
-  padding: "0",
-  border: "1px solid rgba(255,197,49,.3)",
-  background: "#0C0C0E",
-  transition: "all .22s",
-};
+const FRAME =
+  "block w-full mt-10 h-118 rounded-10 cursor-pointer overflow-hidden p-0 border border-accent-a30 bg-sunk transition-all duration-220";
 
 /** A file hanging on a message: the picture itself when it is one, its name when it is not. */
 export function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX.Element {
@@ -48,19 +37,14 @@ export function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX
       onClick={() => {
         set({ lightbox: attachment });
       }}
-      style={FRAME}
-      className="ho-24cffc"
+      className={`hover:border-accent-a70 hover:scale-101 ${FRAME}`}
     >
       {url === null ? (
-        <span style={{ ...MONO, fontSize: "10px", color: "#E4C778" }}>
+        <span className={`${MONO} text-10 text-accent-quote`}>
           {image ? t("common.checking") : `${attachment.name} · ${t("chat.imageOpen")}`}
         </span>
       ) : (
-        <img
-          src={url}
-          alt={attachment.name}
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-        />
+        <img src={url} alt={attachment.name} className="w-full h-full object-cover block" />
       )}
     </button>
   );

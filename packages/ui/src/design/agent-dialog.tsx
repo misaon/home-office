@@ -10,17 +10,8 @@ import { CANCEL, CAP, COMMIT, DialogSheet, HINT } from "./dialog-sheet.tsx";
 import { requireClient } from "../rpc.ts";
 import { type AgentDraft, useDesign } from "./store.ts";
 
-const REMOVE: React.CSSProperties = {
-  padding: "10px 14px",
-  borderRadius: "11px",
-  border: "1px solid rgba(255,122,122,.3)",
-  background: "rgba(255,122,122,.1)",
-  color: "#FFB3B3",
-  fontSize: "12.5px",
-  cursor: "pointer",
-  flex: "0 0 auto",
-  transition: "all .2s",
-};
+const REMOVE =
+  "py-10 px-14 rounded-11 border border-bad-a30 bg-bad-a10 text-bad-soft text-12h cursor-pointer flex-[0_0_auto] transition-all duration-200";
 
 /** What a new hire starts as: Claude Code at the catalogue's own defaults for the role it takes. */
 export const newDraft = (hasBoss: boolean): AgentDraft => {
@@ -82,30 +73,28 @@ function AgentDialogFoot({
               },
             });
           }}
-          style={REMOVE}
-          className="ho-52fd80"
+          className={`hover:bg-bad-a20 ${REMOVE}`}
         >
           {t("common.remove")}
         </button>
       )}
-      <span style={HINT}>
+      <span className={HINT}>
         {name === ""
           ? t("agent.nameFirst")
           : `${draft.provider} · ${draft.model} / ${draft.effort}`}
       </span>
-      <button type="button" onClick={onCancel} style={CANCEL} className="ho-2955a9">
+      <button
+        type="button"
+        onClick={onCancel}
+        className={`hover:text-ink hover:border-border-hover hover:bg-raised ${CANCEL}`}
+      >
         {t("common.cancel")}
       </button>
       <button
         type="button"
         disabled={name === "" || busy}
         onClick={onSave}
-        style={{
-          ...COMMIT,
-          background: name === "" ? "#24242A" : "var(--a,#FFC531)",
-          color: name === "" ? "#8A8780" : "#150F02",
-        }}
-        className="ho-373252"
+        className={`hover:-translate-y-2 hover:shadow-lift-lg ${COMMIT} ${name === "" ? "bg-edge-lit" : "bg-accent"} ${name === "" ? "text-ink-ghost" : "text-accent-ink"}`}
       >
         {id === null ? t("agent.hire") : t("agent.save")}
       </button>
@@ -249,7 +238,7 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
       {isEdit && editing !== undefined ? (
         <AgentDoing working={working} doing={editing.doing} since={editing.since} />
       ) : null}
-      <div style={{ ...CAP, marginBottom: "10px" }}>{t("agent.whoTheyAre")}</div>
+      <div className={`${CAP} text-9h mb-10`}>{t("agent.whoTheyAre")}</div>
       <RoleCards value={draft.role} bossName={boss?.name ?? null} onPick={pickRole} />
       <AgentDialogFields draft={draft} patch={patch} />
       <AgentPrompt

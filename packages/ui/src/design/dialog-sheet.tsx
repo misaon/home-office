@@ -6,85 +6,27 @@ import { useEffect, useRef } from "react";
  * brings the focus trap, Escape and the backdrop.
  */
 
-const CENTRE: React.CSSProperties = {
-  height: "100%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "32px",
-};
+const CENTRE = "h-full flex items-center justify-center p-32";
 
-const GLOW: React.CSSProperties = {
-  position: "absolute",
-  top: "-90px",
-  left: "-40px",
-  width: "280px",
-  height: "280px",
-  borderRadius: "50%",
-  background: "radial-gradient(circle,rgba(255,197,49,.12),transparent 68%)",
-  pointerEvents: "none",
-};
+const GLOW =
+  "absolute -top-90 -left-40 w-280 h-280 rounded-half bg-[radial-gradient(circle,var(--color-accent-a12),transparent_68%)] pointer-events-none";
 
-const FOOT: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "9px",
-  padding: "16px 26px",
-  borderTop: "1px solid #1B1B1F",
-  background: "#0B0B0E",
-};
+const FOOT = "flex items-center gap-9 py-16 px-26 border-t border-line bg-foot";
 
 /** The hint the footer carries on the left, which grows to push the buttons right. */
-export const HINT: React.CSSProperties = {
-  flex: "1",
-  minWidth: "0",
-  fontSize: "11.5px",
-  color: "#A6A39C",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
+export const HINT =
+  "flex-1 min-w-0 text-11h text-ink-meta overflow-hidden text-ellipsis whitespace-nowrap";
 
-export const CANCEL: React.CSSProperties = {
-  padding: "10px 16px",
-  borderRadius: "11px",
-  border: "1px solid #2C2C32",
-  background: "transparent",
-  fontSize: "12.5px",
-  color: "#CFCCC6",
-  cursor: "pointer",
-  flex: "0 0 auto",
-  transition: "all .2s",
-};
+export const CANCEL =
+  "py-10 px-16 rounded-11 border border-border-strong bg-transparent text-12h text-ink-quiet cursor-pointer flex-[0_0_auto] transition-all duration-200";
 
-export const COMMIT: React.CSSProperties = {
-  padding: "10px 18px",
-  borderRadius: "11px",
-  border: "0",
-  cursor: "pointer",
-  fontSize: "12.5px",
-  fontWeight: "600",
-  flex: "0 0 auto",
-  transition: "all .22s",
-};
+export const COMMIT =
+  "py-10 px-18 rounded-11 border-0 cursor-pointer text-12h font-semibold flex-[0_0_auto] transition-all duration-220";
 
 /** The label above a field, and the caption above a group of them. */
-export const CAP: React.CSSProperties = {
-  fontFamily: "'JetBrains Mono',monospace",
-  fontSize: "9.5px",
-  letterSpacing: ".16em",
-  textTransform: "uppercase",
-  color: "#ABA8A1",
-};
+export const CAP = "font-mono tracking-caps-wider uppercase text-ink-label";
 
-export const INPUT: React.CSSProperties = {
-  width: "100%",
-  padding: "12px 13px",
-  borderRadius: "12px",
-  border: "1px solid #2C2C32",
-  background: "#101013",
-  fontSize: "12.5px",
-};
+export const INPUT = "w-full py-12 px-13 rounded-12 border border-border-strong bg-card text-12h";
 
 export function DialogSheet({
   open,
@@ -119,41 +61,24 @@ export function DialogSheet({
   return (
     <dialog
       ref={dialog}
-      className="ho-dialog"
+      className="border-0 p-0 m-0 max-w-none max-h-none w-full h-full bg-transparent text-inherit overflow-hidden outline-none focus:outline-none focus-visible:outline-none backdrop:bg-scrim-a74 backdrop:backdrop-blur-[10px] backdrop:animate-fade-280"
       aria-label={label}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
       }}
     >
-      <div style={CENTRE}>
+      <div className={CENTRE}>
         <div
-          style={{
-            width,
-            maxHeight: "100%",
-            overflowY: "auto",
-            borderRadius: "20px",
-            background: "#0D0D10",
-            border: "1px solid #2A2A32",
-            boxShadow: "0 50px 120px rgba(0,0,0,.72)",
-            animation: "popIn .44s cubic-bezier(.2,.9,.3,1.05) both",
-          }}
+          className="w-(--sheet) max-h-full overflow-y-auto scroller rounded-20 bg-dialog border border-border-sheet shadow-dialog animate-pop-440"
+          style={{ "--sheet": width }}
         >
-          <div style={{ position: "relative", padding: "24px 26px 20px", overflow: "hidden" }}>
-            <div style={GLOW} />
-            <div
-              style={{
-                position: "relative",
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "14px",
-              }}
-            >
-              {head}
-            </div>
+          <div className="relative pt-24 px-26 pb-20 overflow-hidden">
+            <div className={GLOW} />
+            <div className="relative flex items-start gap-14">{head}</div>
           </div>
-          <div style={{ padding: "0 26px 22px" }}>{children}</div>
-          <div style={FOOT}>{footer}</div>
+          <div className="pt-0 px-26 pb-22">{children}</div>
+          <div className={FOOT}>{footer}</div>
         </div>
       </div>
     </dialog>

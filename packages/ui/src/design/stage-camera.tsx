@@ -5,48 +5,14 @@ import type { OfficeHandle } from "../office/scene.ts";
 import { bossOf, useFloor } from "./live.ts";
 import { useDesign } from "./store.ts";
 
-const BAR: React.CSSProperties = {
-  position: "absolute",
-  bottom: "38px",
-  left: "50%",
-  transform: "translateX(-50%)",
-  display: "flex",
-  alignItems: "center",
-  gap: "4px",
-  flexWrap: "nowrap",
-  padding: "6px",
-  borderRadius: "14px",
-  background: "rgba(12,12,14,.86)",
-  backdropFilter: "blur(18px)",
-  border: "1px solid rgba(255,255,255,.13)",
-  boxShadow: "0 20px 44px rgba(0,0,0,.5)",
-};
+const BAR =
+  "absolute bottom-38 left-1/2 -translate-x-1/2 flex items-center gap-4 flex-nowrap p-6 rounded-14 bg-camera-bar backdrop-blur-[18px] border border-glint-a13 shadow-camera";
 
-const ROUND: React.CSSProperties = {
-  width: "30px",
-  height: "30px",
-  display: "grid",
-  placeItems: "center",
-  border: "0",
-  borderRadius: "9px",
-  background: "transparent",
-  color: "#CFCCC6",
-  cursor: "pointer",
-  transition: "all .2s",
-};
+const ROUND =
+  "w-30 h-30 grid place-items-center border-0 rounded-9 py-1 px-6 bg-transparent text-ink-quiet cursor-pointer transition-all duration-200";
 
-const WIDE: React.CSSProperties = {
-  padding: "0 12px",
-  height: "30px",
-  border: "0",
-  borderRadius: "9px",
-  background: "transparent",
-  color: "#CFCCC6",
-  cursor: "pointer",
-  fontSize: "12px",
-  whiteSpace: "nowrap",
-  transition: "all .2s",
-};
+const WIDE =
+  "py-0 px-12 h-30 border-0 rounded-9 cursor-pointer text-12 whitespace-nowrap transition-all duration-200";
 
 /** A square icon button on the camera bar. */
 function Round({
@@ -59,7 +25,12 @@ function Round({
   onClick: () => void;
 }): React.JSX.Element {
   return (
-    <button type="button" aria-label={label} onClick={onClick} style={ROUND} className="ho-32faa9">
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className={`hover:bg-accent-a16 hover:text-accent-soft hover:scale-108 ${ROUND}`}
+    >
       <svg
         width="12"
         height="12"
@@ -97,11 +68,7 @@ function FollowBoss({
         office?.follow(next ? id : null);
         flash(next ? t("stage.following", { name }) : t("stage.released"));
       }}
-      style={{
-        ...WIDE,
-        background: on ? "rgba(255,197,49,.16)" : "transparent",
-        color: on ? "#FFD666" : "#CFCCC6",
-      }}
+      className={`${WIDE} ${on ? "bg-accent-a16" : "bg-transparent"} ${on ? "text-accent-soft" : "text-ink-quiet"}`}
     >
       {t("stage.follow", { name })}
     </button>
@@ -137,7 +104,7 @@ export function StageCamera({
   }, [office]);
 
   return (
-    <div style={BAR}>
+    <div className={BAR}>
       <Round
         label={t("stage.zoomOut")}
         plus={false}
@@ -145,15 +112,7 @@ export function StageCamera({
           office?.zoomOut();
         }}
       />
-      <div
-        style={{
-          minWidth: "52px",
-          textAlign: "center",
-          fontFamily: "'JetBrains Mono',monospace",
-          fontSize: "11.5px",
-          color: "#F2EFE8",
-        }}
-      >
+      <div className="min-w-52 text-center font-mono text-11h text-ink-warm">
         <span>{zoom}</span>%
       </div>
       <Round
@@ -163,21 +122,13 @@ export function StageCamera({
           office?.zoomIn();
         }}
       />
-      <div
-        style={{
-          width: "1px",
-          height: "18px",
-          background: "rgba(255,255,255,.13)",
-          margin: "0 4px",
-        }}
-      />
+      <div className="w-1 h-18 bg-glint-a13 my-0 mx-4" />
       <button
         type="button"
         onClick={() => {
           office?.fit();
         }}
-        style={WIDE}
-        className="ho-b80f50"
+        className={`hover:bg-accent-a16 hover:text-accent-soft ${WIDE} bg-transparent text-ink-quiet`}
       >
         {t("stage.fit")}
       </button>
@@ -188,21 +139,7 @@ export function StageCamera({
           onClick={() => {
             set({ editor: true });
           }}
-          style={{
-            padding: "0 14px",
-            height: "30px",
-            border: "0",
-            borderRadius: "9px",
-            background: "var(--a,#FFC531)",
-            color: "#150F02",
-            cursor: "pointer",
-            fontSize: "12px",
-            fontWeight: "600",
-            whiteSpace: "nowrap",
-            flex: "0 0 auto",
-            transition: "all .2s",
-          }}
-          className="ho-64c3ab"
+          className="hover:-translate-y-1 hover:shadow-lift-sm-plus py-0 px-14 h-30 border-0 rounded-9 bg-accent text-accent-ink cursor-pointer text-12 font-semibold whitespace-nowrap flex-[0_0_auto] transition-all duration-200"
         >
           {t("stage.editFloor")}
         </button>

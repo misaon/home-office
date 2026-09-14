@@ -70,40 +70,12 @@ const MARKS: Record<AgentRole, React.JSX.Element> = {
   ),
 };
 
-const CARD: React.CSSProperties = {
-  position: "relative",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "flex-start",
-  gap: "9px",
-  padding: "14px",
-  borderRadius: "14px",
-  cursor: "pointer",
-  textAlign: "left",
-  transition: "all .24s cubic-bezier(.2,.8,.3,1)",
-};
+const CARD =
+  "relative flex flex-col items-start gap-9 p-14 rounded-14 cursor-pointer text-left transition-all duration-240 ease-soft";
 
-const TICK: React.CSSProperties = {
-  position: "absolute",
-  top: "12px",
-  right: "12px",
-  width: "16px",
-  height: "16px",
-  borderRadius: "50%",
-  background: "var(--a,#FFC531)",
-  display: "grid",
-  placeItems: "center",
-};
+const TICK = "absolute top-12 right-12 w-16 h-16 rounded-half bg-accent grid place-items-center";
 
-const TAKEN: React.CSSProperties = {
-  ...MONO,
-  fontSize: "9px",
-  padding: "2px 6px",
-  borderRadius: "5px",
-  background: "#24242A",
-  color: "#BEBBB4",
-  whiteSpace: "nowrap",
-};
+const TAKEN = `${MONO} text-9 py-2 px-6 rounded-5 bg-edge-lit text-ink-faint whitespace-nowrap`;
 
 function RoleCard({
   role,
@@ -123,54 +95,32 @@ function RoleCard({
     <button
       type="button"
       onClick={onPick}
-      style={{
-        ...CARD,
-        border: `1px solid ${on ? "rgba(255,197,49,.45)" : "#26262C"}`,
-        background: on ? "rgba(255,197,49,.07)" : "#101013",
-        opacity: taken && !on ? ".72" : "1",
-      }}
-      className="ho-4f6a3c"
+      className={`hover:-translate-y-2 hover:border-accent-a50 ${CARD} border ${on ? "border-accent-a45" : "border-border"} ${on ? "bg-accent-a07" : "bg-card"} ${taken && !on ? "opacity-72" : "opacity-100"}`}
     >
       <span
-        style={{
-          width: "30px",
-          height: "30px",
-          borderRadius: "10px",
-          display: "grid",
-          placeItems: "center",
-          background: on ? "rgba(255,197,49,.16)" : "#1D1D22",
-          color: on ? "#FFD666" : "#BEBBB4",
-        }}
+        className={`w-30 h-30 rounded-10 grid place-items-center ${on ? "bg-accent-a16" : "bg-tile"} ${on ? "text-accent-soft" : "text-ink-faint"}`}
       >
         {MARKS[role]}
       </span>
-      <span style={{ display: "block" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap" }}>
-          <span style={{ fontSize: "13px", fontWeight: "600", color: on ? "#FFD666" : "#F2EFE8" }}>
+      <span className="block">
+        <span className="flex items-center gap-7 flex-wrap">
+          <span className={`text-13 font-semibold ${on ? "text-accent-soft" : "text-ink-warm"}`}>
             {t(`agent.role_${role}`)}
           </span>
-          {taken ? <span style={TAKEN}>{t("agent.roleTaken", { name: takenBy })}</span> : null}
+          {taken ? <span className={TAKEN}>{t("agent.roleTaken", { name: takenBy })}</span> : null}
         </span>
-        <span
-          style={{
-            display: "block",
-            fontSize: "11.5px",
-            color: "#A6A39C",
-            marginTop: "4px",
-            lineHeight: "1.5",
-          }}
-        >
+        <span className="block text-11h text-ink-meta mt-4 leading-body">
           {t(`agent.roleDesc_${role}`)}
         </span>
       </span>
       {on ? (
-        <span style={TICK}>
+        <span className={TICK}>
           <svg
+            className="stroke-accent-ink"
             width="9"
             height="9"
             viewBox="0 0 10 10"
             fill="none"
-            stroke="#150F02"
             strokeWidth="1.8"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -195,14 +145,7 @@ export function RoleCards({
   onPick: (role: AgentRole) => void;
 }): React.JSX.Element {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "10px",
-        marginBottom: "18px",
-      }}
-    >
+    <div className="grid grid-cols-2 gap-10 mb-18">
       {AgentRole.options.map((role) => (
         <RoleCard
           key={role}

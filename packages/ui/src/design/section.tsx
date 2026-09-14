@@ -8,19 +8,10 @@ export function Section({
 }): React.JSX.Element {
   return (
     <div>
-      <div
-        style={{
-          fontFamily: "'JetBrains Mono',monospace",
-          fontSize: "10px",
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          color: "#ABA8A1",
-          marginBottom: "10px",
-        }}
-      >
+      <div className="font-mono text-10 tracking-caps-wider uppercase text-ink-label mb-10">
         {title}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "11px" }}>{children}</div>
+      <div className="flex flex-col gap-11">{children}</div>
     </div>
   );
 }

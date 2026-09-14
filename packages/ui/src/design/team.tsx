@@ -5,31 +5,10 @@ import { TeamHeader } from "./team-header.tsx";
 import { TeamRow } from "./team-row.tsx";
 import { useDesign } from "./store.ts";
 
-const LIST: React.CSSProperties = {
-  borderRadius: "14px",
-  background: "#101013",
-  border: "1px solid #232328",
-  overflow: "hidden",
-  marginBottom: "12px",
-};
+const LIST = "rounded-14 bg-card border border-edge overflow-hidden mb-12";
 
-const HIRE: React.CSSProperties = {
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "8px",
-  padding: "11px",
-  borderRadius: "12px",
-  border: "1px dashed rgba(255,197,49,.4)",
-  background: "rgba(255,197,49,.07)",
-  color: "#FFD666",
-  fontSize: "12.5px",
-  fontWeight: "500",
-  cursor: "pointer",
-  marginBottom: "14px",
-  transition: "all .22s",
-};
+const HIRE =
+  "w-full flex items-center justify-center gap-8 p-11 rounded-12 border border-dashed border-accent-a40 bg-accent-a07 text-accent-soft text-12h font-medium cursor-pointer mb-14 transition-all duration-220";
 
 /** Who is on this floor, what each of them is doing, and the door to hiring another. */
 export function Team({ floor }: { floor: Floor }): React.JSX.Element {
@@ -55,17 +34,10 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
   };
 
   return (
-    <div
-      style={{
-        flex: "1",
-        minHeight: "0",
-        overflowY: "auto",
-        animation: "slideLeft .42s cubic-bezier(.2,.8,.3,1) both",
-      }}
-    >
+    <div className="flex-1 min-h-0 overflow-y-auto animate-slide-420">
       <TeamHeader floor={floor} onHire={hire} />
-      <div style={{ padding: "0 16px 16px" }}>
-        <div style={LIST}>
+      <div className="pt-0 px-16 pb-16">
+        <div className={LIST}>
           {rows.map((person, n) => (
             <TeamRow
               key={person.name}
@@ -77,12 +49,14 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
             />
           ))}
           {rows.length === 0 ? (
-            <div style={{ padding: "16px 13px", fontSize: "12px", color: "#A6A39C" }}>
-              {t("team.empty")}
-            </div>
+            <div className="py-16 px-13 text-12 text-ink-meta">{t("team.empty")}</div>
           ) : null}
         </div>
-        <button type="button" onClick={hire} style={HIRE} className="ho-4ede91">
+        <button
+          type="button"
+          onClick={hire}
+          className={`hover:bg-accent-a14 hover:border-accent-a65 ${HIRE}`}
+        >
           <svg
             width="12"
             height="12"

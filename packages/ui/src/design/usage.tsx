@@ -46,21 +46,12 @@ export function Usage({ floor }: { floor: Floor }): React.JSX.Element {
         ];
 
   return (
-    <div
-      style={{
-        flex: "1",
-        minHeight: "0",
-        overflowY: "auto",
-        animation: "slideLeft .42s cubic-bezier(.2,.8,.3,1) both",
-      }}
-    >
+    <div className="flex-1 min-h-0 overflow-y-auto animate-slide-420">
       <UsageHeader summary={summary} />
-      <div style={{ padding: "0 16px 16px" }}>
+      <div className="pt-0 px-16 pb-16">
         {usageView === "Tokens" ? (
           summary === null ? (
-            <div style={{ padding: "16px 2px", fontSize: "12px", color: "#A6A39C" }}>
-              {t("usage.noData")}
-            </div>
+            <div className="py-16 px-2 text-12 text-ink-meta">{t("usage.noData")}</div>
           ) : (
             <div>
               {breakdowns.map((b) => (

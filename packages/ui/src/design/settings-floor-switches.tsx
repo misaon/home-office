@@ -4,31 +4,12 @@ import type { Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
 import { useDesign } from "./store.ts";
 
-const TRACK: React.CSSProperties = {
-  flex: "0 0 38px",
-  width: "38px",
-  height: "22px",
-  borderRadius: "99px",
-  border: "0",
-  cursor: "pointer",
-  padding: "3px",
-  display: "flex",
-  transition: "background .3s",
-};
+const TRACK =
+  "flex-[0_0_38px] w-38 h-22 rounded-pill border-0 cursor-pointer p-3 flex transition-[background] duration-300";
 
-const KNOB: React.CSSProperties = {
-  width: "16px",
-  height: "16px",
-  borderRadius: "50%",
-  transition: "transform .34s cubic-bezier(.34,1.5,.5,1)",
-};
+const KNOB = "w-16 h-16 rounded-half transition-transform duration-340 ease-spring-far";
 
-const ROW: React.CSSProperties = {
-  display: "flex",
-  gap: "11px",
-  alignItems: "flex-start",
-  marginBottom: "14px",
-};
+const ROW = "flex gap-11 items-start mb-14";
 
 /** A switch drawn the way the design draws one, with its consequence written beside it. */
 function Switch({
@@ -43,27 +24,21 @@ function Switch({
   onFlip: () => void;
 }): React.JSX.Element {
   return (
-    <div style={ROW}>
+    <div className={ROW}>
       <button
         type="button"
         aria-label={title}
         aria-pressed={on}
         onClick={onFlip}
-        style={{ ...TRACK, background: on ? "var(--a,#FFC531)" : "#2C2C32" }}
+        className={`${TRACK} ${on ? "bg-accent" : "bg-border-strong"}`}
       >
         <span
-          style={{
-            ...KNOB,
-            background: on ? "#150F02" : "#8E8B85",
-            transform: `translateX(${on ? "16px" : "0px"})`,
-          }}
+          className={`${KNOB} ${on ? "bg-accent-ink" : "bg-ink-idle"} ${on ? "translate-x-16" : "translate-x-0"}`}
         />
       </button>
       <div>
-        <div style={{ fontSize: "13px" }}>{title}</div>
-        <div style={{ fontSize: "11.5px", color: "#A6A39C", lineHeight: "1.6", marginTop: "4px" }}>
-          {hint}
-        </div>
+        <div className="text-13">{title}</div>
+        <div className="text-11h text-ink-meta leading-prose mt-4">{hint}</div>
       </div>
     </div>
   );

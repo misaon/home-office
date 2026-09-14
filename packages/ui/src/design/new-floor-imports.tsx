@@ -44,42 +44,24 @@ export function FloorImports({
     setDraft({ ...draft, imports });
   };
   return (
-    <div style={{ marginTop: "18px" }}>
-      <div style={{ ...CAP, marginBottom: "10px" }}>{t("project.importAgents")}</div>
-      <div
-        style={{
-          maxHeight: "176px",
-          overflowY: "auto",
-          borderRadius: "13px",
-          border: "1px solid #232328",
-          background: "#101013",
-          padding: "13px 14px",
-        }}
-      >
+    <div className="mt-18">
+      <div className={`${CAP} text-9h mb-10`}>{t("project.importAgents")}</div>
+      <div className="max-h-176 overflow-y-auto rounded-13 border border-edge bg-card py-13 px-14">
         {groups.map((group) => (
-          <div key={group.floor} style={{ marginBottom: "10px" }}>
-            <div style={{ ...CAP, fontSize: "9px", marginBottom: "6px" }}>{group.floor}</div>
+          <div key={group.floor} className="mb-10">
+            <div className={`${CAP} text-9 mb-6`}>{group.floor}</div>
             {group.agents.map((agent) => (
-              <label
-                key={agent.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "9px",
-                  padding: "4px 0",
-                  cursor: "pointer",
-                }}
-              >
+              <label key={agent.id} className="flex items-center gap-9 py-4 px-0 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={draft.imports.has(agent.id)}
                   onChange={() => {
                     toggle(agent.id);
                   }}
-                  style={{ accentColor: "#FFC531" }}
+                  className="accent-accent my-3 ml-4 mr-3"
                 />
-                <span style={{ fontSize: "12.5px" }}>{agent.name}</span>
-                <span style={{ ...MONO, fontSize: "10px", color: "#A6A39C" }}>
+                <span className="text-12h">{agent.name}</span>
+                <span className={`${MONO} text-10 text-ink-meta`}>
                   {t(ROLE_KEY[agent.role])} · {agent.model}/{agent.effort}
                 </span>
               </label>

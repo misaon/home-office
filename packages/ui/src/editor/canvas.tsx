@@ -32,5 +32,5 @@ export function EditorCanvas(props: Omit<EditorProps, "kindName">): React.JSX.El
       created.destroy();
     };
   }, []);
-  return <div ref={host} style={{ height: "100%", width: "100%" }} />;
+  return <div ref={host} className="h-full w-full" />;
 }

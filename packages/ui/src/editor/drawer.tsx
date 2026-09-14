@@ -10,18 +10,8 @@ import { fromOffice, toOffice } from "./office-file.ts";
 import { SavedOffices } from "./offices.tsx";
 import { Palette } from "./palette.tsx";
 
-const DRAWER: React.CSSProperties = {
-  width: "360px",
-  flex: "0 0 360px",
-  display: "flex",
-  flexDirection: "column",
-  gap: "20px",
-  overflowY: "auto",
-  borderRight: "1px solid #26262C",
-  background: "#0C0C0E",
-  padding: "20px",
-  animation: "drawerIn .42s cubic-bezier(.2,.9,.3,1) both",
-};
+const DRAWER =
+  "w-360 flex-[0_0_360px] flex flex-col gap-20 overflow-y-auto border-r border-border bg-sunk p-20 animate-drawer";
 
 const TOOLS = [
   { value: "wall", label: "editor.wall" },
@@ -30,7 +20,7 @@ const TOOLS = [
   { value: "object", label: "editor.furniture" },
 ] as const satisfies readonly { value: Tool; label: string }[];
 
-const HINT: React.CSSProperties = { fontSize: "11.5px", lineHeight: "1.7", color: "#A6A39C" };
+const HINT = "text-11h leading-loose text-ink-meta my-11h";
 
 /** The office's own fields. The file name is the name, slugified, so it cannot drift from it. */
 function OfficeFields({
@@ -51,7 +41,7 @@ function OfficeFields({
           onChange={(e) => {
             setDraft({ ...draft, name: e.target.value, id: slugify(e.target.value) });
           }}
-          style={FIELD}
+          className={FIELD}
         />
       </div>
       <div>
@@ -59,13 +49,11 @@ function OfficeFields({
         <input
           readOnly
           value={`layouts/${draft.id}.json`}
-          style={{ ...FIELD, fontFamily: "'JetBrains Mono',monospace", color: "#A6A39C" }}
+          className={`${FIELD} font-mono text-ink-meta`}
         />
-        <div style={{ fontSize: "11px", color: "#A6A39C", marginTop: "6px" }}>
-          {t("editor.fileHint")}
-        </div>
+        <div className="text-11 text-ink-meta mt-6">{t("editor.fileHint")}</div>
       </div>
-      <p style={HINT}>
+      <p className={HINT}>
         {t("editor.stats", {
           width: draft.width,
           height: draft.height,
@@ -106,36 +94,11 @@ export function EditorDrawer({
   const { t } = useTranslation();
   const kindName = useKindName();
   return (
-    <aside style={DRAWER}>
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "10px",
-          marginBottom: "4px",
-        }}
-      >
+    <aside className={DRAWER}>
+      <header className="flex items-center justify-between gap-10 mb-4">
         <div>
-          <div
-            style={{
-              fontFamily: "'Space Grotesk',sans-serif",
-              fontWeight: "600",
-              fontSize: "15px",
-            }}
-          >
-            {t("editor.title")}
-          </div>
-          <div
-            style={{
-              fontFamily: "'JetBrains Mono',monospace",
-              fontSize: "9.5px",
-              letterSpacing: ".12em",
-              textTransform: "uppercase",
-              color: "#FFD666",
-              marginTop: "3px",
-            }}
-          >
+          <div className="font-display font-semibold text-15">{t("editor.title")}</div>
+          <div className="font-mono text-9h tracking-caps uppercase text-accent-soft mt-3">
             {t("editor.internalOnly")}
           </div>
         </div>
@@ -149,12 +112,12 @@ export function EditorDrawer({
           onChange={setTool}
         />
         <Palette key={tool} brush={brush} setBrush={setBrush} tool={tool} />
-        <p style={HINT}>
+        <p className={HINT}>
           {tool === "object" || tool === "door" ? t("editor.helpPlace") : t("editor.helpPaint")}{" "}
           {t("editor.helpPan")}
         </p>
         {note === null ? null : (
-          <p style={{ fontSize: "11.5px", color: "#F2994A" }}>
+          <p className="text-11h text-warn">
             {t(note.key, { name: note.name === undefined ? "" : kindName("object", note.name) })}
           </p>
         )}
@@ -169,12 +132,10 @@ export function EditorDrawer({
         }}
       />
       {save.error === null ? null : (
-        <p style={{ fontSize: "11.5px", color: "#FFB3B3" }}>{errorMessage(save.error)}</p>
+        <p className="text-11h text-bad-soft">{errorMessage(save.error)}</p>
       )}
       {save.data === undefined ? null : (
-        <p
-          style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: "11.5px", color: "#8FE8C4" }}
-        >
+        <p className="font-mono text-11h text-good-soft">
           {t("editor.savedAs", { path: save.data.path })}
         </p>
       )}

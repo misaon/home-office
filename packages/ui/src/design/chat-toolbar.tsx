@@ -5,44 +5,14 @@ import type { Floor } from "./data.ts";
 import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
-const SQUARE: React.CSSProperties = {
-  width: "28px",
-  height: "28px",
-  display: "grid",
-  placeItems: "center",
-  border: "1px solid #2C2C32",
-  borderRadius: "8px",
-  cursor: "pointer",
-  transition: "all .25s",
-  background: "transparent",
-  color: "#CFCCC6",
-};
+const SQUARE =
+  "w-28 h-28 grid place-items-center border border-border-strong rounded-8 py-1 px-6 cursor-pointer transition-all duration-250 bg-transparent text-ink-quiet";
 
-const METER: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "7px",
-  height: "28px",
-  padding: "0 10px",
-  border: "1px solid #2C2C32",
-  borderRadius: "8px",
-  cursor: "pointer",
-  transition: "all .2s",
-};
+const METER =
+  "flex items-center gap-7 h-28 py-0 px-10 border border-border-strong rounded-8 cursor-pointer transition-all duration-200";
 
-const SEND: React.CSSProperties = {
-  width: "32px",
-  height: "32px",
-  flex: "0 0 32px",
-  display: "grid",
-  placeItems: "center",
-  border: "0",
-  borderRadius: "10px",
-  background: "var(--a,#FFC531)",
-  color: "#150F02",
-  cursor: "pointer",
-  transition: "all .22s cubic-bezier(.2,.8,.3,1)",
-};
+const SEND =
+  "w-32 h-32 flex-[0_0_32px] grid place-items-center border-0 rounded-10 py-1 px-6 bg-accent text-accent-ink cursor-pointer transition-all duration-220 ease-soft";
 
 /** What sits on the composer's bottom edge: attach, what it costs, and send. */
 export function ChatToolbar({
@@ -61,7 +31,7 @@ export function ChatToolbar({
   const fill = useContextFill(floor.id);
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+    <div className="flex items-center gap-8">
       <input
         ref={file}
         type="file"
@@ -81,8 +51,7 @@ export function ChatToolbar({
         onClick={() => {
           file.current?.click();
         }}
-        style={SQUARE}
-        className="ho-c09931"
+        className={`hover:text-accent-soft hover:border-accent-a45 hover:rotate-90 ${SQUARE}`}
       >
         <svg
           width="12"
@@ -96,20 +65,15 @@ export function ChatToolbar({
           <line x1="2" y1="6" x2="10" y2="6" />
         </svg>
       </button>
-      <div style={{ flex: "1" }} />
-      <div style={{ position: "relative", flex: "0 0 auto" }}>
+      <div className="flex-1" />
+      <div className="relative flex-[0_0_auto]">
         <button
           type="button"
           onClick={() => {
             update((s) => ({ usageOpen: !s.usageOpen, attachOpen: false, openSelect: null }));
           }}
           title={t("usage.chipTitle")}
-          style={{
-            ...METER,
-            background: usageOpen ? "rgba(255,197,49,.14)" : "transparent",
-            color: usageOpen ? "#FFD666" : "#CFCCC6",
-          }}
-          className="ho-96ee65"
+          className={`hover:text-accent-soft hover:border-accent-a45 ${METER} ${usageOpen ? "bg-accent-a14" : "bg-transparent"} ${usageOpen ? "text-accent-soft" : "text-ink-quiet"}`}
         >
           <svg
             width="12"
@@ -123,7 +87,7 @@ export function ChatToolbar({
             <line x1="7" y1="11" x2="7" y2="3.5" />
             <line x1="11.5" y1="11" x2="11.5" y2="5.5" />
           </svg>
-          <span style={{ ...MONO, fontSize: "10.5px" }}>
+          <span className={`${MONO} text-10h`}>
             {fill === null ? "—" : `${String(Math.max(1, Math.round(fill * 100)))}%`}
           </span>
         </button>
@@ -133,8 +97,7 @@ export function ChatToolbar({
         type="button"
         aria-label={t("chat.sendHint")}
         onClick={onSend}
-        style={SEND}
-        className="ho-db3c3e"
+        className={`hover:-translate-y-2 hover:scale-106 hover:shadow-lift-md ${SEND}`}
       >
         <svg
           width="13"

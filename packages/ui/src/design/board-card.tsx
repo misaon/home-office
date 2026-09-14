@@ -2,56 +2,20 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { Card, Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
-import { MONO, priority, separator } from "./tokens.ts";
+import { MONO, priorityDot, priorityInk, separator } from "./tokens.ts";
 import { bossOf } from "./live.ts";
 import { useDesign } from "./store.ts";
 
-const BODY: React.CSSProperties = { flex: "1", minWidth: "0", padding: "12px 13px" };
+const BODY = "flex-1 min-w-0 py-12 px-13";
 
-const TITLE: React.CSSProperties = {
-  flex: "1",
-  minWidth: "0",
-  fontSize: "13px",
-  lineHeight: "1.45",
-  color: "#EFEDE8",
-  textWrap: "pretty",
-};
+const TITLE = "flex-1 min-w-0 text-13 leading-tight-body text-ink-pale text-pretty";
 
-const AVATAR: React.CSSProperties = {
-  width: "20px",
-  height: "20px",
-  flex: "0 0 20px",
-  borderRadius: "7px",
-  display: "grid",
-  placeItems: "center",
-  fontSize: "9.5px",
-  fontWeight: "600",
-};
+const AVATAR = "w-20 h-20 flex-[0_0_20px] rounded-7 grid place-items-center text-9h font-semibold";
 
-const BIN: React.CSSProperties = {
-  width: "20px",
-  height: "20px",
-  flex: "0 0 20px",
-  display: "grid",
-  placeItems: "center",
-  border: "0",
-  borderRadius: "6px",
-  background: "transparent",
-  color: "#8E8B85",
-  cursor: "pointer",
-  transition: "all .2s",
-};
+const BIN =
+  "w-20 h-20 flex-[0_0_20px] grid place-items-center border-0 rounded-6 py-1 px-6 bg-transparent text-ink-idle cursor-pointer transition-all duration-200";
 
-const META: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-  marginTop: "8px",
-  ...MONO,
-  fontSize: "10px",
-  color: "#A6A39C",
-  flexWrap: "wrap",
-};
+const META = `flex items-center gap-8 mt-8 ${MONO} text-10 text-ink-meta flex-wrap`;
 
 /** One task as a row: what it is, who has it, and the bin that takes it off the board. */
 export function BoardCard({
@@ -76,7 +40,8 @@ export function BoardCard({
     },
   });
   const mine = card.who === bossOf(floor)?.name;
-  const { pFg } = priority(card.p);
+  const ink = priorityInk(card.p);
+  const mark = priorityDot(card.p);
   const open = (): void => {
     set({ sheet: { type: "task", id: card.id } });
   };
@@ -95,26 +60,14 @@ export function BoardCard({
           open();
         }
       }}
-      style={{
-        display: "flex",
-        alignItems: "stretch",
-        gap: "0",
-        cursor: "pointer",
-        borderTop: `1px solid ${separator(first)}`,
-        transition: "background .2s",
-      }}
-      className="ho-0b4177"
+      className={`flex items-stretch gap-0 cursor-pointer transition-[background] duration-200 hover:bg-row-hover ${separator(first)}`}
     >
-      <div style={{ width: "3px", flex: "0 0 3px", background: stripe }} />
-      <div style={BODY}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
-          <div style={TITLE}>{card.t}</div>
+      <div className={`w-3 flex-[0_0_3px] ${stripe}`} />
+      <div className={BODY}>
+        <div className="flex items-start gap-10">
+          <div className={TITLE}>{card.t}</div>
           <span
-            style={{
-              ...AVATAR,
-              background: mine ? "rgba(255,197,49,.18)" : "#26262C",
-              color: mine ? "#FFD666" : "#D6D3CD",
-            }}
+            className={`${AVATAR} ${mine ? "bg-accent-a18" : "bg-border"} ${mine ? "text-accent-soft" : "text-ink-mute"}`}
           >
             <span>{card.who === "" ? "·" : card.who.charAt(0)}</span>
           </span>
@@ -137,8 +90,7 @@ export function BoardCard({
               });
             }}
             title={t("board.remove")}
-            style={BIN}
-            className="ho-de4529"
+            className={`hover:text-bad hover:bg-bad-a12 ${BIN}`}
           >
             <svg
               width="11"
@@ -154,16 +106,16 @@ export function BoardCard({
             </svg>
           </button>
         </div>
-        <div style={META}>
-          <span style={{ display: "flex", alignItems: "center", gap: "5px", color: pFg }}>
-            <span style={{ width: "5px", height: "5px", borderRadius: "1px", background: pFg }} />
+        <div className={META}>
+          <span className={`flex items-center gap-5 ${ink}`}>
+            <span className={`w-5 h-5 rounded-1 ${mark}`} />
             <span>{t(`priority.${card.p}`)}</span>
           </span>
-          <span style={{ opacity: ".4" }}>·</span>
+          <span className="opacity-40">·</span>
           <span>{t(`taskKind.${card.k}`)}</span>
-          <span style={{ opacity: ".4" }}>·</span>
+          <span className="opacity-40">·</span>
           <span>{card.who === "" ? t("board.unassigned") : card.who}</span>
-          <span style={{ opacity: ".4" }}>·</span>
+          <span className="opacity-40">·</span>
           <span>{card.at}</span>
         </div>
       </div>

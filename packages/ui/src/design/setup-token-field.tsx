@@ -42,10 +42,8 @@ export function SecretField({
 
   if (stored && !replacing) {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: "9px", flexWrap: "wrap" }}>
-        <span style={{ fontSize: "11.5px", color: "#A6A39C", flex: "1", minWidth: "140px" }}>
-          {t("tokens.storedNote")}
-        </span>
+      <div className="flex items-center gap-9 flex-wrap">
+        <span className="text-11h text-ink-meta flex-1 min-w-140">{t("tokens.storedNote")}</span>
         <Button
           onClick={() => {
             setReplacing(true);
@@ -69,7 +67,7 @@ export function SecretField({
 
   return (
     <div>
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+      <div className="flex gap-8 flex-wrap">
         <input
           type="password"
           value={value}
@@ -78,12 +76,7 @@ export function SecretField({
             setValue(e.target.value);
           }}
           placeholder={stored ? t("tokens.replace") : t("tokens.paste")}
-          style={{
-            ...FIELD,
-            flex: "1",
-            minWidth: "160px",
-            fontFamily: "'JetBrains Mono',monospace",
-          }}
+          className={`${FIELD} flex-1 min-w-160 font-mono placeholder:text-ink-ghost`}
         />
         <Button
           tone="primary"

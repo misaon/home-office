@@ -5,32 +5,11 @@ import { useBossSession } from "./live.ts";
 import { requireClient } from "../rpc.ts";
 import { useDesign } from "./store.ts";
 
-const BAR: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  padding: "9px 11px",
-  borderRadius: "12px",
-  background: "rgba(255,197,49,.07)",
-  border: "1px solid rgba(255,197,49,.26)",
-  marginBottom: "10px",
-  animation: "riseIn .3s ease both",
-};
+const BAR =
+  "flex items-center gap-10 py-9 px-11 rounded-12 bg-accent-a07 border border-accent-a26 mb-10 animate-rise-300";
 
-const STOP: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "7px",
-  padding: "6px 11px",
-  borderRadius: "9px",
-  border: "1px solid rgba(255,122,122,.35)",
-  background: "rgba(255,122,122,.1)",
-  color: "#FFB3B3",
-  fontSize: "11.5px",
-  cursor: "pointer",
-  flex: "0 0 auto",
-  transition: "all .2s",
-};
+const STOP =
+  "flex items-center gap-7 py-6 px-11 rounded-9 border border-bad-a35 bg-bad-a10 text-bad-soft text-11h cursor-pointer flex-[0_0_auto] transition-all duration-200";
 
 /** While the floor's boss is running: what it is at, and the one way to cut it off. */
 export function ChatWorking({ floor }: { floor: Floor }): React.JSX.Element | null {
@@ -54,37 +33,12 @@ export function ChatWorking({ floor }: { floor: Floor }): React.JSX.Element | nu
     return null;
   }
   return (
-    <div style={BAR}>
-      <span style={{ position: "relative", width: "7px", height: "7px", flex: "0 0 7px" }}>
-        <span
-          style={{
-            position: "absolute",
-            inset: "0",
-            borderRadius: "50%",
-            background: "var(--a,#FFC531)",
-          }}
-        />
-        <span
-          style={{
-            position: "absolute",
-            inset: "0",
-            borderRadius: "50%",
-            background: "var(--a,#FFC531)",
-            animation: "ring 2s ease-out infinite",
-          }}
-        />
+    <div className={BAR}>
+      <span className="relative w-7 h-7 flex-[0_0_7px]">
+        <span className="absolute inset-0 rounded-half bg-accent" />
+        <span className="absolute inset-0 rounded-half bg-accent animate-ring-2000" />
       </span>
-      <span
-        style={{
-          flex: "1",
-          minWidth: "0",
-          fontSize: "12px",
-          color: "#F2EFE8",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
+      <span className="flex-1 min-w-0 text-12 text-ink-warm overflow-hidden text-ellipsis whitespace-nowrap">
         {`${running.name} · ${running.doing}`}
       </span>
       <button
@@ -102,8 +56,7 @@ export function ChatWorking({ floor }: { floor: Floor }): React.JSX.Element | nu
             },
           });
         }}
-        style={STOP}
-        className="ho-819fb6"
+        className={`hover:bg-bad-a20 hover:border-bad-a55 ${STOP}`}
       >
         <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
           <rect x="2.5" y="2.5" width="7" height="7" rx="1.4" />

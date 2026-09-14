@@ -6,34 +6,11 @@ import { Connection } from "./connection.tsx";
 import { useUi } from "../store.ts";
 import { useDesign } from "./store.ts";
 
-const BAR: React.CSSProperties = {
-  flex: "0 0 58px",
-  height: "58px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  background: "rgba(10,10,11,.78)",
-  backdropFilter: "blur(20px)",
-  borderBottom: "1px solid #1B1B1F",
-  position: "relative",
-  zIndex: 40,
-};
+const BAR =
+  "flex-[0_0_58px] h-58 flex items-center justify-between bg-header backdrop-blur-[20px] border-b border-line relative z-40";
 
-const TOOL: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "7px",
-  padding: "7px 12px",
-  borderRadius: "10px",
-  border: "1px solid #2C2C32",
-  background: "transparent",
-  cursor: "pointer",
-  fontSize: "12.5px",
-  color: "#CFCCC6",
-  whiteSpace: "nowrap",
-  flex: "0 0 auto",
-  transition: "all .2s",
-};
+const TOOL =
+  "flex items-center gap-7 py-7 px-12 rounded-10 border border-border-strong bg-transparent cursor-pointer text-12h text-ink-quiet whitespace-nowrap flex-[0_0_auto] transition-all duration-200";
 
 /** The office's own top bar: who you are looking at, and which of the five panels is open. */
 export function Header({
@@ -48,39 +25,21 @@ export function Header({
   const set = useDesign((s) => s.set);
 
   return (
-    <header style={BAR}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "13px",
-          paddingLeft: "18px",
-          flex: "1 1 auto",
-          minWidth: "0",
-        }}
-      >
+    <header className={BAR}>
+      <div className="flex items-center gap-13 pl-18 flex-[1_1_auto] min-w-0">
         <HeaderBrand />
         <Connection />
         {hasFloors ? <HeaderFloor /> : null}
       </div>
-      <div style={{ display: "flex", alignItems: "stretch", height: "100%", flex: "0 0 auto" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "7px",
-            paddingRight: "16px",
-            flex: "0 0 auto",
-          }}
-        >
+      <div className="flex items-stretch h-full flex-[0_0_auto]">
+        <div className="flex items-center gap-7 pr-16 flex-[0_0_auto]">
           {internal ? (
             <button
               type="button"
               onClick={() => {
                 set({ editor: true });
               }}
-              style={TOOL}
-              className="ho-2955a9"
+              className={`hover:text-ink hover:border-border-hover hover:bg-raised ${TOOL}`}
             >
               <svg
                 width="12"
@@ -102,8 +61,7 @@ export function Header({
             onClick={() => {
               setSetupOpen(true);
             }}
-            style={TOOL}
-            className="ho-2955a9"
+            className={`hover:text-ink hover:border-border-hover hover:bg-raised ${TOOL}`}
           >
             <svg
               width="12"

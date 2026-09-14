@@ -8,17 +8,8 @@ import { Usage } from "./usage.tsx";
 import { useFloor } from "./live.ts";
 import { useDesign } from "./store.ts";
 
-const ASIDE: React.CSSProperties = {
-  width: "var(--pw,420px)",
-  flex: "0 0 var(--pw,420px)",
-  borderLeft: "1px solid #1B1B1F",
-  background: "linear-gradient(180deg,#0E0E11,#09090A 60%)",
-  display: "flex",
-  flexDirection: "column",
-  minHeight: "0",
-  position: "relative",
-  overflow: "hidden",
-};
+const ASIDE =
+  "w-420 flex-[0_0_420px] border-l border-line bg-[linear-gradient(180deg,var(--color-panel),var(--color-ground-deep)_60%)] flex flex-col min-h-0 relative overflow-hidden";
 
 /** The right-hand column: one of the five panels, plus whatever sheet is sliding over it. */
 export function Panel(): React.JSX.Element | null {
@@ -35,18 +26,8 @@ export function Panel(): React.JSX.Element | null {
       : undefined;
 
   return (
-    <aside style={ASIDE}>
-      <div
-        style={{
-          position: "absolute",
-          top: "0",
-          left: "0",
-          right: "0",
-          height: "120px",
-          background: "linear-gradient(180deg,rgba(255,197,49,.05),transparent)",
-          pointerEvents: "none",
-        }}
-      />
+    <aside className={ASIDE}>
+      <div className="absolute top-0 left-0 right-0 h-120 bg-[linear-gradient(180deg,var(--color-accent-a05),transparent)] pointer-events-none" />
       {tab === "Chat" ? <Chat floor={floor} /> : null}
       {tab === "Board" ? <Board floor={floor} /> : null}
       {tab === "Team" ? <Team floor={floor} /> : null}

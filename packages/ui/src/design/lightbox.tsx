@@ -15,45 +15,16 @@ function LightboxBar({
 }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <div
-      style={{
-        flex: "0 0 auto",
-        display: "flex",
-        alignItems: "center",
-        gap: "10px",
-        padding: "13px 16px",
-        background: "#111114",
-        borderTop: "1px solid #26262C",
-      }}
-    >
+    <div className="flex-[0_0_auto] flex items-center gap-10 py-13 px-16 bg-card-lit border-t border-border">
       <span
-        style={{
-          flex: "1",
-          minWidth: "0",
-          ...MONO,
-          fontSize: "11.5px",
-          color: "#CFCCC6",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
+        className={`flex-1 min-w-0 ${MONO} text-11h text-ink-quiet overflow-hidden text-ellipsis whitespace-nowrap`}
       >
         {`${attachment.name} · ${(attachment.bytes / 1024).toFixed(0)} kB`}
       </span>
       <button
         type="button"
         onClick={onClose}
-        style={{
-          padding: "8px 13px",
-          borderRadius: "9px",
-          border: "0",
-          background: "var(--a,#FFC531)",
-          color: "#150F02",
-          fontSize: "12px",
-          fontWeight: "600",
-          cursor: "pointer",
-          whiteSpace: "nowrap",
-        }}
+        className="py-8 px-13 rounded-9 border-0 bg-accent text-accent-ink text-12 font-semibold cursor-pointer whitespace-nowrap"
       >
         {t("common.close")}
       </button>
@@ -86,64 +57,21 @@ export function Lightbox({ attachment }: { attachment: Attachment }): React.JSX.
     <div
       role="presentation"
       onClick={close}
-      style={{
-        position: "fixed",
-        inset: "0",
-        zIndex: 85,
-        background: "rgba(6,6,7,.86)",
-        backdropFilter: "blur(14px)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "14px",
-        padding: "24px",
-        animation: "fadeIn .26s ease both",
-      }}
+      className="fixed inset-0 z-85 bg-scrim-a86 backdrop-blur-[14px] flex flex-col items-center justify-center gap-14 p-24 animate-fade-260"
     >
-      <div
-        style={{
-          width: "min(1240px,97vw)",
-          flex: "1 1 auto",
-          minHeight: "0",
-          display: "flex",
-          flexDirection: "column",
-          borderRadius: "18px",
-          overflow: "hidden",
-          border: "1px solid rgba(255,197,49,.3)",
-          boxShadow: "0 50px 120px rgba(0,0,0,.75)",
-          animation: "popIn .42s cubic-bezier(.2,.9,.3,1.05) both",
-        }}
-      >
-        <div
-          style={{
-            flex: "1",
-            minHeight: "0",
-            background: "#0C0C0E",
-            display: "grid",
-            placeItems: "center",
-            overflow: "hidden",
-          }}
-        >
+      <div className="w-[min(1240px,97vw)] flex-[1_1_auto] min-h-0 flex flex-col rounded-18 overflow-hidden border border-accent-a30 shadow-sheet animate-pop-420">
+        <div className="flex-1 min-h-0 bg-sunk grid place-items-center overflow-hidden">
           {!isImageType(attachment.mime) ? (
-            <span style={{ ...MONO, fontSize: "13px", color: "#E4C778" }}>{attachment.name}</span>
+            <span className={`${MONO} text-13 text-accent-quote`}>{attachment.name}</span>
           ) : url === null ? (
-            <span style={{ ...MONO, fontSize: "13px", color: "#E4C778" }}>
-              {t("common.checking")}
-            </span>
+            <span className={`${MONO} text-13 text-accent-quote`}>{t("common.checking")}</span>
           ) : (
-            <img
-              src={url}
-              alt={attachment.name}
-              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
-            />
+            <img src={url} alt={attachment.name} className="max-w-full max-h-full object-contain" />
           )}
         </div>
         <LightboxBar attachment={attachment} onClose={close} />
       </div>
-      <span style={{ fontSize: "11.5px", color: "#A6A39C", flex: "0 0 auto" }}>
-        {t("chat.clickToClose")}
-      </span>
+      <span className="text-11h text-ink-meta flex-[0_0_auto]">{t("chat.clickToClose")}</span>
     </div>
   );
 }

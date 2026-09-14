@@ -35,51 +35,23 @@ const CROSS = (
   </svg>
 );
 
-const MARK: React.CSSProperties = {
-  width: "18px",
-  height: "18px",
-  flex: "0 0 18px",
-  borderRadius: "6px",
-  display: "grid",
-  placeItems: "center",
-};
+const MARK = "w-18 h-18 flex-[0_0_18px] rounded-6 grid place-items-center";
 
-const NAME: React.CSSProperties = {
-  flex: "1",
-  minWidth: "0",
-  fontSize: "12.5px",
-  color: "#E9E7E2",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
+const NAME =
+  "flex-1 min-w-0 text-12h text-ink-soft overflow-hidden text-ellipsis whitespace-nowrap";
 
 export function CheckRow({ check, first }: { check: Check; first: boolean }): React.JSX.Element {
   const { t } = useTranslation();
-  const fg = check.ok ? "#8FE8C4" : "#FFB3B3";
+  const fg = check.ok ? "text-good-soft" : "text-bad-soft";
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "11px",
-        padding: "13px 14px",
-        borderTop: `1px solid ${separator(first)}`,
-      }}
-    >
+    <div className={`flex items-center gap-11 py-13 px-14 ${separator(first)}`}>
       <span
-        style={{
-          ...MARK,
-          background: check.ok ? "rgba(91,217,160,.16)" : "rgba(255,122,122,.16)",
-          color: fg,
-        }}
+        className={`${MARK} ${check.ok ? "bg-good-a16 text-good-soft" : "bg-bad-a16 text-bad-soft"}`}
       >
         {check.ok ? TICK : CROSS}
       </span>
-      <span style={NAME}>{t(check.name)}</span>
-      <span style={{ ...MONO, fontSize: "10.5px", color: fg, flex: "0 0 auto" }}>
-        {t(check.state)}
-      </span>
+      <span className={NAME}>{t(check.name)}</span>
+      <span className={`${MONO} text-10h flex-[0_0_auto] ${fg}`}>{t(check.state)}</span>
     </div>
   );
 }

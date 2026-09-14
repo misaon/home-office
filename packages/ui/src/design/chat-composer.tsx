@@ -10,35 +10,12 @@ import { ChatWorking } from "./chat-working.tsx";
 import type { Floor } from "./data.ts";
 import { useDesign } from "./store.ts";
 
-const BOX: React.CSSProperties = {
-  position: "relative",
-  borderRadius: "15px",
-  padding: "12px",
-  transition: "border-color .25s,background .25s,box-shadow .25s",
-};
+const BOX = "relative rounded-15 p-12 transition-[border-color,background,box-shadow] duration-250";
 
-const DROP: React.CSSProperties = {
-  position: "absolute",
-  inset: "0",
-  zIndex: 5,
-  borderRadius: "15px",
-  background: "rgba(14,12,6,.9)",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "8px",
-  pointerEvents: "none",
-  animation: "fadeIn .16s ease both",
-};
+const DROP =
+  "absolute inset-0 z-5 rounded-15 bg-drop flex flex-col items-center justify-center gap-8 pointer-events-none animate-fade-160";
 
-const INPUT: React.CSSProperties = {
-  width: "100%",
-  border: "0",
-  background: "transparent",
-  fontSize: "13.5px",
-  padding: "2px 2px 10px",
-};
+const INPUT = "w-full border-0 bg-transparent text-13h pt-2 px-2 pb-10";
 
 /** Where a message is written: what is attached, what it costs, and the button that sends it. */
 export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
@@ -91,7 +68,7 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
   };
 
   return (
-    <div style={{ flex: "0 0 auto", padding: "12px 16px 16px" }}>
+    <div className="flex-[0_0_auto] pt-12 px-16 pb-16">
       <ChatWorking floor={floor} />
       <div
         onDragEnter={(e) => {
@@ -119,21 +96,16 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
             attach(dropped);
           }
         }}
-        style={{
-          ...BOX,
-          border: `1px solid ${dragging ? "rgba(255,197,49,.6)" : "#2C2C32"}`,
-          background: dragging ? "rgba(255,197,49,.05)" : "#111114",
-        }}
-        className="ho-8d048f"
+        className={`hover:border-accent-a40 hover:shadow-halo ${BOX} border ${dragging ? "border-accent-a60" : "border-border-strong"} ${dragging ? "bg-accent-a05" : "bg-card-lit"}`}
       >
         {dragging ? (
-          <div style={DROP}>
+          <div className={DROP}>
             <svg
+              className="stroke-accent"
               width="22"
               height="22"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#FFC531"
               strokeWidth="1.6"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -142,9 +114,7 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
               <polyline points="7,9 12,4 17,9" />
               <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
             </svg>
-            <span style={{ fontSize: "12.5px", color: "#FFD666", fontWeight: "500" }}>
-              {t("chat.dropHere")}
-            </span>
+            <span className="text-12h text-accent-soft font-medium">{t("chat.dropHere")}</span>
           </div>
         ) : null}
         {attachment === null ? null : <ChatAttachment file={attachment.name} />}
@@ -160,7 +130,7 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
             }
           }}
           placeholder={t("chat.placeholder")}
-          style={INPUT}
+          className={`${INPUT} placeholder:text-ink-ghost`}
         />
         <ChatToolbar floor={floor} onSend={submit} onAttach={attach} />
       </div>

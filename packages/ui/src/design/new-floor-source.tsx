@@ -10,10 +10,10 @@ import { MONO } from "./tokens.ts";
 /** The caption above a field, with what the office can say about it on the right. */
 function FieldCap({ label, hint }: { label: string; hint: string }): React.JSX.Element {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-      <span style={CAP}>{label}</span>
-      <span style={{ flex: "1" }} />
-      <span style={{ fontSize: "11px", color: "#A6A39C" }}>{hint}</span>
+    <div className="flex items-center gap-8 mb-8">
+      <span className={`${CAP} text-9h`}>{label}</span>
+      <span className="flex-1" />
+      <span className="text-11 text-ink-meta">{hint}</span>
     </div>
   );
 }
@@ -36,17 +36,16 @@ function LocalField({
 }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <div style={{ animation: "fadeIn .24s ease both" }}>
+    <div className="animate-fade-240">
       <FieldCap label={t("project.folderCap")} hint={hint} />
-      <div style={{ display: "flex", gap: "8px" }}>
-        <div style={{ ...FIELD_ROW, border: `1px solid ${border}` }}>
+      <div className="flex gap-8">
+        <div className={`${FIELD_ROW} border ${border}`}>
           <svg
-            style={{ flex: "0 0 auto" }}
+            className="flex-[0_0_auto] stroke-ink-ghost"
             width="13"
             height="13"
             viewBox="0 0 16 16"
             fill="none"
-            stroke="#8A8780"
             strokeWidth="1.5"
             strokeLinejoin="round"
           >
@@ -63,15 +62,14 @@ function LocalField({
                   : { ...draft, path: value, branch: "" },
               );
             }}
-            style={BARE}
+            className={`${BARE} placeholder:text-ink-ghost`}
           />
         </div>
         <button
           type="button"
           disabled={browsing}
           onClick={onBrowse}
-          style={BROWSE}
-          className="ho-96ee65"
+          className={`hover:text-accent-soft hover:border-accent-a45 ${BROWSE}`}
         >
           {t("project.browse")}
         </button>
@@ -94,16 +92,15 @@ function GitField({
 }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <div style={{ animation: "fadeIn .24s ease both" }}>
+    <div className="animate-fade-240">
       <FieldCap label={t("project.urlCap")} hint={hint} />
-      <div style={{ ...FIELD_ROW, border: `1px solid ${border}` }}>
+      <div className={`${FIELD_ROW} border ${border}`}>
         <svg
-          style={{ flex: "0 0 auto" }}
+          className="flex-[0_0_auto] stroke-ink-ghost"
           width="13"
           height="13"
           viewBox="0 0 16 16"
           fill="none"
-          stroke="#8A8780"
           strokeWidth="1.5"
           strokeLinecap="round"
         >
@@ -116,7 +113,7 @@ function GitField({
           onChange={(e) => {
             setDraft({ ...draft, url: e.target.value, branch: "" });
           }}
-          style={BARE}
+          className={`${BARE} placeholder:text-ink-ghost`}
         />
       </div>
     </div>
@@ -124,40 +121,13 @@ function GitField({
 }
 
 /** Where the code lives: the two cards, and the one field the chosen card asks for. */
-const FIELD_ROW: React.CSSProperties = {
-  flex: "1",
-  minWidth: "0",
-  display: "flex",
-  alignItems: "center",
-  gap: "9px",
-  padding: "0 13px",
-  borderRadius: "12px",
-  background: "#101013",
-  transition: "border-color .22s",
-};
+const FIELD_ROW =
+  "flex-1 min-w-0 flex items-center gap-9 py-0 px-13 rounded-12 bg-card transition-[border-color] duration-220";
 
-const BARE: React.CSSProperties = {
-  flex: "1",
-  minWidth: "0",
-  padding: "12px 0",
-  border: "0",
-  background: "transparent",
-  ...MONO,
-  fontSize: "12px",
-};
+const BARE = `flex-1 min-w-0 py-12 px-0 border-0 bg-transparent ${MONO} text-12`;
 
-const BROWSE: React.CSSProperties = {
-  padding: "0 15px",
-  flex: "0 0 auto",
-  borderRadius: "12px",
-  border: "1px solid #2C2C32",
-  background: "#141417",
-  color: "#CFCCC6",
-  fontSize: "12.5px",
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-  transition: "all .2s",
-};
+const BROWSE =
+  "py-0 px-15 flex-[0_0_auto] rounded-12 border border-border-strong bg-raised text-ink-quiet text-12h cursor-pointer whitespace-nowrap transition-all duration-200";
 
 export function FloorSource({
   draft,
@@ -172,7 +142,7 @@ export function FloorSource({
 }): React.JSX.Element {
   const { t } = useTranslation();
   const typed = (draft.kind === "local" ? draft.path : draft.url).trim();
-  const border = typed === "" ? "#2C2C32" : "rgba(255,197,49,.4)";
+  const border = typed === "" ? "border-border-strong" : "border-accent-a40";
   const pick = useMutation({
     mutationFn: () =>
       requireClient().system.pickDirectory(
@@ -192,15 +162,8 @@ export function FloorSource({
 
   return (
     <>
-      <div style={{ ...CAP, marginBottom: "10px" }}>{t("project.whereCode")}</div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "10px",
-          marginBottom: "20px",
-        }}
-      >
+      <div className={`${CAP} text-9h mb-10`}>{t("project.whereCode")}</div>
+      <div className="grid grid-cols-2 gap-10 mb-20">
         <SourceCard
           kind="local"
           on={draft.kind === "local"}

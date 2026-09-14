@@ -4,39 +4,21 @@ import { resourcesQuery } from "../queries.ts";
 import type { Floor } from "./data.ts";
 import { MONO, separator } from "./tokens.ts";
 
-const CARD: React.CSSProperties = {
-  borderRadius: "14px",
-  background: "#101013",
-  border: "1px solid #232328",
-  overflow: "hidden",
-  marginBottom: "18px",
-};
+const CARD = "rounded-14 bg-card border border-edge overflow-hidden mb-18";
 
-const RULE: React.CSSProperties = {
-  ...MONO,
-  fontSize: "10px",
-  letterSpacing: ".16em",
-  textTransform: "uppercase",
-  color: "#ABA8A1",
-};
+const RULE = `${MONO} text-10 tracking-caps-wider uppercase text-ink-label`;
 
-const NAME: React.CSSProperties = {
-  ...MONO,
-  fontSize: "12px",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
+const NAME = `${MONO} text-12 overflow-hidden text-ellipsis whitespace-nowrap`;
 
 const gb = (bytes: number): string => `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 
 /** A rule with its count on the right. */
 function Rule({ name, count }: { name: string; count: string }): React.JSX.Element {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "0 2px 9px" }}>
-      <span style={RULE}>{name}</span>
-      <span style={{ flex: "1", height: "1px", background: "#1F1F24" }} />
-      <span style={{ ...MONO, fontSize: "10.5px", color: "#A6A39C" }}>{count}</span>
+    <div className="flex items-center gap-8 mt-0 mx-2 mb-9">
+      <span className={RULE}>{name}</span>
+      <span className="flex-1 h-1 bg-slot" />
+      <span className={`${MONO} text-10h text-ink-meta`}>{count}</span>
     </div>
   );
 }
@@ -49,73 +31,42 @@ export function UsageResources({ floor }: { floor: Floor }): React.JSX.Element {
 
   if (inventory === undefined) {
     return (
-      <div style={{ padding: "16px 2px", fontSize: "12px", color: "#A6A39C" }}>
+      <div className="py-16 px-2 text-12 text-ink-meta">
         {query.isError ? t("resources.failed") : t("common.checking")}
       </div>
     );
   }
 
   return (
-    <div style={{ animation: "fadeUp .35s ease both" }}>
+    <div className="animate-lift-350">
       <Rule name={t("resources.containers")} count={String(inventory.containers.length)} />
-      <div style={CARD}>
+      <div className={CARD}>
         {inventory.containers.map((box, i) => {
           const up = box.state === "running";
           return (
-            <div
-              key={box.name}
-              style={{
-                display: "flex",
-                alignItems: "stretch",
-                borderTop: `1px solid ${separator(i === 0)}`,
-              }}
-            >
-              <div
-                style={{ width: "3px", flex: "0 0 3px", background: up ? "#5BD9A0" : "#3A3A41" }}
-              />
-              <div style={{ flex: "1", minWidth: "0", padding: "12px 13px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={NAME}>{box.name}</span>
-                  <div style={{ flex: "1" }} />
-                  <span style={{ ...MONO, fontSize: "10px", color: "#A6A39C", flex: "0 0 auto" }}>
+            <div key={box.name} className={`flex items-stretch ${separator(i === 0)}`}>
+              <div className={`w-3 flex-[0_0_3px] ${up ? "bg-good" : "bg-dot-idle"}`} />
+              <div className="flex-1 min-w-0 py-12 px-13">
+                <div className="flex items-center gap-8">
+                  <span className={NAME}>{box.name}</span>
+                  <div className="flex-1" />
+                  <span className={`${MONO} text-10 text-ink-meta flex-[0_0_auto]`}>
                     {box.state}
                   </span>
                 </div>
-                <div style={{ ...MONO, fontSize: "10px", color: "#A6A39C", marginTop: "6px" }}>
-                  {box.kind}
-                </div>
+                <div className={`${MONO} text-10 text-ink-meta mt-6`}>{box.kind}</div>
               </div>
             </div>
           );
         })}
         {inventory.containers.length === 0 ? (
-          <div style={{ padding: "16px 13px", fontSize: "12px", color: "#A6A39C" }}>
-            {t("resources.noneRunning")}
-          </div>
+          <div className="py-16 px-13 text-12 text-ink-meta">{t("resources.noneRunning")}</div>
         ) : null}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "11px",
-            padding: "13px",
-            borderTop: "1px solid #1E1E23",
-            background: "#0D0D10",
-          }}
-        >
-          <span
-            style={{
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              background: "#5BD9A0",
-              boxShadow: "0 0 10px rgba(91,217,160,.7)",
-              flex: "0 0 auto",
-            }}
-          />
-          <div style={{ flex: "1", minWidth: "0" }}>
-            <div style={{ fontSize: "13px" }}>{t("resources.engine")}</div>
-            <div style={{ ...MONO, fontSize: "10.5px", color: "#A6A39C", marginTop: "3px" }}>
+        <div className="flex items-center gap-11 p-13 border-t border-rule bg-dialog">
+          <span className="w-8 h-8 rounded-half bg-good shadow-glow-good flex-[0_0_auto]" />
+          <div className="flex-1 min-w-0">
+            <div className="text-13">{t("resources.engine")}</div>
+            <div className={`${MONO} text-10h text-ink-meta mt-3`}>
               {t("resources.held", {
                 volumes: inventory.snapshot.volumes,
                 images: gb(inventory.snapshot.imagesBytes),

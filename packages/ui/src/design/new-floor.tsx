@@ -20,29 +20,20 @@ const EMPTY: RepoDraft = {
   imports: new Set(),
 };
 
-const ICON: React.CSSProperties = {
-  width: "40px",
-  height: "40px",
-  flex: "0 0 40px",
-  borderRadius: "13px",
-  background: "var(--a,#FFC531)",
-  display: "grid",
-  placeItems: "center",
-  boxShadow: "0 10px 26px rgba(255,197,49,.28)",
-};
+const ICON = "w-40 h-40 flex-[0_0_40px] rounded-13 bg-accent grid place-items-center shadow-gold";
 
 /** The gold house and the two lines that say what a floor is. */
 function NewFloorHead(): React.JSX.Element {
   const { t } = useTranslation();
   return (
     <>
-      <div style={ICON}>
+      <div className={ICON}>
         <svg
+          className="stroke-accent-ink"
           width="19"
           height="19"
           viewBox="0 0 20 20"
           fill="none"
-          stroke="#150F02"
           strokeWidth="1.7"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -51,27 +42,11 @@ function NewFloorHead(): React.JSX.Element {
           <path d="M8 17v-5h4v5" />
         </svg>
       </div>
-      <div style={{ flex: "1", minWidth: "0" }}>
-        <div
-          style={{
-            ...DISPLAY,
-            fontWeight: "700",
-            fontSize: "21px",
-            letterSpacing: "-.015em",
-            lineHeight: "1.15",
-          }}
-        >
+      <div className="flex-1 min-w-0">
+        <div className={`${DISPLAY} font-bold text-21 tracking-tighter leading-title`}>
           {t("project.newTitle")}
         </div>
-        <div
-          style={{
-            fontSize: "12.5px",
-            color: "#ABA8A1",
-            marginTop: "7px",
-            lineHeight: "1.6",
-            textWrap: "pretty",
-          }}
-        >
+        <div className="text-12h text-ink-label mt-7 leading-prose text-pretty">
           {t("project.newSub")}
         </div>
       </div>
@@ -141,24 +116,23 @@ export function NewFloor(): React.JSX.Element | null {
       head={<NewFloorHead />}
       footer={
         <>
-          <span style={HINT}>
+          <span className={HINT}>
             {typed === ""
               ? t("project.repoIsAll")
               : t("project.changeLater", { number: floors + 1 })}
           </span>
-          <button type="button" onClick={close} style={CANCEL} className="ho-2955a9">
+          <button
+            type="button"
+            onClick={close}
+            className={`hover:text-ink hover:border-border-hover hover:bg-raised ${CANCEL}`}
+          >
             {t("common.cancel")}
           </button>
           <button
             type="button"
             disabled={create.isPending}
             onClick={submit}
-            style={{
-              ...COMMIT,
-              background: ready ? "var(--a,#FFC531)" : "#24242A",
-              color: ready ? "#150F02" : "#8A8780",
-            }}
-            className="ho-373252"
+            className={`hover:-translate-y-2 hover:shadow-lift-lg ${COMMIT} ${ready ? "bg-accent" : "bg-edge-lit"} ${ready ? "text-accent-ink" : "text-ink-ghost"}`}
           >
             {t("project.createFloor")}
           </button>

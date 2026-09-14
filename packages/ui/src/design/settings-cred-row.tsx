@@ -4,35 +4,12 @@ import { CredForm, NAMED } from "./settings-cred-form.tsx";
 import { MONO, separator } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
-const HEAD: React.CSSProperties = {
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  padding: "13px",
-  border: "0",
-  background: "transparent",
-  cursor: "pointer",
-  textAlign: "left",
-  transition: "background .2s",
-};
+const HEAD =
+  "w-full flex items-center gap-10 p-13 border-0 bg-transparent cursor-pointer text-left transition-[background] duration-200";
 
-const NAME: React.CSSProperties = {
-  flex: "1",
-  minWidth: "0",
-  fontSize: "13px",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
+const NAME = "flex-1 min-w-0 text-13 overflow-hidden text-ellipsis whitespace-nowrap";
 
-const TAG: React.CSSProperties = {
-  ...MONO,
-  fontSize: "9.5px",
-  padding: "3px 9px",
-  borderRadius: "99px",
-  flex: "0 0 auto",
-};
+const TAG = `${MONO} text-9h py-3 px-9 rounded-pill flex-[0_0_auto]`;
 
 /** One key the office holds: whether it has it, and the door to pasting a new one. */
 export function CredRow({
@@ -50,40 +27,28 @@ export function CredRow({
   const open = credOpen === name;
 
   return (
-    <div
-      style={{ display: "flex", alignItems: "stretch", borderTop: `1px solid ${separator(first)}` }}
-    >
-      <div style={{ width: "3px", flex: "0 0 3px", background: stored ? "#5BD9A0" : "#2C2C32" }} />
-      <div style={{ flex: "1", minWidth: "0" }}>
+    <div className={`flex items-stretch ${separator(first)}`}>
+      <div className={`w-3 flex-[0_0_3px] ${stored ? "bg-good" : "bg-border-strong"}`} />
+      <div className="flex-1 min-w-0">
         <button
           type="button"
           onClick={() => {
             set({ credOpen: open ? null : name });
           }}
-          style={HEAD}
-          className="ho-0b4177"
+          className={`hover:bg-row-hover ${HEAD}`}
         >
-          <span style={NAME}>{t(`tokens.${NAMED[name]}`)}</span>
+          <span className={NAME}>{t(`tokens.${NAMED[name]}`)}</span>
           <span
-            style={{
-              ...TAG,
-              background: stored ? "rgba(91,217,160,.14)" : "#24242A",
-              color: stored ? "#8FE8C4" : "#BEBBB4",
-            }}
+            className={`${TAG} ${stored ? "bg-good-a14" : "bg-edge-lit"} ${stored ? "text-good-soft" : "text-ink-faint"}`}
           >
             {stored ? t("tokens.stored") : t("tokens.missing")}
           </span>
           <svg
-            style={{
-              flex: "0 0 auto",
-              transition: "transform .3s",
-              transform: `rotate(${open ? "90deg" : "0deg"})`,
-            }}
+            className={`flex-[0_0_auto] transition-transform duration-300 ${open ? "rotate-90" : "rotate-0"} stroke-ink-meta`}
             width="9"
             height="9"
             viewBox="0 0 12 12"
             fill="none"
-            stroke="#A6A39C"
             strokeWidth="1.5"
             strokeLinecap="round"
           >

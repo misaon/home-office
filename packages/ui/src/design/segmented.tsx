@@ -9,16 +9,7 @@ export function Segmented<T extends string>({
   onChange: (next: T) => void;
 }): React.JSX.Element {
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: "4px",
-        padding: "3px",
-        borderRadius: "11px",
-        background: "#101013",
-        border: "1px solid #26262C",
-      }}
-    >
+    <div className="flex gap-4 p-3 rounded-11 bg-card border border-border">
       {options.map((option) => {
         const on = option.value === value;
         return (
@@ -29,17 +20,7 @@ export function Segmented<T extends string>({
             onClick={() => {
               onChange(option.value);
             }}
-            style={{
-              flex: "1",
-              padding: "8px 0",
-              borderRadius: "8px",
-              border: "0",
-              cursor: "pointer",
-              fontSize: "12px",
-              transition: "all .25s",
-              background: on ? "rgba(255,197,49,.16)" : "transparent",
-              color: on ? "#FFD666" : "#ABA8A1",
-            }}
+            className={`flex-1 py-8 px-0 rounded-8 border-0 cursor-pointer text-12 transition-all duration-250 ${on ? "bg-accent-a16" : "bg-transparent"} ${on ? "text-accent-soft" : "text-ink-label"}`}
           >
             {option.label}
           </button>

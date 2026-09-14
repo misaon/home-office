@@ -6,19 +6,14 @@ import { PRIMARY, SheetShell } from "./sheet-shell.tsx";
 import { MONO, priority } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
-const TAG: React.CSSProperties = {
-  ...MONO,
-  fontSize: "9.5px",
-  padding: "4px 9px",
-  borderRadius: "6px",
-};
+const TAG = `${MONO} text-9h py-4 px-9 rounded-6`;
 
 /** One task, opened up: what it is, who has it, and the two ways it can leave this state. */
 export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);
   const flash = useDesign((s) => s.flash);
-  const { pBg, pFg } = priority(task.p);
+  const tone = priority(task.p);
 
   const move = useMutation({
     mutationFn: (status: "done" | "in_progress") =>
@@ -32,42 +27,26 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
   });
 
   return (
-    <SheetShell
-      title={task.t}
-      titleStyle={{ fontSize: "14px", lineHeight: "1.4", textWrap: "pretty" }}
-    >
-      <div style={{ display: "flex", gap: "6px", marginBottom: "16px", flexWrap: "wrap" }}>
-        <span style={{ ...TAG, background: pBg, color: pFg }}>{t(`priority.${task.p}`)}</span>
-        <span style={{ ...TAG, background: "#24242A", color: "#BEBBB4" }}>
-          {t(`taskKind.${task.k}`)}
-        </span>
-        <span style={{ ...TAG, background: "#24242A", color: "#BEBBB4" }}>
-          {t(`status.${task.status}`)}
-        </span>
+    <SheetShell title={task.t} titleClass="text-14 leading-card text-pretty">
+      <div className="flex gap-6 mb-16 flex-wrap">
+        <span className={`${TAG} ${tone}`}>{t(`priority.${task.p}`)}</span>
+        <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`taskKind.${task.k}`)}</span>
+        <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`status.${task.status}`)}</span>
       </div>
-      <div
-        style={{
-          padding: "12px",
-          borderRadius: "12px",
-          background: "#111114",
-          border: "1px solid #26262C",
-          marginBottom: "18px",
-        }}
-      >
-        <div style={{ ...MONO, fontSize: "10px", color: "#A6A39C" }}>{floor.name}</div>
-        <div style={{ fontSize: "12.5px", color: "#E4E1DB", lineHeight: "1.5", marginTop: "6px" }}>
+      <div className="p-12 rounded-12 bg-card-lit border border-border mb-18">
+        <div className={`${MONO} text-10 text-ink-meta`}>{floor.name}</div>
+        <div className="text-12h text-ink-dim leading-body mt-6">
           {task.who === "" ? t("board.unassigned") : t("board.assignedTo", { name: task.who })}
         </div>
       </div>
-      <div style={{ display: "flex", gap: "9px" }}>
+      <div className="flex gap-9">
         <button
           type="button"
           disabled={move.isPending}
           onClick={() => {
             move.mutate("done");
           }}
-          style={PRIMARY}
-          className="ho-7cc9cc"
+          className={`hover:-translate-y-2 hover:shadow-lift ${PRIMARY}`}
         >
           {t("board.moveToDone")}
         </button>
@@ -77,18 +56,7 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
           onClick={() => {
             move.mutate("in_progress");
           }}
-          style={{
-            padding: "11px 15px",
-            borderRadius: "11px",
-            border: "1px solid #2C2C32",
-            background: "transparent",
-            color: "#CFCCC6",
-            fontSize: "12.5px",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-            transition: "all .2s",
-          }}
-          className="ho-96ee65"
+          className="hover:text-accent-soft hover:border-accent-a45 py-11 px-15 rounded-11 border border-border-strong bg-transparent text-ink-quiet text-12h cursor-pointer whitespace-nowrap transition-all duration-200"
         >
           {t("board.handBack")}
         </button>

@@ -88,6 +88,20 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-14 — Owner task: the whole design rewritten in Tailwind 4 — 594 inline style objects and 166
+  style constants across 71 files became utility classes, and `design.css` (427 lines of reset, keyframes
+  and thirty-six `!important` hover rules) was deleted. `packages/ui/src/design/app.css` is now the only
+  stylesheet: Tailwind, the fonts, four `@source` globs, one `@theme` holding the palette, type scale,
+  radii, shadows, easings and thirty animations, and three `@utility` blocks. Thirteen `style` attributes
+  remain and each sets only a custom property a utility reads back. Held to the pixel against the previous
+  build three ways over 28 states — every pixel of the viewport with animations disabled and the canvas
+  hidden, every painting property of every element including `::before`/`::after`/`::placeholder`, and a
+  scan for classes fighting over one property. That found five defects screenshots alone could not: a
+  field with no border colour, two transitions that could not animate Tailwind's `translate`/`rotate`
+  properties, a button whose lit state was always overridden, and a harness step that had never opened
+  the screen it claimed to test. Decisions and measurements in
+  [the task plan](plans/2026-09-14-tailwind-rewrite.md) and [docs/STACK.md](STACK.md).
+
 - 2026-09-13 — Owner task: redesign the whole UI, with animation, and make it obvious — The right rail
   had six tabs and the floor's people lived in two of them, one to watch and another to edit; it has
   five, and Team is one card per colleague with their state on the front and their model, effort and

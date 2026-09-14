@@ -5,34 +5,12 @@ import { usageQuery } from "../queries.ts";
 import { useUi } from "../store.ts";
 import { fmt, useDesign } from "./store.ts";
 
-const POPOVER: React.CSSProperties = {
-  position: "absolute",
-  bottom: "38px",
-  right: "0",
-  width: "284px",
-  padding: "14px",
-  borderRadius: "14px",
-  background: "#131317",
-  border: "1px solid #2C2C32",
-  boxShadow: "0 24px 52px rgba(0,0,0,.65)",
-  zIndex: 40,
-  animation: "riseIn .3s cubic-bezier(.2,.9,.3,1.05) both",
-};
+const POPOVER =
+  "absolute bottom-38 right-0 w-284 p-14 rounded-14 bg-pop border border-border-strong shadow-lightbox z-40 animate-rise-pop-300";
 
-const CAPS: React.CSSProperties = {
-  fontFamily: "'JetBrains Mono',monospace",
-  fontSize: "9.5px",
-  letterSpacing: ".14em",
-  textTransform: "uppercase",
-  color: "#ABA8A1",
-};
+const CAPS = "font-mono text-9h tracking-caps-wide uppercase text-ink-label";
 
-const ROW: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "9px",
-};
+const ROW = "flex items-center justify-between gap-9";
 
 /** The last thing a running session said about how full its context window is. */
 const contextOf = (events: readonly LiveEvent[] | undefined): number | null => {
@@ -68,24 +46,15 @@ function Meter({
   fg: string;
 }): React.JSX.Element {
   return (
-    <div style={{ marginBottom: "13px" }}>
-      <div style={{ ...ROW, marginBottom: "7px" }}>
-        <span style={{ fontSize: "12px", color: "#E9E7E2" }}>{name}</span>
-        <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: "10.5px", color: fg }}>
-          {value}
-        </span>
+    <div className="mb-13">
+      <div className={`${ROW} mb-7`}>
+        <span className="text-12 text-ink-soft">{name}</span>
+        <span className={`font-mono text-10h ${fg}`}>{value}</span>
       </div>
-      <div
-        style={{ height: "4px", borderRadius: "99px", background: "#1F1F24", overflow: "hidden" }}
-      >
+      <div className="h-4 rounded-pill bg-slot overflow-hidden">
         <div
-          style={{
-            height: "100%",
-            borderRadius: "99px",
-            transition: "width .5s cubic-bezier(.2,.9,.3,1)",
-            background: bar,
-            width: pct,
-          }}
+          className={`h-full rounded-pill transition-[width] duration-500 ease-glide w-(--share) ${bar}`}
+          style={{ "--share": pct }}
         />
       </div>
     </div>
@@ -105,12 +74,10 @@ export function UsageMenu({ floorId }: { floorId: ProjectId }): React.JSX.Elemen
   const spent = totals === undefined ? 0 : totals.inputTokens + totals.outputTokens;
 
   return (
-    <div style={POPOVER}>
-      <div style={{ ...CAPS, marginBottom: "12px" }}>{t("usage.chipTitle")}</div>
+    <div className={POPOVER}>
+      <div className={`${CAPS} mb-12`}>{t("usage.chipTitle")}</div>
       {fill === null ? (
-        <div style={{ fontSize: "11.5px", color: "#A6A39C", marginBottom: "13px" }}>
-          {t("usage.noRunning")}
-        </div>
+        <div className="text-11h text-ink-meta mb-13">{t("usage.noRunning")}</div>
       ) : (
         <Meter
           name={t("usage.contextLabel")}
@@ -118,55 +85,33 @@ export function UsageMenu({ floorId }: { floorId: ProjectId }): React.JSX.Elemen
           pct={`${String(Math.max(1, Math.round(fill * 100)))}%`}
           bar={
             fill > 0.9
-              ? "linear-gradient(90deg,#B3453F,#F28B8B)"
+              ? "bg-[linear-gradient(90deg,var(--color-bad-deep),var(--color-bad-mid))]"
               : fill > 0.7
-                ? "linear-gradient(90deg,#9A6620,#F2994A)"
-                : "linear-gradient(90deg,#E0A400,var(--a,#FFC531))"
+                ? "bg-[linear-gradient(90deg,var(--color-accent-dull),var(--color-warn))]"
+                : "bg-[linear-gradient(90deg,var(--color-accent-deep),var(--color-accent))]"
           }
-          fg={fill > 0.9 ? "#FFB3B3" : fill > 0.7 ? "#F2994A" : "#FFD666"}
+          fg={fill > 0.9 ? "text-bad-soft" : fill > 0.7 ? "text-warn" : "text-accent-soft"}
         />
       )}
-      <div style={{ ...ROW, marginBottom: "12px" }}>
-        <span style={{ fontSize: "11.5px", color: "#A6A39C" }}>{t("usage.day")}</span>
-        <span
-          style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: "11px", color: "#E4E1DB" }}
-        >
-          {fmt(spent)}
-        </span>
+      <div className={`${ROW} mb-12`}>
+        <span className="text-11h text-ink-meta">{t("usage.day")}</span>
+        <span className="font-mono text-11 text-ink-dim">{fmt(spent)}</span>
       </div>
-      <div style={{ ...ROW, marginBottom: "12px" }}>
-        <span style={{ fontSize: "11.5px", color: "#A6A39C" }}>{t("usage.rateLimited")}</span>
+      <div className={`${ROW} mb-12`}>
+        <span className="text-11h text-ink-meta">{t("usage.rateLimited")}</span>
         <span
-          style={{
-            fontFamily: "'JetBrains Mono',monospace",
-            fontSize: "11px",
-            color: (query.data?.rateLimitIncidents ?? 0) > 0 ? "#F2994A" : "#8FE8C4",
-          }}
+          className={`font-mono text-11 ${(query.data?.rateLimitIncidents ?? 0) > 0 ? "text-warn" : "text-good-soft"}`}
         >
           {query.data?.rateLimitIncidents ?? 0}
         </span>
       </div>
-      <p style={{ fontSize: "11px", color: "#A6A39C", lineHeight: "1.6", margin: "0 0 12px" }}>
-        {t("usage.chipNote")}
-      </p>
+      <p className="text-11 text-ink-meta leading-prose mt-0 mx-0 mb-12">{t("usage.chipNote")}</p>
       <button
         type="button"
         onClick={() => {
           set({ usageOpen: false, tab: "Usage" });
         }}
-        style={{
-          width: "100%",
-          padding: "9px",
-          borderRadius: "10px",
-          border: "1px solid rgba(255,197,49,.35)",
-          background: "rgba(255,197,49,.09)",
-          color: "#FFD666",
-          fontSize: "12px",
-          fontWeight: "500",
-          cursor: "pointer",
-          transition: "all .2s",
-        }}
-        className="ho-ef3632"
+        className="hover:bg-accent-a16 w-full p-9 rounded-10 border border-accent-a35 bg-accent-a09 text-accent-soft text-12 font-medium cursor-pointer transition-all duration-200"
       >
         {t("usage.openFull")}
       </button>

@@ -5,45 +5,18 @@ import { useDesign } from "./store.ts";
 
 const FILTERS = [
   ["all", "team.all", null],
-  ["working", "team.working", "var(--a,#FFC531)"],
-  ["idle", "team.idle", "#8E8B85"],
+  ["working", "team.working", "bg-accent"],
+  ["idle", "team.idle", "bg-ink-idle"],
 ] as const;
 
-const TOP: React.CSSProperties = {
-  display: "flex",
-  alignItems: "baseline",
-  justifyContent: "space-between",
-  gap: "10px",
-  marginBottom: "14px",
-};
+const TOP = "flex items-baseline justify-between gap-10 mb-14";
 
-const COUNT: React.CSSProperties = {
-  ...DISPLAY,
-  fontWeight: "700",
-  fontSize: "30px",
-  letterSpacing: "-.02em",
-  lineHeight: "1",
-  whiteSpace: "nowrap",
-};
+const COUNT = `${DISPLAY} font-bold text-30 tracking-display leading-flat whitespace-nowrap`;
 
-const LABEL: React.CSSProperties = {
-  fontSize: "11.5px",
-  color: "#ABA8A1",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
+const LABEL = "text-11h text-ink-label overflow-hidden text-ellipsis whitespace-nowrap";
 
-const CHIP: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "7px",
-  padding: "6px 11px",
-  borderRadius: "99px",
-  cursor: "pointer",
-  fontSize: "12px",
-  transition: "all .22s cubic-bezier(.2,.8,.3,1)",
-};
+const CHIP =
+  "flex items-center gap-7 py-6 px-11 rounded-pill cursor-pointer text-12 transition-all duration-220 ease-soft";
 
 /** How many people are on the floor, the button that hires another, and the three filters. */
 export function TeamHeader({
@@ -59,45 +32,23 @@ export function TeamHeader({
   const team = floor.team;
 
   return (
-    <div
-      style={{ padding: "16px 16px 14px", borderBottom: "1px solid #1B1B1F", marginBottom: "16px" }}
-    >
-      <div style={TOP}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: "9px",
-            minWidth: "0",
-            flexWrap: "wrap",
-          }}
-        >
-          <span style={COUNT}>{team.length}</span>
+    <div className="pt-16 px-16 pb-14 border-b border-line mb-16">
+      <div className={TOP}>
+        <div className="flex items-baseline gap-9 min-w-0 flex-wrap">
+          <span className={COUNT}>{team.length}</span>
           <span
-            style={LABEL}
+            className={LABEL}
           >{`${team.length === 1 ? "agent on " : "agents on "}${floor.name}`}</span>
         </div>
         <button
           type="button"
           onClick={onHire}
-          style={{
-            padding: "6px 11px",
-            borderRadius: "9px",
-            border: "1px solid #2C2C32",
-            background: "transparent",
-            fontSize: "11.5px",
-            color: "#CFCCC6",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-            flex: "0 0 auto",
-            transition: "all .2s",
-          }}
-          className="ho-abf4b4"
+          className="hover:border-accent-a50 py-6 px-11 rounded-9 border border-border-strong bg-transparent text-11h text-ink-quiet cursor-pointer whitespace-nowrap flex-[0_0_auto] transition-all duration-200"
         >
           {t("team.newAgent")}
         </button>
       </div>
-      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+      <div className="flex gap-6 flex-wrap">
         {FILTERS.map(([key, label, dot]) => {
           const tone = pill(teamFilter === key);
           return (
@@ -107,21 +58,11 @@ export function TeamHeader({
               onClick={() => {
                 set({ teamFilter: key });
               }}
-              style={{
-                ...CHIP,
-                border: `1px solid ${tone.bd}`,
-                background: tone.bg,
-                color: tone.fg,
-              }}
-              className="ho-1962ef"
+              className={`${CHIP} ${tone} hover:-translate-y-1`}
             >
-              {dot === null ? null : (
-                <span
-                  style={{ width: "6px", height: "6px", borderRadius: "50%", background: dot }}
-                />
-              )}
+              {dot === null ? null : <span className={`w-6 h-6 rounded-half ${dot}`} />}
               <span>{t(label)}</span>
-              <span style={{ ...MONO, fontSize: "10.5px", opacity: ".75" }}>
+              <span className={`${MONO} text-10h opacity-75`}>
                 {key === "all" ? team.length : team.filter((p) => p.status === key).length}
               </span>
             </button>

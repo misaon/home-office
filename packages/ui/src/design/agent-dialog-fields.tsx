@@ -7,12 +7,7 @@ import { GENDER_KEY } from "../i18n/labels.ts";
 import { SelectField } from "./select-field.tsx";
 import type { AgentDraft } from "./store.ts";
 
-const GRID: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: "12px",
-  marginBottom: "18px",
-};
+const GRID = "grid grid-cols-2 gap-12 mb-18";
 
 /** A provider's own models, plus the door out of the list when it takes any id at all. */
 const modelOptions = (provider: ProviderId, t: (key: "common.custom") => string): string[] => {
@@ -55,16 +50,16 @@ export function AgentDialogFields({
   };
 
   return (
-    <div style={GRID}>
+    <div className={GRID}>
       <div>
-        <div style={{ ...CAP, marginBottom: "8px" }}>{t("agent.name")}</div>
+        <div className={`${CAP} text-9h mb-8`}>{t("agent.name")}</div>
         <input
           value={draft.name}
           onChange={(e) => {
             patch({ name: e.target.value });
           }}
           placeholder={t("agent.namePlaceholder")}
-          style={INPUT}
+          className={`${INPUT} placeholder:text-ink-ghost`}
         />
       </div>
       <SelectField
@@ -79,13 +74,13 @@ export function AgentDialogFields({
       />
       {custom ? (
         <div>
-          <div style={{ ...CAP, marginBottom: "8px" }}>{t("agent.model")}</div>
+          <div className={`${CAP} text-9h mb-8`}>{t("agent.model")}</div>
           <input
             value={draft.model}
             onChange={(e) => {
               patch({ model: e.target.value });
             }}
-            style={INPUT}
+            className={INPUT}
           />
         </div>
       ) : (
@@ -100,8 +95,8 @@ export function AgentDialogFields({
       )}
       {catalogue.effortLevels.length === 0 ? (
         <div>
-          <div style={{ ...CAP, marginBottom: "8px" }}>{t("agent.effort")}</div>
-          <div style={{ ...INPUT, color: "#8A8780" }}>{t("agent.noEffort")}</div>
+          <div className={`${CAP} text-9h mb-8`}>{t("agent.effort")}</div>
+          <div className={`${INPUT} text-ink-ghost`}>{t("agent.noEffort")}</div>
         </div>
       ) : (
         <SelectField
@@ -153,10 +148,10 @@ export function AgentPrompt({
   const { t } = useTranslation();
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-        <span style={CAP}>{t("agent.basePromptCaption")}</span>
-        <span style={{ flex: "1" }} />
-        <span style={{ fontSize: "11px", color: "#A6A39C" }}>{t("agent.basePromptHint")}</span>
+      <div className="flex items-center gap-8 mb-8">
+        <span className={`${CAP} text-9h`}>{t("agent.basePromptCaption")}</span>
+        <span className="flex-1" />
+        <span className="text-11 text-ink-meta">{t("agent.basePromptHint")}</span>
       </div>
       <textarea
         rows={4}
@@ -165,7 +160,7 @@ export function AgentPrompt({
           onChange(e.target.value);
         }}
         placeholder={t("agent.promptPlaceholder")}
-        style={{ ...INPUT, resize: "none", lineHeight: "1.55" }}
+        className={`${INPUT} resize-none leading-text placeholder:text-ink-ghost`}
       />
     </>
   );

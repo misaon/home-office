@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "..");
-const outdir = resolve(root, "packages/ui/dist");
+const outdir = Bun.env["HO_UI_OUTDIR"] ?? resolve(root, "packages/ui/dist");
 const watch = Bun.argv.includes("--watch");
 
 /**
@@ -26,6 +26,36 @@ const withoutEditor: BunPlugin = {
   },
 };
 
+/**
+ * Tailwind compiles the office's one stylesheet. The bundler hands the file to the CLI rather than
+ * reading it, so nothing generated is ever written into the source tree, and the CLI's own scanner
+ * decides what ships: only the utilities the components actually name.
+ */
+const tailwindCli = resolve(
+  Bun.resolveSync("@tailwindcss/cli/package.json", resolve(root, "packages/ui")),
+  "../dist/index.mjs",
+);
+
+const tailwind: BunPlugin = {
+  name: "ho-tailwind",
+  setup(bundler) {
+    bundler.onLoad({ filter: /packages\/ui\/src\/design\/app\.css$/u }, async (args) => {
+      const out = resolve(root, "packages/ui/.tailwind.css");
+      const cli = Bun.spawn(
+        ["bun", tailwindCli, "-i", args.path, "-o", out, ...(watch ? [] : ["--minify"])],
+        { cwd: root, stdout: "pipe", stderr: "pipe" },
+      );
+      const code = await cli.exited;
+      if (code !== 0) {
+        throw new Error(`tailwind failed: ${await new Response(cli.stderr).text()}`);
+      }
+      const contents = await Bun.file(out).text();
+      await rm(out, { force: true });
+      return { contents, loader: "css" };
+    });
+  },
+};
+
 async function build(): Promise<void> {
   const staging = await mkdtemp(resolve(root, "packages/ui/.build-"));
   const previous = `${staging}-previous`;
@@ -38,7 +68,7 @@ async function build(): Promise<void> {
       sourcemap: watch ? "inline" : "none",
       reactCompiler: true,
       naming: { asset: "[name]-[hash].[ext]", chunk: "[name]-[hash].[ext]", entry: "[name].[ext]" },
-      plugins: watch ? [] : [withoutEditor],
+      plugins: watch ? [tailwind] : [tailwind, withoutEditor],
       define: { "process.env.NODE_ENV": JSON.stringify(watch ? "development" : "production") },
     });
     if (!result.success) {

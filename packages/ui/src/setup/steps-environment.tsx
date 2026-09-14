@@ -68,8 +68,8 @@ export function DockerStep({ doctor, refresh }: EnvProps): React.JSX.Element {
   return (
     <SetupStep index={1} title={t("setup.docker")} status={status}>
       {status.state === "ok" ? null : (
-        <div style={STEP_BODY}>
-          <p style={{ ...WIDE, fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
+        <div className={STEP_BODY}>
+          <p className={`${WIDE} text-12 leading-loose text-ink-label my-12`}>
             {t("setup.dockerIntro")}
           </p>
           <Button onClick={refresh}>{t("setup.checkAgain")}</Button>
@@ -135,8 +135,8 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
 
   return (
     <SetupStep index={2} title={t("setup.images")} status={status}>
-      <div style={STEP_BODY}>
-        <p style={{ ...WIDE, fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
+      <div className={STEP_BODY}>
+        <p className={`${WIDE} text-12 leading-loose text-ink-label my-12`}>
           {t("setup.imagesIntro")}
         </p>
         {status.state === "ok" && !build.isPending ? null : (
@@ -155,18 +155,7 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
         {lines.length > 0 ? (
           <pre
             ref={log}
-            style={{
-              ...WIDE,
-              maxHeight: "176px",
-              overflowY: "auto",
-              borderRadius: "11px",
-              border: "1px solid #26262C",
-              background: "#0A0A0C",
-              padding: "12px",
-              fontFamily: "'JetBrains Mono',monospace",
-              fontSize: "11px",
-              color: "#CFCCC6",
-            }}
+            className={`${WIDE} max-h-176 overflow-y-auto rounded-11 border border-border bg-well p-12 font-mono text-11 text-ink-quiet`}
           >
             {lines.join("\n")}
           </pre>
@@ -182,18 +171,16 @@ export function TokenStep({ doctor }: { doctor: Doctor | null }): React.JSX.Elem
   const status = tokenStatus(doctor, t);
   return (
     <SetupStep index={3} title={t("setup.token")} status={status}>
-      <div style={STEP_BODY}>
-        <p style={{ ...WIDE, fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
+      <div className={STEP_BODY}>
+        <p className={`${WIDE} text-12 leading-loose text-ink-label my-12`}>
           <Trans
             i18nKey="setup.tokenIntro"
             components={{
-              code: (
-                <code style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: "11.5px" }} />
-              ),
+              code: <code className="font-mono text-11h" />,
             }}
           />
         </p>
-        <div style={WIDE}>
+        <div className={WIDE}>
           <SecretField
             secret="anthropic-oauth-token"
             label={t("setup.token")}

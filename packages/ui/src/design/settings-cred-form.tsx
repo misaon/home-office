@@ -16,30 +16,10 @@ export const NAMED: Record<SecretKeyName, "claude" | "anthropic" | "openai" | "g
   };
 import { useDesign } from "./store.ts";
 
-const FIELD: React.CSSProperties = {
-  flex: "1",
-  minWidth: "120px",
-  padding: "9px 11px",
-  borderRadius: "10px",
-  border: "1px solid #2C2C32",
-  background: "#0A0A0C",
-  ...MONO,
-  fontSize: "11.5px",
-};
+const FIELD = `flex-1 min-w-120 py-9 px-11 rounded-10 border border-border-strong bg-well ${MONO} text-11h`;
 
-const ACTION: React.CSSProperties = {
-  padding: "9px 14px",
-  borderRadius: "10px",
-  border: "0",
-  background: "var(--a,#FFC531)",
-  color: "#150F02",
-  fontSize: "12px",
-  fontWeight: "600",
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-  flex: "0 0 auto",
-  transition: "all .2s",
-};
+const ACTION =
+  "py-9 px-14 rounded-10 border-0 bg-accent text-accent-ink text-12 font-semibold cursor-pointer whitespace-nowrap flex-[0_0_auto] transition-all duration-200";
 
 /** Where a key is pasted, saved and forgotten. The value never leaves this component. */
 export function CredForm({
@@ -79,13 +59,11 @@ export function CredForm({
   });
 
   return (
-    <div style={{ padding: "0 13px 14px", animation: "riseIn .28s ease both" }}>
-      <div
-        style={{ fontSize: "11.5px", color: "#A6A39C", lineHeight: "1.6", marginBottom: "11px" }}
-      >
+    <div className="pt-0 px-13 pb-14 animate-rise-280">
+      <div className="text-11h text-ink-meta leading-prose mb-11">
         {t(`tokens.${NAMED[name]}Hint`)}
       </div>
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+      <div className="flex gap-8 flex-wrap">
         <input
           type="password"
           value={value}
@@ -93,7 +71,7 @@ export function CredForm({
             setValue(e.target.value);
           }}
           placeholder={stored ? t("tokens.replace") : t("tokens.paste")}
-          style={FIELD}
+          className={`${FIELD} placeholder:text-ink-ghost`}
         />
         <button
           type="button"
@@ -101,8 +79,7 @@ export function CredForm({
           onClick={() => {
             save.mutate();
           }}
-          style={ACTION}
-          className="ho-53ea10"
+          className={`hover:-translate-y-1 hover:shadow-lift-sm ${ACTION}`}
         >
           {t("common.save")}
         </button>
@@ -113,19 +90,7 @@ export function CredForm({
             onClick={() => {
               forget.mutate();
             }}
-            style={{
-              padding: "9px 12px",
-              borderRadius: "10px",
-              border: "1px solid #2C2C32",
-              background: "transparent",
-              fontSize: "12px",
-              color: "#CFCCC6",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              flex: "0 0 auto",
-              transition: "all .2s",
-            }}
-            className="ho-6a6336"
+            className="hover:text-bad hover:border-bad-a40 py-9 px-12 rounded-10 border border-border-strong bg-transparent text-12 text-ink-quiet cursor-pointer whitespace-nowrap flex-[0_0_auto] transition-all duration-200"
           >
             {t("tokens.forget")}
           </button>

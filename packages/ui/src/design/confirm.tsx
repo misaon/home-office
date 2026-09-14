@@ -11,47 +11,18 @@ export type Ask = {
   act: () => void;
 };
 
-const CENTRE: React.CSSProperties = {
-  height: "100%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "32px",
-};
+const CENTRE = "h-full flex items-center justify-center p-32";
 
-const SHEET: React.CSSProperties = {
-  width: "min(440px,100%)",
-  borderRadius: "18px",
-  background: "#0D0D10",
-  border: "1px solid #2A2A32",
-  boxShadow: "0 50px 120px rgba(0,0,0,.75)",
-  animation: "popIn .4s cubic-bezier(.2,.9,.3,1.05) both",
-};
+const SHEET =
+  "w-[min(440px,100%)] rounded-18 bg-dialog border border-border-sheet shadow-sheet animate-pop-400";
 
-const FOOT: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  gap: "9px",
-  padding: "14px 24px",
-  borderTop: "1px solid #1B1B1F",
-  background: "#0B0B0E",
-};
+const FOOT = "flex items-center justify-end gap-9 py-14 px-24 border-t border-line bg-foot";
 
 /** How bad this is, as one mark: a warning triangle, or a circle that only wants to be sure. */
 function AskMark({ danger }: { danger: boolean }): React.JSX.Element {
   return (
     <div
-      style={{
-        width: "38px",
-        height: "38px",
-        flex: "0 0 38px",
-        borderRadius: "12px",
-        display: "grid",
-        placeItems: "center",
-        background: danger ? "rgba(255,122,122,.12)" : "rgba(255,197,49,.14)",
-        color: danger ? "#FFB3B3" : "#FFD666",
-      }}
+      className={`w-38 h-38 flex-[0_0_38px] rounded-12 grid place-items-center ${danger ? "bg-bad-a12" : "bg-accent-a14"} ${danger ? "text-bad-soft" : "text-accent-soft"}`}
     >
       {danger ? (
         <svg
@@ -98,21 +69,11 @@ function AskFoot({
 }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <div style={FOOT}>
+    <div className={FOOT}>
       <button
         type="button"
         onClick={onClose}
-        style={{
-          padding: "10px 16px",
-          borderRadius: "11px",
-          border: "1px solid #2C2C32",
-          background: "transparent",
-          fontSize: "12.5px",
-          color: "#CFCCC6",
-          cursor: "pointer",
-          transition: "all .2s",
-        }}
-        className="ho-2955a9"
+        className="hover:text-ink hover:border-border-hover hover:bg-raised py-10 px-16 rounded-11 border border-border-strong bg-transparent text-12h text-ink-quiet cursor-pointer transition-all duration-200"
       >
         {ask?.cancelLabel ?? t("confirm.keep")}
       </button>
@@ -122,18 +83,7 @@ function AskFoot({
           ask?.act();
           onClose();
         }}
-        style={{
-          padding: "10px 18px",
-          borderRadius: "11px",
-          border: "0",
-          cursor: "pointer",
-          fontSize: "12.5px",
-          fontWeight: "600",
-          transition: "all .22s",
-          background: danger ? "rgba(255,122,122,.18)" : "var(--a,#FFC531)",
-          color: danger ? "#FFC9C9" : "#150F02",
-        }}
-        className="ho-2ea730"
+        className={`hover:-translate-y-2 hover:shadow-lift-dark-lg py-10 px-18 rounded-11 border-0 cursor-pointer text-12h font-semibold transition-all duration-220 ${danger ? "bg-bad-a18" : "bg-accent"} ${danger ? "text-bad-pale" : "text-accent-ink"}`}
       >
         {ask?.okLabel ?? t("common.remove")}
       </button>
@@ -170,39 +120,24 @@ export function Confirm({
   return (
     <dialog
       ref={dialog}
-      className="ho-dialog ho-scrim-strong"
+      className="border-0 p-0 m-0 max-w-none max-h-none w-full h-full bg-transparent text-inherit overflow-hidden outline-none focus:outline-none focus-visible:outline-none backdrop:bg-scrim-a74 backdrop:backdrop-blur-[10px] backdrop:animate-fade-280 backdrop:bg-scrim-a78 backdrop:backdrop-blur-[12px] backdrop:animate-fade-240"
       aria-label={ask?.title ?? ""}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
       }}
     >
-      <div style={CENTRE}>
-        <div style={SHEET}>
-          <div style={{ display: "flex", gap: "14px", padding: "22px 24px 18px" }}>
+      <div className={CENTRE}>
+        <div className={SHEET}>
+          <div className="flex gap-14 pt-22 px-24 pb-18">
             <AskMark danger={danger} />
-            <div style={{ flex: "1", minWidth: "0" }}>
+            <div className="flex-1 min-w-0">
               <div
-                style={{
-                  ...DISPLAY,
-                  fontWeight: "700",
-                  fontSize: "17px",
-                  letterSpacing: "-.01em",
-                  lineHeight: "1.25",
-                  textWrap: "pretty",
-                }}
+                className={`${DISPLAY} font-bold text-17 tracking-tight leading-heading text-pretty`}
               >
                 {ask?.title ?? ""}
               </div>
-              <div
-                style={{
-                  fontSize: "12.5px",
-                  color: "#ABA8A1",
-                  marginTop: "8px",
-                  lineHeight: "1.6",
-                  textWrap: "pretty",
-                }}
-              >
+              <div className="text-12h text-ink-label mt-8 leading-prose text-pretty">
                 {ask?.body ?? ""}
               </div>
             </div>

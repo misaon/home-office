@@ -9,28 +9,17 @@ import { SettingsFloor } from "./settings-floor.tsx";
 import { DISPLAY, MONO } from "./tokens.ts";
 import { useFloors } from "./live.ts";
 
-const HEADING: React.CSSProperties = {
-  ...MONO,
-  fontSize: "10px",
-  letterSpacing: ".16em",
-  textTransform: "uppercase",
-  color: "#ABA8A1",
-};
+const HEADING = `${MONO} text-10 tracking-caps-wider uppercase text-ink-label`;
 
-const CARD: React.CSSProperties = {
-  borderRadius: "14px",
-  background: "#101013",
-  border: "1px solid #232328",
-  overflow: "hidden",
-};
+const CARD = "rounded-14 bg-card border border-edge overflow-hidden";
 
 /** A section rule with its name on the left and its count on the right. */
 function Rule({ name, count }: { name: string; count: string }): React.JSX.Element {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "0 2px 9px" }}>
-      <span style={HEADING}>{name}</span>
-      <span style={{ flex: "1", height: "1px", background: "#1F1F24" }} />
-      <span style={{ ...MONO, fontSize: "10.5px", color: "#A6A39C" }}>{count}</span>
+    <div className="flex items-center gap-8 mt-0 mx-2 mb-9">
+      <span className={HEADING}>{name}</span>
+      <span className="flex-1 h-1 bg-slot" />
+      <span className={`${MONO} text-10h text-ink-meta`}>{count}</span>
     </div>
   );
 }
@@ -44,49 +33,26 @@ export function Settings(): React.JSX.Element {
   const present = secrets.data?.present ?? [];
 
   return (
-    <div
-      style={{
-        flex: "1",
-        minHeight: "0",
-        overflowY: "auto",
-        animation: "slideLeft .42s cubic-bezier(.2,.8,.3,1) both",
-      }}
-    >
-      <div
-        style={{
-          padding: "16px 16px 14px",
-          borderBottom: "1px solid #1B1B1F",
-          marginBottom: "16px",
-        }}
-      >
-        <div
-          style={{
-            ...DISPLAY,
-            fontWeight: "700",
-            fontSize: "26px",
-            letterSpacing: "-.02em",
-            lineHeight: "1",
-          }}
-        >
+    <div className="flex-1 min-h-0 overflow-y-auto animate-slide-420">
+      <div className="pt-16 px-16 pb-14 border-b border-line mb-16">
+        <div className={`${DISPLAY} font-bold text-26 tracking-display leading-flat`}>
           {t("settings.title")}
         </div>
-        <div style={{ fontSize: "11.5px", color: "#ABA8A1", marginTop: "8px", lineHeight: "1.6" }}>
-          {t("settings.intro")}
-        </div>
+        <div className="text-11h text-ink-label mt-8 leading-prose">{t("settings.intro")}</div>
       </div>
-      <div style={{ padding: "0 16px 16px" }}>
+      <div className="pt-0 px-16 pb-16">
         <LanguageCard />
         <Rule
           name={t("settings.credentials")}
           count={`${String(present.length)}/${String(SecretKeyName.options.length)}`}
         />
-        <div style={{ ...CARD, marginBottom: "18px" }}>
+        <div className={`${CARD} mb-18`}>
           {SecretKeyName.options.map((name, i) => (
             <CredRow key={name} name={name} stored={present.includes(name)} first={i === 0} />
           ))}
         </div>
         <Rule name={t("project.floors")} count={String(floors.length)} />
-        <div style={CARD}>
+        <div className={CARD}>
           {floors.map((floor, index) => (
             <SettingsFloor key={floor.id} floor={floor} index={index} first={index === 0} />
           ))}
@@ -96,20 +62,7 @@ export function Settings(): React.JSX.Element {
           onClick={() => {
             setAddProjectOpen(true);
           }}
-          style={{
-            width: "100%",
-            marginTop: "12px",
-            padding: "11px",
-            borderRadius: "12px",
-            border: "1px dashed rgba(255,197,49,.4)",
-            background: "rgba(255,197,49,.07)",
-            color: "#FFD666",
-            fontSize: "12.5px",
-            fontWeight: "500",
-            cursor: "pointer",
-            transition: "all .22s",
-          }}
-          className="ho-4ede91"
+          className="hover:bg-accent-a14 hover:border-accent-a65 w-full mt-12 p-11 rounded-12 border border-dashed border-accent-a40 bg-accent-a07 text-accent-soft text-12h font-medium cursor-pointer transition-all duration-220"
         >
           {t("project.add")}
         </button>

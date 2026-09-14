@@ -8,31 +8,15 @@ export function LanguageCard(): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const flash = useDesign((s) => s.flash);
   return (
-    <div
-      style={{
-        borderRadius: "14px",
-        background: "#101013",
-        border: "1px solid #232328",
-        overflow: "hidden",
-        marginBottom: "18px",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "11px",
-          padding: "13px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ flex: "1", minWidth: "120px" }}>
-          <div style={{ fontSize: "13px" }}>{t("settings.language")}</div>
-          <div style={{ fontSize: "11px", color: "#A6A39C", marginTop: "4px", lineHeight: "1.5" }}>
+    <div className="rounded-14 bg-card border border-edge overflow-hidden mb-18">
+      <div className="flex items-center gap-11 p-13 flex-wrap">
+        <div className="flex-1 min-w-120">
+          <div className="text-13">{t("settings.language")}</div>
+          <div className="text-11 text-ink-meta mt-4 leading-body">
             {t("settings.languageHint")}
           </div>
         </div>
-        <div style={{ display: "flex", gap: "5px", flex: "0 0 auto" }}>
+        <div className="flex gap-5 flex-[0_0_auto]">
           {LANGUAGES.map((code: Language) => {
             const tone = pill(i18n.language === code);
             return (
@@ -44,17 +28,7 @@ export function LanguageCard(): React.JSX.Element {
                     flash(t("settings.languageSet"));
                   });
                 }}
-                style={{
-                  padding: "6px 13px",
-                  borderRadius: "99px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  transition: "all .22s",
-                  border: `1px solid ${tone.bd}`,
-                  background: tone.bg,
-                  color: tone.fg,
-                }}
-                className="ho-1962ef"
+                className={`py-6 px-13 rounded-pill cursor-pointer text-12 transition-all duration-220 hover:-translate-y-1 ${tone}`}
               >
                 {t(`settings.lang.${code}`)}
               </button>

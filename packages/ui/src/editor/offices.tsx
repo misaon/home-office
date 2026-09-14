@@ -17,41 +17,14 @@ function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX
       <Caption>{t("editor.load")}</Caption>
       {/* A file input draws its own button and its own "no file chosen" in the system's language,
           neither of which the office can restyle, so the label is the button and the input is hidden. */}
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          fontSize: "11.5px",
-          color: "#A6A39C",
-        }}
-      >
+      <label className="flex items-center gap-12 text-11h text-ink-meta">
         <span
           id="ho-editor-file"
-          style={{
-            flex: "0 0 auto",
-            cursor: "pointer",
-            borderRadius: "9px",
-            border: "1px solid #2C2C32",
-            background: "#17171C",
-            padding: "7px 12px",
-            fontSize: "12px",
-            color: "#E9E7E2",
-            transition: "all .2s",
-          }}
-          className="ho-2955a9"
+          className="hover:text-ink hover:border-border-hover hover:bg-raised flex-[0_0_auto] cursor-pointer rounded-9 border border-border-strong bg-menu py-7 px-12 text-12 text-ink-soft transition-all duration-200"
         >
           {t("editor.chooseFile")}
         </span>
-        <span
-          style={{
-            minWidth: "0",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            fontFamily: "'JetBrains Mono',monospace",
-          }}
-        >
+        <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono">
           {picked ?? t("editor.noFile")}
         </span>
         <input
@@ -76,9 +49,7 @@ function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX
           }}
         />
       </label>
-      {problem === null ? null : (
-        <span style={{ fontSize: "11.5px", color: "#FFB3B3" }}>{problem}</span>
-      )}
+      {problem === null ? null : <span className="text-11h text-bad-soft">{problem}</span>}
     </div>
   );
 }
@@ -104,38 +75,19 @@ export function SavedOffices({
   const available = store.data?.available ?? false;
   return (
     <Section title={t("editor.saved")}>
-      {available ? null : (
-        <p style={{ fontSize: "11.5px", color: "#F2994A" }}>{t("editor.noRepo")}</p>
-      )}
-      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      {available ? null : <p className="text-11h text-warn my-11h">{t("editor.noRepo")}</p>}
+      <div className="flex flex-col gap-4">
         {(store.data?.layouts ?? []).map((office) => (
           <button
             key={office.id}
             type="button"
-            style={{
-              display: "block",
-              width: "100%",
-              borderRadius: "9px",
-              border: "1px solid #26262C",
-              background: "#111114",
-              padding: "9px 12px",
-              textAlign: "left",
-              cursor: "pointer",
-              transition: "all .2s",
-            }}
-            className="ho-fd6e90"
+            className="hover:border-accent-a40 hover:-translate-y-1 block w-full rounded-9 border border-border bg-card-lit py-9 px-12 text-left cursor-pointer transition-all duration-200"
             onClick={() => {
               load(office);
             }}
           >
             {office.name}{" "}
-            <span
-              style={{
-                fontFamily: "'JetBrains Mono',monospace",
-                fontSize: "11px",
-                color: "#A6A39C",
-              }}
-            >
+            <span className="font-mono text-11 text-ink-meta">
               {office.id} · {office.width}×{office.height}
             </span>
           </button>

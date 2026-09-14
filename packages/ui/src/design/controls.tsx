@@ -7,31 +7,18 @@ import { MONO } from "./tokens.ts";
  * add-project dialog repeat the same three shapes many times over.
  */
 
-const BASE: React.CSSProperties = {
-  borderRadius: "10px",
-  fontSize: "12.5px",
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-  transition: "all .22s",
-  padding: "9px 15px",
-};
+const BASE =
+  "rounded-10 text-12h cursor-pointer whitespace-nowrap transition-all duration-220 py-9 px-15";
 
 export type Tone = "primary" | "quiet" | "danger";
 
-const TONES: Record<Tone, React.CSSProperties> = {
-  primary: { border: "0", background: "var(--a,#FFC531)", color: "#150F02", fontWeight: "600" },
-  quiet: { border: "1px solid #2C2C32", background: "transparent", color: "#CFCCC6" },
-  danger: {
-    border: "1px solid rgba(255,122,122,.3)",
-    background: "rgba(255,122,122,.1)",
-    color: "#FFB3B3",
-  },
-};
-
-const HOVER: Record<Tone, string> = {
-  primary: "ho-7cc9cc",
-  quiet: "ho-2955a9",
-  danger: "ho-52fd80",
+/** Each tone is how the button is painted at rest and under the pointer. */
+const TONES: Record<Tone, string> = {
+  primary:
+    "border-0 bg-accent text-accent-ink font-semibold hover:-translate-y-2 hover:shadow-lift",
+  quiet:
+    "border border-border-strong bg-transparent text-ink-quiet hover:text-ink hover:border-border-hover hover:bg-raised",
+  danger: "border border-bad-a30 bg-bad-a10 text-bad-soft hover:bg-bad-a20",
 };
 
 export function Button({
@@ -40,36 +27,18 @@ export function Button({
   ...rest
 }: { tone?: Tone } & React.ButtonHTMLAttributes<HTMLButtonElement>): React.JSX.Element {
   return (
-    <button type="button" {...rest} style={{ ...BASE, ...TONES[tone] }} className={HOVER[tone]}>
+    <button type="button" {...rest} className={`${BASE} ${TONES[tone]}`}>
       {children}
     </button>
   );
 }
 
-export const FIELD: React.CSSProperties = {
-  width: "100%",
-  padding: "9px 11px",
-  borderRadius: "10px",
-  border: "1px solid #2C2C32",
-  background: "#0A0A0C",
-  fontSize: "12.5px",
-};
+export const FIELD = "w-full py-9 px-11 rounded-10 border border-border-strong bg-well text-12h";
 
 /** The small upper-case caption every form field is labelled with. */
 export function Caption({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
-    <div
-      style={{
-        ...MONO,
-        fontSize: "10px",
-        letterSpacing: ".12em",
-        textTransform: "uppercase",
-        color: "#ABA8A1",
-        marginBottom: "7px",
-      }}
-    >
-      {children}
-    </div>
+    <div className={`${MONO} text-10 tracking-caps uppercase text-ink-label mb-7`}>{children}</div>
   );
 }
 
@@ -79,19 +48,7 @@ export function Failure({ error }: { error: unknown }): React.JSX.Element | null
     return null;
   }
   return (
-    <div
-      style={{
-        marginTop: "10px",
-        padding: "9px 11px",
-        borderRadius: "10px",
-        border: "1px solid rgba(255,122,122,.3)",
-        background: "rgba(255,122,122,.08)",
-        color: "#FFB3B3",
-        fontSize: "11.5px",
-        lineHeight: "1.6",
-        animation: "riseIn .28s ease both",
-      }}
-    >
+    <div className="mt-10 py-9 px-11 rounded-10 border border-bad-a30 bg-bad-a08 text-bad-soft text-11h leading-prose animate-rise-280">
       {errorMessage(error)}
     </div>
   );

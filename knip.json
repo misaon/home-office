@@ -18,8 +18,9 @@
       "project": ["src/**/*.ts"]
     },
     "packages/ui": {
-      "entry": ["src/main.tsx", "src/design/design.css"],
-      "project": ["src/**/*.{ts,tsx,css}"]
+      "entry": ["src/main.tsx", "src/design/app.css"],
+      "project": ["src/**/*.{ts,tsx,css}"],
+      "ignoreDependencies": ["@tailwindcss/cli"]
     },
     "apps/cli": {
       "project": ["src/**/*.ts"]

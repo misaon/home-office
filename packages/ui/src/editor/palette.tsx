@@ -37,7 +37,7 @@ function Choices({
   pick: (option: string) => void;
 }): React.JSX.Element {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+    <div className="grid grid-cols-2 gap-6">
       {options.map((option) => {
         const footprint = size(option);
         return (
@@ -45,35 +45,14 @@ function Choices({
             key={option}
             type="button"
             aria-pressed={option === value}
-            style={{
-              borderRadius: "9px",
-              padding: "7px 9px",
-              textAlign: "left",
-              fontSize: "11px",
-              lineHeight: "1.35",
-              overflowWrap: "break-word",
-              cursor: "pointer",
-              transition: "all .2s",
-              border: `1px solid ${option === value ? "rgba(255,197,49,.55)" : "#2C2C32"}`,
-              background: option === value ? "rgba(255,197,49,.1)" : "#101013",
-              color: option === value ? "#FFD666" : "#CFCCC6",
-            }}
+            className={`rounded-9 py-7 px-9 text-left text-11 leading-snug break-words cursor-pointer transition-all duration-200 border ${option === value ? "border-accent-a55" : "border-border-strong"} ${option === value ? "bg-accent-a10" : "bg-card"} ${option === value ? "text-accent-soft" : "text-ink-quiet"}`}
             onClick={() => {
               pick(option);
             }}
           >
             {name(option)}
             {footprint === null ? null : (
-              <span
-                style={{
-                  display: "block",
-                  marginTop: "3px",
-                  fontFamily: "'JetBrains Mono',monospace",
-                  color: "#A6A39C",
-                }}
-              >
-                {footprint}
-              </span>
+              <span className="block mt-3 font-mono text-ink-meta">{footprint}</span>
             )}
           </button>
         );
@@ -119,20 +98,9 @@ export function Palette({
   const spec = OBJECT_SPEC[brush.object];
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          gap: "12px",
-        }}
-      >
-        <p style={{ fontSize: "11.5px", fontWeight: "500", color: "#CFCCC6", margin: "0" }}>
-          {t(KIND_LABEL[tool])}
-        </p>
-        <span
-          style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: "11px", color: "#A6A39C" }}
-        >
+      <div className="flex items-baseline justify-between gap-12">
+        <p className="text-11h font-medium text-ink-quiet m-0">{t(KIND_LABEL[tool])}</p>
+        <span className="font-mono text-11 text-ink-meta">
           {options.length === all.length
             ? all.length
             : t("common.ofTotal", { shown: options.length, total: all.length })}
@@ -145,10 +113,10 @@ export function Palette({
         onChange={(e) => {
           setSearch(e.target.value);
         }}
-        style={FIELD}
+        className={`${FIELD} placeholder:text-ink-ghost`}
       />
       {options.length === 0 ? (
-        <p style={{ fontSize: "11.5px", color: "#A6A39C" }}>
+        <p className="text-11h text-ink-meta my-11h">
           {t("editor.noMatch", { needle: search.trim() })}
         </p>
       ) : null}
@@ -162,7 +130,7 @@ export function Palette({
         }}
       />
       {tool === "object" || tool === "door" ? (
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div className="flex items-center gap-12">
           <Button
             onClick={() => {
               setBrush(rotate(brush));
@@ -170,9 +138,7 @@ export function Palette({
           >
             {t("editor.rotate")}
           </Button>
-          <span
-            style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: "11px", color: "#CFCCC6" }}
-          >
+          <span className="font-mono text-11 text-ink-quiet">
             {t("editor.facing", { facing: brush.facing })}
             {tool === "door"
               ? ""

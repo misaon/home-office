@@ -4,62 +4,25 @@ import { useUi } from "../store.ts";
 
 const STEPS = ["1", "2", "3"] as const;
 
-const CARD: React.CSSProperties = {
-  flex: "1 1 150px",
-  minWidth: "150px",
-  padding: "14px",
-  borderRadius: "14px",
-  background: "#101013",
-  border: "1px solid #232328",
-};
+const CARD = "flex-[1_1_150px] min-w-150 p-14 rounded-14 bg-card border border-edge";
 
-const PRIMARY: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "9px",
-  padding: "13px 22px",
-  borderRadius: "13px",
-  border: "0",
-  background: "var(--a,#FFC531)",
-  color: "#150F02",
-  fontSize: "13.5px",
-  fontWeight: "600",
-  cursor: "pointer",
-  transition: "all .22s cubic-bezier(.2,.8,.3,1)",
-};
+const PRIMARY =
+  "flex items-center gap-9 py-13 px-22 rounded-13 border-0 bg-accent text-accent-ink text-13h font-semibold cursor-pointer transition-all duration-220 ease-soft";
 
-const SECONDARY: React.CSSProperties = {
-  padding: "13px 18px",
-  borderRadius: "13px",
-  border: "1px solid #2C2C32",
-  background: "transparent",
-  fontSize: "13.5px",
-  color: "#CFCCC6",
-  cursor: "pointer",
-  transition: "all .2s",
-};
+const SECONDARY =
+  "py-13 px-18 rounded-13 border border-border-strong bg-transparent text-13h text-ink-quiet cursor-pointer transition-all duration-200";
 
 /** The gold house with its slow halo: the office's own mark, at rest. */
 function EmptyMark(): React.JSX.Element {
   return (
-    <div style={{ position: "relative", width: "96px", height: "96px", margin: "0 auto 26px" }}>
-      <div
-        style={{
-          position: "absolute",
-          inset: "0",
-          borderRadius: "28px",
-          background: "var(--a,#FFC531)",
-          display: "grid",
-          placeItems: "center",
-          boxShadow: "0 18px 44px rgba(255,197,49,.28)",
-        }}
-      >
+    <div className="relative w-96 h-96 m-[0_auto_26px]">
+      <div className="absolute inset-0 rounded-28 bg-accent grid place-items-center shadow-gold-far">
         <svg
+          className="stroke-accent-ink"
           width="42"
           height="42"
           viewBox="0 0 20 20"
           fill="none"
-          stroke="#150F02"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -68,15 +31,7 @@ function EmptyMark(): React.JSX.Element {
           <path d="M8 17v-5h4v5" />
         </svg>
       </div>
-      <div
-        style={{
-          position: "absolute",
-          inset: "-10px",
-          borderRadius: "36px",
-          border: "1.5px solid rgba(255,197,49,.45)",
-          animation: "ring 3.4s ease-out infinite",
-        }}
-      />
+      <div className="absolute -inset-10 rounded-36 border-[1.5px] border-accent-a45 animate-ring-3400" />
     </div>
   );
 }
@@ -87,23 +42,13 @@ function EmptyActions(): React.JSX.Element {
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
   const setSetupOpen = useUi((s) => s.setSetupOpen);
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "9px",
-        marginTop: "26px",
-        flexWrap: "wrap",
-      }}
-    >
+    <div className="flex items-center justify-center gap-9 mt-26 flex-wrap">
       <button
         type="button"
         onClick={() => {
           setAddProjectOpen(true);
         }}
-        style={PRIMARY}
-        className="ho-9d2067"
+        className={`hover:-translate-y-2 hover:shadow-lift-2xl ${PRIMARY}`}
       >
         <svg
           width="14"
@@ -123,8 +68,7 @@ function EmptyActions(): React.JSX.Element {
         onClick={() => {
           setSetupOpen(true);
         }}
-        style={SECONDARY}
-        className="ho-2955a9"
+        className={`hover:text-ink hover:border-border-hover hover:bg-raised ${SECONDARY}`}
       >
         {t("app.emptySetup")}
       </button>
@@ -136,45 +80,16 @@ function EmptyActions(): React.JSX.Element {
 function EmptySteps(): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: "10px",
-        marginTop: "34px",
-        textAlign: "left",
-        flexWrap: "wrap",
-        justifyContent: "center",
-      }}
-    >
+    <div className="flex gap-10 mt-34 text-left flex-wrap justify-center">
       {STEPS.map((n) => (
-        <div key={n} style={CARD}>
+        <div key={n} className={CARD}>
           <div
-            style={{
-              width: "24px",
-              height: "24px",
-              borderRadius: "8px",
-              background: "rgba(255,197,49,.14)",
-              color: "#FFD666",
-              display: "grid",
-              placeItems: "center",
-              ...MONO,
-              fontSize: "11px",
-              marginBottom: "11px",
-            }}
+            className={`w-24 h-24 rounded-8 bg-accent-a14 text-accent-soft grid place-items-center ${MONO} text-11 mb-11`}
           >
             <span>{n}</span>
           </div>
-          <div style={{ fontSize: "12.5px", fontWeight: "600", color: "#F2EFE8" }}>
-            {t(`app.emptyStep${n}Title`)}
-          </div>
-          <div
-            style={{
-              fontSize: "11.5px",
-              color: "#A6A39C",
-              marginTop: "5px",
-              lineHeight: "1.55",
-            }}
-          >
+          <div className="text-12h font-semibold text-ink-warm">{t(`app.emptyStep${n}Title`)}</div>
+          <div className="text-11h text-ink-meta mt-5 leading-text">
             {t(`app.emptyStep${n}Body`)}
           </div>
         </div>
@@ -188,51 +103,13 @@ export function EmptyOffice(): React.JSX.Element {
   const { t } = useTranslation();
 
   return (
-    <main
-      style={{
-        flex: "1",
-        minHeight: "0",
-        position: "relative",
-        zIndex: 20,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "32px",
-        backgroundImage: "radial-gradient(rgba(255,255,255,.05) 1px,transparent 1px)",
-        backgroundSize: "26px 26px",
-      }}
-    >
-      <div
-        style={{
-          width: "min(560px,100%)",
-          textAlign: "center",
-          animation: "popIn .5s cubic-bezier(.2,.9,.3,1.05) both",
-        }}
-      >
+    <main className="flex-1 min-h-0 relative z-20 flex items-center justify-center p-32 bg-dots">
+      <div className="w-[min(560px,100%)] text-center animate-pop-500">
         <EmptyMark />
-        <div
-          style={{
-            ...DISPLAY,
-            fontWeight: "700",
-            fontSize: "32px",
-            letterSpacing: "-.025em",
-            lineHeight: "1.1",
-          }}
-        >
+        <div className={`${DISPLAY} font-bold text-32 tracking-display-tight leading-headline`}>
           {t("app.emptyTitle")}
         </div>
-        <div
-          style={{
-            fontSize: "13.5px",
-            color: "#ABA8A1",
-            marginTop: "14px",
-            lineHeight: "1.65",
-            maxWidth: "420px",
-            marginLeft: "auto",
-            marginRight: "auto",
-            textWrap: "pretty",
-          }}
-        >
+        <div className="text-13h text-ink-label mt-14 leading-read max-w-420 ml-auto mr-auto text-pretty">
           {t("app.emptyBody")}
         </div>
         <EmptyActions />

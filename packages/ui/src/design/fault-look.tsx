@@ -54,112 +54,26 @@ export const ICONS: Record<Variant, React.JSX.Element> = {
   ),
 };
 
-export const GROUND: React.CSSProperties = {
-  position: "fixed",
-  inset: "0",
-  zIndex: 95,
-  background: "#0A0A0B",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "32px",
-  overflowY: "auto",
-  animation: "fadeIn .3s ease both",
-};
+export const GROUND =
+  "fixed inset-0 z-95 bg-ground flex items-center justify-center p-32 overflow-y-auto animate-fade-300";
 
-export const TILE: React.CSSProperties = {
-  width: "48px",
-  height: "48px",
-  flex: "0 0 48px",
-  borderRadius: "15px",
-  display: "grid",
-  placeItems: "center",
-};
+export const TILE = "w-48 h-48 flex-[0_0_48px] rounded-15 grid place-items-center";
 
-export const KIND: React.CSSProperties = {
-  ...MONO,
-  fontSize: "9.5px",
-  letterSpacing: ".18em",
-  textTransform: "uppercase",
-};
+export const KIND = `${MONO} text-9h tracking-caps-widest uppercase`;
 
-export const TITLE: React.CSSProperties = {
-  ...DISPLAY,
-  fontWeight: "700",
-  fontSize: "27px",
-  letterSpacing: "-.02em",
-  lineHeight: "1.15",
-  marginTop: "10px",
-  textWrap: "pretty",
-};
+export const TITLE = `${DISPLAY} font-bold text-27 tracking-display leading-title mt-10 text-pretty`;
 
-export const BODY: React.CSSProperties = {
-  fontSize: "13px",
-  color: "#ABA8A1",
-  marginTop: "12px",
-  lineHeight: "1.65",
-  textWrap: "pretty",
-};
+export const BODY = "text-13 text-ink-label mt-12 leading-read text-pretty";
 
-export const CARD: React.CSSProperties = {
-  marginTop: "24px",
-  borderRadius: "15px",
-  background: "#101013",
-  border: "1px solid #232328",
-  overflow: "hidden",
-};
+export const CARD = "mt-24 rounded-15 bg-card border border-edge overflow-hidden";
 
-export const TOGGLE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-  marginTop: "14px",
-  padding: "0",
-  border: "0",
-  background: "transparent",
-  color: "#CFCCC6",
-  fontSize: "12px",
-  cursor: "pointer",
-  transition: "color .2s",
-};
+export const TOGGLE =
+  "flex items-center gap-8 mt-14 p-0 border-0 bg-transparent text-ink-quiet text-12 cursor-pointer transition-[color] duration-200";
 
-export const LOG: React.CSSProperties = {
-  margin: "11px 0 0",
-  padding: "14px",
-  borderRadius: "13px",
-  background: "#0C0C0E",
-  border: "1px solid #232328",
-  ...MONO,
-  fontSize: "11px",
-  lineHeight: "1.75",
-  color: "#BEBBB4",
-  whiteSpace: "pre-wrap",
-  wordBreak: "break-word",
-  animation: "riseIn .28s ease both",
-};
+export const LOG = `mt-11 mx-0 mb-0 p-14 rounded-13 bg-sunk border border-edge ${MONO} text-11 leading-log text-ink-faint whitespace-pre-wrap break-words animate-rise-280`;
 
-export const PRIMARY: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "9px",
-  padding: "13px 20px",
-  borderRadius: "13px",
-  border: "0",
-  background: "var(--a,#FFC531)",
-  color: "#150F02",
-  fontSize: "13px",
-  fontWeight: "600",
-  cursor: "pointer",
-  transition: "all .22s cubic-bezier(.2,.8,.3,1)",
-};
+export const PRIMARY =
+  "flex items-center gap-9 py-13 px-20 rounded-13 border-0 bg-accent text-accent-ink text-13 font-semibold cursor-pointer transition-all duration-220 ease-soft";
 
-export const QUIET: React.CSSProperties = {
-  padding: "13px 18px",
-  borderRadius: "13px",
-  border: "1px solid #2C2C32",
-  background: "transparent",
-  fontSize: "13px",
-  color: "#CFCCC6",
-  cursor: "pointer",
-  transition: "all .2s",
-};
+export const QUIET =
+  "py-13 rounded-13 border border-border-strong bg-transparent text-13 text-ink-quiet cursor-pointer transition-all duration-200";

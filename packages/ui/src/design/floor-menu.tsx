@@ -4,43 +4,13 @@ import { useFloors } from "./live.ts";
 import { useUi } from "../store.ts";
 import { useDesign } from "./store.ts";
 
-const PANEL: React.CSSProperties = {
-  position: "fixed",
-  top: "66px",
-  width: "320px",
-  padding: "7px",
-  borderRadius: "14px",
-  background: "#131317",
-  border: "1px solid #2C2C32",
-  boxShadow: "0 26px 60px rgba(0,0,0,.72)",
-  zIndex: 70,
-  animation: "dropIn .34s cubic-bezier(.2,.9,.3,1.1) both",
-};
+const PANEL =
+  "fixed top-66 w-320 p-7 rounded-14 bg-pop border border-border-strong shadow-menu z-70 animate-drop-340";
 
-const SEARCH: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-  padding: "9px 10px",
-  borderRadius: "9px",
-  background: "#0C0C0E",
-  border: "1px solid #26262C",
-  marginBottom: "6px",
-};
+const SEARCH = "flex items-center gap-8 py-9 px-10 rounded-9 bg-sunk border border-border mb-6";
 
-const ADD: React.CSSProperties = {
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  gap: "9px",
-  padding: "9px 10px",
-  borderRadius: "9px",
-  border: "0",
-  background: "transparent",
-  cursor: "pointer",
-  textAlign: "left",
-  transition: "background .18s",
-};
+const ADD =
+  "w-full flex items-center gap-9 py-9 px-10 rounded-9 border-0 bg-transparent cursor-pointer text-left transition-[background] duration-180";
 
 /** Which floor the office is showing, with a search because a workshop can have many. */
 export function FloorMenu(): React.JSX.Element {
@@ -59,14 +29,14 @@ export function FloorMenu(): React.JSX.Element {
     .filter(({ floor }) => floor.name.toLowerCase().includes(needle));
 
   return (
-    <div style={{ ...PANEL, left: `${String(floorX)}px` }}>
-      <div style={SEARCH}>
+    <div className={`${PANEL} left-(--x)`} style={{ "--x": `${String(floorX)}px` }}>
+      <div className={SEARCH}>
         <svg
+          className="stroke-ink-meta"
           width="12"
           height="12"
           viewBox="0 0 14 14"
           fill="none"
-          stroke="#A6A39C"
           strokeWidth="1.5"
         >
           <circle cx="6" cy="6" r="4.2" />
@@ -78,24 +48,10 @@ export function FloorMenu(): React.JSX.Element {
             set({ floorQuery: e.target.value });
           }}
           placeholder={t("project.search")}
-          style={{
-            flex: "1",
-            minWidth: "0",
-            border: "0",
-            background: "transparent",
-            fontSize: "12.5px",
-          }}
+          className="flex-1 min-w-0 border-0 bg-transparent text-12h py-1 px-2 placeholder:text-ink-ghost"
         />
       </div>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "4px",
-          maxHeight: "250px",
-          overflowY: "auto",
-        }}
-      >
+      <div className="flex flex-col gap-4 max-h-250 overflow-y-auto">
         {rows.map(({ floor, index }) => (
           <FloorRow
             key={floor.name}
@@ -109,37 +65,24 @@ export function FloorMenu(): React.JSX.Element {
           />
         ))}
         {rows.length === 0 ? (
-          <div style={{ padding: "12px 10px", fontSize: "12px", color: "#A6A39C" }}>
-            No floor matches that.
-          </div>
+          <div className="py-12 px-10 text-12 text-ink-meta">No floor matches that.</div>
         ) : null}
       </div>
-      <div style={{ height: "1px", background: "#26262C", margin: "6px 4px" }} />
+      <div className="h-1 bg-border my-6 mx-4" />
       <button
         type="button"
         onClick={() => {
           set({ floorOpen: false });
           setAddProjectOpen(true);
         }}
-        style={ADD}
-        className="ho-0822da"
+        className={`hover:bg-accent-a10 ${ADD}`}
       >
-        <span
-          style={{
-            width: "22px",
-            height: "22px",
-            flex: "0 0 22px",
-            borderRadius: "7px",
-            display: "grid",
-            placeItems: "center",
-            background: "rgba(255,197,49,.14)",
-          }}
-        >
+        <span className="w-22 h-22 flex-[0_0_22px] rounded-7 grid place-items-center bg-accent-a14">
           <svg
+            className="stroke-accent"
             width="11"
             height="11"
             viewBox="0 0 12 12"
-            stroke="#FFC531"
             strokeWidth="1.6"
             strokeLinecap="round"
           >
@@ -147,7 +90,7 @@ export function FloorMenu(): React.JSX.Element {
             <line x1="2" y1="6" x2="10" y2="6" />
           </svg>
         </span>
-        <span style={{ fontSize: "12.5px", color: "#FFD666" }}>{t("project.add")}</span>
+        <span className="text-12h text-accent-soft">{t("project.add")}</span>
       </button>
     </div>
   );

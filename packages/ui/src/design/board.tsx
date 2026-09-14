@@ -6,26 +6,15 @@ import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
 const LANES = [
-  ["queued", "board.inbox", "#6E6B66"],
-  ["running", "board.inProgress", "var(--a,#FFC531)"],
-  ["blocked", "board.blocked", "#FF9E9E"],
-  ["done", "board.done", "#5BD9A0"],
+  ["queued", "board.inbox", "bg-ink-lane"],
+  ["running", "board.inProgress", "bg-accent"],
+  ["blocked", "board.blocked", "bg-bad"],
+  ["done", "board.done", "bg-good"],
 ] as const satisfies readonly [Lane, string, string][];
 
-const RULE: React.CSSProperties = {
-  ...MONO,
-  fontSize: "10px",
-  letterSpacing: ".16em",
-  textTransform: "uppercase",
-  color: "#ABA8A1",
-};
+const RULE = `${MONO} text-10 tracking-caps-wider uppercase text-ink-label`;
 
-const CARD: React.CSSProperties = {
-  borderRadius: "14px",
-  background: "#101013",
-  border: "1px solid #232328",
-  overflow: "hidden",
-};
+const CARD = "rounded-14 bg-card border border-edge overflow-hidden";
 
 /** What the floor is carrying: a share finished, four lanes, and one card per task. */
 export function Board({ floor }: { floor: Floor }): React.JSX.Element {
@@ -33,35 +22,21 @@ export function Board({ floor }: { floor: Floor }): React.JSX.Element {
   const boardFilter = useDesign((s) => s.boardFilter);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "0",
-        flex: "1",
-        animation: "slideLeft .42s cubic-bezier(.2,.8,.3,1) both",
-      }}
-    >
+    <div className="flex flex-col min-h-0 flex-1 animate-slide-420">
       <BoardHeader floor={floor} />
-      <div style={{ flex: "1", minHeight: "0", overflowY: "auto", padding: "16px" }}>
+      <div className="flex-1 min-h-0 overflow-y-auto p-16">
         {LANES.filter(([key]) => boardFilter === "all" || boardFilter === key).map(
           ([key, label, dot]) => {
             const items = floor.cards.filter((x) => x.s === key);
             return (
-              <div key={key} style={{ marginBottom: "18px" }}>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "8px", margin: "0 2px 9px" }}
-                >
-                  <span
-                    style={{ width: "6px", height: "6px", borderRadius: "50%", background: dot }}
-                  />
-                  <span style={RULE}>{t(label)}</span>
-                  <span style={{ flex: "1", height: "1px", background: "#1F1F24" }} />
-                  <span style={{ ...MONO, fontSize: "10.5px", color: "#A6A39C" }}>
-                    {items.length}
-                  </span>
+              <div key={key} className="mb-18">
+                <div className="flex items-center gap-8 mt-0 mx-2 mb-9">
+                  <span className={`w-6 h-6 rounded-half ${dot}`} />
+                  <span className={RULE}>{t(label)}</span>
+                  <span className="flex-1 h-1 bg-slot" />
+                  <span className={`${MONO} text-10h text-ink-meta`}>{items.length}</span>
                 </div>
-                <div style={CARD}>
+                <div className={CARD}>
                   {items.map((card, i) => (
                     <BoardCard
                       key={card.id}
@@ -72,9 +47,7 @@ export function Board({ floor }: { floor: Floor }): React.JSX.Element {
                     />
                   ))}
                   {items.length === 0 ? (
-                    <div style={{ padding: "16px 13px", fontSize: "12px", color: "#A6A39C" }}>
-                      {t("board.emptyLane")}
-                    </div>
+                    <div className="py-16 px-13 text-12 text-ink-meta">{t("board.emptyLane")}</div>
                   ) : null}
                 </div>
               </div>

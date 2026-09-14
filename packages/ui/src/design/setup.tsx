@@ -41,46 +41,16 @@ export function useSetupAutoOpen(): void {
   }, [online, doctor, setSetupOpen]);
 }
 
-const CENTRE: React.CSSProperties = {
-  height: "100%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "32px",
-};
+const CENTRE = "h-full flex items-center justify-center p-32";
 
 /** The checklist's own two header buttons, a size smaller than the ones the steps carry. */
-const QUIET: React.CSSProperties = {
-  padding: "8px 13px",
-  borderRadius: "10px",
-  border: "1px solid #2C2C32",
-  background: "transparent",
-  fontSize: "12px",
-  color: "#CFCCC6",
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-  transition: "all .2s",
-};
+const QUIET =
+  "py-8 px-13 rounded-10 border border-border-strong bg-transparent text-12 text-ink-quiet cursor-pointer whitespace-nowrap transition-all duration-200";
 
-const SHEET: React.CSSProperties = {
-  width: "min(680px,100%)",
-  maxHeight: "100%",
-  overflowY: "auto",
-  borderRadius: "22px",
-  background: "#0D0D10",
-  border: "1px solid #2A2A32",
-  boxShadow: "0 50px 120px rgba(0,0,0,.7)",
-  animation: "popIn .46s cubic-bezier(.2,.9,.3,1.05) both",
-};
+const SHEET =
+  "w-[min(680px,100%)] max-h-full overflow-y-auto rounded-22 bg-dialog border border-border-sheet shadow-setup animate-pop-460";
 
-const HEAD: React.CSSProperties = {
-  padding: "24px 26px 20px",
-  borderBottom: "1px solid #1B1B1F",
-  display: "flex",
-  alignItems: "flex-start",
-  gap: "16px",
-  flexWrap: "wrap",
-};
+const HEAD = "pt-24 px-26 pb-20 border-b border-line flex items-start gap-16 flex-wrap";
 
 /** The four things a working office needs, each one able to say how it is doing. */
 export function Setup(): React.JSX.Element {
@@ -116,49 +86,41 @@ export function Setup(): React.JSX.Element {
   return (
     <dialog
       ref={dialog}
-      className="ho-dialog"
+      className="border-0 p-0 m-0 max-w-none max-h-none w-full h-full bg-transparent text-inherit overflow-hidden outline-none focus:outline-none focus-visible:outline-none backdrop:bg-scrim-a74 backdrop:backdrop-blur-[10px] backdrop:animate-fade-280"
       aria-label={t("setup.title")}
       onCancel={(event) => {
         event.preventDefault();
         close();
       }}
     >
-      <div style={CENTRE}>
-        <div style={SHEET}>
-          <div style={HEAD}>
-            <div style={{ flex: "1", minWidth: "200px" }}>
-              <div
-                style={{ ...DISPLAY, fontWeight: "700", fontSize: "21px", letterSpacing: "-.01em" }}
-              >
+      <div className={CENTRE}>
+        <div className={SHEET}>
+          <div className={HEAD}>
+            <div className="flex-1 min-w-200">
+              <div className={`${DISPLAY} font-bold text-21 tracking-tight`}>
                 {t("setup.title")}
               </div>
-              <div
-                style={{
-                  fontSize: "12.5px",
-                  color: "#ABA8A1",
-                  marginTop: "6px",
-                  lineHeight: "1.6",
-                }}
-              >
-                {t("setup.intro")}
-              </div>
+              <div className="text-12h text-ink-label mt-6 leading-prose">{t("setup.intro")}</div>
             </div>
-            <div style={{ display: "flex", gap: "7px" }}>
+            <div className="flex gap-7">
               <button
                 type="button"
                 onClick={refresh}
                 disabled={query.isFetching}
-                style={QUIET}
-                className="ho-2955a9"
+                className={`hover:text-ink hover:border-border-hover hover:bg-raised ${QUIET}`}
               >
                 {t("setup.recheck")}
               </button>
-              <button type="button" onClick={close} style={QUIET} className="ho-2955a9">
+              <button
+                type="button"
+                onClick={close}
+                className={`hover:text-ink hover:border-border-hover hover:bg-raised ${QUIET}`}
+              >
                 {ready ? t("common.close") : t("setup.skip")}
               </button>
             </div>
           </div>
-          <div style={{ padding: "8px 26px 26px" }}>
+          <div className="pt-8 px-26 pb-26">
             <DockerStep doctor={doctor} refresh={refresh} />
             <ImagesStep doctor={doctor} refresh={refresh} />
             <TokenStep doctor={doctor} />

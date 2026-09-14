@@ -26,10 +26,11 @@ export type Fault = {
   title: ParseKeys;
   body: ParseKeys;
   primary: ParseKeys;
+  /** The wash behind the whole screen, as a colour token the radial gradient reads. */
   glow: string;
-  iconBg: string;
-  iconFg: string;
-  iconBd: string;
+  /** What the variant's mark is painted in. */
+  tile: string;
+  ink: string;
   checks: Check[];
   log: string;
 };
@@ -38,21 +39,12 @@ export type Fault = {
 function FaultHead({ fault }: { fault: Fault }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
-      <div
-        style={{
-          ...TILE,
-          background: fault.iconBg,
-          color: fault.iconFg,
-          border: `1px solid ${fault.iconBd}`,
-        }}
-      >
-        {ICONS[fault.variant]}
-      </div>
-      <div style={{ flex: "1", minWidth: "0" }}>
-        <div style={{ ...KIND, color: fault.iconFg }}>{t(fault.kind)}</div>
-        <div style={TITLE}>{t(fault.title)}</div>
-        <div style={BODY}>{t(fault.body)}</div>
+    <div className="flex items-start gap-16">
+      <div className={`${TILE} border ${fault.tile}`}>{ICONS[fault.variant]}</div>
+      <div className="flex-1 min-w-0">
+        <div className={`${KIND} ${fault.ink}`}>{t(fault.kind)}</div>
+        <div className={TITLE}>{t(fault.title)}</div>
+        <div className={BODY}>{t(fault.body)}</div>
       </div>
     </div>
   );
@@ -70,22 +62,13 @@ function FaultActions({
 }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "9px",
-        marginTop: "24px",
-        flexWrap: "wrap",
-      }}
-    >
+    <div className="flex items-center gap-9 mt-24 flex-wrap">
       <button
         type="button"
         onClick={() => {
           window.location.reload();
         }}
-        style={PRIMARY}
-        className="ho-2d2744"
+        className={`hover:-translate-y-2 hover:shadow-lift-xl ${PRIMARY}`}
       >
         <svg
           width="14"
@@ -102,15 +85,18 @@ function FaultActions({
         </svg>{" "}
         <span>{t(primary)}</span>
       </button>
-      <button type="button" onClick={onSetup} style={QUIET} className="ho-2955a9">
+      <button
+        type="button"
+        onClick={onSetup}
+        className={`hover:text-ink hover:border-border-hover hover:bg-raised ${QUIET} px-18`}
+      >
         {t("fault.openSetup")}
       </button>
-      <div style={{ flex: "1" }} />
+      <div className="flex-1" />
       <button
         type="button"
         onClick={onCopy}
-        style={{ ...QUIET, padding: "13px 16px", whiteSpace: "nowrap" }}
-        className="ho-96ee65"
+        className={`hover:text-accent-soft hover:border-accent-a45 ${QUIET} px-16 whitespace-nowrap`}
       >
         {t("fault.copy")}
       </button>
@@ -134,29 +120,14 @@ export function FaultBody({
   const [logOpen, setLogOpen] = useState(false);
 
   return (
-    <div style={GROUND}>
+    <div className={GROUND}>
       <div
-        style={{
-          position: "absolute",
-          top: "-200px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "760px",
-          height: "560px",
-          borderRadius: "50%",
-          background: `radial-gradient(circle,${fault.glow},transparent 68%)`,
-          pointerEvents: "none",
-        }}
+        className="absolute -top-200 left-1/2 -translate-x-1/2 w-760 h-560 rounded-half pointer-events-none bg-[radial-gradient(circle,var(--glow),transparent_68%)]"
+        style={{ "--glow": `var(${fault.glow})` }}
       />
-      <div
-        style={{
-          position: "relative",
-          width: "min(620px,100%)",
-          animation: "popIn .5s cubic-bezier(.2,.9,.3,1.05) both",
-        }}
-      >
+      <div className="relative w-[min(620px,100%)] animate-pop-500">
         <FaultHead fault={fault} />
-        <div style={CARD}>
+        <div className={CARD}>
           {fault.checks.map((check, i) => (
             <CheckRow key={check.name} check={check} first={i === 0} />
           ))}
@@ -166,14 +137,10 @@ export function FaultBody({
           onClick={() => {
             setLogOpen(!logOpen);
           }}
-          style={TOGGLE}
-          className="ho-9a7f58"
+          className={`hover:text-accent-soft ${TOGGLE}`}
         >
           <svg
-            style={{
-              transition: "transform .3s",
-              transform: `rotate(${logOpen ? "90deg" : "0deg"})`,
-            }}
+            className={`transition-transform duration-300 ${logOpen ? "rotate-90" : "rotate-0"}`}
             width="9"
             height="9"
             viewBox="0 0 12 12"
@@ -186,11 +153,9 @@ export function FaultBody({
           </svg>{" "}
           <span>{t(logOpen ? "fault.hideLog" : "fault.showLog")}</span>
         </button>
-        {logOpen ? <pre style={LOG}>{fault.log}</pre> : null}
+        {logOpen ? <pre className={LOG}>{fault.log}</pre> : null}
         <FaultActions primary={fault.primary} onSetup={onSetup} onCopy={onCopy} />
-        <div style={{ marginTop: "16px", ...MONO, fontSize: "10.5px", color: "#8A8780" }}>
-          {reference}
-        </div>
+        <div className={`mt-16 ${MONO} text-10h text-ink-ghost`}>{reference}</div>
       </div>
     </div>
   );

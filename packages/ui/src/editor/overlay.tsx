@@ -63,14 +63,14 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
   return (
     <dialog
       ref={dialog}
-      className="ho-dialog"
+      className="border-0 p-0 m-0 max-w-none max-h-none w-full h-full bg-transparent text-inherit overflow-hidden outline-none focus:outline-none focus-visible:outline-none backdrop:bg-scrim-a74 backdrop:backdrop-blur-[10px] backdrop:animate-fade-280"
       aria-label={t("editor.title")}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
       }}
     >
-      <div style={{ height: "100%", display: "flex", background: "#0A0A0B" }}>
+      <div className="h-full flex bg-ground">
         <EditorDrawer
           draft={draft}
           setDraft={setDraft}
@@ -83,7 +83,7 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
           save={save}
           onClose={onClose}
         />
-        <div style={{ minWidth: "0", flex: "1", background: "#EDEBE4" }}>
+        <div className="min-w-0 flex-1 bg-floor">
           <EditorCanvas
             draft={draft}
             tool={tool}

@@ -35,18 +35,8 @@ const MARKS: Record<Source, React.JSX.Element> = {
   ),
 };
 
-const CARD: React.CSSProperties = {
-  position: "relative",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "flex-start",
-  gap: "10px",
-  padding: "14px",
-  borderRadius: "14px",
-  cursor: "pointer",
-  textAlign: "left",
-  transition: "all .24s cubic-bezier(.2,.8,.3,1)",
-};
+const CARD =
+  "relative flex flex-col items-start gap-10 p-14 rounded-14 cursor-pointer text-left transition-all duration-240 ease-soft";
 
 export function SourceCard({
   kind,
@@ -62,69 +52,31 @@ export function SourceCard({
     <button
       type="button"
       onClick={onPick}
-      style={{
-        ...CARD,
-        border: `1px solid ${on ? "rgba(255,197,49,.45)" : "#26262C"}`,
-        background: on ? "rgba(255,197,49,.07)" : "#101013",
-      }}
-      className="ho-4f6a3c"
+      className={`hover:-translate-y-2 hover:border-accent-a50 ${CARD} border ${on ? "border-accent-a45" : "border-border"} ${on ? "bg-accent-a07" : "bg-card"}`}
     >
       <span
-        style={{
-          width: "30px",
-          height: "30px",
-          borderRadius: "10px",
-          display: "grid",
-          placeItems: "center",
-          background: on ? "rgba(255,197,49,.16)" : "#1D1D22",
-          color: on ? "#FFD666" : "#BEBBB4",
-        }}
+        className={`w-30 h-30 rounded-10 grid place-items-center ${on ? "bg-accent-a16" : "bg-tile"} ${on ? "text-accent-soft" : "text-ink-faint"}`}
       >
         {MARKS[kind]}
       </span>
-      <span style={{ display: "block" }}>
+      <span className="block">
         <span
-          style={{
-            display: "block",
-            fontSize: "13px",
-            fontWeight: "600",
-            color: on ? "#FFD666" : "#F2EFE8",
-          }}
+          className={`block text-13 font-semibold ${on ? "text-accent-soft" : "text-ink-warm"}`}
         >
           {t(kind === "local" ? "project.sourceLocal" : "project.sourceGit")}
         </span>
-        <span
-          style={{
-            display: "block",
-            fontSize: "11.5px",
-            color: "#A6A39C",
-            marginTop: "4px",
-            lineHeight: "1.5",
-          }}
-        >
+        <span className="block text-11h text-ink-meta mt-4 leading-body">
           {t(kind === "local" ? "project.sourceLocalHint" : "project.sourceGitHint")}
         </span>
       </span>
       {on ? (
-        <span
-          style={{
-            position: "absolute",
-            top: "12px",
-            right: "12px",
-            width: "16px",
-            height: "16px",
-            borderRadius: "50%",
-            background: "var(--a,#FFC531)",
-            display: "grid",
-            placeItems: "center",
-          }}
-        >
+        <span className="absolute top-12 right-12 w-16 h-16 rounded-half bg-accent grid place-items-center">
           <svg
+            className="stroke-accent-ink"
             width="9"
             height="9"
             viewBox="0 0 10 10"
             fill="none"
-            stroke="#150F02"
             strokeWidth="1.8"
             strokeLinecap="round"
             strokeLinejoin="round"

@@ -11,26 +11,26 @@ kept as history and is not evidence about the current tree.
 
 ## Implemented stack
 
-| Area                      | Dependency / version                          | Purpose                                                                                                                      |
-| ------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Runtime / package manager | Bun 1.4.2                                     | TypeScript execution, SQLite, HTTP/WS, compiled executables, isolated workspaces and catalogs                                |
-| Types                     | TypeScript 7.0.2                              | Native compiler; explicit strict options in `tsconfig.base.json`                                                             |
-| Lint                      | oxlint 1.82.0, oxlint-tsgolint 7.0.2001       | Type-aware, pedantic, React hooks and accessibility checks                                                                   |
-| Format / unused code      | oxfmt 0.67.0, Knip 6.35.0                     | Formatting and workspace-aware source/dependency coverage, including CSS                                                     |
-| Validation / RPC          | Zod 4.5.4, oRPC 1.15.0                        | Boundary validation and shared client/server contract                                                                        |
-| Persistence               | `bun:sqlite` (Bun 1.4.2)                      | Embedded event log; the schema is applied at open and versioned with `PRAGMA user_version`                                   |
-| Logging                   | Pino 10.3.1                                   | Structured NDJSON; the desktop app's file destination rotates at 8 MiB, keeping one previous file                            |
-| Single instance           | `fs.mkdir` plus a pid liveness check          | Own ~25 lines; replaced proper-lockfile, which had gone quiet (ADR 005)                                                      |
-| Desktop                   | Electrobun 2.0.1, Hutch 0.25.0                | Native shell with the daemon in its Bun main process                                                                         |
-| UI                        | React / React DOM 19.2.8                      | Panels compiled with Bun's React Compiler integration                                                                        |
-| Client state              | Zustand 5.0.15, TanStack Query 5.102.8        | Event projection and abortable cached RPC queries                                                                            |
-| Styling / build           | Tailwind CSS 4.3.3, bun-plugin-tailwind 0.1.2 | CSS and HTML-entry UI builds                                                                                                 |
-| Rendering                 | PixiJS 8.20.1                                 | Sprite batching, static floor textures and animated office rendering                                                         |
-| Pathfinding queue         | TinyQueue 3.0.0                               | Heap for the simulation's weighted A* search                                                                                 |
-| Agent protocols           | ACP SDK 1.4.0, MCP SDK 1.30.0                 | Provider sessions and scoped office tools                                                                                    |
-| Secrets                   | `Bun.secrets`, atomic file fallback           | Keychain / libsecret / Credential Manager, chosen by whether the host store answers; no secret ever in a subprocess argument |
-| Localisation              | i18next 26.4.2, react-i18next 17.0.13         | The office's own text in English and Czech, with typed keys; +93 KiB on the UI bundle (1018 → 1111 KiB)                      |
-| CLI                       | yoctocolors 2.2.0                             | CLI colour gated on a TTY                                                                                                    |
+| Area                      | Dependency / version                         | Purpose                                                                                                                      |
+| ------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Runtime / package manager | Bun 1.4.2                                    | TypeScript execution, SQLite, HTTP/WS, compiled executables, isolated workspaces and catalogs                                |
+| Types                     | TypeScript 7.0.2                             | Native compiler; explicit strict options in `tsconfig.base.json`                                                             |
+| Lint                      | oxlint 1.82.0, oxlint-tsgolint 7.0.2001      | Type-aware, pedantic, React hooks and accessibility checks                                                                   |
+| Format / unused code      | oxfmt 0.67.0, Knip 6.35.0                    | Formatting and workspace-aware source/dependency coverage, including CSS                                                     |
+| Validation / RPC          | Zod 4.5.4, oRPC 1.15.0                       | Boundary validation and shared client/server contract                                                                        |
+| Persistence               | `bun:sqlite` (Bun 1.4.2)                     | Embedded event log; the schema is applied at open and versioned with `PRAGMA user_version`                                   |
+| Logging                   | Pino 10.3.1                                  | Structured NDJSON; the desktop app's file destination rotates at 8 MiB, keeping one previous file                            |
+| Single instance           | `fs.mkdir` plus a pid liveness check         | Own ~25 lines; replaced proper-lockfile, which had gone quiet (ADR 005)                                                      |
+| Desktop                   | Electrobun 2.0.1, Hutch 0.25.0               | Native shell with the daemon in its Bun main process                                                                         |
+| UI                        | React / React DOM 19.2.8                     | Panels compiled with Bun's React Compiler integration                                                                        |
+| Client state              | Zustand 5.0.15, TanStack Query 5.102.8       | Event projection and abortable cached RPC queries                                                                            |
+| Styling                   | Tailwind CSS 4.3.3, `@tailwindcss/cli` 4.3.3 | The whole drawing as utilities; a CSS-first theme compiled by the CLI inside the Bun build                                   |
+| Rendering                 | PixiJS 8.20.1                                | Sprite batching, static floor textures and animated office rendering                                                         |
+| Pathfinding queue         | TinyQueue 3.0.0                              | Heap for the simulation's weighted A* search                                                                                 |
+| Agent protocols           | ACP SDK 1.4.0, MCP SDK 1.30.0                | Provider sessions and scoped office tools                                                                                    |
+| Secrets                   | `Bun.secrets`, atomic file fallback          | Keychain / libsecret / Credential Manager, chosen by whether the host store answers; no secret ever in a subprocess argument |
+| Localisation              | i18next 26.4.2, react-i18next 17.0.13        | The office's own text in English and Czech, with typed keys; +93 KiB on the UI bundle (1018 → 1111 KiB)                      |
+| CLI                       | yoctocolors 2.2.0                            | CLI colour gated on a TTY                                                                                                    |
 
 The native secret API is experimental; retain the explicit file
 backend as an operational fallback. Do not assume API compatibility with arbitrary Node tooling just
@@ -143,9 +143,10 @@ them: the fourteen lint rules turned off for `src/components/ui/**`, `exactOptio
 on the UI program, and knip's ignore for that directory. The UI program is now as strict as the rest of
 the repository.
 
-Overlays are real `<dialog>` elements (`.ho-dialog` in `design.css` takes the UA chrome off and paints
-`::backdrop`), so the platform still provides the focus trap, Escape and the backdrop that shadcn's
-dialog used to.
+Overlays are real `<dialog>` elements — utilities take the UA chrome off and paint `::backdrop` through
+Tailwind's `backdrop:` variant — so the platform still provides the focus trap, Escape and the backdrop
+that shadcn's dialog used to. `tailwindcss` came back on the same day, for the whole design rather than
+for vendored components; that is the last section below.
 
 ## The drawn design: fonts vendored, 2026-09-14
 
@@ -173,10 +174,57 @@ referenced them. The built stylesheet inlines all eleven, so the design makes no
 
 These components are the office: `packages/ui/index.html` renders them, and `packages/ui/src/design/live.ts`
 is the single place that says the daemon's domain in the drawing's narrower language — three lanes and a
-queue rather than nine task states, working-or-idle rather than five session states. The drawing is
-expressed in inline styles and thirty `:hover` rules in `design.css`; `styles.css` (Tailwind and shadcn)
-is still loaded for the three surfaces that have not been restyled yet — the setup overlay, the
-add-project dialog and the internal editor.
+queue rather than nine task states, working-or-idle rather than five session states. The drawing was first
+expressed in inline styles and thirty-six `:hover` rules in `design.css`; it is now Tailwind utilities on
+the elements themselves, and that file is gone — see the section below.
+
+## Styling: Tailwind CSS 4, readopted 2026-09-14
+
+The drawing arrived as inline `style` objects and a hand-written `design.css`, and the owner asked for all
+of it to become Tailwind — no raw CSS anywhere, pixel-identical to what it replaced. `packages/ui/src/design/app.css`
+is now the whole stylesheet: `@import "tailwindcss"`, the fonts, four `@source` globs, and one `@theme`
+block that is the palette, the type scale, the radii, the shadows, the easings and the thirty animations
+the office is drawn with. 594 style objects and 166 style constants across 71 files became class strings;
+`design.css` (427 lines) was deleted. Thirteen `style` attributes survive, and each one carries only a
+CSS custom property that a utility reads back — `w-(--sheet)`, `translate-x-(--slide)`, `bg-(--glow)`.
+
+Four decisions the measurements forced, rather than taste:
+
+- **Alpha colours are named, not modified.** `accent/12` compiles to `color-mix(in oklab, …)`, which lands
+  up to one channel value away from the `rgba()` the drawing used — on 11 of the 29 alphas in the palette.
+  So `--color-accent-a12: rgba(255, 197, 49, .12)` is a token of its own.
+- **`--radius-half: 50%`.** Tailwind's `rounded-full` is `calc(infinity * 1px)`, which rasterises
+  differently from the `border-radius: 50%` the drawing used.
+- **`--default-transition-timing-function: ease`.** Tailwind's default is `cubic-bezier(.4, 0, .2, 1)`;
+  the drawing's bare `transition: … .2s` means `ease`.
+- **`@custom-variant hover (&:hover)`.** Tailwind wraps `hover:` in `@media (hover: hover)`, so on a touch
+  pointer the hover states would stop applying; the drawing's own rules had no such condition.
+
+Preflight is kept — it is the reset — but it removes user-agent defaults the drawing was measured against,
+and each one had to be put back explicitly: `line-height: 1.5` on `<html>`, the button and input padding,
+`<p>`'s block margins (72 px of lost height in the setup dialog alone), the checkbox margins, and
+`::placeholder`'s colour on eleven inputs.
+
+The CLI compiles `app.css` inside the Bun build: `scripts/ui-build.ts` registers an `onLoad` plugin for
+that one file, resolves `@tailwindcss/cli` through the package graph and spawns it, so the output that
+reaches the bundler is already the finished stylesheet. knip cannot see a binary that is spawned rather
+than imported, hence the one `ignoreDependencies` entry in `knip.json`.
+
+What the build contains is only what the office uses, measured on the production bundle:
+
+|                                               | Tailwind rewrite | Previous build  |
+| --------------------------------------------- | ---------------- | --------------- |
+| stylesheet, without the inlined fonts         | 63 021 B         | 5 891 B         |
+| stylesheet, total (fonts are 540 394 B of it) | 603 415 B        | 546 285 B       |
+| script                                        | 1 273 742 B      | 1 301 616 B     |
+| **both files**                                | **1 877 157 B**  | **1 847 901 B** |
+| distinct utility classes                      | 688              | 37              |
+| theme variables reaching `:root`              | 248              | 0               |
+| `@keyframes`                                  | 15               | 17              |
+
+The stylesheet grew by 57 130 bytes and the script shrank by 27 874, for 29 256 bytes — 1.6% — on the two
+files together. The two `@keyframes` that disappeared are `float1` and `float2`: `design.css` defined them
+and nothing used them.
 
 ## Primary references
 

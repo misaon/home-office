@@ -2,94 +2,43 @@ import { DISPLAY, MONO, separator } from "./tokens.ts";
 
 export type Row = { name: string; total: string; pct: string; detail: string; cache: string };
 
-const HEADING: React.CSSProperties = {
-  ...MONO,
-  fontSize: "10px",
-  letterSpacing: ".16em",
-  textTransform: "uppercase",
-  color: "#ABA8A1",
-};
+const HEADING = `${MONO} text-10 tracking-caps-wider uppercase text-ink-label`;
 
-const CARD: React.CSSProperties = {
-  borderRadius: "14px",
-  background: "#101013",
-  border: "1px solid #232328",
-  overflow: "hidden",
-};
+const CARD = "rounded-14 bg-card border border-edge overflow-hidden";
 
-const NAME: React.CSSProperties = {
-  ...MONO,
-  fontSize: "12px",
-  color: "#E4E1DB",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-  maxWidth: "45%",
-};
+const NAME = `${MONO} text-12 text-ink-dim overflow-hidden text-ellipsis whitespace-nowrap max-w-[45%]`;
 
-const LANE: React.CSSProperties = {
-  flex: "1",
-  height: "4px",
-  borderRadius: "99px",
-  background: "#1F1F24",
-  overflow: "hidden",
-  minWidth: "40px",
-};
+const LANE = "flex-1 h-4 rounded-pill bg-slot overflow-hidden min-w-40";
 
-const FILL: React.CSSProperties = {
-  display: "block",
-  height: "100%",
-  borderRadius: "99px",
-  background: "linear-gradient(90deg,#E0A400,var(--a,#FFC531))",
-  transformOrigin: "left",
-  animation: "growX .9s cubic-bezier(.2,.9,.3,1) both",
-};
+const FILL =
+  "block h-full rounded-pill bg-[linear-gradient(90deg,var(--color-accent-deep),var(--color-accent))] origin-left animate-grow";
 
-const TOTAL: React.CSSProperties = {
-  ...DISPLAY,
-  fontWeight: "600",
-  fontSize: "13px",
-  color: "#FFD666",
-  flex: "0 0 auto",
-};
+const TOTAL = `${DISPLAY} font-semibold text-13 text-accent-soft flex-[0_0_auto]`;
 
-const DETAIL: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: "9px",
-  marginTop: "7px",
-  ...MONO,
-  fontSize: "10px",
-  color: "#A6A39C",
-};
+const DETAIL = `flex justify-between gap-9 mt-7 ${MONO} text-10 text-ink-meta`;
 
 /** One way of slicing the spend: a name, its share as a bar, and its total. */
 export function Breakdown({ name, rows }: { name: string; rows: Row[] }): React.JSX.Element {
   return (
-    <div style={{ marginBottom: "18px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "0 2px 9px" }}>
-        <span style={HEADING}>{name}</span>
-        <span style={{ flex: "1", height: "1px", background: "#1F1F24" }} />
+    <div className="mb-18">
+      <div className="flex items-center gap-8 mt-0 mx-2 mb-9">
+        <span className={HEADING}>{name}</span>
+        <span className="flex-1 h-1 bg-slot" />
       </div>
-      <div style={CARD}>
+      <div className={CARD}>
         {rows.map((row, i) => (
           <div
             key={row.name}
-            style={{
-              padding: "12px 13px",
-              borderTop: `1px solid ${separator(i === 0)}`,
-              transition: "background .2s",
-            }}
-            className="ho-0b4177"
+            className={`py-12 px-13 transition-[background] duration-200 ${separator(i === 0)} hover:bg-row-hover`}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "11px" }}>
-              <span style={NAME}>{row.name}</span>
-              <span style={LANE}>
-                <span style={{ ...FILL, width: row.pct }} />
+            <div className="flex items-center gap-11">
+              <span className={NAME}>{row.name}</span>
+              <span className={LANE}>
+                <span className={`${FILL} w-(--share)`} style={{ "--share": row.pct }} />
               </span>
-              <span style={TOTAL}>{row.total}</span>
+              <span className={TOTAL}>{row.total}</span>
             </div>
-            <div style={DETAIL}>
+            <div className={DETAIL}>
               <span>{row.detail}</span>
               <span>{row.cache}</span>
             </div>

@@ -12,64 +12,21 @@ const CHEVRON = {
   height: 9,
   viewBox: "0 0 12 12",
   fill: "none",
-  stroke: "#A6A39C",
   strokeWidth: "1.5",
   strokeLinecap: "round",
 } as const;
 
-const HEAD: React.CSSProperties = {
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  padding: "13px",
-  border: "0",
-  background: "transparent",
-  cursor: "pointer",
-  textAlign: "left",
-  transition: "background .2s",
-};
+const HEAD =
+  "w-full flex items-center gap-10 p-13 border-0 bg-transparent cursor-pointer text-left transition-[background] duration-200";
 
-const BADGE: React.CSSProperties = {
-  width: "20px",
-  height: "20px",
-  flex: "0 0 20px",
-  borderRadius: "6px",
-  display: "grid",
-  placeItems: "center",
-  ...MONO,
-  fontSize: "10.5px",
-};
+const BADGE = `w-20 h-20 flex-[0_0_20px] rounded-6 grid place-items-center ${MONO} text-10h`;
 
-const NAME: React.CSSProperties = {
-  display: "block",
-  ...MONO,
-  fontSize: "12.5px",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
+const NAME = `block ${MONO} text-12h overflow-hidden text-ellipsis whitespace-nowrap`;
 
-const PATH: React.CSSProperties = {
-  ...MONO,
-  fontSize: "10.5px",
-  color: "#A6A39C",
-  marginBottom: "14px",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
+const PATH = `${MONO} text-10h text-ink-meta mb-14 overflow-hidden text-ellipsis whitespace-nowrap`;
 
-const REMOVE: React.CSSProperties = {
-  padding: "7px 12px",
-  borderRadius: "9px",
-  border: "1px solid rgba(255,122,122,.3)",
-  background: "rgba(255,122,122,.1)",
-  color: "#FFB3B3",
-  fontSize: "11.5px",
-  cursor: "pointer",
-  transition: "all .2s",
-};
+const REMOVE =
+  "py-7 px-12 rounded-9 border border-bad-a30 bg-bad-a10 text-bad-soft text-11h cursor-pointer transition-all duration-200";
 
 /** One floor in Settings: where it lives, how finished work leaves it, and what feeds it. */
 export function SettingsFloor({
@@ -101,58 +58,39 @@ export function SettingsFloor({
   });
 
   return (
-    <div
-      style={{ display: "flex", alignItems: "stretch", borderTop: `1px solid ${separator(first)}` }}
-    >
-      <div
-        style={{
-          width: "3px",
-          flex: "0 0 3px",
-          background: current ? "var(--a,#FFC531)" : "#2C2C32",
-        }}
-      />
-      <div style={{ flex: "1", minWidth: "0" }}>
+    <div className={`flex items-stretch ${separator(first)}`}>
+      <div className={`w-3 flex-[0_0_3px] ${current ? "bg-accent" : "bg-border-strong"}`} />
+      <div className="flex-1 min-w-0">
         <button
           type="button"
           onClick={() => {
             set({ floorRowOpen: open ? null : floor.id });
           }}
-          style={HEAD}
-          className="ho-0b4177"
+          className={`hover:bg-row-hover ${HEAD}`}
         >
           <span
-            style={{
-              ...BADGE,
-              background: current ? "var(--a,#FFC531)" : "#24242A",
-              color: current ? "#150F02" : "#BEBBB4",
-            }}
+            className={`${BADGE} ${current ? "bg-accent" : "bg-edge-lit"} ${current ? "text-accent-ink" : "text-ink-faint"}`}
           >
             <span>{index + 1}</span>
           </span>
-          <span style={{ flex: "1", minWidth: "0" }}>
-            <span style={NAME}>{floor.name}</span>
-            <span
-              style={{ display: "block", fontSize: "10.5px", color: "#A6A39C", marginTop: "4px" }}
-            >
+          <span className="flex-1 min-w-0">
+            <span className={NAME}>{floor.name}</span>
+            <span className="block text-10h text-ink-meta mt-4">
               {t("project.summaryTasks", { agents: floor.team.length, open: openTasks })}
             </span>
           </span>
           <svg
-            style={{
-              flex: "0 0 auto",
-              transition: "transform .3s",
-              transform: `rotate(${open ? "90deg" : "0deg"})`,
-            }}
+            className={`flex-[0_0_auto] stroke-ink-meta transition-transform duration-300 ${open ? "rotate-90" : "rotate-0"}`}
             {...CHEVRON}
           >
             <polyline points="4.5,3 8,6 4.5,9" />
           </svg>
         </button>
         {open ? (
-          <div style={{ padding: "0 13px 14px", animation: "riseIn .28s ease both" }}>
-            <div style={PATH}>{floor.path}</div>
+          <div className="pt-0 px-13 pb-14 animate-rise-280">
+            <div className={PATH}>{floor.path}</div>
             <FloorSwitches floor={floor} />
-            <div style={{ height: "1px", background: "#1F1F24", margin: "14px 0" }} />
+            <div className="h-1 bg-slot my-14 mx-0" />
             <button
               type="button"
               disabled={remove.isPending}
@@ -166,8 +104,7 @@ export function SettingsFloor({
                   },
                 });
               }}
-              style={REMOVE}
-              className="ho-52fd80"
+              className={`hover:bg-bad-a20 ${REMOVE}`}
             >
               {t("settings.removeFloor")}
             </button>

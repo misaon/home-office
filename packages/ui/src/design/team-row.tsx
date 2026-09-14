@@ -3,56 +3,17 @@ import { ROLE_KEY } from "../i18n/labels.ts";
 import type { Member } from "./data.ts";
 import { DISPLAY, MONO, separator } from "./tokens.ts";
 
-const INNER: React.CSSProperties = {
-  flex: "1",
-  minWidth: "0",
-  padding: "13px",
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-};
+const INNER = "flex-1 min-w-0 p-13 flex items-center gap-12";
 
-const AVATAR: React.CSSProperties = {
-  width: "34px",
-  height: "34px",
-  flex: "0 0 34px",
-  borderRadius: "11px",
-  display: "grid",
-  placeItems: "center",
-  ...DISPLAY,
-  fontWeight: "700",
-  fontSize: "14px",
-};
+const AVATAR = `w-34 h-34 flex-[0_0_34px] rounded-11 grid place-items-center ${DISPLAY} font-bold text-14`;
 
-const NAME: React.CSSProperties = {
-  ...DISPLAY,
-  fontWeight: "600",
-  fontSize: "14px",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
+const NAME = `${DISPLAY} font-semibold text-14 overflow-hidden text-ellipsis whitespace-nowrap`;
 
-const ROLE: React.CSSProperties = {
-  ...MONO,
-  fontSize: "9.5px",
-  padding: "2px 7px",
-  borderRadius: "99px",
-  flex: "0 0 auto",
-};
+const ROLE = `${MONO} text-9h py-2 px-7 rounded-pill flex-[0_0_auto]`;
 
-const META: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "7px",
-  marginTop: "6px",
-  ...MONO,
-  fontSize: "10px",
-  color: "#A6A39C",
-  flexWrap: "wrap",
-};
+const META = `flex items-center gap-7 mt-6 ${MONO} text-10 text-ink-meta flex-wrap`;
 
-const DOT: React.CSSProperties = { width: "5px", height: "5px", borderRadius: "50%" };
+const DOT = "w-5 h-5 rounded-half";
 
 /** One colleague as a row: who they are, what they are on, and the arrow into their sheet. */
 export function TeamRow({
@@ -67,7 +28,7 @@ export function TeamRow({
   const { t } = useTranslation();
   const working = person.status === "working";
   const chief = person.role === "boss";
-  const accent = working ? "var(--a,#FFC531)" : "#3A3A41";
+  const accent = working ? "bg-accent" : "bg-dot-idle";
 
   return (
     <div
@@ -83,62 +44,41 @@ export function TeamRow({
           onOpen();
         }
       }}
-      style={{
-        display: "flex",
-        alignItems: "stretch",
-        cursor: "pointer",
-        borderTop: `1px solid ${separator(first)}`,
-        transition: "background .2s",
-      }}
-      className="ho-0b4177"
+      className={`flex items-stretch cursor-pointer transition-[background] duration-200 hover:bg-row-hover ${separator(first)}`}
     >
-      <div style={{ width: "3px", flex: "0 0 3px", background: accent }} />
-      <div style={INNER}>
+      <div className={`w-3 flex-[0_0_3px] ${accent}`} />
+      <div className={INNER}>
         <div
-          style={{
-            ...AVATAR,
-            background: chief ? "linear-gradient(145deg,#FFD666,#E0A400)" : "#24242A",
-            color: chief ? "#1A1300" : "#D6D3CD",
-          }}
+          className={`${AVATAR} ${chief ? "bg-gold" : "bg-edge-lit"} ${chief ? "text-accent-ink-deep" : "text-ink-mute"}`}
         >
           <span>{person.i}</span>
         </div>
-        <div style={{ flex: "1", minWidth: "0" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-            <span style={NAME}>{person.name}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-7">
+            <span className={NAME}>{person.name}</span>
             <span
-              style={{
-                ...ROLE,
-                background: chief ? "rgba(255,197,49,.2)" : "#24242A",
-                color: chief ? "#FFD666" : "#BEBBB4",
-              }}
+              className={`${ROLE} ${chief ? "bg-accent-a20" : "bg-edge-lit"} ${chief ? "text-accent-soft" : "text-ink-faint"}`}
             >
               {t(ROLE_KEY[person.role])}
             </span>
           </div>
-          <div style={META}>
+          <div className={META}>
             <span
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "5px",
-                color: working ? "#FFD666" : "#A6A39C",
-              }}
+              className={`flex items-center gap-5 ${working ? "text-accent-soft" : "text-ink-meta"}`}
             >
-              <span style={{ ...DOT, background: accent }} />
+              <span className={`${DOT} ${accent}`} />
               <span>{t(`team.${person.status}`)}</span>
             </span>
-            <span style={{ opacity: ".4" }}>·</span>
+            <span className="opacity-40">·</span>
             <span>{`${person.model.toLowerCase()} / ${person.effort}`}</span>
           </div>
         </div>
         <svg
-          style={{ flex: "0 0 auto" }}
+          className="flex-[0_0_auto] stroke-ink-idle"
           width="10"
           height="10"
           viewBox="0 0 12 12"
           fill="none"
-          stroke="#8E8B85"
           strokeWidth="1.5"
           strokeLinecap="round"
         >

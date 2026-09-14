@@ -4,32 +4,11 @@ import type { Found, RepoDraft } from "./add-project-inspect.ts";
 import { SelectField } from "./select-field.tsx";
 import { MONO } from "./tokens.ts";
 
-const ROW: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "11px",
-  marginTop: "18px",
-  padding: "13px 14px",
-  borderRadius: "13px",
-  transition: "all .28s",
-};
+const ROW = "flex items-center gap-11 mt-18 py-13 px-14 rounded-13 transition-all duration-280";
 
-const BADGE: React.CSSProperties = {
-  width: "26px",
-  height: "26px",
-  flex: "0 0 26px",
-  borderRadius: "8px",
-  display: "grid",
-  placeItems: "center",
-  ...MONO,
-  fontSize: "11px",
-};
+const BADGE = `w-26 h-26 flex-[0_0_26px] rounded-8 grid place-items-center ${MONO} text-11`;
 
-const ELLIPSIS: React.CSSProperties = {
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
+const ELLIPSIS = "overflow-hidden text-ellipsis whitespace-nowrap";
 
 /** The floor's own name and the branch work starts from. */
 export function FloorDetails({
@@ -46,23 +25,16 @@ export function FloorDetails({
   const branch = draft.branch === "" ? (inspection?.defaultBranch ?? "") : draft.branch;
   const options = branch === "" || branches.includes(branch) ? branches : [branch, ...branches];
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 150px",
-        gap: "12px",
-        marginTop: "16px",
-      }}
-    >
+    <div className="grid grid-cols-[1fr_150px] gap-12 mt-16">
       <div>
-        <div style={{ ...CAP, marginBottom: "8px" }}>{t("project.nameCap")}</div>
+        <div className={`${CAP} text-9h mb-8`}>{t("project.nameCap")}</div>
         <input
           value={draft.name}
           placeholder={inspection?.name ?? t("project.nameHint")}
           onChange={(e) => {
             setDraft({ ...draft, name: e.target.value });
           }}
-          style={INPUT}
+          className={`${INPUT} placeholder:text-ink-ghost`}
         />
       </div>
       <SelectField
@@ -95,30 +67,20 @@ export function FloorPreview({
   const named = name !== null;
   return (
     <div
-      style={{
-        ...ROW,
-        border: `1px solid ${named ? "rgba(255,197,49,.28)" : "#26262C"}`,
-        background: named ? "rgba(255,197,49,.05)" : "#0E0E11",
-      }}
+      className={`${ROW} border ${named ? "border-accent-a28" : "border-border"} ${named ? "bg-accent-a05" : "bg-panel"}`}
     >
       <span
-        style={{
-          ...BADGE,
-          background: named ? "var(--a,#FFC531)" : "#1D1D22",
-          color: named ? "#150F02" : "#8A8780",
-        }}
+        className={`${BADGE} ${named ? "bg-accent" : "bg-tile"} ${named ? "text-accent-ink" : "text-ink-ghost"}`}
       >
         <span>{number}</span>
       </span>
-      <div style={{ flex: "1", minWidth: "0" }}>
+      <div className="flex-1 min-w-0">
         <div
-          style={{ ...MONO, fontSize: "12px", color: named ? "#FFD666" : "#8A8780", ...ELLIPSIS }}
+          className={`${MONO} text-12 ${named ? "text-accent-soft" : "text-ink-ghost"} ${ELLIPSIS}`}
         >
           {name ?? t("project.previewUnnamed")}
         </div>
-        <div style={{ fontSize: "11px", color: "#A6A39C", marginTop: "4px", ...ELLIPSIS }}>
-          {meta}
-        </div>
+        <div className={`text-11 text-ink-meta mt-4 ${ELLIPSIS}`}>{meta}</div>
       </div>
     </div>
   );

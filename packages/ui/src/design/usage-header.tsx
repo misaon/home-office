@@ -9,49 +9,15 @@ const VIEWS = [
   ["Resources", "usage.resources"],
 ] as const;
 
-const PILL: React.CSSProperties = {
-  padding: "6px 11px",
-  borderRadius: "99px",
-  cursor: "pointer",
-  fontSize: "12px",
-  whiteSpace: "nowrap",
-  transition: "all .22s",
-};
+const PILL = "py-6 px-11 rounded-pill cursor-pointer whitespace-nowrap transition-all duration-220";
 
-const TOP: React.CSSProperties = {
-  display: "flex",
-  alignItems: "flex-start",
-  justifyContent: "space-between",
-  gap: "10px",
-  marginBottom: "14px",
-};
+const TOP = "flex items-start justify-between gap-10 mb-14";
 
-const TOTAL: React.CSSProperties = {
-  ...DISPLAY,
-  fontWeight: "700",
-  fontSize: "30px",
-  letterSpacing: "-.02em",
-  lineHeight: "1",
-  whiteSpace: "nowrap",
-};
+const TOTAL = `${DISPLAY} font-bold text-30 tracking-display leading-flat whitespace-nowrap`;
 
-const SPLIT: React.CSSProperties = {
-  display: "flex",
-  height: "8px",
-  borderRadius: "99px",
-  overflow: "hidden",
-  gap: "2px",
-  marginBottom: "10px",
-};
+const SPLIT = "flex h-8 rounded-pill overflow-hidden gap-2 mb-10";
 
-const KEY: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "6px",
-  ...MONO,
-  fontSize: "10.5px",
-  color: "#A6A39C",
-};
+const KEY = `flex items-center gap-6 ${MONO} text-10h text-ink-meta`;
 
 /** The headline figure, how it splits, and over which window it was counted. */
 export function UsageHeader({ summary }: { summary: UsageSummary | null }): React.JSX.Element {
@@ -67,28 +33,18 @@ export function UsageHeader({ summary }: { summary: UsageSummary | null }): Reac
   const spend = input + output;
   const pct = (n: number): string => `${String(Math.round((n / Math.max(1, spend)) * 100))}%`;
   const composition = [
-    { name: t("usage.in"), value: fmt(input), color: "#8C7A2E", pct: pct(input) },
-    { name: t("usage.out"), value: fmt(output), color: "var(--a,#FFC531)", pct: pct(output) },
-    { name: t("usage.cache"), value: fmt(cache), color: "#5BD9A0", pct: "0%" },
+    { name: t("usage.in"), value: fmt(input), color: "bg-accent-moss", pct: pct(input) },
+    { name: t("usage.out"), value: fmt(output), color: "bg-accent", pct: pct(output) },
+    { name: t("usage.cache"), value: fmt(cache), color: "bg-good", pct: "0%" },
   ];
 
   return (
-    <div
-      style={{ padding: "16px 16px 14px", borderBottom: "1px solid #1B1B1F", marginBottom: "16px" }}
-    >
-      <div style={TOP}>
-        <div style={{ minWidth: "0" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: "9px",
-              minWidth: "0",
-              flexWrap: "wrap",
-            }}
-          >
-            <span style={TOTAL}>{fmt(spend)}</span>
-            <span style={{ fontSize: "11.5px", color: "#ABA8A1", whiteSpace: "nowrap" }}>
+    <div className="pt-16 px-16 pb-14 border-b border-line mb-16">
+      <div className={TOP}>
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-9 min-w-0 flex-wrap">
+            <span className={TOTAL}>{fmt(spend)}</span>
+            <span className="text-11h text-ink-label whitespace-nowrap">
               {t("usage.headline", {
                 window: win === "all" ? t("usage.allTime") : t("usage.lastWindow", { window: win }),
                 count: summary?.sessions ?? 0,
@@ -96,7 +52,7 @@ export function UsageHeader({ summary }: { summary: UsageSummary | null }): Reac
             </span>
           </div>
         </div>
-        <div style={{ display: "flex", gap: "5px", flex: "0 0 auto" }}>
+        <div className="flex gap-5 flex-[0_0_auto]">
           {VIEWS.map(([view, label]) => {
             const tone = pill(usageView === view);
             return (
@@ -106,13 +62,7 @@ export function UsageHeader({ summary }: { summary: UsageSummary | null }): Reac
                 onClick={() => {
                   set({ usageView: view });
                 }}
-                style={{
-                  ...PILL,
-                  border: `1px solid ${tone.bd}`,
-                  background: tone.bg,
-                  color: tone.fg,
-                }}
-                className="ho-1962ef"
+                className={`${PILL} text-12 ${tone} hover:-translate-y-1`}
               >
                 {t(label)}
               </button>
@@ -120,31 +70,26 @@ export function UsageHeader({ summary }: { summary: UsageSummary | null }): Reac
           })}
         </div>
       </div>
-      <div style={SPLIT}>
+      <div className={SPLIT}>
         {composition.map((slice) => (
           <div
             key={slice.name}
             title={slice.name}
-            style={{
-              transition: "width .6s cubic-bezier(.2,.9,.3,1)",
-              background: slice.color,
-              width: slice.pct,
-            }}
+            className={`transition-[width] duration-600 ease-glide w-(--share) ${slice.color}`}
+            style={{ "--share": slice.pct }}
           />
         ))}
       </div>
-      <div style={{ display: "flex", gap: "13px", flexWrap: "wrap", marginBottom: "14px" }}>
+      <div className="flex gap-13 flex-wrap mb-14">
         {composition.map((slice) => (
-          <span key={slice.name} style={KEY}>
-            <span
-              style={{ width: "6px", height: "6px", borderRadius: "2px", background: slice.color }}
-            />
+          <span key={slice.name} className={KEY}>
+            <span className={`w-6 h-6 rounded-2 ${slice.color}`} />
             <span>{slice.name}</span>
             <span>{slice.value}</span>
           </span>
         ))}
       </div>
-      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+      <div className="flex gap-6 flex-wrap">
         {WINDOWS.map((w) => {
           const tone = pill(win === w);
           return (
@@ -154,15 +99,7 @@ export function UsageHeader({ summary }: { summary: UsageSummary | null }): Reac
               onClick={() => {
                 set({ win: w });
               }}
-              style={{
-                ...PILL,
-                ...MONO,
-                fontSize: "11.5px",
-                border: `1px solid ${tone.bd}`,
-                background: tone.bg,
-                color: tone.fg,
-              }}
-              className="ho-1962ef"
+              className={`${PILL} ${MONO} text-11h ${tone} hover:-translate-y-1`}
             >
               {w}
             </button>

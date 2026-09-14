@@ -90,8 +90,8 @@ export function SmokeStep({ ready }: { ready: boolean }): React.JSX.Element {
     sent === null || floorId === null ? undefined : replyTo(snapshot.chat, sent, floorId);
   return (
     <SetupStep index={4} title={t("setup.smokeTest")} status={status}>
-      <div style={STEP_BODY}>
-        <p style={{ ...WIDE, fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
+      <div className={STEP_BODY}>
+        <p className={`${WIDE} text-12 leading-loose text-ink-label my-12`}>
           {t("setup.smokeIntro", {
             boss: boss?.name ?? t("setup.theBoss"),
             model: boss?.model ?? t("setup.bossModel"),
@@ -99,17 +99,7 @@ export function SmokeStep({ ready }: { ready: boolean }): React.JSX.Element {
         </p>
         {reply !== undefined ? (
           <blockquote
-            style={{
-              ...WIDE,
-              animation: "riseIn .3s ease both",
-              borderRadius: "11px",
-              border: "1px solid #26262C",
-              background: "#0A0A0C",
-              padding: "12px",
-              fontSize: "12px",
-              lineHeight: "1.7",
-              color: "#E9E7E2",
-            }}
+            className={`${WIDE} animate-rise-300 rounded-11 border border-border bg-well p-12 text-12 leading-loose text-ink-soft`}
           >
             {reply.text}
           </blockquote>
