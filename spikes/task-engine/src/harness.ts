@@ -6,7 +6,6 @@ import {
   type SandboxHandle,
   type SandboxProvider,
   type SandboxSpec,
-  type TaskEngineProvider,
 } from "@ho/core";
 import type { DaemonConfig } from "@ho/daemon";
 import {
@@ -51,7 +50,7 @@ export const check = (what: string, ok: boolean, detail: string): boolean => {
   return ok;
 };
 
-export type Provider = SandboxProvider & TaskEngineProvider;
+export type Provider = SandboxProvider;
 export type Task = {
   id: string;
   volume: string;
@@ -106,7 +105,10 @@ export async function startTask(
   await provider.createVolume(volume, { ...labelsFor(id), "ho.kind": "task-volume" });
   await seedRepo(volume);
   const request = requestFor(id, volume);
-  const plan = await step(`task ${id}: volumes`, () => prepareTaskEngine(provider, request));
+  // The harness owns its cleanup in stopTask, so the volume outlives this stack on purpose.
+  const plan = await step(`task ${id}: volumes`, () =>
+    prepareTaskEngine(provider, request, new AsyncDisposableStack()),
+  );
   const sandbox = await step(`task ${id}: sandbox`, () =>
     provider.start(sandboxSpec(id, image, plan, volume)),
   );
@@ -117,7 +119,7 @@ export async function startTask(
 }
 
 export async function stopTask(provider: Provider, task: Task): Promise<void> {
-  await provider.stopEngine(task.engine).catch(() => null);
+  await provider.stop(task.engine, 15).catch(() => null);
   await provider.remove(task.engine).catch(() => null);
   await provider.stop(task.sandbox, 5).catch(() => null);
   await provider.remove(task.sandbox).catch(() => null);
@@ -143,8 +145,8 @@ export async function sweep(provider: Provider, tasks: readonly Task[]): Promise
   });
   out(`socket volumes collected: ${pruned.volumes.join(", ")}`);
   for (const task of tasks) {
-    await provider.removeVolume({ name: task.volume }).catch(() => null);
-    await provider.removeVolume({ name: task.plan.cacheVolume }).catch(() => null);
+    await provider.removeVolume(task.volume).catch(() => null);
+    await provider.removeVolume(task.plan.cacheVolume).catch(() => null);
   }
   await $`docker network rm ${NETWORK}`.quiet().nothrow();
 }

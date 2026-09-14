@@ -1,0 +1,2263 @@
+{
+  "id": "base",
+  "name": "Base",
+  "width": 60,
+  "height": 34,
+  "walls": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 60,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 10,
+      "y": 1,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 1,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 48,
+      "y": 1,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 1,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 10,
+      "y": 2,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 2,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 48,
+      "y": 2,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 2,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 10,
+      "y": 3,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 3,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 48,
+      "y": 3,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 3,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 4,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 10,
+      "y": 4,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 4,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 48,
+      "y": 4,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 4,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 10,
+      "y": 5,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 5,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 48,
+      "y": 5,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 5,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 10,
+      "y": 6,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 6,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 48,
+      "y": 6,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 6,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 10,
+      "y": 7,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 7,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 48,
+      "y": 7,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 7,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 8,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 10,
+      "y": 8,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 8,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 48,
+      "y": 8,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 8,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 9,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 10,
+      "y": 9,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 9,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 48,
+      "y": 9,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 9,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 10,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 10,
+      "y": 10,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 10,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 48,
+      "y": 10,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 10,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 11,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 10,
+      "y": 11,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 11,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 48,
+      "y": 11,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 11,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 12,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 10,
+      "y": 12,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 12,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 48,
+      "y": 12,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 12,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 13,
+      "w": 5,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 7,
+      "y": 13,
+      "w": 16,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 25,
+      "y": 13,
+      "w": 17,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 44,
+      "y": 13,
+      "w": 10,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 56,
+      "y": 13,
+      "w": 4,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 14,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 14,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 15,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 15,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 16,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 16,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 17,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 17,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 18,
+      "w": 20,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 24,
+      "y": 18,
+      "w": 18,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 44,
+      "y": 18,
+      "w": 10,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 56,
+      "y": 18,
+      "w": 4,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 0,
+      "y": 19,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 24,
+      "y": 19,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 19,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 50,
+      "y": 19,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 19,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 20,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 24,
+      "y": 20,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 20,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 50,
+      "y": 20,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 20,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 21,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 24,
+      "y": 21,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 21,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 50,
+      "y": 21,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 21,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 22,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 22,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 50,
+      "y": 22,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 22,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 23,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 23,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 50,
+      "y": 23,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 23,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 24,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 24,
+      "y": 24,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 24,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 50,
+      "y": 24,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 24,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 25,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 24,
+      "y": 25,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 25,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 50,
+      "y": 25,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 25,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 26,
+      "w": 12,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 14,
+      "y": 26,
+      "w": 6,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 22,
+      "y": 26,
+      "w": 16,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 38,
+      "y": 26,
+      "w": 12,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 50,
+      "y": 26,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 26,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 27,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 3,
+      "y": 27,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 6,
+      "y": 27,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 9,
+      "y": 27,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 16,
+      "y": 27,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 27,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 27,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 28,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 3,
+      "y": 28,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 6,
+      "y": 28,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 9,
+      "y": 28,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 16,
+      "y": 28,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 28,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 28,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 29,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 3,
+      "y": 29,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 6,
+      "y": 29,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 9,
+      "y": 29,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 16,
+      "y": 29,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 29,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 30,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 3,
+      "y": 30,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 6,
+      "y": 30,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 9,
+      "y": 30,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 16,
+      "y": 30,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 30,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 31,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 16,
+      "y": 31,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 31,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 31,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 32,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 16,
+      "y": 32,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "w": 1,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 59,
+      "y": 32,
+      "w": 1,
+      "h": 1,
+      "material": "glass"
+    },
+    {
+      "x": 0,
+      "y": 33,
+      "w": 38,
+      "h": 1,
+      "material": "wall"
+    },
+    {
+      "x": 38,
+      "y": 33,
+      "w": 22,
+      "h": 1,
+      "material": "glass"
+    }
+  ],
+  "rooms": [
+    {
+      "x": 1,
+      "y": 1,
+      "w": 9,
+      "h": 1,
+      "room": "boss-office"
+    },
+    {
+      "x": 11,
+      "y": 1,
+      "w": 26,
+      "h": 1,
+      "room": "office-developers"
+    },
+    {
+      "x": 38,
+      "y": 1,
+      "w": 10,
+      "h": 1,
+      "room": "office-qa"
+    },
+    {
+      "x": 49,
+      "y": 1,
+      "w": 10,
+      "h": 1,
+      "room": "office-analysts"
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "w": 9,
+      "h": 1,
+      "room": "boss-office"
+    },
+    {
+      "x": 11,
+      "y": 2,
+      "w": 26,
+      "h": 1,
+      "room": "office-developers"
+    },
+    {
+      "x": 38,
+      "y": 2,
+      "w": 10,
+      "h": 1,
+      "room": "office-qa"
+    },
+    {
+      "x": 49,
+      "y": 2,
+      "w": 10,
+      "h": 1,
+      "room": "office-analysts"
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "w": 9,
+      "h": 1,
+      "room": "boss-office"
+    },
+    {
+      "x": 11,
+      "y": 3,
+      "w": 26,
+      "h": 1,
+      "room": "office-developers"
+    },
+    {
+      "x": 38,
+      "y": 3,
+      "w": 10,
+      "h": 1,
+      "room": "office-qa"
+    },
+    {
+      "x": 49,
+      "y": 3,
+      "w": 10,
+      "h": 1,
+      "room": "office-analysts"
+    },
+    {
+      "x": 1,
+      "y": 4,
+      "w": 9,
+      "h": 1,
+      "room": "boss-office"
+    },
+    {
+      "x": 11,
+      "y": 4,
+      "w": 26,
+      "h": 1,
+      "room": "office-developers"
+    },
+    {
+      "x": 38,
+      "y": 4,
+      "w": 10,
+      "h": 1,
+      "room": "office-qa"
+    },
+    {
+      "x": 49,
+      "y": 4,
+      "w": 10,
+      "h": 1,
+      "room": "office-analysts"
+    },
+    {
+      "x": 1,
+      "y": 5,
+      "w": 9,
+      "h": 1,
+      "room": "boss-office"
+    },
+    {
+      "x": 11,
+      "y": 5,
+      "w": 26,
+      "h": 1,
+      "room": "office-developers"
+    },
+    {
+      "x": 38,
+      "y": 5,
+      "w": 10,
+      "h": 1,
+      "room": "office-qa"
+    },
+    {
+      "x": 49,
+      "y": 5,
+      "w": 10,
+      "h": 1,
+      "room": "office-analysts"
+    },
+    {
+      "x": 1,
+      "y": 6,
+      "w": 9,
+      "h": 1,
+      "room": "boss-office"
+    },
+    {
+      "x": 11,
+      "y": 6,
+      "w": 26,
+      "h": 1,
+      "room": "office-developers"
+    },
+    {
+      "x": 38,
+      "y": 6,
+      "w": 10,
+      "h": 1,
+      "room": "office-qa"
+    },
+    {
+      "x": 49,
+      "y": 6,
+      "w": 10,
+      "h": 1,
+      "room": "office-analysts"
+    },
+    {
+      "x": 1,
+      "y": 7,
+      "w": 9,
+      "h": 1,
+      "room": "boss-office"
+    },
+    {
+      "x": 11,
+      "y": 7,
+      "w": 26,
+      "h": 1,
+      "room": "office-developers"
+    },
+    {
+      "x": 38,
+      "y": 7,
+      "w": 10,
+      "h": 1,
+      "room": "office-qa"
+    },
+    {
+      "x": 49,
+      "y": 7,
+      "w": 10,
+      "h": 1,
+      "room": "office-analysts"
+    },
+    {
+      "x": 1,
+      "y": 8,
+      "w": 9,
+      "h": 1,
+      "room": "boss-office"
+    },
+    {
+      "x": 11,
+      "y": 8,
+      "w": 26,
+      "h": 1,
+      "room": "office-developers"
+    },
+    {
+      "x": 38,
+      "y": 8,
+      "w": 10,
+      "h": 1,
+      "room": "office-qa"
+    },
+    {
+      "x": 49,
+      "y": 8,
+      "w": 10,
+      "h": 1,
+      "room": "office-analysts"
+    },
+    {
+      "x": 1,
+      "y": 9,
+      "w": 9,
+      "h": 1,
+      "room": "boss-office"
+    },
+    {
+      "x": 11,
+      "y": 9,
+      "w": 26,
+      "h": 1,
+      "room": "office-developers"
+    },
+    {
+      "x": 38,
+      "y": 9,
+      "w": 10,
+      "h": 1,
+      "room": "office-qa"
+    },
+    {
+      "x": 49,
+      "y": 9,
+      "w": 10,
+      "h": 1,
+      "room": "office-analysts"
+    },
+    {
+      "x": 1,
+      "y": 10,
+      "w": 9,
+      "h": 1,
+      "room": "boss-office"
+    },
+    {
+      "x": 11,
+      "y": 10,
+      "w": 26,
+      "h": 1,
+      "room": "office-developers"
+    },
+    {
+      "x": 38,
+      "y": 10,
+      "w": 10,
+      "h": 1,
+      "room": "office-qa"
+    },
+    {
+      "x": 49,
+      "y": 10,
+      "w": 10,
+      "h": 1,
+      "room": "office-analysts"
+    },
+    {
+      "x": 1,
+      "y": 11,
+      "w": 9,
+      "h": 1,
+      "room": "boss-office"
+    },
+    {
+      "x": 11,
+      "y": 11,
+      "w": 26,
+      "h": 1,
+      "room": "office-developers"
+    },
+    {
+      "x": 38,
+      "y": 11,
+      "w": 10,
+      "h": 1,
+      "room": "office-qa"
+    },
+    {
+      "x": 49,
+      "y": 11,
+      "w": 10,
+      "h": 1,
+      "room": "office-analysts"
+    },
+    {
+      "x": 1,
+      "y": 12,
+      "w": 9,
+      "h": 1,
+      "room": "boss-office"
+    },
+    {
+      "x": 11,
+      "y": 12,
+      "w": 26,
+      "h": 1,
+      "room": "office-developers"
+    },
+    {
+      "x": 38,
+      "y": 12,
+      "w": 10,
+      "h": 1,
+      "room": "office-qa"
+    },
+    {
+      "x": 49,
+      "y": 12,
+      "w": 10,
+      "h": 1,
+      "room": "office-analysts"
+    },
+    {
+      "x": 1,
+      "y": 14,
+      "w": 58,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 1,
+      "y": 15,
+      "w": 58,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 1,
+      "y": 16,
+      "w": 58,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 1,
+      "y": 17,
+      "w": 58,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 20,
+      "y": 18,
+      "w": 4,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 1,
+      "y": 19,
+      "w": 7,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 8,
+      "y": 19,
+      "w": 11,
+      "h": 1,
+      "room": "reception"
+    },
+    {
+      "x": 19,
+      "y": 19,
+      "w": 5,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 25,
+      "y": 19,
+      "w": 12,
+      "h": 1,
+      "room": "meeting"
+    },
+    {
+      "x": 38,
+      "y": 19,
+      "w": 13,
+      "h": 1,
+      "room": "kitchen"
+    },
+    {
+      "x": 51,
+      "y": 19,
+      "w": 8,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 1,
+      "y": 20,
+      "w": 7,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 8,
+      "y": 20,
+      "w": 11,
+      "h": 1,
+      "room": "reception"
+    },
+    {
+      "x": 19,
+      "y": 20,
+      "w": 5,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 25,
+      "y": 20,
+      "w": 12,
+      "h": 1,
+      "room": "meeting"
+    },
+    {
+      "x": 38,
+      "y": 20,
+      "w": 13,
+      "h": 1,
+      "room": "kitchen"
+    },
+    {
+      "x": 51,
+      "y": 20,
+      "w": 8,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 1,
+      "y": 21,
+      "w": 7,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 8,
+      "y": 21,
+      "w": 11,
+      "h": 1,
+      "room": "reception"
+    },
+    {
+      "x": 19,
+      "y": 21,
+      "w": 5,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 25,
+      "y": 21,
+      "w": 12,
+      "h": 1,
+      "room": "meeting"
+    },
+    {
+      "x": 38,
+      "y": 21,
+      "w": 13,
+      "h": 1,
+      "room": "kitchen"
+    },
+    {
+      "x": 51,
+      "y": 21,
+      "w": 8,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 1,
+      "y": 22,
+      "w": 7,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 8,
+      "y": 22,
+      "w": 11,
+      "h": 1,
+      "room": "reception"
+    },
+    {
+      "x": 19,
+      "y": 22,
+      "w": 5,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 25,
+      "y": 22,
+      "w": 12,
+      "h": 1,
+      "room": "meeting"
+    },
+    {
+      "x": 38,
+      "y": 22,
+      "w": 13,
+      "h": 1,
+      "room": "kitchen"
+    },
+    {
+      "x": 51,
+      "y": 22,
+      "w": 8,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 1,
+      "y": 23,
+      "w": 7,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 8,
+      "y": 23,
+      "w": 11,
+      "h": 1,
+      "room": "reception"
+    },
+    {
+      "x": 19,
+      "y": 23,
+      "w": 5,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 25,
+      "y": 23,
+      "w": 12,
+      "h": 1,
+      "room": "meeting"
+    },
+    {
+      "x": 38,
+      "y": 23,
+      "w": 13,
+      "h": 1,
+      "room": "kitchen"
+    },
+    {
+      "x": 51,
+      "y": 23,
+      "w": 8,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 1,
+      "y": 24,
+      "w": 23,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 25,
+      "y": 24,
+      "w": 12,
+      "h": 1,
+      "room": "meeting"
+    },
+    {
+      "x": 38,
+      "y": 24,
+      "w": 13,
+      "h": 1,
+      "room": "kitchen"
+    },
+    {
+      "x": 51,
+      "y": 24,
+      "w": 8,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 1,
+      "y": 25,
+      "w": 23,
+      "h": 1,
+      "room": "corridor"
+    },
+    {
+      "x": 25,
+      "y": 25,
+      "w": 12,
+      "h": 1,
+      "room": "meeting"
+    },
+    {
+      "x": 38,
+      "y": 25,
+      "w": 13,
+      "h": 1,
+      "room": "kitchen"
+    },
+    {
+      "x": 51,
+      "y": 25,
+      "w": 8,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 51,
+      "y": 26,
+      "w": 8,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 1,
+      "y": 27,
+      "w": 15,
+      "h": 1,
+      "room": "toilets"
+    },
+    {
+      "x": 17,
+      "y": 27,
+      "w": 20,
+      "h": 1,
+      "room": "team-room"
+    },
+    {
+      "x": 38,
+      "y": 27,
+      "w": 21,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 1,
+      "y": 28,
+      "w": 15,
+      "h": 1,
+      "room": "toilets"
+    },
+    {
+      "x": 17,
+      "y": 28,
+      "w": 20,
+      "h": 1,
+      "room": "team-room"
+    },
+    {
+      "x": 38,
+      "y": 28,
+      "w": 21,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 1,
+      "y": 29,
+      "w": 15,
+      "h": 1,
+      "room": "toilets"
+    },
+    {
+      "x": 17,
+      "y": 29,
+      "w": 20,
+      "h": 1,
+      "room": "team-room"
+    },
+    {
+      "x": 38,
+      "y": 29,
+      "w": 21,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 1,
+      "y": 30,
+      "w": 15,
+      "h": 1,
+      "room": "toilets"
+    },
+    {
+      "x": 17,
+      "y": 30,
+      "w": 20,
+      "h": 1,
+      "room": "team-room"
+    },
+    {
+      "x": 38,
+      "y": 30,
+      "w": 21,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 1,
+      "y": 31,
+      "w": 15,
+      "h": 1,
+      "room": "toilets"
+    },
+    {
+      "x": 17,
+      "y": 31,
+      "w": 20,
+      "h": 1,
+      "room": "team-room"
+    },
+    {
+      "x": 38,
+      "y": 31,
+      "w": 21,
+      "h": 1,
+      "room": "terrace"
+    },
+    {
+      "x": 1,
+      "y": 32,
+      "w": 15,
+      "h": 1,
+      "room": "toilets"
+    },
+    {
+      "x": 17,
+      "y": 32,
+      "w": 20,
+      "h": 1,
+      "room": "team-room"
+    },
+    {
+      "x": 38,
+      "y": 32,
+      "w": 21,
+      "h": 1,
+      "room": "terrace"
+    }
+  ],
+  "doors": [
+    {
+      "x": 5,
+      "y": 13,
+      "w": 2,
+      "h": 1,
+      "kind": "door",
+      "facing": "n"
+    },
+    {
+      "x": 23,
+      "y": 13,
+      "w": 2,
+      "h": 1,
+      "kind": "glass-door",
+      "facing": "n"
+    },
+    {
+      "x": 42,
+      "y": 13,
+      "w": 2,
+      "h": 1,
+      "kind": "glass-door",
+      "facing": "n"
+    },
+    {
+      "x": 54,
+      "y": 13,
+      "w": 2,
+      "h": 1,
+      "kind": "glass-door",
+      "facing": "n"
+    },
+    {
+      "x": 42,
+      "y": 18,
+      "w": 2,
+      "h": 1,
+      "kind": "glass-door",
+      "facing": "s"
+    },
+    {
+      "x": 54,
+      "y": 18,
+      "w": 2,
+      "h": 1,
+      "kind": "glass-door",
+      "facing": "s"
+    },
+    {
+      "x": 24,
+      "y": 22,
+      "w": 1,
+      "h": 2,
+      "kind": "glass-door",
+      "facing": "e"
+    },
+    {
+      "x": 7,
+      "y": 30,
+      "w": 2,
+      "h": 1,
+      "kind": "door",
+      "facing": "n"
+    },
+    {
+      "x": 4,
+      "y": 30,
+      "w": 2,
+      "h": 1,
+      "kind": "door",
+      "facing": "n"
+    },
+    {
+      "x": 1,
+      "y": 30,
+      "w": 2,
+      "h": 1,
+      "kind": "door",
+      "facing": "n"
+    },
+    {
+      "x": 20,
+      "y": 26,
+      "w": 2,
+      "h": 1,
+      "kind": "glass-door",
+      "facing": "s"
+    },
+    {
+      "x": 12,
+      "y": 26,
+      "w": 2,
+      "h": 1,
+      "kind": "door",
+      "facing": "s"
+    },
+    {
+      "x": 37,
+      "y": 29,
+      "w": 1,
+      "h": 2,
+      "kind": "glass-door",
+      "facing": "e"
+    }
+  ],
+  "objects": [
+    {
+      "x": 40,
+      "y": 4,
+      "w": 6,
+      "h": 3,
+      "kind": "desk-qa",
+      "facing": "n"
+    },
+    {
+      "x": 40,
+      "y": 7,
+      "w": 6,
+      "h": 3,
+      "kind": "desk-qa",
+      "facing": "s"
+    },
+    {
+      "x": 51,
+      "y": 4,
+      "w": 6,
+      "h": 3,
+      "kind": "desk-analyst",
+      "facing": "n"
+    },
+    {
+      "x": 51,
+      "y": 7,
+      "w": 6,
+      "h": 3,
+      "kind": "desk-analyst",
+      "facing": "s"
+    },
+    {
+      "x": 13,
+      "y": 4,
+      "w": 6,
+      "h": 3,
+      "kind": "desk-developer",
+      "facing": "n"
+    },
+    {
+      "x": 13,
+      "y": 7,
+      "w": 6,
+      "h": 3,
+      "kind": "desk-developer",
+      "facing": "s"
+    },
+    {
+      "x": 21,
+      "y": 7,
+      "w": 6,
+      "h": 3,
+      "kind": "desk-developer",
+      "facing": "s"
+    },
+    {
+      "x": 29,
+      "y": 7,
+      "w": 6,
+      "h": 3,
+      "kind": "desk-developer",
+      "facing": "s"
+    },
+    {
+      "x": 29,
+      "y": 4,
+      "w": 6,
+      "h": 3,
+      "kind": "desk-developer",
+      "facing": "n"
+    },
+    {
+      "x": 21,
+      "y": 4,
+      "w": 6,
+      "h": 3,
+      "kind": "desk-developer",
+      "facing": "n"
+    },
+    {
+      "x": 2,
+      "y": 4,
+      "w": 6,
+      "h": 3,
+      "kind": "desk-boss",
+      "facing": "s"
+    },
+    {
+      "x": 2,
+      "y": 18,
+      "w": 5,
+      "h": 2,
+      "kind": "elevator",
+      "facing": "s"
+    },
+    {
+      "x": 15,
+      "y": 2,
+      "w": 2,
+      "h": 2,
+      "kind": "office-chair",
+      "facing": "s"
+    },
+    {
+      "x": 15,
+      "y": 10,
+      "w": 2,
+      "h": 2,
+      "kind": "office-chair",
+      "facing": "n"
+    },
+    {
+      "x": 23,
+      "y": 10,
+      "w": 2,
+      "h": 2,
+      "kind": "office-chair",
+      "facing": "n"
+    },
+    {
+      "x": 23,
+      "y": 2,
+      "w": 2,
+      "h": 2,
+      "kind": "office-chair",
+      "facing": "s"
+    },
+    {
+      "x": 31,
+      "y": 2,
+      "w": 2,
+      "h": 2,
+      "kind": "office-chair",
+      "facing": "s"
+    },
+    {
+      "x": 31,
+      "y": 10,
+      "w": 2,
+      "h": 2,
+      "kind": "office-chair",
+      "facing": "n"
+    },
+    {
+      "x": 42,
+      "y": 10,
+      "w": 2,
+      "h": 2,
+      "kind": "office-chair",
+      "facing": "n"
+    },
+    {
+      "x": 42,
+      "y": 2,
+      "w": 2,
+      "h": 2,
+      "kind": "office-chair",
+      "facing": "s"
+    },
+    {
+      "x": 53,
+      "y": 2,
+      "w": 2,
+      "h": 2,
+      "kind": "office-chair",
+      "facing": "s"
+    },
+    {
+      "x": 53,
+      "y": 10,
+      "w": 2,
+      "h": 2,
+      "kind": "office-chair",
+      "facing": "n"
+    },
+    {
+      "x": 1,
+      "y": 15,
+      "w": 2,
+      "h": 2,
+      "kind": "plant",
+      "facing": "s"
+    },
+    {
+      "x": 8,
+      "y": 1,
+      "w": 2,
+      "h": 2,
+      "kind": "plant",
+      "facing": "s"
+    },
+    {
+      "x": 11,
+      "y": 11,
+      "w": 2,
+      "h": 2,
+      "kind": "plant",
+      "facing": "s"
+    },
+    {
+      "x": 38,
+      "y": 1,
+      "w": 2,
+      "h": 2,
+      "kind": "plant",
+      "facing": "s"
+    },
+    {
+      "x": 57,
+      "y": 1,
+      "w": 2,
+      "h": 2,
+      "kind": "plant",
+      "facing": "s"
+    },
+    {
+      "x": 57,
+      "y": 15,
+      "w": 2,
+      "h": 2,
+      "kind": "plant",
+      "facing": "s"
+    },
+    {
+      "x": 38,
+      "y": 31,
+      "w": 2,
+      "h": 2,
+      "kind": "plant",
+      "facing": "s"
+    },
+    {
+      "x": 38,
+      "y": 27,
+      "w": 2,
+      "h": 2,
+      "kind": "plant",
+      "facing": "s"
+    },
+    {
+      "x": 1,
+      "y": 24,
+      "w": 2,
+      "h": 2,
+      "kind": "plant",
+      "facing": "s"
+    },
+    {
+      "x": 22,
+      "y": 24,
+      "w": 2,
+      "h": 2,
+      "kind": "plant",
+      "facing": "s"
+    },
+    {
+      "x": 35,
+      "y": 11,
+      "w": 2,
+      "h": 2,
+      "kind": "plant",
+      "facing": "s"
+    },
+    {
+      "x": 59,
+      "y": 6,
+      "w": 1,
+      "h": 4,
+      "kind": "air-conditioning",
+      "facing": "w"
+    },
+    {
+      "x": 22,
+      "y": 0,
+      "w": 4,
+      "h": 1,
+      "kind": "air-conditioning",
+      "facing": "s"
+    },
+    {
+      "x": 26,
+      "y": 26,
+      "w": 4,
+      "h": 1,
+      "kind": "air-conditioning",
+      "facing": "s"
+    },
+    {
+      "x": 9,
+      "y": 29,
+      "w": 1,
+      "h": 1,
+      "kind": "hand-dryer",
+      "facing": "e"
+    },
+    {
+      "x": 38,
+      "y": 19,
+      "w": 2,
+      "h": 2,
+      "kind": "bin",
+      "facing": "e"
+    }
+  ]
+}

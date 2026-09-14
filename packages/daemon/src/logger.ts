@@ -11,10 +11,16 @@ const sizeOf = async (file: string): Promise<number> =>
   (await stat(file).catch(() => null))?.size ?? 0;
 
 /**
- * One previous file is kept, so the desktop app's log costs at most two of these. `reopen()` is what
- * `pino.destination` offers for exactly this: continue writing after the file has been moved away.
+ * NDJSON to stdout by default; the desktop app, whose stdout nobody sees, logs to a file that rotates at
+ * 8 MiB and keeps one previous file. `reopen()` is what `pino.destination` offers for exactly this.
  */
-const rotatingDestination = (file: string): ReturnType<typeof destination> => {
+export const createLogger = (
+  level: DaemonConfig["logLevel"],
+  file?: string,
+): { log: Logger; close: () => void } => {
+  if (file === undefined) {
+    return { log: pino({ level, base: { app: "ho" } }), close: () => undefined };
+  }
   const dest = destination({ dest: file, mkdir: true, sync: true });
   const timer = setInterval(() => {
     void (async () => {
@@ -26,11 +32,10 @@ const rotatingDestination = (file: string): ReturnType<typeof destination> => {
     })();
   }, CHECK_EVERY_MS);
   timer.unref();
-  return dest;
+  return {
+    log: pino({ level, base: { app: "ho" } }, dest),
+    close: () => {
+      clearInterval(timer);
+    },
+  };
 };
-
-/** NDJSON to stdout by default; the desktop app, whose stdout nobody sees, logs to a rotated file. */
-export const createLogger = (level: DaemonConfig["logLevel"], file?: string): Logger =>
-  file === undefined
-    ? pino({ level, base: { app: "ho" } })
-    : pino({ level, base: { app: "ho" } }, rotatingDestination(file));

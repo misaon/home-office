@@ -19,10 +19,6 @@ export class Camera {
   #view: Size = { width: 1, height: 1 };
   #world: Size = { width: 1, height: 1 };
 
-  get zoom(): number {
-    return this.#zoom;
-  }
-
   /** World pixels to canvas pixels. */
   get scale(): number {
     return this.#zoom / CELL_PX;
@@ -51,6 +47,14 @@ export class Camera {
   fit(): void {
     this.#zoom = this.#fitZoom();
     this.#clamp();
+  }
+
+  /** The cell under a canvas pixel (may be off the map). */
+  cellAt(canvasX: number, canvasY: number): { x: number; y: number } {
+    return {
+      x: Math.floor((this.#x + canvasX / this.scale) / CELL_PX),
+      y: Math.floor((this.#y + canvasY / this.scale) / CELL_PX),
+    };
   }
 
   /** The zoom at which the whole floor is visible; also the furthest the camera can be pulled back. */

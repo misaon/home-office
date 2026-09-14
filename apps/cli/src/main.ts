@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
 import { errorMessage } from "@ho/protocol";
+import { run } from "./cli.ts";
+import { COMMANDS } from "./commands/index.ts";
 import { fail } from "./output.ts";
-import { run } from "./commands/run.ts";
 
 try {
-  await run(process.argv.slice(2));
+  await run(COMMANDS, process.argv.slice(2));
 } catch (error) {
   fail(errorMessage(error));
 }

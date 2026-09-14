@@ -1,42 +1,48 @@
-import { useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-/** A centred dialog with a header, a body on its own rhythm and a footer for its actions. Escape closes it. */
+/**
+ * shadcn's dialog, under the office's own name. It brings its own overlay, focus trap, Escape handling
+ * and the animation both ways, which is why nothing here draws or times any of that.
+ */
 export function Modal({
+  open,
   title,
   description,
   footer,
   onClose,
   children,
 }: {
+  open: boolean;
   title: string;
   description: React.ReactNode;
   footer: React.ReactNode;
   onClose: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [onClose]);
   return (
-    <div className="absolute inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/75 p-8">
-      <div className="my-auto w-full max-w-xl overflow-hidden rounded-xl border border-line bg-panel shadow-2xl">
-        <header className="border-b border-line px-6 py-5">
-          <h2 className="text-base font-semibold">{title}</h2>
-          <p className="mt-2 text-xs leading-relaxed text-gray-400">{description}</p>
-        </header>
-        <div className="space-y-6 px-6 py-6">{children}</div>
-        <footer className="flex items-center justify-end gap-3 border-t border-line bg-ink/50 px-6 py-4">
-          {footer}
-        </footer>
-      </div>
-    </div>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-6">{children}</div>
+        <DialogFooter>{footer}</DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

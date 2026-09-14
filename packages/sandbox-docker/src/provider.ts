@@ -1,56 +1,38 @@
-import { errorMessage } from "@ho/protocol";
 import type {
+  PruneReport,
+  PruneScope,
   SandboxHandle,
   SandboxProvider,
   SandboxRunResult,
   SandboxSpec,
-  TaskEngineProvider,
-  VolumeRef,
 } from "@ho/core";
+import { errorMessage, type ResourceInventory } from "@ho/protocol";
 import {
+  ContainerList,
+  createContainer,
+  createDockerApi,
   Created,
+  demux,
   type DockerApi,
   DockerApiError,
+  hostLimits,
+  ImageList,
+  labelFilter,
+  nameOf,
   NetworkList,
+  removeContainer,
+  startContainer,
+  stopContainer,
+  SystemDf,
   Version,
+  volumeMounts,
+  VolumeList,
   Wait,
-  createDockerApi,
-  demux,
 } from "./api.ts";
-import { startEngine, stopEngine } from "./engine.ts";
-import { inventory, prune, removeContainer, snapshot } from "./housekeeping.ts";
+import { startEngine } from "./engine.ts";
 import { buildImage, imageHash } from "./image.ts";
 
-const CPU_NANOS = 1_000_000_000;
-
-export type DockerProviderOptions = { socket?: string; platform?: string };
-
-type ContainerCreateBody = {
-  Image: string;
-  Cmd: string[];
-  User: string;
-  WorkingDir: string;
-  Env: string[];
-  Labels: Record<string, string>;
-  HostConfig: {
-    NetworkMode: string;
-    ExtraHosts: string[];
-    Binds: string[];
-    Mounts: { Type: string; Source: string; Target: string; ReadOnly: boolean }[];
-    Tmpfs: Record<string, string>;
-    CapDrop: string[];
-    SecurityOpt: string[];
-    ReadonlyRootfs: boolean;
-    Memory: number;
-    MemorySwap: number;
-    LogConfig: { Type: string; Config: Record<string, string> };
-    NanoCpus: number;
-    PidsLimit: number;
-    Init: boolean;
-  };
-};
-
-const containerConfig = (spec: SandboxSpec): ContainerCreateBody => ({
+const containerConfig = (spec: SandboxSpec): unknown => ({
   Image: spec.image,
   Cmd: [...spec.cmd],
   User: spec.user,
@@ -61,75 +43,156 @@ const containerConfig = (spec: SandboxSpec): ContainerCreateBody => ({
     NetworkMode: spec.network,
     ExtraHosts: ["host.docker.internal:host-gateway"],
     Binds: spec.binds.map((b) => `${b.source}:${b.target}${b.readonly ? ":ro" : ""}`),
-    Mounts: spec.volumes.map((v) => ({
-      Type: "volume",
-      Source: v.name,
-      Target: v.target,
-      ReadOnly: v.readonly === true,
-    })),
+    Mounts: volumeMounts(spec.volumes),
     Tmpfs: { ...spec.tmpfs },
     CapDrop: ["ALL"],
     SecurityOpt: ["no-new-privileges"],
     ReadonlyRootfs: spec.readonlyRootfs,
-    Memory: spec.limits.memoryBytes,
-    MemorySwap: spec.limits.memoryBytes,
-    LogConfig: { Type: "local", Config: { "max-size": "10m", "max-file": "2" } },
-    NanoCpus: Math.round(spec.limits.cpus * CPU_NANOS),
-    PidsLimit: spec.limits.pids,
     Init: true,
+    ...hostLimits(spec.limits),
   },
 });
-
-const createContainer = async (api: DockerApi, spec: SandboxSpec): Promise<string> =>
-  (
-    await api.json(
-      Created,
-      "POST",
-      `/containers/create?name=${encodeURIComponent(spec.name)}`,
-      containerConfig(spec),
-    )
-  ).Id;
 
 async function runToCompletion(
   api: DockerApi,
   spec: SandboxSpec,
   timeoutMs: number,
 ): Promise<SandboxRunResult> {
-  const started = performance.now();
-  const id = await createContainer(api, spec);
+  const id = await createContainer(api, spec.name, containerConfig(spec));
   const controller = new AbortController();
   const timer = setTimeout(() => {
     controller.abort();
   }, timeoutMs);
   try {
-    await api.raw("POST", `/containers/${encodeURIComponent(id)}/start`);
+    await startContainer(api, id);
+    const path = `/containers/${encodeURIComponent(id)}`;
     const { StatusCode } = Wait.parse(
-      await (
-        await api.raw(
-          "POST",
-          `/containers/${encodeURIComponent(id)}/wait`,
-          undefined,
-          controller.signal,
-        )
-      ).json(),
+      await (await api.raw("POST", `${path}/wait`, undefined, controller.signal)).json(),
     );
     const logs = demux(
-      new Uint8Array(
-        await (
-          await api.raw("GET", `/containers/${encodeURIComponent(id)}/logs?stdout=1&stderr=1`)
-        ).arrayBuffer(),
-      ),
+      new Uint8Array(await (await api.raw("GET", `${path}/logs?stdout=1&stderr=1`)).arrayBuffer()),
     );
-    return { exitCode: StatusCode, ...logs, durationMs: performance.now() - started };
+    return { exitCode: StatusCode, ...logs };
   } finally {
     clearTimeout(timer);
     await removeContainer(api, id);
   }
 }
 
-export function createDockerProvider(
-  options: DockerProviderOptions = {},
-): SandboxProvider & TaskEngineProvider {
+// ---- housekeeping --------------------------------------------------------------------------------
+
+const removeVolumeIfFree = async (api: DockerApi, name: string): Promise<boolean> => {
+  try {
+    await api.raw("DELETE", `/volumes/${encodeURIComponent(name)}`);
+    return true;
+  } catch (error) {
+    // 404: already gone; 409: still in use by a container, leave it for the next sweep.
+    if (error instanceof DockerApiError && (error.status === 404 || error.status === 409)) {
+      return false;
+    }
+    throw error;
+  }
+};
+
+async function prune(api: DockerApi, scope: PruneScope): Promise<PruneReport> {
+  const report: PruneReport = { containers: [], volumes: [], images: [] };
+  const cutoff =
+    scope.olderThanMs === undefined ? Number.POSITIVE_INFINITY : Date.now() - scope.olderThanMs;
+  if (scope.kinds.includes("containers")) {
+    const containers = await api.json(
+      ContainerList,
+      "GET",
+      `/containers/json?all=1&filters=${labelFilter(scope.labels)}`,
+    );
+    for (const c of containers) {
+      // "created" is the window between create and start: that container belongs to a session being born.
+      if (c.State !== "running" && c.State !== "created" && c.Created * 1000 <= cutoff) {
+        await removeContainer(api, c.Id);
+        report.containers.push(nameOf(c));
+      }
+    }
+  }
+  if (scope.kinds.includes("volumes")) {
+    const volumes =
+      (await api.json(VolumeList, "GET", `/volumes?filters=${labelFilter(scope.labels)}`))
+        .Volumes ?? [];
+    for (const v of volumes) {
+      const createdAt = v.CreatedAt === undefined ? 0 : new Date(v.CreatedAt).getTime();
+      if (createdAt <= cutoff && (await removeVolumeIfFree(api, v.Name))) {
+        report.volumes.push(v.Name);
+      }
+    }
+  }
+  if (scope.kinds.includes("images")) {
+    const images = await api.json(
+      ImageList,
+      "GET",
+      `/images/json?filters=${labelFilter(scope.labels, { dangling: ["true"] })}`,
+    );
+    for (const image of images) {
+      if (image.Created * 1000 <= cutoff) {
+        await api.maybe("DELETE", `/images/${image.Id}`);
+        report.images.push(image.Id);
+      }
+    }
+  }
+  return report;
+}
+
+const iso = (seconds: number): string => new Date(seconds * 1000).toISOString();
+const isoOrNull = (value: string | undefined): string | null => {
+  if (value === undefined) {
+    return null;
+  }
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? null : new Date(time).toISOString();
+};
+
+async function inventory(
+  api: DockerApi,
+  labels: Readonly<Record<string, string>>,
+): Promise<ResourceInventory> {
+  const [containers, volumes, df] = await Promise.all([
+    api.json(ContainerList, "GET", `/containers/json?all=1&filters=${labelFilter(labels)}`),
+    api.json(VolumeList, "GET", `/volumes?filters=${labelFilter(labels)}`),
+    api.json(SystemDf, "GET", "/system/df"),
+  ]);
+  const has = (candidate: Record<string, string> | null): boolean =>
+    Object.entries(labels).every(([k, v]) => candidate?.[k] === v);
+  const owned = (df.Volumes ?? []).filter((v) => has(v.Labels));
+  const sizes = new Map(owned.map((v) => [v.Name, v.UsageData?.Size ?? null] as const));
+  return {
+    snapshot: {
+      containers: containers.length,
+      volumes: owned.length,
+      imagesBytes: (df.Images ?? [])
+        .filter((i) => has(i.Labels))
+        .reduce((sum, i) => sum + i.Size, 0),
+      volumesBytes: owned.reduce((sum, v) => sum + (v.UsageData?.Size ?? 0), 0),
+    },
+    containers: containers.map((c) => ({
+      name: nameOf(c),
+      state: c.State,
+      kind: c.Labels?.["ho.kind"] ?? "unknown",
+      sessionId: c.Labels?.["ho.session"] ?? null,
+      createdAt: iso(c.Created),
+    })),
+    volumes: (volumes.Volumes ?? []).map((v) => ({
+      name: v.Name,
+      kind: v.Labels?.["ho.kind"] ?? "unknown",
+      sessionId: v.Labels?.["ho.session"] ?? null,
+      createdAt: isoOrNull(v.CreatedAt),
+      sizeBytes: sizes.get(v.Name) ?? null,
+    })),
+  };
+}
+
+// ---- the provider --------------------------------------------------------------------------------
+
+export function createDockerProvider(options: {
+  socket: string;
+  platform?: string;
+}): SandboxProvider {
   const api = createDockerApi(options.socket);
   return {
     id: "docker",
@@ -141,14 +204,10 @@ export function createDockerProvider(
         return { ok: false, message: errorMessage(error) };
       }
     },
-    ensureImage: async (spec, onProgress) => {
+    imageHash: (ref) => imageHash(api, ref),
+    ensureImage: async (spec, onLine = () => undefined, signal) => {
       if ((await imageHash(api, spec.ref)) !== spec.contentHash) {
-        await buildImage(
-          spec,
-          options.platform,
-          options.socket ?? "/var/run/docker.sock",
-          onProgress,
-        );
+        await buildImage(spec, options.platform, options.socket, onLine, signal);
       }
     },
     ensureNetwork: async (name, labels) => {
@@ -169,49 +228,25 @@ export function createDockerProvider(
         Labels: { ...labels },
         ...(driverOpts === undefined ? {} : { Driver: "local", DriverOpts: { ...driverOpts } }),
       });
-      return { name };
     },
-    removeVolume: async (ref: VolumeRef) => {
-      await api.maybe("DELETE", `/volumes/${encodeURIComponent(ref.name)}?force=1`);
+    removeVolume: async (name) => {
+      await api.maybe("DELETE", `/volumes/${encodeURIComponent(name)}?force=1`);
     },
     start: async (spec) => {
-      const id = await createContainer(api, spec);
+      const id = await createContainer(api, spec.name, containerConfig(spec));
       try {
-        await api.raw("POST", `/containers/${encodeURIComponent(id)}/start`);
+        await startContainer(api, id);
       } catch (error) {
         await removeContainer(api, id);
         throw error;
       }
       return { id, name: spec.name };
     },
-    stop: async (handle, graceSeconds = 5) => {
-      try {
-        await api.raw(
-          "POST",
-          `/containers/${encodeURIComponent(handle.id)}/stop?t=${String(graceSeconds)}`,
-        );
-      } catch (error) {
-        // 304: already stopped; 404: already gone.
-        if (!(error instanceof DockerApiError && (error.status === 304 || error.status === 404))) {
-          throw error;
-        }
-      }
-    },
-    remove: async (handle: SandboxHandle) => {
-      await removeContainer(api, handle.id);
-    },
-    run: (spec, timeoutMs = 120_000) => runToCompletion(api, spec, timeoutMs),
     startEngine: (spec, readyTimeoutMs) => startEngine(api, spec, readyTimeoutMs),
-    stopEngine: (handle, graceSeconds) => stopEngine(api, handle, graceSeconds),
-    logs: async (handle, tail = 200) => {
-      const res = await api.raw(
-        "GET",
-        `/containers/${encodeURIComponent(handle.id)}/logs?stdout=1&stderr=1&tail=${String(tail)}`,
-      );
-      return demux(new Uint8Array(await res.arrayBuffer()));
-    },
+    stop: (handle: SandboxHandle, graceSeconds = 5) => stopContainer(api, handle.id, graceSeconds),
+    remove: (handle) => removeContainer(api, handle.id),
+    run: (spec, timeoutMs = 120_000) => runToCompletion(api, spec, timeoutMs),
     prune: (scope) => prune(api, scope),
-    snapshot: (labels) => snapshot(api, labels),
     inventory: (labels) => inventory(api, labels),
   };
 }

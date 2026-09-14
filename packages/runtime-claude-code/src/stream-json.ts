@@ -1,10 +1,11 @@
 // Claude Code `--output-format stream-json` events, validated loosely: only the fields we consume.
-import { compact } from "@ho/protocol";
-import type { RuntimeErrorCode, RuntimeEvent } from "@ho/core";
+import { compact, type RuntimeErrorCode, type RuntimeEvent } from "@ho/protocol";
 import { z } from "zod";
 
+const TextBlock = z.object({ type: z.literal("text"), text: z.string() });
+
 const ContentBlock = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("text"), text: z.string() }),
+  TextBlock,
   z.object({ type: z.literal("tool_use"), id: z.string(), name: z.string(), input: z.unknown() }),
   z.object({
     type: z.literal("tool_result"),
@@ -22,7 +23,7 @@ const Usage = z.object({
   cache_read_input_tokens: z.int().nonnegative().default(0),
 });
 
-export const StreamLine = z.discriminatedUnion("type", [
+const StreamLine = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("system"),
     subtype: z.string(),
@@ -59,8 +60,6 @@ export const StreamLine = z.discriminatedUnion("type", [
     usage: Usage.optional(),
   }),
 ]);
-export type StreamLine = z.infer<typeof StreamLine>;
-
 const SUMMARY_MAX = 200;
 const summarize = (content: string | unknown[] | undefined): string => {
   if (content === undefined) {
@@ -71,22 +70,20 @@ const summarize = (content: string | unknown[] | undefined): string => {
       ? content
       : content
           .map((block) => {
-            const parsed = z.object({ type: z.literal("text"), text: z.string() }).safeParse(block);
+            const parsed = TextBlock.safeParse(block);
             return parsed.success ? parsed.data.text : "";
           })
           .join(" ");
   return text.length > SUMMARY_MAX ? `${text.slice(0, SUMMARY_MAX - 1)}…` : text;
 };
 
+/** `api_retry` errors worth surfacing; rate limits have their own event and transient server errors none. */
 const RETRY_ERROR_CODES: Readonly<Record<string, RuntimeErrorCode>> = {
   authentication_failed: "authentication_failed",
   oauth_org_not_allowed: "authentication_failed",
   billing_error: "billing_error",
-  rate_limit: "rate_limit",
   model_not_found: "model_not_found",
   invalid_request: "invalid_request",
-  server_error: "server_error",
-  overloaded: "server_error",
 };
 
 /** Parses one stdout line. Returns the normalised events it implies; unknown lines yield nothing. */
@@ -127,18 +124,10 @@ export function normalizeLine(raw: string, now: () => Date): RuntimeEvent[] {
             : new Date(now().getTime() + line.retry_delay_ms).toISOString();
         return [{ kind: "rate_limited", retryAt }];
       }
-      if (
-        line.subtype === "api_retry" &&
-        line.error !== undefined &&
-        line.error in RETRY_ERROR_CODES &&
-        line.error !== "rate_limit"
-      ) {
-        const code = RETRY_ERROR_CODES[line.error] ?? "unknown";
-        return code === "server_error"
-          ? []
-          : [{ kind: "error", code, message: `api retry: ${line.error}` }];
-      }
-      return [];
+      const code = line.error === undefined ? undefined : RETRY_ERROR_CODES[line.error];
+      return line.subtype === "api_retry" && code !== undefined
+        ? [{ kind: "error", code, message: `api retry: ${line.error ?? ""}` }]
+        : [];
     }
     case "assistant": {
       return line.message.content.flatMap((block): RuntimeEvent[] =>

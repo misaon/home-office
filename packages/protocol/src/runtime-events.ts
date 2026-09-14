@@ -80,13 +80,13 @@ export const ProviderHealth = z.discriminatedUnion("ok", [
 ]);
 export type ProviderHealth = z.infer<typeof ProviderHealth>;
 
-export const ResourceSnapshot = z.object({
+const ResourceSnapshot = z.object({
   containers: z.int().nonnegative(),
   volumes: z.int().nonnegative(),
   imagesBytes: z.int().nonnegative(),
   volumesBytes: z.int().nonnegative(),
 });
-export type ResourceSnapshot = z.infer<typeof ResourceSnapshot>;
+type ResourceSnapshot = z.infer<typeof ResourceSnapshot>;
 
 export const ResourceInventory = z.object({
   snapshot: ResourceSnapshot,

@@ -1,10 +1,10 @@
 import { type Facing, OBJECT_SPEC } from "@ho/protocol";
 import { CELL_PX } from "@ho/sim";
 import { Graphics } from "pixi.js";
-import type { Draft } from "./draft.ts";
+import type { OfficeDraft } from "./draft.ts";
 
 /** An arrow through the middle of a shape, in cell coordinates, pointing the way it is turned. */
-export type Arrow = { x: number; y: number; dx: number; dy: number };
+type Arrow = { x: number; y: number; dx: number; dy: number };
 
 const STEP: Readonly<Record<Facing, { dx: number; dy: number }>> = {
   n: { dx: 0, dy: -1 },
@@ -28,7 +28,7 @@ export const arrowFor = (
 };
 
 /** Doorways always show which way they open; furniture only where its direction means something. */
-export const arrowsOf = (draft: Draft): Arrow[] => [
+export const arrowsOf = (draft: OfficeDraft): Arrow[] => [
   ...draft.doors.map((door) => arrowFor(door, door.facing)),
   ...draft.objects
     .filter((object) => OBJECT_SPEC[object.kind].arrow)

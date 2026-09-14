@@ -6,7 +6,8 @@
       "project": ["scripts/**/*.ts"]
     },
     "packages/*": {
-      "project": ["src/**/*.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx}"],
+      "includeEntryExports": true
     },
     "spikes/*": {
       "entry": ["src/*.ts"],
@@ -17,12 +18,12 @@
       "project": ["src/**/*.ts"]
     },
     "packages/ui": {
-      "entry": ["src/main.tsx", "src/styles.css"],
-      "project": ["src/**/*.{ts,tsx,css}"]
+      "entry": ["src/main.tsx", "src/styles.css", "src/design/main.tsx", "src/design/design.css"],
+      "project": ["src/**/*.{ts,tsx,css}"],
+      "ignore": ["src/components/ui/**"]
     },
     "apps/cli": {
       "project": ["src/**/*.ts"]
     }
-  },
-  "ignoreWorkspaces": ["packages/agent-kit"]
+  }
 }

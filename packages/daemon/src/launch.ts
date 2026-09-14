@@ -1,25 +1,60 @@
-import { createIdFactory } from "@ho/core";
+import { createGithubIssuesConnector } from "@ho/intake-github";
 import { createDockerProvider } from "@ho/sandbox-docker";
 import { createSecretStore } from "@ho/secrets";
-import { recoverSessions } from "./recover-sessions.ts";
 import { startBossVoice } from "./boss-voice.ts";
-import { openOffice } from "./open-office.ts";
 import { DaemonConfig, loadConfig } from "./config.ts";
 import { type DaemonInfo, removeDaemonInfo, writeDaemonInfo } from "./daemon-info.ts";
-import { buildsImages, resolveResources } from "./paths.ts";
+import { startGc } from "./gc.ts";
+import { type DirectoryPicker, osascriptDirectoryPicker } from "./host-dialog.ts";
+import { IntakeService } from "./intake.ts";
 import { createLogger } from "./logger.ts";
-import { OfficeGate } from "./office-gate.ts";
-import { createJobs } from "./jobs.ts";
 import { McpGateway } from "./mcp.ts";
+import { OfficeGate } from "./office-gate.ts";
+import { openOffice } from "./office.ts";
+import { buildsImages, resolveResources } from "./paths.ts";
 import { RunnerGateway } from "./runner-gateway.ts";
-import { createRpcContext } from "./rpc/context.ts";
 import { createRuntimes } from "./runtimes.ts";
+import { startScheduler } from "./scheduler.ts";
 import { startServer } from "./server.ts";
 import { SessionManager } from "./sessions.ts";
-
-import type { DaemonHandle, DaemonOptions } from "./index.ts";
 import { VERSION } from "./version.ts";
 
+/** How long `stop()` waits for sessions, jobs and the server before giving up on them. */
+const STOP_TIMEOUT_MS = 20_000;
+
+export type DaemonHandle = {
+  info: DaemonInfo;
+  config: DaemonConfig;
+  /** Stops sessions, jobs and the server, removes daemon.json and releases the lock; bounded by 20 s. */
+  stop: () => Promise<void>;
+};
+
+export type DaemonOptions = {
+  /** State directory (config.json, ho.db, daemon.json, logs/); defaults to `HO_HOME` or `~/.config/home-office`. */
+  home?: string;
+  overrides?: Partial<DaemonConfig>;
+  /** Where image contexts and the UI bundle live; defaults to the repository. */
+  resourcesRoot?: string;
+  /** Log to this file instead of stdout (the desktop app has no visible stdout). */
+  logFile?: string;
+  /**
+   * Shows the host's directory dialog. The desktop app injects a panel owned by its own window;
+   * without one the daemon falls back to macOS `osascript`.
+   */
+  pickDirectory?: DirectoryPicker;
+};
+
+const withDeadline = (work: Promise<void>, ms: number): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`daemon did not stop within ${String(ms)} ms`));
+    }, ms);
+    work.then(resolve, reject).finally(() => {
+      clearTimeout(timer);
+    });
+  });
+
+/** Everything the daemon is made of, wired in dependency order; `cleanup` unwinds it in reverse. */
 export async function launchDaemon(
   options: DaemonOptions,
   home: string,
@@ -30,18 +65,11 @@ export async function launchDaemon(
     ...(await loadConfig(home, resources)),
     ...options.overrides,
   });
-  const log = createLogger(config.logLevel, options.logFile);
+  const { log, close: closeLog } = createLogger(config.logLevel, options.logFile);
+  cleanup.defer(closeLog);
   const clock = { now: () => new Date() };
-  const ids = createIdFactory(clock, {
-    randomize: (bytes) => {
-      crypto.getRandomValues(bytes);
-    },
-  });
-
-  const { database, office } = await openOffice(home, resources.migrationsDir, ids, clock, log);
-  cleanup.defer(() => {
-    database.close();
-  });
+  const { office, attachments, close: closeStore } = await openOffice(home, clock, log);
+  cleanup.defer(closeStore);
   const secrets = createSecretStore(home, config.secrets.store, (reason) => {
     log.warn({ reason }, "no OS credential store; using the file secret store");
   });
@@ -49,88 +77,86 @@ export async function launchDaemon(
     socket: config.docker.socket,
     platform: config.docker.platform,
   });
-  await recoverSessions(office, provider);
-  const runtimes = createRuntimes(log, clock);
-  const gateway = new RunnerGateway(clock, log);
+  const gateway = new RunnerGateway(log);
   const mcp = new McpGateway(office, log);
   const gate = new OfficeGate(log);
-
-  const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url");
-  const startedAt = clock.now().toISOString();
-  // The port is known only after listening; sessions read the URL lazily through this holder.
-  const gatewayUrl = { value: "" };
-  const mcpUrl = { value: "" };
+  // The port is known only after listening; sessions read the URLs lazily.
+  let port = config.port;
   const sessions = new SessionManager({
     office,
     provider,
-    runtimes,
+    runtimes: createRuntimes(log, clock),
     gateway,
     mcp,
+    attachments,
     secrets,
     config,
     home,
     log,
-    get gatewayUrl() {
-      return gatewayUrl.value;
-    },
-    get mcpUrl() {
-      return mcpUrl.value;
-    },
+    gatewayUrl: () => `ws://${config.docker.gatewayHost}:${String(port)}`,
+    mcpUrl: () => `http://${config.docker.gatewayHost}:${String(port)}${McpGateway.path}`,
   });
-
-  cleanup.defer(() => sessions.stopAll());
-  const jobs = createJobs({ office, sessions, provider, config, gate, log });
-  cleanup.defer(() => jobs.stop());
+  await sessions.recover();
+  const intake = new IntakeService(office, createGithubIssuesConnector(), log);
+  const gc = startGc(provider, config, log);
+  cleanup.defer(() => gc.stop());
+  const startedAt = clock.now().toISOString();
   const server = startServer({
     host: config.host,
     port: config.port,
-    token,
+    uiDir: config.ui.dir,
     gateway,
     mcp,
     log,
-    context: createRpcContext({
+    context: {
       office,
       sessions,
+      attachments,
       gate,
-      intake: jobs.intake,
+      intake,
       provider,
       secrets,
       config,
       resources,
       version: VERSION,
       startedAt,
-      gc: jobs.gcOnce,
-      pickDirectory: options.pickDirectory,
+      gc: gc.runOnce,
+      pickDirectory: options.pickDirectory ?? osascriptDirectoryPicker,
       log,
-    }),
+    },
   });
-  cleanup.defer(() => server.stop());
-  gatewayUrl.value = `ws://${config.docker.gatewayHost}:${String(server.port)}`;
-  mcpUrl.value = `http://${config.docker.gatewayHost}:${String(server.port)}${McpGateway.path}`;
-
+  // One callback, because the order matters: sessions end (stdin, SIGTERM, SIGKILL, settle) while their
+  // runner sockets are still open, and only then does the server force the rest of its connections shut.
+  cleanup.defer(async () => {
+    await sessions.stopAll();
+    await server.stop();
+  });
+  port = server.port;
   const info: DaemonInfo = {
     host: config.host,
-    port: server.port,
-    token,
+    port,
+    token: server.token,
     pid: process.pid,
     startedAt,
     version: VERSION,
-    serves: { ui: resources.uiDir !== null, images: buildsImages(resources) },
+    serves: { ui: config.ui.dir !== null, images: buildsImages(resources) },
   };
   await writeDaemonInfo(home, info);
-
   cleanup.defer(() => removeDaemonInfo(home));
   const voice = startBossVoice(office, gate, log);
   cleanup.defer(() => voice.stop());
-  jobs.start();
+  const scheduler = startScheduler(office, sessions, config, gate, log);
+  cleanup.defer(() => scheduler.stop());
+  intake.start();
+  cleanup.defer(() => intake.stop());
   let stopping: Promise<void> | null = null;
   const stop = (): Promise<void> => {
     if (stopping === null) {
       log.info("daemon stopping");
-      stopping = cleanup.disposeAsync();
+      stopping = withDeadline(cleanup.disposeAsync(), STOP_TIMEOUT_MS);
     }
     return stopping;
   };
   log.info({ home, resources: resources.root }, "daemon started");
-  return { info, office, config, stop };
+  return { info, config, stop };
 }

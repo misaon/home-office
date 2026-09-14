@@ -1,32 +1,29 @@
 import {
-  chatOf,
-  assignTask,
+  answerQuestion,
   copyAgent,
   createAgent,
   createChannel,
   createProject,
-  createTask,
-  editTask,
-  isSessionActive,
-  sessionsOfTask,
-  postChatMessage,
   removeAgent,
   removeProject,
-  setTaskArtifacts,
-  transitionTask,
+  sessionsOfTask,
+  triageMessage,
   updateAgent,
   updateProject,
 } from "@ho/core";
-import { contract, SecretKeyName, type StoredEvent } from "@ho/protocol";
-import { implement, ORPCError } from "@orpc/server";
-import type { RpcContext } from "./context.ts";
+import { errorMessage, HUMAN_ACTOR, isSessionActive, SecretKeyName } from "@ho/protocol";
+import { os } from "./implement.ts";
+import { taskRoutes } from "./tasks.ts";
+import { ensureImages, imageStatus, neededVariants } from "../images.ts";
+import { MANAGED } from "../labels.ts";
+import { listLayouts, saveLayout } from "../layouts.ts";
+import { buildsImages } from "../paths.ts";
+import { inspectRepo } from "../repo-inspect.ts";
+import { usageSummary } from "../usage.ts";
 import { guarded } from "./guarded.ts";
 
-const os = implement(contract).$context<RpcContext>();
-
 const base = os.use(guarded);
-const HUMAN = { kind: "human" } as const;
-const MANAGED = { "ho.managed": "true" } as const;
+const PRESENCE_BEAT_MS = 15_000;
 
 /** Bridges a callback-style producer into an async generator without dropping lines. */
 async function* linesFrom(
@@ -34,21 +31,35 @@ async function* linesFrom(
   signal: AbortSignal | undefined,
 ): AsyncGenerator<{ line: string }> {
   const channel = createChannel<{ line: string }>(signal);
-  const state: { failure: Error | null } = { failure: null };
+  const state: { failure: unknown } = { failure: null };
   void run((line) => {
     channel.push({ line });
   })
     .catch((error: unknown) => {
-      state.failure = error instanceof Error ? error : new Error(String(error));
+      state.failure = error;
     })
     .finally(() => {
       channel.close();
     });
   yield* channel.iterate();
   if (state.failure !== null) {
-    throw new ORPCError("INTERNAL_SERVER_ERROR", { message: state.failure.message });
+    throw state.failure instanceof Error ? state.failure : new Error(errorMessage(state.failure));
   }
 }
+
+/** Resolves after `ms` with false, or as soon as `signal` aborts with true. */
+const sleepUntilAbort = (ms: number, signal: AbortSignal | undefined): Promise<boolean> =>
+  new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", done);
+      resolve(false);
+    }, ms);
+    const done = (): void => {
+      clearTimeout(timer);
+      resolve(true);
+    };
+    signal?.addEventListener("abort", done, { once: true });
+  });
 
 export const router = base.router({
   system: {
@@ -62,23 +73,38 @@ export const router = base.router({
       ),
     })),
     doctor: base.system.doctor.handler(async ({ context }) => {
-      const provider = await context.provider.health();
+      const { provider, config, resources, office } = context;
+      const health = await provider.health();
+      const inventory = health.ok ? await provider.inventory(MANAGED) : null;
       return {
-        provider,
-        images: provider.ok ? await context.imageStatus() : [],
-        imageContexts: context.imageContexts,
+        provider: health,
+        images: health.ok
+          ? await imageStatus(provider, config, resources, neededVariants(office.model))
+          : [],
+        imageContexts: buildsImages(resources),
         secrets: {
           anthropicOauthToken: (await context.secrets.get("anthropic-oauth-token")) !== null,
         },
         sessions: {
-          active: context.sessions.activeCount,
-          max: context.config.scheduler.maxConcurrentSessions,
+          active: office.model.activeSessions.size,
+          max: config.scheduler.maxConcurrentSessions,
         },
-        resources: provider.ok ? await context.provider.snapshot(MANAGED) : null,
+        resources: inventory?.snapshot ?? null,
       };
     }),
     buildImages: base.system.buildImages.handler(({ context, signal }) =>
-      linesFrom(context.buildImages, signal),
+      linesFrom(
+        (onLine) =>
+          ensureImages(
+            context.provider,
+            context.config,
+            context.resources,
+            neededVariants(context.office.model),
+            onLine,
+            signal,
+          ),
+        signal,
+      ),
     ),
     pickDirectory: base.system.pickDirectory.handler(({ input, context }) =>
       context.pickDirectory(input),
@@ -86,7 +112,9 @@ export const router = base.router({
     gc: base.system.gc.handler(({ context }) => context.gc()),
   },
   usage: {
-    summary: base.usage.summary.handler(({ input, context }) => context.usage(input.sinceHours)),
+    summary: base.usage.summary.handler(({ input, context }) =>
+      usageSummary(context.office.model, context.office.clock.now().getTime(), input.sinceHours),
+    ),
   },
   resources: {
     inventory: base.resources.inventory.handler(({ context }) =>
@@ -113,20 +141,26 @@ export const router = base.router({
   },
   projects: {
     list: base.projects.list.handler(({ context }) => [...context.office.model.projects.values()]),
-    inspect: base.projects.inspect.handler(({ input, context }) => context.inspectRepo(input)),
+    inspect: base.projects.inspect.handler(({ input }) => inspectRepo(input)),
     create: base.projects.create.handler(({ input, context }) =>
-      context.office.execute(HUMAN, (m, ctx) => createProject(m, input, ctx)),
+      context.office.execute(HUMAN_ACTOR, (m, ctx) => createProject(m, input, ctx)),
     ),
     update: base.projects.update.handler(({ input, context }) =>
-      context.office.execute(HUMAN, (m, ctx) => updateProject(m, input, ctx)),
+      context.office.execute(HUMAN_ACTOR, (m, ctx) => updateProject(m, input, ctx)),
     ),
     remove: base.projects.remove.handler(async ({ input, context }) => ({
-      id: await context.office.execute(HUMAN, (m, ctx) => removeProject(m, input.id, ctx)),
+      id: await context.office.execute(HUMAN_ACTOR, (m, ctx) => removeProject(m, input.id, ctx)),
     })),
   },
   layouts: {
-    list: base.layouts.list.handler(({ context }) => context.layouts.list()),
-    save: base.layouts.save.handler(({ input, context }) => context.layouts.save(input)),
+    list: base.layouts.list.handler(({ context }) =>
+      listLayouts(context.resources.layoutsDir, (file, reason) => {
+        context.log.warn({ file, reason }, "office layout ignored");
+      }),
+    ),
+    save: base.layouts.save.handler(({ input, context }) =>
+      saveLayout(context.resources.layoutsDir, input),
+    ),
   },
   agents: {
     list: base.agents.list.handler(({ input, context }) =>
@@ -135,49 +169,19 @@ export const router = base.router({
       ),
     ),
     create: base.agents.create.handler(({ input, context }) =>
-      context.office.execute(HUMAN, (m, ctx) => createAgent(m, input, ctx)),
+      context.office.execute(HUMAN_ACTOR, (m, ctx) => createAgent(m, input, ctx)),
     ),
     update: base.agents.update.handler(({ input, context }) =>
-      context.office.execute(HUMAN, (m, ctx) => updateAgent(m, input, ctx)),
+      context.office.execute(HUMAN_ACTOR, (m, ctx) => updateAgent(m, input, ctx)),
     ),
     copy: base.agents.copy.handler(({ input, context }) =>
-      context.office.execute(HUMAN, (m, ctx) => copyAgent(m, input, ctx)),
+      context.office.execute(HUMAN_ACTOR, (m, ctx) => copyAgent(m, input, ctx)),
     ),
     remove: base.agents.remove.handler(async ({ input, context }) => ({
-      id: await context.office.execute(HUMAN, (m, ctx) => removeAgent(m, input.id, ctx)),
+      id: await context.office.execute(HUMAN_ACTOR, (m, ctx) => removeAgent(m, input.id, ctx)),
     })),
   },
-  tasks: {
-    list: base.tasks.list.handler(({ input, context }) =>
-      [...context.office.model.tasks.values()].filter(
-        (task) =>
-          (input.projectId === undefined || task.projectId === input.projectId) &&
-          (input.status === undefined || input.status.includes(task.status)),
-      ),
-    ),
-    get: base.tasks.get.handler(({ input, context, errors }) => {
-      const task = context.office.model.tasks.get(input.id);
-      if (task === undefined) {
-        throw errors.NOT_FOUND({ data: { entity: "task", id: input.id } });
-      }
-      return task;
-    }),
-    create: base.tasks.create.handler(({ input, context }) =>
-      context.office.execute(HUMAN, (m, ctx) => createTask(m, input, ctx)),
-    ),
-    edit: base.tasks.edit.handler(({ input, context }) =>
-      context.office.execute(HUMAN, (m, ctx) => editTask(m, input, ctx)),
-    ),
-    assign: base.tasks.assign.handler(({ input, context }) =>
-      context.office.execute(HUMAN, (m, ctx) => assignTask(m, input, ctx)),
-    ),
-    transition: base.tasks.transition.handler(({ input, context }) =>
-      context.office.execute(HUMAN, (m, ctx) => transitionTask(m, input, ctx)),
-    ),
-    setArtifacts: base.tasks.setArtifacts.handler(({ input, context }) =>
-      context.office.execute(HUMAN, (m, ctx) => setTaskArtifacts(m, input, ctx)),
-    ),
-  },
+  tasks: taskRoutes,
   sessions: {
     list: base.sessions.list.handler(({ input, context }) =>
       (input.taskId === undefined
@@ -192,16 +196,15 @@ export const router = base.router({
     }),
   },
   chat: {
-    history: base.chat.history.handler(({ input, context }) => {
-      const model = context.office.model;
-      const messages =
-        input.projectId === undefined
-          ? [...model.chat.values()].flat().toSorted((a, b) => a.at.localeCompare(b.at))
-          : chatOf(model, input.projectId);
-      return messages.slice(-input.limit);
-    }),
+    /** With `taskId` the human answers a colleague's question; with `projectId` the floor's boss triages it. */
     send: base.chat.send.handler(({ input, context }) =>
-      context.office.execute(HUMAN, (m, ctx) => postChatMessage(m, input, ctx)),
+      "taskId" in input
+        ? context.office.execute(HUMAN_ACTOR, (m, ctx) =>
+            answerQuestion(m, input.taskId, input.text, input.attachments, ctx),
+          )
+        : context.office.execute(HUMAN_ACTOR, (m, ctx) =>
+            triageMessage(m, input.projectId, input.text, input.attachments, ctx),
+          ),
     ),
   },
   mail: {
@@ -218,13 +221,14 @@ export const router = base.router({
   events: {
     head: base.events.head.handler(async ({ context }) => ({
       seq: await context.office.store.lastSeq(),
+      logId: await context.office.store.firstId(),
     })),
     subscribe: base.events.subscribe.handler(async function* ({ input, context, signal }) {
       // Subscribe before replaying so nothing appended in between is lost; dedupe on seq.
       const live = context.office.store.subscribe(undefined, signal);
       let last = input.afterSeq ?? -1;
       for await (const event of context.office.store.read(last)) {
-        yield event satisfies StoredEvent;
+        yield event;
         last = event.seq;
       }
       for await (const event of live) {
@@ -238,29 +242,12 @@ export const router = base.router({
   office: {
     presence: base.office.presence.handler(async function* ({ context, signal }) {
       const detach = context.gate.attach();
-      const beat = (): Promise<boolean> =>
-        new Promise((resolve) => {
-          if (signal?.aborted === true) {
-            resolve(false);
+      try {
+        for (;;) {
+          yield { at: context.office.clock.now().toISOString() };
+          if (await sleepUntilAbort(PRESENCE_BEAT_MS, signal)) {
             return;
           }
-          const finish = (alive: boolean): void => {
-            clearTimeout(timer);
-            signal?.removeEventListener("abort", aborted);
-            resolve(alive);
-          };
-          const aborted = (): void => {
-            finish(false);
-          };
-          const timer = setTimeout(() => {
-            finish(true);
-          }, 15_000);
-          signal?.addEventListener("abort", aborted, { once: true });
-        });
-      try {
-        yield { at: context.office.clock.now().toISOString() };
-        while (await beat()) {
-          yield { at: context.office.clock.now().toISOString() };
         }
       } finally {
         detach();

@@ -1,13 +1,4 @@
-import { bold, cyan, dim, green, red, yellow } from "yoctocolors";
-
-let asJson = false;
-
-/** `--json` makes every command print the daemon's own payload instead of a human line. */
-export const setJsonOutput = (on: boolean): void => {
-  asJson = on;
-};
-
-export const jsonOutput = (): boolean => asJson;
+import { bold, cyan, dim, green, red } from "yoctocolors";
 
 export const line = (text: string): void => {
   process.stdout.write(`${text}\n`);
@@ -17,18 +8,9 @@ export const print = (value: unknown): void => {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 };
 
-/** What a command changed: one human line by default, the payload with `--json`. */
-export const result = (human: string, value: unknown): void => {
-  if (asJson) {
-    print(value);
-    return;
-  }
-  line(human);
-};
-
-export const fail = (message: string, code = 1): never => {
+export const fail = (message: string): never => {
   process.stderr.write(`ho: ${message}\n`);
-  process.exit(code);
+  process.exit(1);
 };
 
 const plain = <T>(text: T): T => text;
@@ -39,7 +21,6 @@ export const colour = {
   bold: paint ? bold : plain,
   dim: paint ? dim : plain,
   ok: paint ? green : plain,
-  warn: paint ? yellow : plain,
   bad: paint ? red : plain,
   id: paint ? cyan : plain,
 };

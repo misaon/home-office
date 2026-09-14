@@ -1,7 +1,7 @@
-import type { AgentId } from "@ho/protocol";
-import type { Facing, Grid, Point } from "./grid.ts";
+import type { AgentId, Facing } from "@ho/protocol";
+import type { Grid, Point } from "./grid.ts";
+import { type Anchor, type AnchorKind, type FloorTemplate, gridFromMap } from "./map.ts";
 import { createRng, hashSeed, type Rng } from "./rng.ts";
-import { type Anchor, type AnchorKind, type FloorTemplate, gridFor } from "./templates.ts";
 
 export type Activity =
   | "idle"
@@ -45,14 +45,24 @@ export type Step =
   | { kind: "emit"; event: SimEvent }
   | { kind: "release" };
 
+/** Envelopes with this ref still queued for delivery: none means nobody will ever hand it over. */
+export const inFlight = (world: World, ref: string): number => {
+  let count = 0;
+  for (const actor of world.actors.values()) {
+    for (const step of actor.steps) {
+      if (step.kind === "emit" && step.event.kind === "delivered" && step.event.ref === ref) {
+        count += 1;
+      }
+    }
+  }
+  return count;
+};
+
 export type SimEvent =
-  /** A carrier handed an envelope (a task) to a colleague: delegation, handoff, review, work walking back. */
-  | { kind: "handoff_delivered"; from: AgentId; to: AgentId }
-  | { kind: "arrived"; agentId: AgentId; anchorId: string | null }
+  /** A carrier handed an envelope — `ref` names it (a task id, a mail id) — to a colleague. */
+  | { kind: "delivered"; ref: string; by: AgentId; to: AgentId }
   /** The postman left the envelope at the reception. */
   | { kind: "mail_dropped"; ref: string }
-  /** The receptionist (or the boss himself) brought an envelope to the boss. */
-  | { kind: "envelope_delivered"; ref: string; by: AgentId; to: AgentId }
   /** A visitor walked out; the host removes the actor. */
   | { kind: "visitor_left"; actorId: AgentId };
 
@@ -65,13 +75,11 @@ export type ActorKind = "boss" | "staff" | "receptionist" | "visitor";
 export type Actor = {
   id: AgentId;
   kind: ActorKind;
-  sprite: string;
   floorId: string;
   pos: Point;
   tile: Point;
   facing: Facing;
   activity: Activity;
-  animTime: number;
   hidden: boolean;
   /** The cell this actor is currently stepping into (claimed so nobody else enters it at the same time). */
   moving: Point | null;
@@ -89,17 +97,16 @@ export type Actor = {
   detourJitterMs: number;
 };
 
-export type ElevatorPhase = "closed" | "opening" | "open" | "closing";
 /**
  * Everybody enters by elevator. Newcomers wait hidden in `queue`; one at a time a car "arrives": the passenger is
  * revealed inside the car behind the closed doors, the doors open (`amount` 0 → 1), the passenger walks out, the
  * doors stay open while anybody is in the car or on its threshold, close, pause, and the next car comes. Anyone
  * walking into the car from the office (a leaving visitor, staff off for a while) opens the doors the same way.
  */
-export type Elevator = {
+type Elevator = {
   queue: AgentId[];
-  phase: ElevatorPhase;
-  /** Door position, 0 closed … 1 open; the renderer maps it onto the door frames. */
+  phase: "closed" | "opening" | "open" | "closing";
+  /** Door position, 0 closed … 1 open. */
   amount: number;
   /** The passenger of the current car, waiting for the doors to open. */
   passenger: AgentId | null;
@@ -107,16 +114,12 @@ export type Elevator = {
   nextAt: number;
 };
 
-/** One floor: its plan, collision grid, anchor reservations, elevator and the animations the simulation drives. */
+/** One floor: its compiled office, collision grid, anchor reservations and elevator. */
 export type Floor = {
   template: FloorTemplate;
   grid: Grid;
   reservations: Map<string, AgentId>;
   elevator: Elevator;
-  /** Animation positions by sprite key (`elevator-doors` → door amount 0…1). */
-  animations: Map<string, number>;
-  /** Named animation per sprite key (`mailbox` → `full`), published by the simulation. */
-  animationStates: Map<string, string>;
 };
 
 export type World = {
@@ -128,7 +131,7 @@ export type World = {
 };
 
 export const SPEED_TILES_PER_S = 3;
-/** Door travel of the elevator (matches the renderer), the pause on the threshold, the gap between cars. */
+/** Door travel of the elevator, the pause on the threshold, the gap between cars. */
 export const ELEVATOR_DOORS_MS = 700;
 
 export const createWorld = (seed: string): World => ({
@@ -142,11 +145,9 @@ export const createWorld = (seed: string): World => ({
 export function addFloor(world: World, template: FloorTemplate): void {
   world.floors.set(template.id, {
     template,
-    grid: gridFor(template),
+    grid: gridFromMap(template.map),
     reservations: new Map(),
     elevator: { queue: [], phase: "closed", amount: 0, passenger: null, nextAt: 0 },
-    animations: new Map(),
-    animationStates: new Map(),
   });
 }
 

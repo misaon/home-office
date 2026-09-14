@@ -20,6 +20,13 @@ that is only masking a rule we do not want is not listed here — the rule gets 
 | --- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 7   | `packages/ui/src/i18n/index.ts:47` | `oxlint-disable-next-line typescript/consistent-type-definitions` | i18next's typed keys are reached by augmenting its own `CustomTypeOptions` **interface**; a `type` cannot merge into an interface, so the rule cannot be met here |
 
+## Added 2026-09-14
+
+| #   | Where                                      | Suppression                                              | Assessment                                                                                                                                                                                                            |
+| --- | ------------------------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 8   | `packages/ui/src/design/board-card.tsx:75` | `oxlint-disable-next-line jsx-a11y/prefer-tag-over-role` | The task row carries its own delete button, and a `<button>` may not contain another button, so the row cannot be the tag the rule asks for. It is a `div` with `role="button"`, a label, `tabIndex` and Enter/Space. |
+| 9   | `packages/ui/src/design/team-row.tsx:72`   | `oxlint-disable-next-line jsx-a11y/prefer-tag-over-role` | The colleague row is kept the same element as the board's rows for consistency; same role, label, `tabIndex` and keyboard handling.                                                                                   |
+
 There are **no** `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck` or non-null assertions anywhere in
 the tracked source. Verified:
 
@@ -63,3 +70,31 @@ The count is unchanged at five, and one of them moved:
 
 Nothing was added: no `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`, non-null assertion or
 whole-file disable appears anywhere in the tree (grep in `VERIFICATION.md` § "No escapes anywhere").
+
+## Current state, 2026-09-13
+
+The architecture pass changed the facts several rows above record, so this section supersedes them. Three
+suppressions survive in the source, plus one scoped rule override:
+
+| #   | Where                              | Suppression                                                                       | Why it is justified                                                                                                                                                                                                                                                                                                                                                           |
+| --- | ---------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `packages/protocol/src/patch.ts:5` | `typescript/no-unsafe-type-assertion`                                             | `compact()` builds its result with `Object.fromEntries`, whose return type TypeScript cannot express. Unchanged; `type-fest`, which ADR 005 adopted for this job, is gone.                                                                                                                                                                                                    |
+| 2   | `packages/store/src/index.ts:156`  | `typescript/require-await`                                                        | `bun:sqlite` is synchronous while the `EventStore` port is async for remote backends. **Moved** from the deleted `packages/store/src/event-store.ts:77`.                                                                                                                                                                                                                      |
+| 3   | `packages/ui/src/i18n/index.ts:50` | `typescript/consistent-type-definitions`                                          | i18next's typed keys are reached by augmenting its own `CustomTypeOptions` **interface**; a `type` cannot merge into an interface.                                                                                                                                                                                                                                            |
+| 4   | `.oxlintrc.json` `overrides[0]`    | `unicorn/no-array-fill-with-reference-type` off for `packages/ui/src/office/*.ts` | Still earning it: the rule misfires on PixiJS's `Graphics.fill(style)` purely because of the method name (`tiles.ts:31` trips it with the override removed).                                                                                                                                                                                                                  |
+| 5   | `.oxlintrc.json` `overrides[1]`    | `jsx-a11y/prefer-tag-over-role` off for `packages/ui/src/kit/select.tsx`          | Added 2026-09-13. The rule's advice for `role="listbox"` and `role="option"` is to use `<select>` and `<option>` — the element this component exists to replace, because the list a native select opens is an operating-system window that takes none of the office's styling. The roles are the correct ones for a composed select, and no other file in the tree uses them. |
+
+The `packages/store/drizzle/**` override recorded under "Added by Wave 1" was **removed on 2026-09-13**
+together with Drizzle itself: the store is one `bun:sqlite` module with no generated files.
+
+Verified:
+
+```
+$ git ls-files "*.ts" "*.tsx" | xargs grep -n "oxlint-disable\|eslint-disable"
+packages/protocol/src/patch.ts:5:  /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.fromEntries cannot express the mapped type */
+packages/store/src/index.ts:156:    // oxlint-disable-next-line typescript/require-await -- bun:sqlite is synchronous; the port is async for remote backends
+packages/ui/src/i18n/index.ts:50:  // oxlint-disable-next-line typescript/consistent-type-definitions
+```
+
+No `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`, non-null assertion or whole-file disable exists
+anywhere in the tracked source.

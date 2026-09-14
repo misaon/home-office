@@ -52,7 +52,6 @@ function satisfy(world: World, actor: Actor, need: NeedKind): boolean {
   setSteps(actor, [
     ...walkSteps(actor.floorId, anchor.at),
     { kind: "dwell", activity: plan.activity, facing: anchor.facing, until: null, ms: plan.ms },
-    { kind: "emit", event: { kind: "arrived", agentId: actor.id, anchorId: anchor.id } },
     { kind: "release" },
     ...homeSteps(world, actor),
   ]);
@@ -61,7 +60,7 @@ function satisfy(world: World, actor: Actor, need: NeedKind): boolean {
 }
 
 /** Off for a while: walk into the elevator car (its doors open for anybody standing there) and ride away. */
-export function leaveFloor(world: World, actor: Actor, ms: number): boolean {
+function leaveFloor(world: World, actor: Actor, ms: number): boolean {
   const car = anchorOf(world, actor.floorId, "car");
   if (car === undefined) {
     return false;

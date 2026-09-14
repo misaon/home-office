@@ -1,0 +1,360 @@
+/*
+ * The design as drawn: the mockup's own reset, keyframes and hover rules, kept byte-for-byte so the
+ * port can be held against the original. The hover rules were `style-hover` attributes in the mockup,
+ * which its runtime compiled to `!important` pseudo-class rules; they keep that weight here because
+ * they have to beat the inline styles they sit next to.
+ */
+@import "./fonts.css";
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #0a0a0b;
+  height: 100%;
+  overflow: hidden;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: "Instrument Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: #f4f3f0;
+}
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+input:focus,
+textarea:focus,
+select:focus,
+button:focus {
+  outline: none;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #8a8780;
+}
+a {
+  color: #ffc531;
+  text-decoration: none;
+}
+a:hover {
+  color: #ffdf8a;
+}
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.13);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 197, 49, 0.4);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 12px rgba(255, 197, 49, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 26px rgba(255, 197, 49, 0.8);
+  }
+}
+@keyframes ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes drawerIn {
+  from {
+    opacity: 0;
+    transform: translateX(-34px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(10px);
+  }
+  62% {
+    transform: scale(1.012) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes dropIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  70% {
+    transform: translateY(1px) scale(1.004);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes riseIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes growX {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes float1 {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes float2 {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(7px);
+  }
+}
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(70px, 50px) scale(1.18);
+  }
+}
+@keyframes drift2 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-60px, -40px) scale(1.1);
+  }
+}
+@keyframes dots {
+  0%,
+  65%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+@keyframes scan {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(1400%);
+    opacity: 0;
+  }
+}
+@keyframes toastIn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 16px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+/* Hover states: one rule per distinct style-hover attribute in the mockup. */
+.hop0:hover {
+  border-color: rgba(255, 197, 49, 0.5) !important;
+  background: #191920 !important;
+  transform: translateY(-1px) !important;
+}
+.hop1:hover {
+  background: rgba(255, 197, 49, 0.09) !important;
+}
+.hop2:hover {
+  background: rgba(255, 197, 49, 0.1) !important;
+}
+.hop3:hover {
+  color: #f4f3f0 !important;
+  border-color: #45454d !important;
+  background: #141417 !important;
+}
+.hop4:hover {
+  transform: translateY(-1px) !important;
+}
+.hop5:hover {
+  background: rgba(255, 197, 49, 0.16) !important;
+  color: #ffd666 !important;
+  transform: scale(1.08) !important;
+}
+.hop6:hover {
+  background: rgba(255, 197, 49, 0.16) !important;
+  color: #ffd666 !important;
+}
+.hop7:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 8px 20px rgba(255, 197, 49, 0.35) !important;
+}
+.hop8:hover {
+  color: #ffd666 !important;
+  border-color: rgba(255, 197, 49, 0.45) !important;
+}
+.hop9:hover {
+  border-color: rgba(255, 197, 49, 0.7) !important;
+  transform: scale(1.01) !important;
+}
+.hopa:hover {
+  border-color: rgba(255, 197, 49, 0.4) !important;
+  box-shadow: 0 0 0 3px rgba(255, 197, 49, 0.07) !important;
+}
+.hopb:hover {
+  background: rgba(255, 197, 49, 0.18) !important;
+}
+.hopc:hover {
+  color: #ffd666 !important;
+  border-color: rgba(255, 197, 49, 0.45) !important;
+  transform: rotate(90deg) !important;
+}
+.hopd:hover {
+  background: rgba(255, 197, 49, 0.1) !important;
+  border-color: rgba(255, 197, 49, 0.3) !important;
+  transform: translateX(2px) !important;
+}
+.hope:hover {
+  background: rgba(255, 197, 49, 0.16) !important;
+}
+.hopf:hover {
+  transform: translateY(-2px) scale(1.06) !important;
+  box-shadow: 0 10px 22px rgba(255, 197, 49, 0.4) !important;
+}
+.hopg:hover {
+  background: #15151a !important;
+}
+.hoph:hover {
+  color: #ff9e9e !important;
+  background: rgba(255, 122, 122, 0.12) !important;
+}
+.hopi:hover {
+  border-color: rgba(255, 197, 49, 0.5) !important;
+}
+.hopj:hover {
+  background: rgba(255, 197, 49, 0.14) !important;
+  border-color: rgba(255, 197, 49, 0.65) !important;
+}
+.hopk:hover {
+  border-color: rgba(255, 197, 49, 0.45) !important;
+}
+.hopl:hover {
+  background: rgba(255, 197, 49, 0.13) !important;
+  color: #ffd666 !important;
+}
+.hopm:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 24px rgba(255, 197, 49, 0.35) !important;
+}
+.hopn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 8px 18px rgba(255, 197, 49, 0.3) !important;
+}
+.hopo:hover {
+  color: #ff9e9e !important;
+  border-color: rgba(255, 122, 122, 0.4) !important;
+}
+.hopp:hover {
+  background: rgba(255, 122, 122, 0.2) !important;
+}
+.hopq:hover {
+  border-color: rgba(255, 197, 49, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+.hopr:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 14px 28px rgba(255, 197, 49, 0.35) !important;
+}
+.hops:hover {
+  border-color: rgba(255, 197, 49, 0.45) !important;
+  color: #ffd666 !important;
+}
+.hopt:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
+}

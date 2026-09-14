@@ -1,24 +1,15 @@
-import { daemonUrl, type DaemonInfo, readDaemonInfo, startDaemon } from "@ho/daemon";
+import { daemonAnswers, daemonUrl, officeUrl, readDaemonInfo, startDaemon } from "@ho/daemon";
 import { nativeDirectoryPicker } from "./pick-directory.ts";
 
 export type DaemonLink = {
   /** Where the office UI is served. */
   url: string;
+  /** The same page with this launch's token in the fragment, for a browser outside the app. */
+  officeUrl: string;
   token: string;
   /** `embedded`: this process runs the daemon; `attached`: a `ho daemon` was already running. */
   mode: "embedded" | "attached";
   stop: () => Promise<void>;
-};
-
-const healthy = async (info: DaemonInfo): Promise<boolean> => {
-  try {
-    const res = await fetch(`${daemonUrl(info)}/health`, {
-      signal: AbortSignal.timeout(1500),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
 };
 
 /**
@@ -31,9 +22,10 @@ export async function attachOrStart(options: {
   logFile: string;
 }): Promise<DaemonLink> {
   const existing = await readDaemonInfo(options.home);
-  if (existing !== null && (await healthy(existing))) {
+  if (existing !== null && (await daemonAnswers(existing))) {
     return {
       url: `${daemonUrl(existing)}/`,
+      officeUrl: officeUrl(existing),
       token: existing.token,
       mode: "attached",
       stop: () => Promise.resolve(),
@@ -43,6 +35,7 @@ export async function attachOrStart(options: {
   const handle = await startDaemon({ ...options, pickDirectory: nativeDirectoryPicker });
   return {
     url: `${daemonUrl(handle.info)}/`,
+    officeUrl: officeUrl(handle.info),
     token: handle.info.token,
     mode: "embedded",
     stop: handle.stop,

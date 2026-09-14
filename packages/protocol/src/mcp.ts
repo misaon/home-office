@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ATTACHMENTS_MAX, AttachmentName, CHAT_OUTBOX_DIR } from "./attachments.ts";
 import { TaskPriority } from "./domain.ts";
 import { TaskId } from "./ids.ts";
 
@@ -73,17 +74,12 @@ export type HoTaskStatusInput = z.infer<typeof HoTaskStatusInput>;
 
 export const HoReplyInput = z.object({
   text: z.string().min(1).max(4000).describe("Message to the human in the office chat"),
+  files: z
+    .array(AttachmentName)
+    .max(ATTACHMENTS_MAX)
+    .prefault([])
+    .describe(
+      `File names you wrote into ${CHAT_OUTBOX_DIR} to send with this message (images, PDF, text); names only, no paths`,
+    ),
 });
 export type HoReplyInput = z.infer<typeof HoReplyInput>;
-
-export const McpToolName = z.enum([
-  "ho_report",
-  "ho_review",
-  "ho_handoff",
-  "ho_ask_human",
-  "ho_delegate",
-  "ho_reply",
-  "ho_task_status",
-  "ho_list_agents",
-]);
-export type McpToolName = z.infer<typeof McpToolName>;

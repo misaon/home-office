@@ -1,14 +1,31 @@
-/** One rhythm for every text field, select and textarea in the office. */
-export const CONTROL =
-  "w-full rounded-md border border-line bg-ink px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:border-accent/60 focus:outline-none";
+import { errorMessage } from "@ho/protocol";
+import { useId } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge as ShadcnBadge } from "@/components/ui/badge";
+import { Button as ShadcnButton } from "@/components/ui/button";
+import {
+  Empty as ShadcnEmpty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+} from "@/components/ui/empty";
+import { Field as ShadcnField, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Separator } from "@/components/ui/separator";
+import { Switch as ShadcnSwitch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const VARIANTS = {
-  primary: "bg-accent text-black hover:brightness-110",
-  quiet: "bg-line text-gray-100 hover:brightness-125",
-  danger: "bg-red-950 text-red-200 hover:brightness-125",
+/**
+ * The office's own vocabulary, spoken in shadcn/ui. Every element below is one of its components; what
+ * lives here is the office's names for them — the words the panels already use — and the two or three
+ * arrangements a panel repeats, such as a switch with its consequence written beside it.
+ */
+
+const VARIANT = {
+  primary: "default",
+  quiet: "outline",
+  ghost: "ghost",
+  danger: "destructive",
 } as const;
-
-type Variant = keyof typeof VARIANTS;
 
 export function Button({
   children,
@@ -19,20 +36,20 @@ export function Button({
 }: {
   children: React.ReactNode;
   onClick: () => void;
-  variant?: Variant;
+  variant?: keyof typeof VARIANT;
   disabled?: boolean;
   title?: string;
 }): React.JSX.Element {
   return (
-    <button
+    <ShadcnButton
       type="button"
-      className={`rounded-md px-3 py-1.5 text-xs font-medium transition disabled:opacity-40 ${VARIANTS[variant]}`}
+      variant={VARIANT[variant]}
       disabled={disabled}
       title={title}
       onClick={onClick}
     >
       {children}
-    </button>
+    </ShadcnButton>
   );
 }
 
@@ -44,7 +61,6 @@ export function Field({
   tone = "muted",
   children,
 }: {
-  /** The control's own id, so the label belongs to it even when a button shares the row. */
   id: string;
   label: string;
   hint?: React.ReactNode;
@@ -52,18 +68,48 @@ export function Field({
   children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <div>
-      <label className="mb-1.5 block text-xs font-medium text-gray-400" htmlFor={id}>
-        {label}
-      </label>
+    <ShadcnField>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
       {children}
       {hint === undefined ? null : (
-        <span
-          className={`mt-1.5 block text-2xs ${tone === "error" ? "text-red-300" : "text-gray-500"}`}
-        >
+        <FieldDescription className={tone === "error" ? "text-destructive" : ""}>
           {hint}
-        </span>
+        </FieldDescription>
       )}
+    </ShadcnField>
+  );
+}
+
+/** One thing that is on or off, with its consequence written beside it rather than left to guess at. */
+export function Switch({
+  checked,
+  onChange,
+  label,
+  hint,
+  disabled = false,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: React.ReactNode;
+  hint?: React.ReactNode;
+  disabled?: boolean;
+}): React.JSX.Element {
+  const id = useId();
+  return (
+    <div className={`flex items-start gap-3 ${disabled ? "opacity-50" : ""}`}>
+      <ShadcnSwitch
+        id={id}
+        checked={checked}
+        disabled={disabled}
+        className="mt-0.5"
+        onCheckedChange={onChange}
+      />
+      <div className="grid min-w-0 gap-1">
+        <FieldLabel htmlFor={id} className="font-normal">
+          {label}
+        </FieldLabel>
+        {hint === undefined ? null : <FieldDescription>{hint}</FieldDescription>}
+      </div>
     </div>
   );
 }
@@ -79,60 +125,27 @@ export function Segmented<T extends string>({
   onChange: (value: T) => void;
 }): React.JSX.Element {
   return (
-    <div className="inline-flex gap-1 rounded-lg border border-line bg-ink p-1">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
-            option.value === value
-              ? "bg-line text-white"
-              : "text-gray-400 hover:bg-line/50 hover:text-gray-200"
-          }`}
-          onClick={() => {
-            onChange(option.value);
-          }}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
+    <Tabs
+      value={value}
+      onValueChange={(next) => {
+        const picked = options.find((option) => option.value === next);
+        if (picked !== undefined) {
+          onChange(picked.value);
+        }
+      }}
+    >
+      <TabsList>
+        {options.map((option) => (
+          <TabsTrigger key={option.value} value={option.value}>
+            {option.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 
-/** Tabs across the width: one row of choices where only the chosen one is underlined. */
-export function Tabs<T extends string>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T;
-  options: readonly { value: T; label: string }[];
-  onChange: (value: T) => void;
-}): React.JSX.Element {
-  return (
-    <div className="flex border-b border-line">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          className={`flex-1 px-2 py-2.5 text-xs transition ${
-            option.value === value
-              ? "border-b-2 border-accent font-medium text-white"
-              : "text-gray-400 hover:text-gray-100"
-          }`}
-          onClick={() => {
-            onChange(option.value);
-          }}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/** A section of a panel: an uppercase heading and its rows, separated from what comes before it. */
+/** A section of a panel: an uppercase heading and its rows, separated from what came before. */
 export function Section({
   title,
   aside,
@@ -143,10 +156,12 @@ export function Section({
   children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <section className="space-y-2.5">
+    <section className="space-y-3">
       <div className="flex items-center gap-3">
-        <h3 className="text-2xs font-semibold tracking-widest text-gray-500 uppercase">{title}</h3>
-        <div className="h-px flex-1 bg-line" />
+        <h3 className="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
+          {title}
+        </h3>
+        <Separator className="flex-1" />
         {aside}
       </div>
       {children}
@@ -154,19 +169,53 @@ export function Section({
   );
 }
 
-export function FolderIcon(): React.JSX.Element {
+const TONE = {
+  neutral: "secondary",
+  accent: "default",
+  good: "good",
+  warn: "warn",
+  bad: "destructive",
+} as const;
+
+/** A count or a state, said in one word. */
+export function Badge({
+  children,
+  tone = "neutral",
+  title,
+}: {
+  children: React.ReactNode;
+  tone?: keyof typeof TONE;
+  title?: string;
+}): React.JSX.Element {
+  const shade = TONE[tone];
   return (
-    <svg
-      viewBox="0 0 16 16"
-      aria-hidden="true"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+    <ShadcnBadge
+      variant={shade === "good" || shade === "warn" ? "outline" : shade}
+      title={title}
+      className={shade === "good" ? "text-good" : shade === "warn" ? "text-warn" : ""}
     >
-      <path d="M1.9 12.4V3.6h4.2l1.5 1.8h6.5v7a1 1 0 0 1-1 1h-10.2a1 1 0 0 1-1-1Z" />
-    </svg>
+      {children}
+    </ShadcnBadge>
+  );
+}
+
+/** What a failed request said, or nothing while there is nothing to say. */
+export function Failure({ error }: { error: unknown }): React.JSX.Element | null {
+  return error === null || error === undefined ? null : (
+    <Alert variant="destructive">
+      <AlertDescription>{errorMessage(error)}</AlertDescription>
+    </Alert>
+  );
+}
+
+/** Nothing here yet, said in a way that tells the reader what would put something here. */
+export function Empty({ children }: { children: React.ReactNode }): React.JSX.Element {
+  return (
+    <ShadcnEmpty className="border border-dashed">
+      <EmptyHeader>
+        <EmptyDescription>{children}</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent />
+    </ShadcnEmpty>
   );
 }

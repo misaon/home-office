@@ -1,10 +1,10 @@
-import "pixi.js/unsafe-eval";
-import type { AgentId } from "@ho/protocol";
-import { type Actor, CELL_PX, type FloorTemplate, type World } from "@ho/sim";
-import { Application, Container, Graphics } from "pixi.js";
-import { Camera } from "./camera.ts";
-import { DOT, DOT_EDGE, DOT_SELECTED } from "./palette.ts";
-import { floorTiles, gridLines } from "./tiles.ts";
+import { type AgentId, errorMessage } from "@ho/protocol";
+import { type Actor, CELL_PX, type World } from "@ho/sim";
+import { Graphics } from "pixi.js";
+import { useUi } from "../store.ts";
+import { bridge } from "./bridge.ts";
+import { DOT, DOT_EDGE, DOT_SELECTED } from "./colours.ts";
+import { MapView } from "./map-view.ts";
 
 /**
  * An employee is two cells across — 50 cm at roughly 25 cm per cell, the same as the chair they sit on
@@ -14,12 +14,8 @@ import { floorTiles, gridLines } from "./tiles.ts";
 const DOT_RADIUS = CELL_PX;
 /** How far the pointer may travel before a click counts as a drag instead of a selection. */
 const DRAG_SLOP_PX = 4;
-const WHEEL_STEP = 1.15;
-/** Views kept built while floors are switched. */
-const FLOOR_CACHE = 2;
 
 type DotView = { shape: Graphics; selected: boolean };
-type FloorView = { tiles: Container; template: FloorTemplate };
 
 const paint = (shape: Graphics, selected: boolean): void => {
   shape
@@ -30,77 +26,34 @@ const paint = (shape: Graphics, selected: boolean): void => {
 };
 
 /**
- * PixiJS view of the map: the grid of cells a layout is compiled into, whatever that layout fills them
- * with, and one dot per character. Zoom with the wheel, drag to pan; nothing here places anything —
- * layouts are written in code.
+ * PixiJS view of the office: the compiled floor, and one dot per character. Zoom with the wheel, drag to
+ * pan, tap a dot to select its agent; nothing here places anything — layouts are written in code.
  */
-export class OfficeScene {
-  readonly app = new Application();
-  readonly camera = new Camera();
-  readonly #world = new Container();
-  readonly #tiles = new Container();
+class OfficeScene extends MapView {
   readonly #dots = new Map<AgentId, DotView>();
-  readonly #floors = new Map<string, FloorView>();
-  #grid = new Graphics();
-  #gridScale = 0;
-  #floorId: string | null = null;
-  #host: HTMLElement | null = null;
-  #observer: ResizeObserver | null = null;
   #drag: { x: number; y: number; moved: boolean } | null = null;
   onSelect: (agentId: AgentId | null) => void = () => undefined;
 
-  async init(host: HTMLElement): Promise<void> {
-    this.#host = host;
-    await this.app.init({
-      background: "#ffffff",
-      width: Math.max(1, host.clientWidth),
-      height: Math.max(1, host.clientHeight),
-      antialias: true,
-      preference: "webgl",
-      resolution: window.devicePixelRatio,
-      autoDensity: true,
-    });
+  override async init(host: HTMLElement): Promise<void> {
+    await super.init(host);
     this.app.ticker.maxFPS = 30;
-    host.append(this.app.canvas);
-    this.app.stage.addChild(this.#world);
-    this.#world.addChild(this.#tiles, this.#grid);
     this.app.stage.eventMode = "static";
+    this.app.stage.hitArea = this.app.screen;
     this.app.stage.on("pointertap", () => {
       if (this.#drag?.moved !== true) {
         this.onSelect(null);
       }
     });
-    this.camera.setViewport(this.app.screen.width, this.app.screen.height);
     this.#listen(this.app.canvas);
-    this.#observer = new ResizeObserver(() => {
-      this.#resize();
-    });
-    this.#observer.observe(host);
   }
 
-  destroy(): void {
-    this.#observer?.disconnect();
+  override destroy(): void {
     this.#dots.clear();
-    this.#floors.clear();
-    this.app.destroy(true, { children: true });
+    super.destroy();
   }
 
-  /** Wheel zooms around the cursor; dragging pans. Native listeners: the map is one surface, not widgets. */
+  /** Dragging pans. Native listeners: the map is one surface, not widgets. */
   #listen(canvas: HTMLCanvasElement): void {
-    canvas.addEventListener(
-      "wheel",
-      (event) => {
-        event.preventDefault();
-        const box = canvas.getBoundingClientRect();
-        this.camera.zoomBy(
-          event.deltaY < 0 ? WHEEL_STEP : 1 / WHEEL_STEP,
-          event.clientX - box.left,
-          event.clientY - box.top,
-        );
-        this.#applyCamera();
-      },
-      { passive: false },
-    );
     canvas.addEventListener("pointerdown", (event) => {
       this.#drag = { x: event.clientX, y: event.clientY, moved: false };
       canvas.setPointerCapture(event.pointerId);
@@ -119,7 +72,7 @@ export class OfficeScene {
       drag.x = event.clientX;
       drag.y = event.clientY;
       this.camera.panBy(dx, dy);
-      this.#applyCamera();
+      this.applyCamera();
       canvas.style.cursor = "grabbing";
     });
     for (const kind of ["pointerup", "pointercancel"]) {
@@ -133,73 +86,13 @@ export class OfficeScene {
     }
   }
 
-  #resize(): void {
-    const host = this.#host;
-    if (host === null || host.clientWidth === 0) {
+  /** Which floor's map and characters are shown; a new floor is built and fitted, the same one is kept. */
+  showFloor(floorId: string | null): void {
+    const template = floorId === null ? undefined : bridge.world.floors.get(floorId)?.template;
+    if (template === undefined || template === this.template) {
       return;
     }
-    this.app.renderer.resize(host.clientWidth, host.clientHeight);
-    this.app.stage.hitArea = this.app.screen;
-    this.camera.setViewport(host.clientWidth, host.clientHeight);
-    this.#applyCamera();
-  }
-
-  #applyCamera(): void {
-    const { scale } = this.camera;
-    this.#world.scale.set(scale);
-    this.#world.position.set(
-      Math.round(-this.camera.offsetX * scale),
-      Math.round(-this.camera.offsetY * scale),
-    );
-    if (this.#gridScale !== scale) {
-      this.#drawGrid();
-    }
-  }
-
-  #drawGrid(): void {
-    const view = this.#floorId === null ? undefined : this.#floors.get(this.#floorId);
-    if (view === undefined) {
-      return;
-    }
-    const { scale } = this.camera;
-    this.#gridScale = scale;
-    const next = gridLines(view.template.map, scale);
-    this.#grid.destroy();
-    this.#grid = next;
-    this.#world.addChild(next);
-  }
-
-  /** Which floor's map and characters are shown; its tiles are built once and kept while it is in use. */
-  showFloor(template: FloorTemplate | null): void {
-    const id = template?.id ?? null;
-    if (this.#floorId === id) {
-      return;
-    }
-    this.#floorId = id;
-    if (template !== null) {
-      const view = this.#floors.get(template.id) ?? {
-        tiles: floorTiles(template),
-        template,
-      };
-      this.#floors.delete(template.id);
-      this.#floors.set(template.id, view);
-      this.#tiles.addChild(view.tiles);
-      this.camera.setMap(template.map.width, template.map.height);
-      this.camera.fit();
-      this.#gridScale = 0;
-      this.#applyCamera();
-    }
-    for (const [floorId, view] of this.#floors) {
-      view.tiles.visible = floorId === id;
-    }
-    while (this.#floors.size > FLOOR_CACHE) {
-      const oldest = this.#floors.entries().next();
-      if (oldest.done !== true) {
-        const [floorId, view] = oldest.value;
-        view.tiles.destroy({ children: true });
-        this.#floors.delete(floorId);
-      }
-    }
+    this.setTemplate(template, true);
   }
 
   #ensureDot(actor: Actor): DotView {
@@ -215,7 +108,7 @@ export class OfficeScene {
         this.onSelect(actor.id);
       }
     });
-    this.#world.addChild(shape);
+    this.world.addChild(shape);
     const view: DotView = { shape, selected: false };
     this.#dots.set(actor.id, view);
     return view;
@@ -223,9 +116,10 @@ export class OfficeScene {
 
   /** Called every frame with the current world: one dot per visible character of the shown floor. */
   update(world: World, selected: AgentId | null): void {
+    const floorId = this.template?.id ?? null;
     for (const actor of world.actors.values()) {
       const view = this.#dots.get(actor.id);
-      if (actor.floorId !== this.#floorId || actor.hidden) {
+      if (actor.floorId !== floorId || actor.hidden) {
         if (view !== undefined) {
           view.shape.visible = false;
         }
@@ -247,4 +141,73 @@ export class OfficeScene {
       }
     }
   }
+}
+
+/**
+ * Runs the office in `host` until the returned function is called: the scene, the simulation tick on the
+ * Pixi ticker (stopped while the document is hidden, where a still frame is drawn on every store change
+ * instead), the visibility watch and the dev console handle.
+ */
+export function startOffice(host: HTMLElement): () => void {
+  const scene = new OfficeScene();
+  let disposed = false;
+  let unsubscribe: (() => void) | null = null;
+  const drawFrame = (dtMs: number): void => {
+    try {
+      bridge.tick(dtMs);
+      const { floorId, selectedAgentId } = useUi.getState();
+      scene.showFloor(floorId);
+      scene.update(bridge.world, selectedAgentId);
+    } catch (error) {
+      useUi.getState().setError(errorMessage(error));
+    }
+  };
+  const stillFrame = (): void => {
+    if (!disposed && document.hidden) {
+      drawFrame(0);
+      scene.app.render();
+    }
+  };
+  const onVisibility = (): void => {
+    bridge.setWatching(!document.hidden);
+    if (document.hidden) {
+      scene.app.ticker.stop();
+    } else {
+      scene.app.ticker.start();
+    }
+  };
+  void scene
+    .init(host)
+    .then(() => {
+      if (disposed) {
+        return;
+      }
+      scene.onSelect = (agentId) => {
+        useUi.getState().selectAgent(agentId);
+      };
+      if (process.env.NODE_ENV === "development") {
+        Object.assign(window, { __ho: { bridge, scene, store: useUi } });
+      }
+      scene.app.ticker.add((ticker) => {
+        drawFrame(ticker.deltaMS);
+      });
+      unsubscribe = useUi.subscribe(stillFrame);
+      stillFrame();
+      document.addEventListener("visibilitychange", onVisibility);
+      onVisibility();
+    })
+    .catch((error: unknown) => {
+      // No office to watch: the daemon must not wait for walks that will never be drawn.
+      bridge.setWatching(false);
+      if (!disposed) {
+        useUi.getState().setError(errorMessage(error));
+      }
+    });
+  return () => {
+    disposed = true;
+    bridge.setWatching(false);
+    unsubscribe?.();
+    document.removeEventListener("visibilitychange", onVisibility);
+    scene.destroy();
+  };
 }

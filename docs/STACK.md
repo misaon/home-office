@@ -11,30 +11,28 @@ kept as history and is not evidence about the current tree.
 
 ## Implemented stack
 
-| Area                      | Dependency / version                                  | Purpose                                                                                                                      |
-| ------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Runtime / package manager | Bun 1.4.2                                             | TypeScript execution, SQLite, HTTP/WS, compiled executables, isolated workspaces and catalogs                                |
-| Types                     | TypeScript 7.0.2                                      | Native compiler; explicit strict options in `tsconfig.base.json`                                                             |
-| Lint                      | oxlint 1.82.0, oxlint-tsgolint 7.0.2001               | Type-aware, pedantic, React hooks and accessibility checks                                                                   |
-| Format / unused code      | oxfmt 0.67.0, Knip 6.35.0                             | Formatting and workspace-aware source/dependency coverage, including CSS                                                     |
-| Validation / RPC          | Zod 4.5.4, oRPC 1.15.0                                | Boundary validation and shared client/server contract                                                                        |
-| Persistence               | Drizzle ORM 0.45.2, Drizzle Kit 0.31.10, `bun:sqlite` | Embedded event log and schema migrations                                                                                     |
-| Logging                   | Pino 10.3.1                                           | Structured NDJSON; the desktop app's file destination rotates at 8 MiB, keeping one previous file                            |
-| Single instance           | `fs.mkdir` plus a pid liveness check                  | Own ~25 lines; replaced proper-lockfile, which had gone quiet (ADR 005)                                                      |
-| Desktop                   | Electrobun 2.0.1, Hutch 0.25.0                        | Native shell with the daemon in its Bun main process                                                                         |
-| UI                        | React / React DOM 19.2.8                              | Panels compiled with Bun's React Compiler integration                                                                        |
-| Client state              | Zustand 5.0.15, TanStack Query 5.102.8                | Event projection and abortable cached RPC queries                                                                            |
-| Styling / build           | Tailwind CSS 4.3.3, bun-plugin-tailwind 0.1.2         | CSS and HTML-entry UI builds                                                                                                 |
-| Rendering                 | PixiJS 8.20.1                                         | Sprite batching, static floor textures and animated office rendering                                                         |
-| Image processing          | Sharp 0.35.4                                          | PNG encoding for the desktop app icon                                                                                        |
-| Pathfinding queue         | TinyQueue 3.0.0                                       | Heap for the simulation's weighted A* search                                                                                 |
-| Agent protocols           | ACP SDK 1.4.0, MCP SDK 1.30.0                         | Provider sessions and scoped office tools                                                                                    |
-| Secrets                   | `Bun.secrets`, atomic file fallback                   | Keychain / libsecret / Credential Manager, chosen by whether the host store answers; no secret ever in a subprocess argument |
-| Localisation              | i18next 26.4.2, react-i18next 17.0.13                 | The office's own text in English and Czech, with typed keys; +93 KiB on the UI bundle (1018 → 1111 KiB)                      |
-| Types / CLI               | type-fest 5.9.0 (dev), yoctocolors 2.2.0              | One typed `compact()` helper instead of 62 spread guards; CLI colour gated on a TTY                                          |
+| Area                      | Dependency / version                          | Purpose                                                                                                                      |
+| ------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Runtime / package manager | Bun 1.4.2                                     | TypeScript execution, SQLite, HTTP/WS, compiled executables, isolated workspaces and catalogs                                |
+| Types                     | TypeScript 7.0.2                              | Native compiler; explicit strict options in `tsconfig.base.json`                                                             |
+| Lint                      | oxlint 1.82.0, oxlint-tsgolint 7.0.2001       | Type-aware, pedantic, React hooks and accessibility checks                                                                   |
+| Format / unused code      | oxfmt 0.67.0, Knip 6.35.0                     | Formatting and workspace-aware source/dependency coverage, including CSS                                                     |
+| Validation / RPC          | Zod 4.5.4, oRPC 1.15.0                        | Boundary validation and shared client/server contract                                                                        |
+| Persistence               | `bun:sqlite` (Bun 1.4.2)                      | Embedded event log; the schema is applied at open and versioned with `PRAGMA user_version`                                   |
+| Logging                   | Pino 10.3.1                                   | Structured NDJSON; the desktop app's file destination rotates at 8 MiB, keeping one previous file                            |
+| Single instance           | `fs.mkdir` plus a pid liveness check          | Own ~25 lines; replaced proper-lockfile, which had gone quiet (ADR 005)                                                      |
+| Desktop                   | Electrobun 2.0.1, Hutch 0.25.0                | Native shell with the daemon in its Bun main process                                                                         |
+| UI                        | React / React DOM 19.2.8                      | Panels compiled with Bun's React Compiler integration                                                                        |
+| Client state              | Zustand 5.0.15, TanStack Query 5.102.8        | Event projection and abortable cached RPC queries                                                                            |
+| Styling / build           | Tailwind CSS 4.3.3, bun-plugin-tailwind 0.1.2 | CSS and HTML-entry UI builds                                                                                                 |
+| Rendering                 | PixiJS 8.20.1                                 | Sprite batching, static floor textures and animated office rendering                                                         |
+| Pathfinding queue         | TinyQueue 3.0.0                               | Heap for the simulation's weighted A* search                                                                                 |
+| Agent protocols           | ACP SDK 1.4.0, MCP SDK 1.30.0                 | Provider sessions and scoped office tools                                                                                    |
+| Secrets                   | `Bun.secrets`, atomic file fallback           | Keychain / libsecret / Credential Manager, chosen by whether the host store answers; no secret ever in a subprocess argument |
+| Localisation              | i18next 26.4.2, react-i18next 17.0.13         | The office's own text in English and Czech, with typed keys; +93 KiB on the UI bundle (1018 → 1111 KiB)                      |
+| CLI                       | yoctocolors 2.2.0                             | CLI colour gated on a TTY                                                                                                    |
 
-The root esbuild override to 0.28.2 removes the vulnerable Drizzle Kit transitive version. Check Drizzle
-schema generation when changing it. The native secret API is experimental; retain the explicit file
+The native secret API is experimental; retain the explicit file
 backend as an operational fallback. Do not assume API compatibility with arbitrary Node tooling just
 because Bun executes TypeScript — `Bun.timingSafeEqual` does not exist in 1.4.2, for one, and the audit
 had to fall back to `node:crypto` for it.
@@ -61,7 +59,7 @@ remote install script is executed. `bun run desktop:build` assembles resources a
 macOS arm64 application/DMG. The complete build was verified locally during the audit.
 
 The sandbox runner ships as a `bun build --target=bun --minify` bundle (`images/agent/bin/ho-runner.js`,
-about 119 KB) executed by the Bun the image already installs, not as a compiled binary — that removed a
+120 050 bytes measured on 2026-09-13) executed by the Bun the image already installs, not as a compiled binary — that removed a
 second copy of the Bun runtime from every agent image (1.76 → 1.69 GB).
 
 Agent images target Linux arm64. Alpine 3.24.1 and the Rust builder are pinned by image digest in the
@@ -110,14 +108,13 @@ vulnerabilities in their locked npm trees. That is not a comprehensive OS-image 
   application. Tauri is the fallback if native window behavior, accessibility, packaging or supported
   platforms become blockers; it would require managing the daemon as a separate sidecar. Electron is
   viable if consistent Chromium behavior becomes more valuable than installation/RAM cost.
-- Keep Bun workspaces without Nx/Turborepo for now. There are 16 compiler targets and one UI bundle;
-  bounded compilation already limits peak process count. Introduce a task cache when measured CI time
-  or repeated builds justify maintaining another build graph.
-- Keep SQLite/Drizzle for a single local writer. A server database does not fix event replay growth.
+- Keep Bun workspaces without Nx/Turborepo for now. There are six compiler programs and one UI bundle,
+  and `scripts/typecheck.ts` runs at most four `tsc` processes at a time. Introduce a task cache when
+  measured CI time or repeated builds justify maintaining another build graph.
+- Keep SQLite for a single local writer. A server database does not fix event replay growth.
   Add event snapshots/retention and measured query indexes before introducing a database service.
-- Use focused libraries for maintained commodity logic where one exists and is alive: Sharp for the PNG
-  codec, TinyQueue for the priority queue, TanStack Query for repeated request state, `type-fest` to type
-  one `compact()` helper, `yoctocolors` for CLI colour. The audit's library sweep (43 candidates, ADR 005)
+- Use focused libraries for maintained commodity logic where one exists and is alive: TinyQueue for the
+  priority queue, TanStack Query for repeated request state, `yoctocolors` for CLI colour. The audit's library sweep (43 candidates, ADR 005)
   also found the opposite: `proper-lockfile` was **removed** — last published 2022-06-24 — and replaced by
   an atomic `mkdir` plus a pid liveness check; `neverthrow`, `ts-pattern`, `it-pushable`, `cli-table3`,
   `picocolors`, `pino-roll` and eleven more were rejected on activity or fit, each with its figures
@@ -130,6 +127,71 @@ vulnerabilities in their locked npm trees. That is not a comprehensive OS-image 
 No tests were added in the September 2026 audits at the owner's request; a test phase needs a new owner
 decision. Existing checks and verification spikes may be run. Code signing/notarization, new terminal UI,
 remote hosting and automatic merging are not implemented.
+
+## UI components: shadcn/ui, adopted 2026-09-14
+
+The office's controls are shadcn/ui, at the owner's instruction, rather than components written here.
+shadcn is not a dependency you install and import: its CLI copies component source into the repository,
+so `packages/ui/src/components/ui/*` is vendored third-party code that `shadcn add` can rewrite at any
+time. Everything that follows from that:
+
+| Package                    | Version | Why                                                         |
+| -------------------------- | ------- | ----------------------------------------------------------- |
+| `radix-ui`                 | 1.6.7   | The primitives every vendored component is built on         |
+| `class-variance-authority` | 0.7.1   | How those components express their variants                 |
+| `cn`                       | 0.3.0   | The class merge helper they import                          |
+| `cmdk`                     | 1.1.1   | Behind `command`, which the floor picker uses               |
+| `lucide-react`             | 1.45.0  | The icon set shadcn's own examples use                      |
+| `shadcn`                   | 4.21.0  | Ships `shadcn/tailwind.css`, the base layer its CSS expects |
+| `tw-animate-css`           | 1.4.0   | The animation utilities that base layer references          |
+
+Configuration lives in `packages/ui/components.json`: style `radix-nova` (Radix primitives, which are the
+mature base of the three the registry offers), icons from lucide, CSS variables on, and the alias `@/*`,
+which `packages/ui/tsconfig.json` resolves to `packages/ui/src/*` so the CLI's own import paths work
+unedited.
+
+Three concessions the vendored code needs, each scoped to its directory so nothing else loosens:
+
+- `.oxlintrc.json` turns off fourteen rules for `packages/ui/src/components/ui/*.tsx`. shadcn is written
+  against TypeScript's ordinary strictness, not this repository's; patching it would have to be redone
+  on every `shadcn add`.
+- `packages/ui/tsconfig.json` sets `exactOptionalPropertyTypes: false` for the UI program. It is the one
+  flag the vendored components trip, and a program cannot scope a compiler option to a subdirectory.
+- `knip.json` ignores that directory, because vendored components export their whole surface whether or
+  not this office calls for it.
+
+The office's palette is expressed in shadcn's own variables in `packages/ui/src/styles.css`: gold is
+`--primary`, hover stays neutral in `--accent`, and the office is dark only, so shadcn's dark values sit
+on `:root` rather than behind `.dark`.
+
+## The drawn design: fonts vendored, 2026-09-14
+
+`packages/ui/src/design` is a port of the office the owner had drawn, kept at
+`docs/design/Home Office.html`. That file is a self-extracting bundle: a declarative template plus a small runtime,
+with the assets base64-gzipped in a manifest. The port reads it, it does not run it — nothing in
+`packages/ui` loads the bundle or its runtime.
+
+The design is typeset in three Google fonts, so the three are vendored as woff2 next to the port rather
+than fetched at run time. A desktop app that reaches the network to draw its own chrome is a worse app,
+and the office is dark, offline-capable and already ships its own bundle:
+
+| Family          | Weights declared | Files | Bytes  |
+| --------------- | ---------------- | ----- | ------ |
+| Instrument Sans | 400, 500, 600    | 2     | 40 996 |
+| JetBrains Mono  | 400, 500         | 6     | 66 164 |
+| Space Grotesk   | 500, 600, 700    | 3     | 48 016 |
+
+Eleven files, 155 176 bytes, in `packages/ui/src/design/fonts`, declared by
+`packages/ui/src/design/fonts.css` with the same `unicode-range` subsetting the original carried. There
+are fewer files than weights because these are variable fonts: one file per subset serves every weight
+of its family, exactly as the original stylesheet had it, and the file names carry the first weight that
+referenced them. The built stylesheet inlines all eleven, so the design makes no font request at all.
+
+The port has its own entry, `packages/ui/design.html` → `src/design/main.tsx`, and its own stylesheet.
+It does not import `src/styles.css`, Tailwind or shadcn: the drawing is expressed in inline styles and
+thirty `:hover` rules, and mixing a second reset into it would move pixels. The knobs the design was
+drawn with (`internalTools`, `accent`, `panelWidth`, `ambientGlow`, `stageTheme`) are readable from the
+query string, which is what lets a variant be held against the original.
 
 ## Primary references
 

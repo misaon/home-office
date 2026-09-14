@@ -1,90 +1,68 @@
-import { errorMessage } from "@ho/protocol";
-import {
-  createChannel,
-  type RuntimeSession,
-  type RuntimeSessionSpec,
-  type RuntimeEvent,
-  type Cancellation,
-} from "@ho/core";
+import { type Cancellation, createChannel, type RuntimeSession } from "@ho/core";
+import { errorMessage, type RuntimeEvent } from "@ho/protocol";
 import type { OfficeConnection } from "./connection.ts";
 import { newTurn, stopToEvent, updateToEvents } from "./events.ts";
-import { isAuthRequired, type Negotiated } from "./negotiate.ts";
+import { isAuthRequired, type Negotiated, raceExit } from "./negotiate.ts";
 import type { AcpPreset } from "./presets.ts";
 
+/**
+ * One `session/prompt` per call: the office's appendix rides on the first prompt of a new conversation
+ * (a resumed one already has it), the agent's notifications become runtime events, and its answer or its
+ * exit ends the stream.
+ */
 export function createPrompt(
   office: OfficeConnection,
-  spec: RuntimeSessionSpec,
+  spec: { systemPromptAppendix: string; model: string },
   preset: AcpPreset,
   negotiated: Negotiated,
   exited: Promise<number | null>,
-  lastStderr: () => string,
 ): RuntimeSession["prompt"] {
   const { sessionId, resumed, servers } = negotiated;
-  let first = true;
+  // A resumed conversation already carries the office's appendix; the `init` event is about the process.
+  let appendixSent = resumed;
 
-  async function* prompt(
+  return async function* prompt(
     input: { text: string },
     signal?: Cancellation,
   ): AsyncIterable<RuntimeEvent> {
-    const needsAppendix = first && !resumed;
+    if (signal?.aborted === true) {
+      return;
+    }
     const events = createChannel<RuntimeEvent>(signal);
     const turn = newTurn();
-    if (first) {
-      first = false;
-      events.push({
-        kind: "init",
-        runtimeSessionId: sessionId,
-        model: spec.model,
-        plugins: [],
-        pluginErrors: [],
-        tools: 0,
-        mcpServers: servers.map((s) => s.name),
-      });
-    }
-    const flush = (): void => {
-      for (const event of office.drain()) {
-        events.push(event);
-      }
-    };
+    events.push({
+      kind: "init",
+      runtimeSessionId: sessionId,
+      model: spec.model,
+      plugins: [],
+      pluginErrors: [],
+      tools: 0,
+      mcpServers: servers.map((s) => s.name),
+    });
+    office.onPermission(events.push);
     office.listen((update) => {
-      flush();
-      try {
-        for (const event of updateToEvents(update, turn)) {
-          events.push(event);
-        }
-      } catch (error) {
-        events.push({ kind: "error", code: "process_exit", message: errorMessage(error) });
-        events.close();
+      for (const event of updateToEvents(update, turn)) {
+        events.push(event);
       }
     });
     const appendix = spec.systemPromptAppendix.trim();
     const text =
-      !needsAppendix || appendix === "" ? input.text : `${appendix}\n\n---\n\n${input.text}`;
+      appendixSent || appendix === "" ? input.text : `${appendix}\n\n---\n\n${input.text}`;
+    appendixSent = true;
     const cancel = (): void => {
       void office.conn.agent.notify("session/cancel", { sessionId }).catch(() => null);
     };
     signal?.addEventListener("abort", cancel);
-    if (signal?.aborted === true) {
-      cancel();
-      events.close();
-      signal.removeEventListener("abort", cancel);
-      office.listen(null);
-      return;
-    }
-    void Promise.race([
+    void raceExit(
       office.conn.agent.request("session/prompt", {
         sessionId,
         prompt: [{ type: "text", text }],
       }),
-      exited.then((code) => {
-        throw new Error(
-          `${preset.name} exited (code ${String(code)}) during the prompt${lastStderr()}`,
-        );
-      }),
-    ])
+      exited,
+      (code) => `${preset.name} exited (code ${String(code)}) during the prompt`,
+    )
       .then(
         (response) => {
-          flush();
           events.push(stopToEvent(response.stopReason, turn, sessionId));
         },
         (error: unknown) => {
@@ -96,7 +74,6 @@ export function createPrompt(
         },
       )
       .finally(() => {
-        office.listen(null);
         events.close();
       });
     try {
@@ -104,8 +81,8 @@ export function createPrompt(
     } finally {
       signal?.removeEventListener("abort", cancel);
       office.listen(null);
+      office.onPermission(null);
       events.close();
     }
-  }
-  return prompt;
+  };
 }

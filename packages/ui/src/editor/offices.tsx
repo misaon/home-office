@@ -2,43 +2,50 @@ import { OfficeLayout } from "@ho/protocol";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, CONTROL, Field, Section } from "../kit/controls.tsx";
-import { requireClient } from "../rpc.ts";
-import { useUi } from "../store.ts";
-
-export const layoutsQuery = {
-  queryKey: ["layouts"],
-  queryFn: () => requireClient().layouts.list(),
-} as const;
+import { Button, Field, Section } from "../kit/controls.tsx";
+import { layoutsQuery } from "../queries.ts";
+import { useOnline } from "../store.ts";
 
 /** Any office JSON, not only the ones already in the repository. */
 function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX.Element {
   const { t } = useTranslation();
   const [problem, setProblem] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
   return (
     <Field id="ho-editor-file" label={t("editor.load")}>
-      <input
-        id="ho-editor-file"
-        type="file"
-        accept="application/json,.json"
-        className={`${CONTROL} file:mr-3 file:rounded file:border-0 file:bg-line file:px-2 file:py-1 file:text-gray-100`}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file === undefined) {
-            return;
-          }
-          void file.text().then((text) => {
-            const parsed = OfficeLayout.safeParse(parseJson(text));
-            if (parsed.success) {
-              setProblem(null);
-              load(parsed.data);
-            } else {
-              setProblem(parsed.error.issues[0]?.message ?? t("editor.notALayout"));
+      {/* A file input draws its own button and its own "no file chosen" in the system's language,
+          neither of which the office can restyle, so the label is the button and the input is hidden. */}
+      <label className="flex items-center gap-3 text-2xs text-muted-foreground">
+        <span
+          id="ho-editor-file"
+          className="shrink-0 cursor-pointer rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs text-foreground hover:border-input hover:bg-border/60"
+        >
+          {t("editor.chooseFile")}
+        </span>
+        <span className="min-w-0 truncate font-mono">{picked ?? t("editor.noFile")}</span>
+        <input
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file === undefined) {
+              return;
             }
-          });
-        }}
-      />
-      {problem === null ? null : <span className="text-2xs text-red-300">{problem}</span>}
+            setPicked(file.name);
+            void file.text().then((text) => {
+              const parsed = OfficeLayout.safeParse(parseJson(text));
+              if (parsed.success) {
+                setProblem(null);
+                load(parsed.data);
+              } else {
+                setProblem(parsed.error.issues[0]?.message ?? t("editor.notALayout"));
+              }
+            });
+          }}
+        />
+      </label>
+      {problem === null ? null : <span className="text-2xs text-destructive">{problem}</span>}
     </Field>
   );
 }
@@ -59,24 +66,24 @@ export function SavedOffices({
   save: () => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
-  const connection = useUi((s) => s.connection);
-  const store = useQuery({ ...layoutsQuery, enabled: connection === "online" });
+  const online = useOnline();
+  const store = useQuery({ ...layoutsQuery, enabled: online });
   const available = store.data?.available ?? false;
   return (
     <Section title={t("editor.saved")}>
-      {available ? null : <p className="text-2xs text-amber-300">{t("editor.noRepo")}</p>}
+      {available ? null : <p className="text-2xs text-warn">{t("editor.noRepo")}</p>}
       <div className="space-y-1">
         {(store.data?.layouts ?? []).map((office) => (
           <button
             key={office.id}
             type="button"
-            className="block w-full rounded-md px-3 py-2 text-left hover:bg-line"
+            className="block w-full rounded-md px-3 py-2 text-left hover:bg-border"
             onClick={() => {
               load(office);
             }}
           >
             {office.name}{" "}
-            <span className="font-mono text-2xs text-gray-500">
+            <span className="font-mono text-2xs text-muted-foreground">
               {office.id} · {office.width}×{office.height}
             </span>
           </button>

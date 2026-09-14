@@ -1,0 +1,271 @@
+import {
+  type Agent,
+  type AgentId,
+  type AgentUpdateInput,
+  Gender,
+  isSessionActive,
+  type Project,
+  type ProjectId,
+  type Session,
+} from "@ho/protocol";
+import { useMutation } from "@tanstack/react-query";
+import { useId, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { GENDER_KEY, ROLE_KEY } from "../i18n/labels.ts";
+import { Badge, Button, Empty, Failure, Field, Section } from "../kit/controls.tsx";
+import { Select } from "../kit/select.tsx";
+import { Reveal } from "../kit/reveal.tsx";
+import { requireClient } from "../rpc.ts";
+import { type Snapshot, sortedFloors, useUi } from "../store.ts";
+import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
+import { NewAgent } from "./agent-new.tsx";
+import { SessionBlock } from "./team-sessions.tsx";
+import { Button as ShadcnButton } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Confirm } from "../kit/confirm.tsx";
+
+const choiceOf = (agent: Agent): Choice => ({
+  provider: agent.provider,
+  auth: agent.auth,
+  model: agent.model,
+  effort: agent.effort,
+});
+
+/** Everything about one colleague that can be changed, opened from their card. */
+function AgentSettings({
+  agent,
+  projects,
+}: {
+  agent: Agent;
+  projects: ReadonlyMap<ProjectId, Project>;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const id = useId();
+  const otherFloors = sortedFloors(projects).filter((p) => p.id !== agent.projectId);
+  const save = useMutation({
+    mutationFn: (patch: AgentUpdateInput["patch"]) =>
+      requireClient().agents.update({ id: agent.id, patch }),
+  });
+  const copy = useMutation({
+    mutationFn: (projectId: ProjectId) => requireClient().agents.copy({ id: agent.id, projectId }),
+  });
+  const remove = useMutation({
+    mutationFn: () => requireClient().agents.remove({ id: agent.id }),
+  });
+  return (
+    <div className="space-y-4 border-t border-border pt-4">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+        <ProviderModelFields
+          role={agent.role}
+          value={choiceOf(agent)}
+          onChange={(next) => {
+            save.mutate(next);
+          }}
+        />
+        <Field id={`${id}-gender`} label={t("agent.gender")}>
+          <Select
+            id={`${id}-gender`}
+            value={agent.appearance.gender}
+            options={Gender.options.map((gender) => ({
+              value: gender,
+              label: t(GENDER_KEY[gender]),
+            }))}
+            onChange={(gender) => {
+              save.mutate({ appearance: { gender } });
+            }}
+          />
+        </Field>
+        {otherFloors.length === 0 || agent.role === "boss" ? null : (
+          <Field id={`${id}-copy`} label={t("agent.copyToFloor")} hint={t("agent.copyHint")}>
+            <Select
+              id={`${id}-copy`}
+              value=""
+              placeholder={t("agent.pickFloor")}
+              options={otherFloors.map((p) => ({ value: p.id, label: p.name }))}
+              onChange={(projectId) => {
+                copy.mutate(projectId);
+              }}
+            />
+          </Field>
+        )}
+      </div>
+      {agent.basePrompt.trim() === "" ? null : (
+        <p className="rounded-lg bg-background/40 p-3 text-2xs leading-relaxed whitespace-pre-wrap text-foreground/80">
+          {agent.basePrompt}
+        </p>
+      )}
+      <div className="flex items-center justify-between gap-3">
+        <Failure error={save.error ?? copy.error ?? remove.error} />
+        {agent.role === "boss" ? (
+          <span className="ml-auto text-2xs text-muted-foreground">{t("agent.runsFloor")}</span>
+        ) : (
+          <span className="ml-auto">
+            <Confirm
+              trigger={
+                <ShadcnButton type="button" variant="destructive">
+                  {t("common.remove")}
+                </ShadcnButton>
+              }
+              title={t("agent.removeTitle")}
+              description={t("agent.confirmRemove", { name: agent.name })}
+              action={t("common.remove")}
+              destructive
+              onConfirm={() => {
+                remove.mutate();
+              }}
+            />
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** A colleague: who they are and what they are doing, with everything about them one click deeper. */
+function AgentCard({
+  agent,
+  sessions,
+  tasks,
+  projects,
+}: {
+  agent: Agent;
+  sessions: Session[];
+  tasks: Snapshot["tasks"];
+  projects: ReadonlyMap<ProjectId, Project>;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const selected = useUi((s) => s.selectedAgentId);
+  const selectAgent = useUi((s) => s.selectAgent);
+  const [editing, setEditing] = useState(false);
+  const open = selected === agent.id;
+  const working = sessions.some((s) => isSessionActive(s.state));
+  return (
+    <Card className={`p-4 ${open ? "border-primary/40" : ""}`}>
+      <div className="flex items-start justify-between gap-3">
+        <button
+          type="button"
+          className="min-w-0 flex-1 text-left"
+          aria-expanded={open}
+          onClick={() => {
+            selectAgent(open ? null : agent.id);
+          }}
+        >
+          <span className="flex items-center gap-2">
+            <span className="truncate text-sm font-semibold">{agent.name}</span>
+            <Badge tone={agent.role === "boss" ? "accent" : "neutral"}>
+              {t(ROLE_KEY[agent.role])}
+            </Badge>
+            {working ? <Badge tone="good">{t("team.working")}</Badge> : null}
+          </span>
+          <span className="mt-1 block truncate font-mono text-2xs text-muted-foreground">
+            {agent.provider} · {agent.model} / {agent.effort}
+          </span>
+        </button>
+        <span className="shrink-0">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setEditing((current) => !current);
+            }}
+          >
+            {editing ? t("common.close") : t("team.configure")}
+          </Button>
+        </span>
+      </div>
+      <Reveal open={editing}>
+        <AgentSettings agent={agent} projects={projects} />
+      </Reveal>
+      <Reveal open={open && !editing}>
+        <div className="mt-3 space-y-2">
+          {sessions.length === 0 ? (
+            <p className="text-2xs text-muted-foreground">{t("session.noSessions")}</p>
+          ) : (
+            sessions.slice(0, 6).map((s) => <SessionBlock key={s.id} session={s} tasks={tasks} />)
+          )}
+        </div>
+      </Reveal>
+    </Card>
+  );
+}
+
+/** The floor's people: the boss first, then everybody else by name. */
+export function TeamPanel(): React.JSX.Element {
+  const { t } = useTranslation();
+  const [hiring, setHiring] = useState(false);
+  const projects = useUi((s) => s.snapshot.projects);
+  const staff = useUi((s) => s.snapshot.agents);
+  const allSessions = useUi((s) => s.snapshot.sessions);
+  const tasks = useUi((s) => s.snapshot.tasks);
+  const floorId = useUi((s) => s.floorId);
+  if (floorId === null) {
+    return (
+      <div className="p-4">
+        <Empty>{t("project.needFirst")}</Empty>
+      </div>
+    );
+  }
+  const agents = [...staff.values()]
+    .filter((a) => a.projectId === floorId)
+    .toSorted(
+      (a, b) =>
+        Number(b.role === "boss") - Number(a.role === "boss") || a.name.localeCompare(b.name),
+    );
+  const sessionsOf = (agentId: AgentId): Session[] =>
+    [...allSessions.values()]
+      .filter((s) => s.agentId === agentId)
+      .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt));
+  return (
+    <div className="h-full space-y-5 overflow-y-auto p-4">
+      <p className="text-2xs leading-relaxed text-muted-foreground">{t("team.intro")}</p>
+      <Section
+        title={t("team.onFloor", { floor: projects.get(floorId)?.name ?? "" })}
+        aside={<Badge>{agents.length}</Badge>}
+      >
+        <div className="space-y-3">
+          {agents.map((a) => (
+            <AgentCard
+              key={a.id}
+              agent={a}
+              sessions={sessionsOf(a.id)}
+              tasks={tasks}
+              projects={projects}
+            />
+          ))}
+        </div>
+      </Section>
+      {hiring ? (
+        <Section
+          title={t("agent.add")}
+          aside={
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setHiring(false);
+              }}
+            >
+              {t("common.cancel")}
+            </Button>
+          }
+        >
+          <div className="animate-rise">
+            <NewAgent
+              floorId={floorId}
+              onAdded={() => {
+                setHiring(false);
+              }}
+            />
+          </div>
+        </Section>
+      ) : (
+        <Button
+          variant="primary"
+          onClick={() => {
+            setHiring(true);
+          }}
+        >
+          {t("agent.add")}
+        </Button>
+      )}
+    </div>
+  );
+}

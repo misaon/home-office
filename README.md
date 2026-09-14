@@ -33,7 +33,7 @@ bun run apps/cli/src/main.ts daemon --ui
 ```
 
 In another terminal, `bun run apps/cli/src/main.ts ui` opens the browser UI. For a standalone CLI,
-run `bun build --compile --minify apps/cli/src/main.ts --outfile apps/cli/dist/ho` and use that binary —
+run `bun run cli:build` and use the binary it writes to `apps/cli/dist/ho` —
 it carries no office UI bundle and no Docker build contexts, so `ho ui` and `ho image build` say so
 instead of failing obscurely, and `ho doctor` reports images as not inspectable. Run the daemon from a
 source checkout, or use the desktop app, when you want those.
@@ -51,4 +51,4 @@ none; `secrets.store` in `config.json` (`auto`, `os` or `file`) overrides that c
 - [Current plan and remaining work](docs/PLAN.md)
 - [Engineering conventions](docs/CONVENTIONS.md)
 - [The September 2026 deep audit](audit/AUDIT.md) — findings, coverage matrix, verification transcripts
-  and six ADRs; [an earlier audit report](docs/history/AUDIT-2026-09.md) is kept as history
+  and seven ADRs; [an earlier audit report](docs/history/AUDIT-2026-09.md) is kept as history

@@ -31,6 +31,8 @@ jobs:
           key: hutch-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/devkit.ts') }}
       - run: bun run devkit
       - run: bun run check
+      # The sandbox relay is bundled for `bun` in the image job; compiling it here fails fast and cheaply.
+      - run: bun build --target=bun packages/runner/src/main.ts --outfile /dev/null
       - run: bun audit
       - name: Audit sandbox dependencies
         run: |
@@ -38,13 +40,11 @@ jobs:
             npm ls --prefix "$directory" --package-lock-only >/dev/null
             npm audit --omit=dev --prefix "$directory"
           done
-      - run: bun run ui:build
-      - run: bun build --compile apps/cli/src/main.ts --outfile /tmp/ho
-      - run: bun build --target=bun --minify packages/runner/src/main.ts --outfile /tmp/ho-runner.js
+      - run: bun run cli:build
       - name: Smoke test the daemon
         run: |
           export HO_HOME="$(mktemp -d)"
-          /tmp/ho daemon >"$HO_HOME/daemon.log" 2>&1 &
+          apps/cli/dist/ho daemon >"$HO_HOME/daemon.log" 2>&1 &
           for _ in $(seq 1 50); do
             if curl -fsS "http://127.0.0.1:47800/health" >/dev/null 2>&1; then break; fi
             sleep 0.2
@@ -73,8 +73,6 @@ jobs:
         run: |
           bun build --target=bun --minify \
             packages/runner/src/main.ts --outfile images/agent/bin/ho-runner.js
-          rm -rf images/agent/plugins
-          cp -R packages/agent-kit/plugins images/agent/plugins
       - name: Build the git-bridge image
         run: |
           docker buildx build --load -t ho/git-bridge:ci \

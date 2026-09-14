@@ -1,18 +1,20 @@
 import type { SandboxProvider, SandboxSpec } from "@ho/core";
 import type { TaskId } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
-import { LABELS } from "./images.ts";
+import { LABELS } from "./labels.ts";
 
 export const REPO_IN_VOLUME = "/work/repo";
 
 export const branchFor = (taskId: TaskId): string => `ho/task-${taskId}`;
+
+type Source = { path: string; mode: "ro" | "rw" } | null;
 
 const bridgeSpec = (
   config: DaemonConfig,
   name: string,
   cmd: readonly string[],
   volume: string,
-  source: { path: string; readonly: boolean } | null,
+  source: Source,
 ): SandboxSpec => ({
   name,
   image: config.docker.bridgeImage,
@@ -24,7 +26,9 @@ const bridgeSpec = (
   network: "none",
   volumes: [{ name: volume, target: "/work" }],
   binds:
-    source === null ? [] : [{ source: source.path, target: "/src", readonly: source.readonly }],
+    source === null
+      ? []
+      : [{ source: source.path, target: "/src", readonly: source.mode === "ro" }],
   tmpfs: { "/tmp": "rw,nosuid,size=64m" },
   limits: { memoryBytes: 512 * 1024 * 1024, cpus: 1, pids: 128 },
   readonlyRootfs: true,
@@ -49,25 +53,6 @@ const runOrThrow = async (
   }
 };
 
-/** True when the task volume already holds a checkout (a resumed or reviewed task). */
-const hasRepo = async (
-  provider: SandboxProvider,
-  config: DaemonConfig,
-  volume: string,
-): Promise<boolean> =>
-  (
-    await run(
-      provider,
-      bridgeSpec(
-        config,
-        `${volume}-probe`,
-        ["-C", REPO_IN_VOLUME, "rev-parse", "--git-dir"],
-        volume,
-        null,
-      ),
-    )
-  ).ok;
-
 /**
  * Makes sure the task volume holds the repository on the task branch. A fresh task clones the default branch
  * and creates the branch; a task whose branch already exists in the source (resumed after GC, or under review)
@@ -81,52 +66,28 @@ export async function prepareRepo(
   volume: string,
   branch: string,
 ): Promise<void> {
-  if (await hasRepo(provider, config, volume)) {
+  const probe = bridgeSpec(
+    config,
+    `${volume}-probe`,
+    ["-C", REPO_IN_VOLUME, "rev-parse", "--git-dir"],
+    volume,
+    null,
+  );
+  if ((await run(provider, probe)).ok) {
     return;
   }
-  const source = { path: sourcePath, readonly: true };
-  const existing = await run(
-    provider,
+  const clone = (ref: string): SandboxSpec =>
     bridgeSpec(
       config,
       `${volume}-clone`,
-      [
-        "clone",
-        "--no-hardlinks",
-        "-q",
-        "--branch",
-        branch,
-        "--single-branch",
-        "/src",
-        REPO_IN_VOLUME,
-      ],
+      ["clone", "--no-hardlinks", "-q", "--branch", ref, "--single-branch", "/src", REPO_IN_VOLUME],
       volume,
-      source,
-    ),
-  );
-  if (existing.ok) {
+      { path: sourcePath, mode: "ro" },
+    );
+  if ((await run(provider, clone(branch))).ok) {
     return;
   }
-  await runOrThrow(
-    provider,
-    bridgeSpec(
-      config,
-      `${volume}-clone`,
-      [
-        "clone",
-        "--no-hardlinks",
-        "-q",
-        "--branch",
-        defaultBranch,
-        "--single-branch",
-        "/src",
-        REPO_IN_VOLUME,
-      ],
-      volume,
-      source,
-    ),
-    "clone",
-  );
+  await runOrThrow(provider, clone(defaultBranch), "clone");
   await runOrThrow(
     provider,
     bridgeSpec(
@@ -141,22 +102,21 @@ export async function prepareRepo(
 }
 
 /** Pushes the task branch back into the source repository. The agent never had this read-write mount. */
-export async function pushFromVolume(
+export const pushFromVolume = (
   provider: SandboxProvider,
   config: DaemonConfig,
   sourcePath: string,
   volume: string,
   branch: string,
-): Promise<void> {
-  await runOrThrow(
+): Promise<void> =>
+  runOrThrow(
     provider,
     bridgeSpec(
       config,
       `${volume}-push`,
       ["-C", REPO_IN_VOLUME, "push", "-q", "/src", `HEAD:refs/heads/${branch}`],
       volume,
-      { path: sourcePath, readonly: false },
+      { path: sourcePath, mode: "rw" },
     ),
     "push",
   );
-}

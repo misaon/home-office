@@ -1,24 +1,11 @@
 import { mailForTask, type ReadModel } from "@ho/core";
 import type { MailAck, MailItem, Project, Task } from "@ho/protocol";
+import { describeOutcome } from "./outcome.ts";
 
 const DETAIL_MAX = 3000;
 
 /** What the office tells the source: the project that owns the mail, the item, and the acknowledgement. */
 export type SourceAck = { project: Project; mail: MailItem; ack: Omit<MailAck, "at"> };
-
-const outcomeDetail = (task: Task, reason: string | undefined): string => {
-  const lines = [
-    task.artifacts.prUrl === undefined ? null : `Pull request: ${task.artifacts.prUrl}`,
-    task.artifacts.branch === undefined ? null : `Branch: \`${task.artifacts.branch}\``,
-    reason === undefined || reason === "" ? null : reason,
-    task.artifacts.report === undefined || task.artifacts.report === reason
-      ? null
-      : task.artifacts.report,
-  ].filter((line): line is string => line !== null);
-  return (
-    lines.length === 0 ? `Task "${task.title}" is ${task.status}.` : lines.join("\n\n")
-  ).slice(0, DETAIL_MAX);
-};
 
 const owner = (model: ReadModel, task: Task): { project: Project; mail: MailItem } | null => {
   const mail = mailForTask(model, task);
@@ -61,7 +48,18 @@ export function outcomeAck(
     return null;
   }
   const found = owner(model, task);
-  return found === null
-    ? null
-    : { ...found, ack: { outcome: to, detail: outcomeDetail(task, reason) } };
+  if (found === null) {
+    return null;
+  }
+  // Only what the agent wrote for a reader leaves the machine: a failure reason carries process stderr,
+  // which can hold paths, URLs with credentials and other text nobody chose to publish. The report and
+  // the links still go out; the diagnostic stays in the event log and the office chat.
+  const detail = describeOutcome(task, to === "done" ? reason : undefined, DETAIL_MAX);
+  return {
+    ...found,
+    ack: {
+      outcome: to,
+      detail: detail === "" ? `Task "${task.title}" is ${task.status}.` : detail,
+    },
+  };
 }

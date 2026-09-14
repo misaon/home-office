@@ -1,20 +1,28 @@
-import { type Agent, type AgentId, errorMessage } from "@ho/protocol";
+import type { Agent, AgentId } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Section } from "../kit/controls.tsx";
+import { ROLE_KEY } from "../i18n/labels.ts";
+import { Button, Failure, Section } from "../kit/controls.tsx";
 import { Modal } from "../kit/modal.tsx";
 import { type Client, requireClient } from "../rpc.ts";
 import { type Snapshot, sortedFloors, useUi } from "../store.ts";
 import {
-  type Draft,
   Details,
+  type RepoDraft,
   RepoFields,
   typedIn,
   useRepoInspection,
 } from "./add-project-repo.tsx";
 
-const EMPTY: Draft = { kind: "local", path: "", url: "", name: "", branch: "", imports: new Set() };
+const EMPTY: RepoDraft = {
+  kind: "local",
+  path: "",
+  url: "",
+  name: "",
+  branch: "",
+  imports: new Set(),
+};
 
 type Group = { floor: string; agents: Agent[] };
 
@@ -42,10 +50,12 @@ function ImportPicker({
   }
   return (
     <Section title={t("project.importAgents")}>
-      <div className="max-h-44 space-y-3 overflow-y-auto rounded-md border border-line bg-ink p-3">
+      <div className="max-h-44 space-y-3 overflow-y-auto rounded-md border border-border bg-background p-3">
         {groups.map((g) => (
           <div key={g.floor} className="space-y-1">
-            <div className="text-2xs tracking-widest text-gray-500 uppercase">{g.floor}</div>
+            <div className="text-2xs tracking-widest text-muted-foreground uppercase">
+              {g.floor}
+            </div>
             {g.agents.map((a) => (
               <label key={a.id} className="flex items-center gap-2.5 py-1">
                 <input
@@ -57,8 +67,8 @@ function ImportPicker({
                   }}
                 />
                 <span className="text-xs">{a.name}</span>
-                <span className="text-2xs text-gray-500">
-                  {a.role} · {a.model}/{a.effort}
+                <span className="text-2xs text-muted-foreground">
+                  {t(ROLE_KEY[a.role])} · {a.model}/{a.effort}
                 </span>
               </label>
             ))}
@@ -74,14 +84,14 @@ function ImportPicker({
  * (git, name, branches), optional characters imported from other floors, and Create. The new floor
  * gets its own Andrew and Lola.
  */
-export function AddProjectModal(): React.JSX.Element | null {
+export function AddProjectModal(): React.JSX.Element {
   const { t } = useTranslation();
   const open = useUi((s) => s.addProjectOpen);
   const setOpen = useUi((s) => s.setAddProjectOpen);
   const selectFloor = useUi((s) => s.selectFloor);
   const projects = useUi((s) => s.snapshot.projects);
   const agents = useUi((s) => s.snapshot.agents);
-  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [draft, setDraft] = useState<RepoDraft>(EMPTY);
   const create = useMutation({
     mutationFn: (input: Parameters<Client["projects"]["create"]>[0]) =>
       requireClient().projects.create(input),
@@ -91,29 +101,19 @@ export function AddProjectModal(): React.JSX.Element | null {
       setDraft(EMPTY);
     },
   });
-  const inspecting = useRepoInspection(draft.kind, open ? typedIn(draft) : "", (found) => {
-    // Fill what the user has not typed themselves.
-    setDraft((d) => ({
-      ...d,
-      name: d.name === "" ? found.name : d.name,
-      branch: d.branch === "" ? found.defaultBranch : d.branch,
-    }));
-  });
-  if (!open) {
-    return null;
-  }
-  const inspection = inspecting.result;
+  const inspecting = useRepoInspection(draft.kind, open ? typedIn(draft) : "");
+  const inspection = inspecting.result?.ok === true ? inspecting.result : null;
+  const typedName = draft.name.trim();
+  const name = typedName === "" ? (inspection?.name ?? "") : typedName;
   const close = (): void => {
     setOpen(false);
     setDraft(EMPTY);
     create.reset();
   };
-  const canCreate =
-    !create.isPending && !inspecting.busy && draft.name.trim() !== "" && inspection?.ok === true;
   const submit = (): void => {
-    if (inspection?.ok === true) {
+    if (inspection !== null && name !== "") {
       create.mutate({
-        name: draft.name.trim(),
+        name,
         repo: inspection.repo,
         defaultBranch: draft.branch === "" ? inspection.defaultBranch : draft.branch,
         importAgentIds: [...draft.imports],
@@ -129,16 +129,21 @@ export function AddProjectModal(): React.JSX.Element | null {
   };
   return (
     <Modal
+      open={open}
       title={t("project.add")}
       description={t("project.addDescription")}
       onClose={close}
       footer={
         <>
-          {create.error === null ? null : (
-            <p className="mr-auto text-xs text-red-300">{errorMessage(create.error)}</p>
-          )}
+          <div className="mr-auto">
+            <Failure error={create.error} />
+          </div>
           <Button onClick={close}>{t("common.cancel")}</Button>
-          <Button variant="primary" disabled={!canCreate} onClick={submit}>
+          <Button
+            variant="primary"
+            disabled={create.isPending || inspecting.busy || inspection === null || name === ""}
+            onClick={submit}
+          >
             {create.isPending ? t("project.creating") : t("project.create")}
           </Button>
         </>
@@ -147,11 +152,7 @@ export function AddProjectModal(): React.JSX.Element | null {
       <Section title={t("project.repository")}>
         <RepoFields draft={draft} setDraft={setDraft} inspecting={inspecting} />
       </Section>
-      <Details
-        draft={draft}
-        setDraft={setDraft}
-        branches={inspection?.ok === true ? inspection.branches : []}
-      />
+      <Details draft={draft} setDraft={setDraft} inspection={inspection} />
       <ImportPicker groups={importable(projects, agents)} imports={draft.imports} toggle={toggle} />
     </Modal>
   );

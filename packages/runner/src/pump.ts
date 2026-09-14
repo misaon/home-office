@@ -1,4 +1,4 @@
-const MAX_LINE_BYTES = 1024 * 1024;
+const MAX_LINE_CHARS = 1024 * 1024;
 
 export async function pumpLines(
   stream: ReadableStream<Uint8Array>,
@@ -9,15 +9,16 @@ export async function pumpLines(
   let buffer = "";
   for await (const chunk of stream) {
     buffer += decoder.decode(chunk, { stream: true });
-    if (buffer.length > MAX_LINE_BYTES) {
-      onOverflow?.();
-      throw new Error("agent output line exceeds 1 MiB");
-    }
     let newline = buffer.indexOf("\n");
     while (newline >= 0) {
       onLine(buffer.slice(0, newline));
       buffer = buffer.slice(newline + 1);
       newline = buffer.indexOf("\n");
+    }
+    // What is left is one unterminated line; a child that never breaks its output is the failure here.
+    if (buffer.length > MAX_LINE_CHARS) {
+      onOverflow?.();
+      throw new Error("agent output line exceeds 1 MiB");
     }
   }
   buffer += decoder.decode();

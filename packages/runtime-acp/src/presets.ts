@@ -11,8 +11,6 @@ export type AcpPreset = {
   env: (spec: RuntimeSessionSpec) => Record<string, string>;
   /** Preferred ACP `authMethods` ids, most preferred first; anything containing `api` also qualifies. */
   authMethods: readonly string[];
-  /** Whether the CLI can restore a session (`session/load`) between office sessions. */
-  resume: boolean;
 };
 
 /** Local model servers on the Mac, reached from the sandbox through Docker Desktop's host alias. */
@@ -58,7 +56,6 @@ export const opencodePreset = (): AcpPreset => ({
     }),
   }),
   authMethods: ["api", "apikey", "api-key"],
-  resume: true,
 });
 
 /** Gemini CLI in ACP mode with every tool auto-approved; the key arrives as GEMINI_API_KEY. */
@@ -68,7 +65,6 @@ export const geminiPreset = (): AcpPreset => ({
   argv: (spec) => ["gemini", "--acp", "--model", spec.model, "--approval-mode", "yolo"],
   env: () => ({ GEMINI_CLI_NO_RELAUNCH: "true" }),
   authMethods: ["gemini-api-key", "api-key", "api"],
-  resume: true,
 });
 
 export const codexPreset = (): AcpPreset => ({
@@ -84,5 +80,4 @@ export const codexPreset = (): AcpPreset => ({
     }),
   }),
   authMethods: ["openai-api-key", "api-key", "api"],
-  resume: false,
 });

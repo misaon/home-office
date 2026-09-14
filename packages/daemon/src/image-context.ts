@@ -25,15 +25,16 @@ const contextPatterns = (resources: Resources, name: "agent" | "git-bridge"): st
     "Dockerfile",
     ".dockerignore",
     "rtk-config.toml",
+    "plugins/**/*",
     "mcp/package.json",
     "mcp/package-lock.json",
     "providers/*/package.json",
     "providers/*/package-lock.json",
     ...(resources.runnerEntry === null ? ["bin/ho-runner.js"] : []),
-    ...(resources.pluginsSource === null ? ["plugins/**/*"] : []),
   ];
 };
 
+/** What an image is built from, hashed, so a rebuilt context is noticed and an unchanged one is not rebuilt. */
 export async function contextHash(
   resources: Resources,
   name: "agent" | "git-bridge",
@@ -42,27 +43,19 @@ export async function contextHash(
   if (context === null) {
     return null;
   }
-  const paths = filesIn(context, contextPatterns(resources, name));
-  const hashes = [await hashFiles(context, paths)];
-  if (name === "agent") {
-    if (resources.pluginsSource !== null) {
-      hashes.push(
-        await hashFiles(resources.pluginsSource, filesIn(resources.pluginsSource, ["**/*"])),
-      );
-    }
-    if (resources.runnerEntry !== null) {
-      hashes.push(
-        await hashFiles(resources.root, [
-          ...filesIn(resources.root, [
-            "packages/runner/src/**/*.ts",
-            "packages/protocol/src/**/*.ts",
-          ]),
-          "bun.lock",
-          "package.json",
+  const hashes = [await hashFiles(context, filesIn(context, contextPatterns(resources, name)))];
+  if (name === "agent" && resources.runnerEntry !== null) {
+    hashes.push(
+      await hashFiles(resources.root, [
+        ...filesIn(resources.root, [
+          "packages/runner/src/**/*.ts",
+          "packages/protocol/src/**/*.ts",
         ]),
-        Bun.version,
-      );
-    }
+        "bun.lock",
+        "package.json",
+      ]),
+      Bun.version,
+    );
   }
   return new CryptoHasher("sha256").update(hashes.join("\0")).digest("hex").slice(0, 32);
 }

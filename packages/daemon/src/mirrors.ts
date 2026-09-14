@@ -1,6 +1,9 @@
-import { compact, type Project } from "@ho/protocol";
+import type { Project } from "@ho/protocol";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { mustExec } from "./host-exec.ts";
+
+const GIT_TIMEOUT_MS = 120_000;
 
 /**
  * Projects defined by a git URL are mirrored on the host with the owner's own git credentials.
@@ -9,35 +12,37 @@ import { join } from "node:path";
 const mirrorPath = (home: string, project: Project): string =>
   join(home, "mirrors", `${project.id}.git`);
 
-const git = async (args: readonly string[], cwd?: string): Promise<string> => {
-  const proc = Bun.spawn(["git", ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-    timeout: 120_000,
-    env: { ...Bun.env, GIT_TERMINAL_PROMPT: "0" },
-    ...compact({ cwd }),
-  });
-  const [stdout, stderr, code] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-  if (code !== 0) {
-    throw new Error(
-      `git ${args.find((a) => !a.startsWith("-") && a !== "-C") ?? ""} failed (${String(code)}): ${stderr.trim() || stdout.trim()}`,
-    );
+const git = (args: readonly string[], what: string): Promise<string> =>
+  mustExec(["git", ...args], { timeoutMs: GIT_TIMEOUT_MS }, `git ${what}`);
+
+/**
+ * The remote as git should see it: a credential embedded in the URL would otherwise sit in the process
+ * table and in git's own error output. The host's credential helper answers for the bare URL instead.
+ */
+const remoteUrl = (url: string): string => {
+  try {
+    const parsed = new URL(url);
+    parsed.username = "";
+    parsed.password = "";
+    return parsed.toString();
+  } catch {
+    return url;
   }
-  return stdout;
 };
 
+/** One refresh at a time per mirror: the lock the office's command chain does not cover, being I/O on a path. */
 const pending = new Map<string, Promise<unknown>>();
 
 const serialize = <T>(key: string, work: () => Promise<T>): Promise<T> => {
   const queued = (pending.get(key) ?? Promise.resolve()).then(work, work);
-  pending.set(
-    key,
-    queued.catch(() => undefined),
-  );
+  const settled = queued
+    .catch(() => undefined)
+    .finally(() => {
+      if (pending.get(key) === settled) {
+        pending.delete(key);
+      }
+    });
+  pending.set(key, settled);
   return queued;
 };
 
@@ -51,16 +56,19 @@ export async function sourcePathFor(home: string, project: Project): Promise<str
   await mkdir(join(home, "mirrors"), { recursive: true, mode: 0o700 });
   return serialize(path, async () => {
     if (await Bun.file(join(path, "HEAD")).exists()) {
-      await git([
-        "-C",
-        path,
+      await git(
+        [
+          "-C",
+          path,
+          "fetch",
+          "--quiet",
+          "origin",
+          `refs/heads/${project.defaultBranch}:refs/heads/${project.defaultBranch}`,
+        ],
         "fetch",
-        "--quiet",
-        "origin",
-        `refs/heads/${project.defaultBranch}:refs/heads/${project.defaultBranch}`,
-      ]);
+      );
     } else {
-      await git(["clone", "--bare", "--quiet", "--", url, path]);
+      await git(["clone", "--bare", "--quiet", "--", remoteUrl(url), path], "clone");
     }
     return path;
   });
@@ -71,38 +79,24 @@ export async function sourcePathFor(home: string, project: Project): Promise<str
  * A mirror remote refuses explicit refspecs, so mirror semantics are disabled for this one push and only
  * the task branch moves (never the whole ref namespace).
  */
-export async function pushMirrorBranch(
-  home: string,
-  project: Project,
-  branch: string,
-): Promise<void> {
-  if (project.repo.kind !== "git") {
-    return;
-  }
-  const refspec = `refs/heads/${branch}:refs/heads/${branch}`;
-  await git([
-    "-C",
-    mirrorPath(home, project),
-    "-c",
-    "remote.origin.mirror=false",
+export const pushMirrorBranch = (home: string, project: Project, branch: string): Promise<string> =>
+  git(
+    [
+      "-C",
+      mirrorPath(home, project),
+      "-c",
+      "remote.origin.mirror=false",
+      "push",
+      "--quiet",
+      "origin",
+      `refs/heads/${branch}:refs/heads/${branch}`,
+    ],
     "push",
-    "--quiet",
-    "origin",
-    refspec,
-  ]);
-}
+  );
 
 /** Pushes a branch of a local project to its `origin` so a pull request can reference it. */
-export async function pushLocalBranch(project: Project, branch: string): Promise<void> {
-  if (project.repo.kind !== "local") {
-    return;
-  }
-  await git([
-    "-C",
-    project.repo.path,
+export const pushLocalBranch = (path: string, branch: string): Promise<string> =>
+  git(
+    ["-C", path, "push", "--quiet", "origin", `refs/heads/${branch}:refs/heads/${branch}`],
     "push",
-    "--quiet",
-    "origin",
-    `refs/heads/${branch}:refs/heads/${branch}`,
-  ]);
-}
+  );

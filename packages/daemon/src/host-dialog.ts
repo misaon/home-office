@@ -1,5 +1,6 @@
 import type { DirectoryPick, DirectoryPickInput } from "@ho/protocol";
 import { stat } from "node:fs/promises";
+import { exec, type Exec } from "./host-exec.ts";
 
 /** Shows the host's directory dialog. The desktop app injects a native panel; osascript is the fallback. */
 export type DirectoryPicker = (input: DirectoryPickInput) => Promise<DirectoryPick>;
@@ -17,25 +18,19 @@ const CHOOSE_FROM = `${CHOOSE} default location ((item 2 of argv) as POSIX file)
  * The prompt and the starting directory arrive as `run argv` arguments, never as script source, so no
  * path can become AppleScript.
  */
-const statements = (choose: string): string[] =>
-  ["on run argv", choose, "return POSIX path of chosen", "end run"].flatMap((line) => ["-e", line]);
-
-async function osascript(
-  choose: string,
-  args: readonly string[],
-): Promise<{ ok: boolean; out: string; err: string }> {
-  const proc = Bun.spawn(["osascript", ...statements(choose), "--", ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-    timeout: DIALOG_TIMEOUT_MS,
-  });
-  const [out, err, code] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-  return { ok: code === 0, out: out.trim(), err: err.trim() };
-}
+const osascript = (choose: string, args: readonly string[]): Promise<Exec> =>
+  exec(
+    [
+      "osascript",
+      ...["on run argv", choose, "return POSIX path of chosen", "end run"].flatMap((line) => [
+        "-e",
+        line,
+      ]),
+      "--",
+      ...args,
+    ],
+    { timeoutMs: DIALOG_TIMEOUT_MS },
+  );
 
 const isDirectory = async (path: string): Promise<boolean> => {
   try {
@@ -66,16 +61,16 @@ export const osascriptDirectoryPicker: DirectoryPicker = async ({ startIn }) => 
       : await osascript(CHOOSE_FROM, [PROMPT, from]);
   // A starting directory git accepts can still be one the dialog refuses; the plain dialog is not lost.
   const result =
-    first.ok || from === null || CANCELLED.test(first.err)
+    first.code === 0 || from === null || CANCELLED.test(first.stderr)
       ? first
       : await osascript(CHOOSE, [PROMPT]);
-  if (result.ok && result.out !== "") {
-    return { status: "picked", path: trimmed(result.out) };
+  if (result.code === 0 && result.stdout !== "") {
+    return { status: "picked", path: trimmed(result.stdout) };
   }
-  return CANCELLED.test(result.err)
+  return CANCELLED.test(result.stderr)
     ? { status: "cancelled" }
     : {
         status: "unavailable",
-        message: result.err === "" ? "the directory dialog failed" : result.err,
+        message: result.stderr === "" ? "the directory dialog failed" : result.stderr,
       };
 };

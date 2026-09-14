@@ -1,7 +1,18 @@
 {
   "extends": "./tsconfig.base.json",
-  "files": [],
-  "include": ["scripts/**/*.ts"],
+  "include": [
+    "scripts/**/*.ts",
+    "apps/cli/src",
+    "packages/daemon/src",
+    "packages/intake-github/src",
+    "packages/runner/src",
+    "packages/runtime-acp/src",
+    "packages/runtime-claude-code/src",
+    "packages/sandbox-docker/src",
+    "packages/secrets/src",
+    "packages/store/src",
+    "spikes/*/src"
+  ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tscache/root.tsbuildinfo"
   }

@@ -4,7 +4,6 @@ import { type Actor, release, SPEED_TILES_PER_S, type Step, type World } from ".
 
 const finishStep = (actor: Actor): void => {
   actor.steps.shift();
-  actor.animTime = 0;
   actor.moving = null;
 };
 

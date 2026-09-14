@@ -4,9 +4,9 @@ import { resolve } from "node:path";
 type ImageName = "agent" | "git-bridge";
 
 /**
- * Files the daemon ships with: image build contexts, the built office UI, sprites and database
- * migrations. In development they are read from the repository; the packaged desktop app points the
- * daemon at its bundled resources, which mirror the repository layout for exactly these paths.
+ * Files the daemon ships with: image build contexts and the built office UI. In development they are read
+ * from the repository; the packaged desktop app points the daemon at its bundled resources, which mirror
+ * the repository layout for exactly these paths.
  */
 export type Resources = {
   root: string;
@@ -14,18 +14,14 @@ export type Resources = {
   imageContext: (name: ImageName) => string | null;
   /** ho-runner sources, bundled into the agent image context; null when the context ships the bundle. */
   runnerEntry: string | null;
-  /** Role skill packs synced into the agent image context; null when the context already carries them. */
-  pluginsSource: string | null;
   /** Built office UI (index.html + chunks); null disables serving. */
   uiDir: string | null;
   /** Where the internal editor keeps drawn offices (`<repo>/layouts`); null outside a source checkout. */
   layoutsDir: string | null;
-  /** Drizzle migrations; null uses the store package's own folder (development). */
-  migrationsDir: string | null;
 };
 
 /** Repository root in development; `HO_REPO_ROOT` overrides it (used by the desktop dev loop). */
-export const defaultResourcesRoot = (): string =>
+const defaultResourcesRoot = (): string =>
   Bun.env["HO_REPO_ROOT"] ?? resolve(import.meta.dir, "../../..");
 
 /** Whether this build carries the Docker build contexts of both images. */
@@ -38,14 +34,11 @@ const whenPresent = (dir: string, marker: string): string | null =>
 export function resolveResources(root: string = defaultResourcesRoot()): Resources {
   const at = (...parts: string[]): string => resolve(root, ...parts);
   const runnerEntry = at("packages/runner/src/main.ts");
-  const pluginsSource = at("packages/agent-kit/plugins");
   return {
     root,
     imageContext: (name) => whenPresent(at("images", name), "Dockerfile"),
     runnerEntry: existsSync(runnerEntry) ? runnerEntry : null,
-    pluginsSource: existsSync(pluginsSource) ? pluginsSource : null,
     uiDir: whenPresent(at("packages/ui/dist"), "index.html"),
     layoutsDir: whenPresent(root, "AGENTS.md") === null ? null : at("layouts"),
-    migrationsDir: whenPresent(at("packages/store/drizzle"), "meta/_journal.json"),
   };
 }

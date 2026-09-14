@@ -3,7 +3,7 @@ import type { ElectrobunConfig } from "electrobun";
 /**
  * Home Office desktop shell. The Bun main process runs @ho/daemon in-process; the window loads the office
  * UI the daemon serves. `resources/ho` (written by `bun run desktop:prepare`, git-ignored) mirrors the
- * repository paths the daemon needs: image build contexts, the UI bundle, sprites and migrations.
+ * repository paths the daemon needs: image build contexts and the UI bundle.
  */
 const version = Bun.env["HO_RELEASE_VERSION"] ?? "0.0.0";
 if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.test(version)) {
@@ -32,19 +32,9 @@ export default {
       notarize: false,
       icons: "icon.iconset",
     },
-    linux: {
-      bundleCEF: false,
-    },
-    win: {
-      bundleCEF: false,
-    },
   },
   runtime: {
     // The main process quits itself after the daemon stopped (see src/bun/index.ts).
     exitOnLastWindowClosed: false,
-  },
-  release: {
-    baseUrl: "https://github.com/misaon/home-office/releases/latest/download",
-    generatePatch: false,
   },
 } satisfies ElectrobunConfig;

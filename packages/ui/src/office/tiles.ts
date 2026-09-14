@@ -1,6 +1,5 @@
-import { CELL_PX, type FloorTemplate, type TileMap } from "@ho/sim";
+import { CELL_PX, type FloorTemplate, runsOf, type TileMap } from "@ho/sim";
 import { Container, Graphics } from "pixi.js";
-import { roomOutline } from "./room-outline.ts";
 import {
   colourOf,
   FLOOR,
@@ -16,33 +15,8 @@ import {
   ROOM_EDGE_ALPHA,
   WALL,
   WALL_DEFAULT,
-} from "./palette.ts";
-
-const cell = (x: number, y: number): { x: number; y: number } => ({
-  x: x * CELL_PX,
-  y: y * CELL_PX,
-});
-
-/** Runs of equal values in one row, so a rectangle of floor becomes one draw call instead of hundreds. */
-function* runs(
-  values: readonly (string | null)[],
-  map: TileMap,
-): Generator<{ value: string; x: number; y: number; w: number }> {
-  for (let y = 0; y < map.height; y += 1) {
-    let start = 0;
-    let current: string | null = null;
-    for (let x = 0; x <= map.width; x += 1) {
-      const value = x === map.width ? null : (values[y * map.width + x] ?? null);
-      if (value !== current) {
-        if (current !== null) {
-          yield { value: current, x: start, y, w: x - start };
-        }
-        current = value;
-        start = x;
-      }
-    }
-  }
-}
+} from "./colours.ts";
+import { roomOutline } from "./room-outline.ts";
 
 const fillRuns = (
   graphics: Graphics,
@@ -51,15 +25,19 @@ const fillRuns = (
   colour: (value: string) => number,
   alpha = 1,
 ): void => {
-  for (const run of runs(values, map)) {
-    const at = cell(run.x, run.y);
-    graphics.rect(at.x, at.y, run.w * CELL_PX, CELL_PX).fill({ color: colour(run.value), alpha });
+  for (const run of runsOf(values, map.width, map.height)) {
+    graphics
+      .rect(run.x * CELL_PX, run.y * CELL_PX, run.w * CELL_PX, CELL_PX)
+      .fill({ color: colour(run.value), alpha });
   }
 };
 
+/** Enough of a gap that abutting pieces never merge, and an outline of the room edges' weight. */
+const OBJECT_INSET = CELL_PX * 0.08;
+const EDGE_WIDTH = CELL_PX * 0.09;
+
 /** The outline of every room, one cell edge at a time, in each room's own colour. */
 const roomEdges = (graphics: Graphics, map: TileMap): void => {
-  const width = CELL_PX * 0.09;
   for (const edge of roomOutline(map)) {
     graphics
       .moveTo(edge.x1 * CELL_PX, edge.y1 * CELL_PX)
@@ -67,7 +45,7 @@ const roomEdges = (graphics: Graphics, map: TileMap): void => {
       .stroke({
         color: colourOf(ROOM, edge.room, ROOM_DEFAULT),
         alpha: ROOM_EDGE_ALPHA,
-        width,
+        width: EDGE_WIDTH,
       });
   }
 };
@@ -90,58 +68,26 @@ const walls = (map: TileMap): Graphics => {
   return graphics;
 };
 
-/** Enough of a gap that abutting pieces never merge, and an outline of the room edges' weight. */
-const OBJECT_INSET = CELL_PX * 0.08;
-const OBJECT_EDGE_WIDTH = CELL_PX * 0.09;
-
-/** One outlined rectangle per object footprint, coloured by what the object is. */
+/**
+ * One outlined rectangle per placed object, coloured by what it is. Inset and outlined like a room, so two
+ * pieces sharing a cell edge — desks facing each other, a counter along a wall — read as two pieces and not
+ * as one; a world-unit hairline would vanish at the zoom the whole floor is seen at.
+ */
 const objects = (template: FloorTemplate): Graphics => {
   const graphics = new Graphics();
-  const seen = new Set<string>();
-  const { map } = template;
-  for (let y = 0; y < map.height; y += 1) {
-    for (let x = 0; x < map.width; x += 1) {
-      const id = map.object[y * map.width + x] ?? null;
-      if (id === null || seen.has(id)) {
-        continue;
-      }
-      seen.add(id);
-      const box = footprint(map, id, x, y);
-      const kind = map.objectKind[y * map.width + x] ?? "";
-      // Inset and outlined like a room, so two pieces sharing a cell edge — desks facing each other,
-      // a counter along a wall — read as two pieces and not as one. A world-unit hairline would
-      // vanish at the zoom the whole floor is seen at.
-      graphics
-        .rect(
-          box.x * CELL_PX + OBJECT_INSET,
-          box.y * CELL_PX + OBJECT_INSET,
-          box.w * CELL_PX - OBJECT_INSET * 2,
-          box.h * CELL_PX - OBJECT_INSET * 2,
-        )
-        .fill(colourOf(OBJECTS, kind, OBJECT_FILL))
-        .stroke({ color: OBJECT_EDGE, width: OBJECT_EDGE_WIDTH });
-    }
+  for (const piece of template.objects) {
+    graphics
+      .rect(
+        piece.x * CELL_PX + OBJECT_INSET,
+        piece.y * CELL_PX + OBJECT_INSET,
+        piece.w * CELL_PX - OBJECT_INSET * 2,
+        piece.h * CELL_PX - OBJECT_INSET * 2,
+      )
+      .fill(colourOf(OBJECTS, piece.kind, OBJECT_FILL))
+      .stroke({ color: OBJECT_EDGE, width: EDGE_WIDTH });
   }
   return graphics;
 };
-
-/** How far an object's own cells reach from where it was first met. */
-function footprint(
-  map: TileMap,
-  id: string,
-  fromX: number,
-  fromY: number,
-): { x: number; y: number; w: number; h: number } {
-  let w = 0;
-  let h = 0;
-  while (fromX + w < map.width && map.object[fromY * map.width + fromX + w] === id) {
-    w += 1;
-  }
-  while (fromY + h < map.height && map.object[(fromY + h) * map.width + fromX] === id) {
-    h += 1;
-  }
-  return { x: fromX, y: fromY, w, h };
-}
 
 /** The grid itself: one hairline on every cell boundary, the map's outer edge included. */
 export function gridLines(map: TileMap, scale: number): Graphics {
@@ -157,7 +103,7 @@ export function gridLines(map: TileMap, scale: number): Graphics {
   return graphics.stroke({ color: GRID_LINE, width: 1 / scale });
 }
 
-/** Everything a floor draws before its characters: ground and floors, the grid, then walls and objects. */
+/** Everything a floor draws before its characters: ground and floors, then walls and objects. */
 export function floorTiles(template: FloorTemplate): Container {
   const root = new Container();
   root.addChild(ground(template.map), walls(template.map), objects(template));

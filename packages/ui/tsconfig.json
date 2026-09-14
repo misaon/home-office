@@ -4,6 +4,8 @@
     "lib": ["esnext", "dom", "dom.iterable"],
     "types": [],
     "jsx": "react-jsx",
+    "exactOptionalPropertyTypes": false,
+    "paths": { "@/*": ["./src/*"] },
     "tsBuildInfoFile": "../../.tscache/packages-ui.tsbuildinfo"
   },
   "include": ["src"]

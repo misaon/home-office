@@ -59,6 +59,12 @@ export const createReadModel = (): ReadModel => ({
 
 export const RATE_LIMIT_TAIL = 1000;
 
+/** Prefix of the `session.state_changed` reason the projection counts as a rate-limit incident. */
+export const RATE_LIMITED = "rate limited";
+
+export const rateLimitedReason = (retryAt: string | null | undefined): string =>
+  `${RATE_LIMITED} until ${retryAt ?? "unknown"}`;
+
 /** Messages kept per floor in the projection; the whole history stays in the event log. */
 export const CHAT_TAIL = 500;
 

@@ -1,15 +1,7 @@
 import { eventIterator, oc } from "@orpc/contract";
 import { z } from "zod";
-import {
-  Agent,
-  ChatMessage,
-  IsoDateTime,
-  MailItem,
-  Project,
-  Session,
-  Task,
-  TaskStatus,
-} from "./domain.ts";
+import { Agent, ChatMessage, IsoDateTime, MailItem, Project, Session, Task } from "./domain.ts";
+import { RPC_ERRORS } from "./errors.ts";
 import { StoredEvent } from "./events.ts";
 import { IntakePollResult, IntakeStatus } from "./intake.ts";
 import { LayoutSaved, LayoutStore, OfficeLayout } from "./office-layout.ts";
@@ -21,7 +13,6 @@ import {
   AgentCreateInput,
   AgentListInput,
   AgentUpdateInput,
-  ChatHistoryInput,
   ChatSendInput,
   DirectoryPick,
   DirectoryPickInput,
@@ -33,36 +24,15 @@ import {
   RepoInspection,
   SessionListInput,
   SessionStreamInput,
-  TaskArtifactsInput,
   TaskAssignInput,
   TaskCreateInput,
-  TaskEditInput,
   TaskListInput,
   TaskTransitionInput,
   UsageSummary,
   UsageSummaryInput,
 } from "./inputs.ts";
 
-// ---- shared errors ------------------------------------------------------------------------------
-
-const errors = {
-  NOT_FOUND: {
-    message: "Entity not found",
-    data: z.object({ entity: z.string(), id: z.string() }),
-  },
-  CONFLICT: {
-    message: "The request conflicts with the current state",
-    data: z.object({ reason: z.string() }),
-  },
-  INVALID_TRANSITION: {
-    message: "Task status transition is not allowed",
-    data: z.object({ from: TaskStatus, to: TaskStatus }),
-  },
-} as const;
-
-// ---- contract -----------------------------------------------------------------------------------
-
-const base = oc.errors(errors);
+const base = oc.errors(RPC_ERRORS);
 
 export const contract = {
   system: {
@@ -111,13 +81,16 @@ export const contract = {
     list: base.input(TaskListInput).output(z.array(Task)),
     get: base.input(z.object({ id: TaskId })).output(Task),
     create: base.input(TaskCreateInput).output(Task),
-    edit: base.input(TaskEditInput).output(Task),
     assign: base.input(TaskAssignInput).output(Task),
     transition: base.input(TaskTransitionInput).output(Task),
-    setArtifacts: base.input(TaskArtifactsInput).output(Task),
+    /** Takes one task off the board, whatever state it reached; the log keeps every event of it. */
+    remove: base.input(z.object({ id: TaskId })).output(z.object({ id: TaskId })),
+    /** Takes a floor's finished work off the board; the log keeps every event of it. */
+    clear: base
+      .input(z.object({ projectId: ProjectId }))
+      .output(z.object({ removed: z.int().nonnegative() })),
   },
   chat: {
-    history: base.input(ChatHistoryInput).output(z.array(ChatMessage)),
     send: base
       .input(ChatSendInput)
       .output(z.object({ message: ChatMessage, task: Task.nullable() })),
@@ -154,7 +127,13 @@ export const contract = {
     /** Replays stored events after `afterSeq`, then stays open for live events. */
     subscribe: base.input(EventsSubscribeInput).output(eventIterator(StoredEvent)),
     /** Sequence number of the newest stored event (-1 when the log is empty). */
-    head: base.output(z.object({ seq: z.int().min(-1) })),
+    head: base.output(
+      z.object({
+        seq: z.int().min(-1),
+        /** Which log this is; a page that replayed another one starts over. */
+        logId: z.string().nullable(),
+      }),
+    ),
   },
   office: {
     /**
@@ -169,3 +148,6 @@ export const contract = {
   },
 };
 export type Contract = typeof contract;
+
+/** Where the office UI keeps the daemon token in the browser; the desktop preload and `ho ui` both put it there. */
+export const TOKEN_STORAGE_KEY = "ho.token";

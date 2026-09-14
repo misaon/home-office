@@ -123,9 +123,28 @@
       }
     },
     {
-      "files": ["packages/store/drizzle/**"],
+      "files": ["packages/ui/src/components/ui/*.tsx"],
       "rules": {
-        "unicorn/filename-case": "off"
+        "typescript/strict-boolean-expressions": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-unnecessary-condition": "off",
+        "typescript/prefer-nullish-coalescing": "off",
+        "typescript/explicit-function-return-type": "off",
+        "typescript/consistent-type-imports": "off",
+        "typescript/no-deprecated": "off",
+        "typescript/no-confusing-void-expression": "off",
+        "typescript/no-unnecessary-type-assertion": "off",
+        "eslint/max-lines": "off",
+        "eslint/max-lines-per-function": "off",
+        "import/max-dependencies": "off",
+        "jsx-a11y/prefer-tag-over-role": "off",
+        "react/exhaustive-deps": "off",
+        "unicorn/filename-case": "off",
+        "eslint/eqeqeq": "off",
+        "react/no-array-index-key": "off",
+        "jsx-a11y/click-events-have-key-events": "off",
+        "jsx-a11y/no-noninteractive-element-interactions": "off",
+        "jsx-a11y/no-static-element-interactions": "off"
       }
     }
   ]

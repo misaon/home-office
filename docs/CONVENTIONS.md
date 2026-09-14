@@ -30,8 +30,8 @@ command. Prefer structured arguments and preserve external process exit codes.
 
 ## Checks
 
-`bun run devkit` prepares the desktop's native type declarations. `bun run check` runs all 16 compiler
-targets, type-aware oxlint with warnings denied, oxfmt, Knip **and the office UI build** — the last one
+`bun run devkit` prepares the desktop's native type declarations. `bun run check` runs all six compiler
+programs, type-aware oxlint with warnings denied, oxfmt, Knip **and the office UI build** — the last one
 because the UI is compiled with Bun's React Compiler, so a UI change that only typechecks is not checked.
 Missing desktop declarations fail.
 
@@ -46,7 +46,8 @@ reason in a scoped suppression), `typescript/no-deprecated`, `switch-exhaustiven
 `strict-boolean-expressions`, `import/no-cycle`, `import/max-dependencies` at 20 per module,
 `eslint/max-lines-per-function` at 120, `unicorn/filename-case` kebab-case, and `eslint/no-console`
 (the daemon logs through Pino; the CLI writes through `apps/cli/src/output.ts`). Every suppression that
-survives is listed with its reason in [audit/SUPPRESSIONS.md](../audit/SUPPRESSIONS.md); there are two.
+survives is listed with its reason in [audit/SUPPRESSIONS.md](../audit/SUPPRESSIONS.md); there are three
+in the source and one scoped rule override in `.oxlintrc.json`.
 
 Use `bun run fmt` to format. Validate affected builds and actual runtime behavior when a static check
 cannot establish correctness. Do not invent passing checks, coverage or benchmark numbers. Tests and code

@@ -1,36 +1,40 @@
-import type { BuildProgress, ImageSpec } from "@ho/core";
-import { z } from "zod";
-import type { DockerApi } from "./api.ts";
+import type { Cancellation, ImageSpec } from "@ho/core";
+import { type DockerApi, ImageInspect } from "./api.ts";
 
 const HASH_LABEL = "ho.content-hash";
-
-const ImageInspect = z.object({
-  Config: z.object({ Labels: z.record(z.string(), z.string()).nullish() }).nullish(),
-});
+const BUILD_TIMEOUT_MS = 30 * 60_000;
 
 export async function imageHash(api: DockerApi, ref: string): Promise<string | null> {
   const res = await api.maybe("GET", `/images/${encodeURIComponent(ref)}/json`);
   if (res === null) {
     return null;
   }
-  const inspect = ImageInspect.parse(await res.json());
-  return inspect.Config?.Labels?.[HASH_LABEL] ?? "";
+  return ImageInspect.parse(await res.json()).Config?.Labels?.[HASH_LABEL] ?? "";
 }
 
+/** Whole lines of a build's output, however the chunks fell; the tail is kept for the failure text. */
 async function pump(
   stream: ReadableStream<Uint8Array>,
-  onLine?: (line: string) => void,
+  onLine: (line: string) => void,
 ): Promise<string> {
   const decoder = new TextDecoder();
   let all = "";
+  let rest = "";
   for await (const chunk of stream) {
     const text = decoder.decode(chunk, { stream: true });
     all = (all + text).slice(-4000);
-    for (const line of text.split("\n")) {
+    rest += text;
+    const lines = rest.split("\n");
+    rest = lines.pop() ?? "";
+    for (const line of lines) {
       if (line.trim() !== "") {
-        onLine?.(line);
+        onLine(line);
       }
     }
+  }
+  rest += decoder.decode();
+  if (rest.trim() !== "") {
+    onLine(rest);
   }
   return all;
 }
@@ -40,7 +44,8 @@ export async function buildImage(
   spec: ImageSpec,
   platform: string | undefined,
   socket: string,
-  onProgress?: (p: BuildProgress) => void,
+  onLine: (line: string) => void,
+  signal?: Cancellation,
 ): Promise<void> {
   const args = [
     "docker",
@@ -62,22 +67,26 @@ export async function buildImage(
   if (platform !== undefined) {
     args.push("--platform", platform);
   }
-  if (spec.dockerfile !== undefined) {
-    args.push("-f", spec.dockerfile);
-  }
   if (spec.target !== undefined) {
     args.push("--target", spec.target);
   }
   args.push(spec.contextDir);
-  const proc = Bun.spawn(args, { stdout: "pipe", stderr: "pipe" });
-  const report = (line: string): void => {
-    onProgress?.({ line });
+  const proc = Bun.spawn(args, { stdout: "pipe", stderr: "pipe", timeout: BUILD_TIMEOUT_MS });
+  // A cancelled request must stop the build itself, not just stop reading its output.
+  const cancel = (): void => {
+    proc.kill();
   };
+  signal?.addEventListener("abort", cancel);
+  if (signal?.aborted === true) {
+    cancel();
+  }
   const [, stderr, code] = await Promise.all([
-    pump(proc.stdout, report),
-    pump(proc.stderr, report),
+    pump(proc.stdout, onLine),
+    pump(proc.stderr, onLine),
     proc.exited,
-  ]);
+  ]).finally(() => {
+    signal?.removeEventListener("abort", cancel);
+  });
   if (code !== 0) {
     throw new Error(`image build failed (${String(code)}): ${stderr.slice(-2000)}`);
   }

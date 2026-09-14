@@ -16,8 +16,9 @@ containers, and an Electrobun desktop app that renders them as a pixel-art offic
 
 - `bun install --frozen-lockfile` — install locked workspaces (isolated linker, catalog pins).
 - `bun run devkit` — verify/install the pinned desktop toolchain before standalone checks.
-- `bun run check` — typecheck (TypeScript 7 native `tsc`, 16 projects), `oxlint --type-aware
---deny-warnings`, `oxfmt --check`, `knip`, and the office UI build. Must pass before every commit;
+- `bun run check` — typecheck (TypeScript 7 native `tsc`, six programs: the root program plus
+  apps/desktop and packages/{core,protocol,sim,ui}), `oxlint --deny-warnings` (type-aware through
+  `.oxlintrc.json`), `oxfmt --check`, `knip`, and the office UI build. Must pass before every commit;
   `bun run setup` installs the git hook that enforces it.
 - `bun run fmt` — format everything with oxfmt.
 - `bun run ui:watch` — rebuild the office UI on change (the page reloads itself). The internal office
@@ -26,12 +27,15 @@ check` ends with a production `ui:build`, which replaces that bundle — touch a
   get the development one back.
 - `bun run spike:task-engine [--testcontainers]` — verifies a task's private container engine against
   real Docker (compose, bind mounts, the loopback port, isolation, a warm start); needs Docker running.
+- `bun run spike:acp-mock` — drives the ACP runtime against a mock agent, without a provider CLI.
+- `bun run cli:build` — compiles the `ho` binary to `apps/cli/dist/ho` (what CI smoke-tests).
 - `bun run desktop:dev` / `bun run desktop:build` — Electrobun app via Hutch (`apps/desktop`; resources assembled by `bun run desktop:prepare`).
 
 ## Layout
 
 `apps/*` (desktop, cli) · `packages/*` (protocol, core, store, daemon, sandbox-docker, runner,
-runtime-claude-code, runtime-acp, intake-github, sim, ui, secrets, agent-kit) · `images/*` (Dockerfiles) ·
+runtime-claude-code, runtime-acp, intake-github, sim, ui, secrets) · `images/*` (Dockerfiles, and the
+role skill packs in `images/agent/plugins`) ·
 `spikes/*` (verification harnesses) · `layouts/` (offices drawn in the internal editor) · `docs/`
 (incl. `plans/` for the current task) · `audit/` (the audit record). Package scope is
 `@ho/*`; sources are executed as TypeScript, with a build step only for the webview bundle, the sandbox

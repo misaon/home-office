@@ -1,7 +1,9 @@
 // What a session needs before it can run: its volumes, its repository, its sandbox and its own engine.
-import type { SandboxHandle, SandboxSpec } from "@ho/core";
+import { attachmentsOfTask, needsEngine, type SandboxHandle, type SandboxSpec } from "@ho/core";
 import {
   type Agent,
+  CHAT_INBOX_DIR,
+  CHAT_OUTBOX_DIR,
   errorMessage,
   imageRefFor,
   type Project,
@@ -12,8 +14,9 @@ import {
 } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
 import { branchFor, prepareRepo, REPO_IN_VOLUME } from "./git-bridge.ts";
-import { LABELS } from "./images.ts";
+import { LABELS } from "./labels.ts";
 import { sourcePathFor } from "./mirrors.ts";
+import type { Services } from "./prompts.ts";
 import type { RunnerConnection } from "./runner-gateway.ts";
 import type { SessionDeps } from "./sessions.ts";
 import {
@@ -24,6 +27,8 @@ import {
   type TaskEngineRequest,
 } from "./task-engine.ts";
 
+const SANDBOX_STOP_GRACE_S = 5;
+
 export type SessionContext = {
   session: Session;
   task: Task;
@@ -32,18 +37,24 @@ export type SessionContext = {
   previous: Session | undefined;
   signal: AbortSignal;
 };
+
 export type Provisioned = {
   sandbox: SandboxHandle;
-  /** The task's own container engine, when its project asked for one. */
-  engine: SandboxHandle | null;
-  /** Why the project's engine is absent, when one was asked for and could not be started. */
-  engineFailure: string | null;
+  /** The task's own container engine, when its project asked for one and it started. */
+  services: Services;
   connection: RunnerConnection;
   volume: string;
   branch: string;
   sourcePath: string;
   mcpToken: string;
+  /** Tears everything down in reverse order: the engine first, so dockerd signals the repository's services. */
+  dispose: () => Promise<void>;
 };
+
+/** Absent means the project asks for no services; the brief and the session record share this answer. */
+export const sessionServicesOf = (services: Services): SessionServices | undefined =>
+  services.kind === "off" ? undefined : services.kind;
+
 const sandboxSpec = (
   config: DaemonConfig,
   ctx: SessionContext,
@@ -52,6 +63,7 @@ const sandboxSpec = (
   gatewayUrl: string,
   token: string,
   engine: TaskEnginePlan | null,
+  chat: { outbox: string; inbox: string },
 ): SandboxSpec => ({
   name: `ho-session-${ctx.session.id.slice(-12)}`,
   image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
@@ -79,7 +91,11 @@ const sandboxSpec = (
     // The directory the task's engine puts its API socket in; `DOCKER_HOST` points inside it.
     ...(engine === null ? [] : [{ name: engine.socketVolume, target: engine.socketDir }]),
   ],
-  binds: [],
+  binds: [
+    // The two ways a file crosses the sandbox wall: what the human attached, and what a reply can carry.
+    { source: chat.inbox, target: CHAT_INBOX_DIR, readonly: true },
+    { source: chat.outbox, target: CHAT_OUTBOX_DIR, readonly: false },
+  ],
   tmpfs: {
     "/tmp": "rw,nosuid,size=256m",
     // Docker mounts tmpfs as root 0755; the sandbox user must own its scratch directories.
@@ -98,17 +114,9 @@ const sandboxSpec = (
   readonlyRootfs: true,
 });
 
-/** Absent means the project asks for no services; the brief and the session record share this answer. */
-export function sessionServicesOf(provisioned: Provisioned): SessionServices | undefined {
-  if (provisioned.engine !== null) {
-    return "ready";
-  }
-  return provisioned.engineFailure === null ? undefined : "failed";
-}
-
-/** Network, task volume with the floor's repository, sandbox with the runner, runner connection. */
+/** Network, task volume with the floor's repository, sandbox with the runner, its engine, runner connection. */
 export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {
-  const { provider, config, gateway, mcp, home } = deps;
+  const { provider, config, gateway, mcp, home, log } = deps;
   ctx.signal.throwIfAborted();
   const volume = `ho-task-${ctx.task.id.slice(-12)}`;
   const stateVolume = `${volume}-state-${ctx.agent.id.slice(-8)}`;
@@ -126,59 +134,80 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
   await provider.createVolume(stateVolume, { ...labels, [LABELS.kind]: "provider-state" });
   const sourcePath = await sourcePathFor(home, ctx.project);
   await prepareRepo(provider, config, sourcePath, ctx.project.defaultBranch, volume, branch);
-  // Triage is the boss planning a message; it touches no code, so it gets no engine and no 2 GiB.
-  const engineRequest: TaskEngineRequest | null =
-    config.services.enabled && ctx.project.services.enabled && ctx.session.mode !== "triage"
-      ? {
-          mode: ctx.project.services.mode,
-          sessionId: ctx.session.id,
-          taskVolume: volume,
-          labels,
-        }
-      : null;
-  const plan = engineRequest === null ? null : await prepareTaskEngine(provider, engineRequest);
-  const issued = gateway.issue(ctx.session.id, ctx.signal);
-  const mcpToken = mcp.register({
-    sessionId: ctx.session.id,
-    taskId: ctx.task.id,
-    agentId: ctx.agent.id,
-    projectId: ctx.project.id,
-    mode: ctx.session.mode,
-  });
-  let sandbox: SandboxHandle | null = null;
-  let engine: SandboxHandle | null = null;
+  const engineRequest: TaskEngineRequest | null = needsEngine(
+    config.services.enabled,
+    ctx.project,
+    ctx.session.mode,
+  )
+    ? { mode: ctx.project.services.mode, sessionId: ctx.session.id, taskVolume: volume, labels }
+    : null;
+  const stack = new AsyncDisposableStack();
   try {
+    const plan =
+      engineRequest === null ? null : await prepareTaskEngine(provider, engineRequest, stack);
+    const issued = gateway.issue(ctx.session.id, ctx.signal);
+    stack.defer(issued.cancel);
+    const mcpToken = mcp.register({
+      sessionId: ctx.session.id,
+      taskId: ctx.task.id,
+      agentId: ctx.agent.id,
+      projectId: ctx.project.id,
+      mode: ctx.session.mode,
+      attachments: deps.attachments,
+    });
+    stack.defer(() => {
+      mcp.unregister(mcpToken);
+    });
     ctx.signal.throwIfAborted();
-    sandbox = await provider.start(
-      sandboxSpec(config, ctx, volume, stateVolume, deps.gatewayUrl, issued.token, plan),
+    const outbox = await deps.attachments.openOutbox(ctx.session.id);
+    stack.defer(() => deps.attachments.closeOutbox(ctx.session.id));
+    const inbox = await deps.attachments.fillInbox(
+      ctx.session.id,
+      attachmentsOfTask(deps.office.model, ctx.task),
     );
-    let engineFailure: string | null = null;
+    stack.defer(() => deps.attachments.closeInbox(ctx.session.id));
+    const sandbox = await provider.start(
+      sandboxSpec(config, ctx, volume, stateVolume, deps.gatewayUrl(), issued.token, plan, {
+        outbox,
+        inbox,
+      }),
+    );
+    stack.defer(async () => {
+      await provider.stop(sandbox, SANDBOX_STOP_GRACE_S).catch(() => null);
+      await provider.remove(sandbox).catch(() => null);
+    });
+    let services: Services = { kind: "off" };
     if (engineRequest !== null && plan !== null) {
       // Fail soft: a session without its services still runs, and the brief says they are missing.
       try {
-        engine = await startTaskEngine(provider, config, engineRequest, plan, sandbox);
+        const engine = await startTaskEngine(provider, config, engineRequest, plan, sandbox);
+        stack.defer(async () => {
+          await provider.stop(engine, 15).catch(() => null);
+          await provider.remove(engine).catch(() => null);
+        });
+        services = { kind: "ready" };
       } catch (error) {
-        engineFailure = errorMessage(error).slice(0, 500);
-        deps.log.warn(
-          { sessionId: ctx.session.id, err: engineFailure },
+        services = { kind: "failed", message: errorMessage(error).slice(0, 500) };
+        log.warn(
+          { sessionId: ctx.session.id, err: services.message },
           "task engine did not start; the session continues without its services",
         );
       }
     }
     const connection = await issued.connected;
     ctx.signal.throwIfAborted();
-    return { sandbox, engine, engineFailure, connection, volume, branch, sourcePath, mcpToken };
+    return {
+      sandbox,
+      services,
+      connection,
+      volume,
+      branch,
+      sourcePath,
+      mcpToken,
+      dispose: () => stack.disposeAsync(),
+    };
   } catch (error) {
-    issued.cancel();
-    mcp.unregister(mcpToken);
-    if (engine !== null) {
-      await provider.stopEngine(engine, 2).catch(() => null);
-      await provider.remove(engine).catch(() => null);
-    }
-    if (sandbox !== null) {
-      await provider.stop(sandbox, 2).catch(() => null);
-      await provider.remove(sandbox).catch(() => null);
-    }
+    await stack.disposeAsync();
     throw error;
   }
 }

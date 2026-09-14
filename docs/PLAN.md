@@ -10,7 +10,7 @@ not evidence that every original acceptance target was achieved.
 - One repository per project/floor, a boss per floor, receptionist choreography, staff and chat.
 - Docker task sessions, git-bridge publication, optional GitHub PR delivery, review and question loops.
 - Claude Code plus ACP adapters for OpenCode, Gemini CLI and Codex; provider-specific images and secrets.
-- React/Pixi office, board, inspector, usage/resources/settings and first-run checklist.
+- React/Pixi office beside five panels — chat, board, team, usage, settings — and a first-run checklist.
 - Electrobun macOS arm64 packaging and unsigned release workflow.
 - Optional per-project **task services**: a private rootless container engine per session (rootful as an
   opt-in), so a repository's own `docker-compose.yml` runs inside the sandbox. The scheduler counts such
@@ -27,7 +27,7 @@ not evidence that every original acceptance target was achieved.
   [`audit/`](../audit/AUDIT.md): nine stricter lint rules and a CI daemon smoke check that immediately
   caught a compiled binary which could not start; a deduplicated `errorMessage` and 62 spread guards
   replaced by one typed `compact()`; read-model indexes with revision counters instead of per-bump
-  rebuilds; one MCP server per session; an image content hash that actually sees its build context; a
+  rebuilds; one MCP server per request, bound to its session; an image content hash that actually sees its build context; a
   first frame in a hidden document and updates that no longer stop there; constant-time token comparison
   and 0600 database files; the runner as a bundle on the image's own Bun (1.76 → 1.69 GB); role-aware
   model and effort defaults; a declarative CLI command table with `--json` and readable validation
@@ -74,6 +74,12 @@ which two were added and one removed (005), a hand-written command table over a 
 which a single-machine daemon that starts every agent itself does not have; the two cases where it could
 pay off later are named there, and one of them waits on remote operation.
 
+**Superseded on 2026-09-13** by the architecture pass: the sprite pipeline decision of ADR 003 and the
+texture atlas below it describe art that no longer exists, and `sharp`, Drizzle, `type-fest` and the
+`@ho/agent-kit` workspace of ADR 004/005 are gone — the event log is plain `bun:sqlite` with a
+`PRAGMA user_version` check, and the role skill packs live in `images/agent/plugins`, which is the same
+`--plugin-dir` mechanism without a package that contained no code.
+
 **Decided by the owner on 2026-09-09**, all three recorded with their measurements: the role-aware effort
 defaults **stay** (`high` for worker and reviewer is the vendor's own default, not an escalation — B33.4);
 the browser image **is not split** (B24.1); and the **texture atlas is deferred** until the art is complete,
@@ -81,6 +87,37 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 ([ADR 003](../audit/adr/003-sprite-pipeline.md)).
 
 ## Audit log
+
+- 2026-09-13 — Owner task: redesign the whole UI, with animation, and make it obvious — The right rail
+  had six tabs and the floor's people lived in two of them, one to watch and another to edit; it has
+  five, and Team is one card per colleague with their state on the front and their model, effort and
+  persona one click deeper. Usage absorbed Resources, because both answer what the office costs. Every
+  setting that is on or off is a switch with its consequence written beside it, not a checkbox to guess
+  at. Motion became a token like a colour: three durations, two easings, an overshoot reserved for
+  things that arrive, and `prefers-reduced-motion` that keeps the fades and drops the movement. Looking
+  at it in the browser is what found the rest — a chat that scrolled through its own history on open, an
+  image that resized its bubble when the bytes landed, native controls still drawn light on dark panels,
+  and a prune button that shouted while its consequence hid in a tooltip. Decisions, the five
+  corrections and the verification are in [the plan](plans/2026-09-13-ui-redesign.md).
+
+- 2026-09-13 — Owner task: attachments in the chat, and showing that the boss is thinking — A message
+  can carry files in both directions: the human drags them into the chat, the boss writes his into the
+  session's outbox and names them in `ho_reply`. Bytes live beside the log under the office's state
+  directory, named by their own SHA-256, so a replay stays cheap and a repeated upload costs nothing;
+  the event carries only the descriptor. Each session gets the task's files read-only at `/in/chat` and
+  a writable `/out/chat`, the two ways a file crosses the sandbox wall. An image in the chat opens in a
+  viewer that zooms around the pointer and pans, like the office map. While the boss works on the floor,
+  the chat shows it, with the tool he is using. Decisions and what was left out are in
+  [the plan](plans/2026-09-13-chat-attachments.md).
+
+- 2026-09-13 — Owner task: a full pass over the monorepo for architecture and complexity — Two
+  independent audit waves over every file, then the repairs. The office's own read model, its envelope
+  bookkeeping and the daemon's lifecycle were the load-bearing changes: a wall under a window stays
+  solid, an envelope is reported exactly once per walk (and reported at all when its carrier leaves or
+  the connection drops), sessions end before their sockets do, and a resumed ACP session announces
+  itself. The event log lost its ORM, the skill packs their empty workspace, the CLI its duplicated
+  dispatch, and `@ho/core`/`@ho/sim`/`@ho/protocol` the exports nobody imported. Details and the
+  measurements are in [the plan](plans/2026-09-13-architecture-pass.md).
 
 - 2026-09-10 — Owner task: footprints, an outline around furniture, and two languages — Seven pieces
   resized in `OBJECT_SPEC` (meeting and dining table 7×3, fridge 3×2, hot tub 5×5, bookcase 8×1, toilet

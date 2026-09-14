@@ -18,7 +18,4 @@ hutch.lock
 packages/ui/.build-*/
 
 .tools/
-
-apps/desktop/icon.iconset/
-
 .tscache/

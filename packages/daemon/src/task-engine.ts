@@ -1,7 +1,7 @@
-import type { EngineMode, SandboxHandle, SandboxProvider, TaskEngineProvider } from "@ho/core";
+import type { EngineMode, SandboxHandle, SandboxProvider } from "@ho/core";
 import type { SessionId } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
-import { LABELS } from "./images.ts";
+import { LABELS } from "./labels.ts";
 
 const MIB = 1024 * 1024;
 
@@ -71,6 +71,8 @@ export type TaskEnginePlan = {
 export async function prepareTaskEngine(
   provider: SandboxProvider,
   request: TaskEngineRequest,
+  /** The socket volume is runtime state: it goes when the attempt that created it unwinds. */
+  stack: AsyncDisposableStack,
 ): Promise<TaskEnginePlan> {
   const { mode, sessionId, taskVolume, labels } = request;
   const plan: TaskEnginePlan = {
@@ -85,12 +87,13 @@ export async function prepareTaskEngine(
     { ...labels, [LABELS.kind]: "engine-socket" },
     SOCKET_VOLUME_OPTS,
   );
+  stack.defer(() => provider.removeVolume(plan.socketVolume));
   return plan;
 }
 
 /** Starts the engine in the sandbox's network namespace and waits until its API answers. */
 export function startTaskEngine(
-  provider: SandboxProvider & TaskEngineProvider,
+  provider: SandboxProvider,
   config: DaemonConfig,
   request: TaskEngineRequest,
   plan: TaskEnginePlan,

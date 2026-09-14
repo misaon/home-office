@@ -32,7 +32,7 @@ appears in a sandbox, and one task's engine cannot see another's containers. The
 the whole environment's limit, because nested containers share its cgroup. It is off unless the owner
 enables it per project, and a session that has it costs two of the daemon's session slots. Whether a
 session got its engine is part of the session record (`services`: `ready` or `failed`, absent when the
-project asks for none), so the inspector, the CLI and the history all say so; an engine that cannot
+project asks for none), so the Team panel, the CLI and the history all say so; an engine that cannot
 start does not fail the session, it only tells the agent in its brief. The design, the alternatives and
 the measurements are in the
 [service-environment plan](plans/2026-09-09-task-service-environments.md).
@@ -51,12 +51,12 @@ The simulation is a visual projection. It controls envelope timing while a viewe
 
 | Location                       | Responsibility                                                                      |
 | ------------------------------ | ----------------------------------------------------------------------------------- |
-| `apps/desktop`                 | Native window, single-instance lock and in-process daemon lifecycle                 |
+| `apps/desktop`                 | Native window, menu, host dialogs and in-process daemon lifecycle                   |
 | `apps/cli`                     | Commands, argument resolution and authenticated daemon connection                   |
 | `packages/protocol`            | Zod schemas, IDs, events, provider catalog, RPC and MCP contracts                   |
 | `packages/core`                | Pure domain commands, projections, scheduling decisions and adapter ports           |
 | `packages/daemon`              | Composition, lifecycle, scheduling, RPC/MCP, intake, publication and static serving |
-| `packages/store`               | SQLite event log, Drizzle schema and migrations                                     |
+| `packages/store`               | SQLite event log on `bun:sqlite`, schema versioned with `PRAGMA user_version`       |
 | `packages/sandbox-docker`      | Docker Engine API, image builds, containers, volumes and resource inventory         |
 | `packages/runtime-claude-code` | Claude stream-json process adapter, resume and usage translation                    |
 | `packages/runtime-acp`         | ACP negotiation, streams, events and OpenCode/Gemini/Codex presets                  |
@@ -65,11 +65,10 @@ The simulation is a visual projection. It controls envelope timing while a viewe
 | `packages/secrets`             | OS credential store via `Bun.secrets`, with an atomic owner-only file fallback      |
 | `packages/sim`                 | Pure plane, movement, reservations, needs and envelope choreography                 |
 | `packages/ui`                  | React panels, Zustand projection, TanStack Query requests and Pixi rendering        |
-| `packages/agent-kit`           | Role skill packs copied into provider images                                        |
-| `scripts`                      | Checked build, desktop, sprite-import and manifest tooling                          |
+| `scripts`                      | Typecheck, the office UI build, desktop resources and the pinned Hutch toolchain    |
 
 `core` and `sim` have no I/O or Bun/DOM globals. The actual port definitions live in
-`packages/core/src/{ports,runtime,sandbox,intake}.ts`; read those definitions rather than copying an
+`packages/core/src/{ports,runtime,sandbox}.ts`; read those definitions rather than copying an
 approximate interface from documentation. Runtime TypeScript is executed directly; the UI and release
 binaries have build steps.
 
@@ -86,7 +85,14 @@ states. The daemon serializes domain decision, event append and projection appli
 batches transactionally; sequence numbers prevent replay from double-applying events. UI clients replay
 the same events into their own pure read model and then follow live events.
 
-SQLite uses WAL and versioned Drizzle migrations. A replay validation failure preserves the database
+A chat message's files are not in the log: the bytes live under `<HO_HOME>/attachments/`, named by their
+own SHA-256, and the event carries the descriptor (id, name, type, size). The office uploads and reads
+them over the daemon's own HTTP routes with the same bearer token as the RPC, and a download always
+answers with opaque bytes. A session sees the task's files read-only at `/in/chat` and writes what it
+wants to send at `/out/chat`, both host directories bound into the sandbox for that session only.
+
+SQLite uses WAL, and the schema is versioned with `PRAGMA user_version`. The role skill packs the agent
+image carries live in `images/agent/plugins/{boss,reviewer,worker}`. A replay validation failure preserves the database
 and fails startup. It never silently starts a new database. Unsupported historic event schemas require
 an explicit migration or restore. Snapshots, automatic event compaction and log retention are not
 implemented; historical projections and startup replay grow with retained history.
@@ -94,8 +100,8 @@ implemented; historical projections and startup replay grow with retained histor
 Startup takes a single-instance lock on the state directory: an atomic `mkdir` of `daemon.lock` plus a
 `holder.json` recording the pid, so a lock left behind by a killed daemon is detected as stale
 (`process.kill(pid, 0)`) and taken over instead of blocking the next start. Resources unwind through
-`AsyncDisposableStack` on failure and shutdown. Jobs and pending session work are awaited before storage
-closes. Restart reconciles interrupted sessions with managed containers and blocks affected tasks for
+`AsyncDisposableStack` on failure and shutdown: the background services (scheduler, intake, GC, boss
+voice) and pending session work settle before the socket layer and the store close. Restart reconciles interrupted sessions with managed containers and blocks affected tasks for
 explicit resumption. An unavailable Docker service prevents recovery of previously active sessions.
 
 ## Work and repository flow
@@ -242,11 +248,10 @@ together; the shared primitives in `packages/ui/src/kit` (`Field`, `Section`, `B
 Pixi renders at at most 30 fps and stops its ticker in a hidden document, but a hidden office is not a
 blank one. While the document is hidden the scene draws a still frame — the ticker's own four calls with
 `dt = 0`, then one explicit `render()` — once at mount and again on every store change, so a tab that was
-never visible still shows its floor the moment it is revealed. The store's update coalescing switches from
-`requestAnimationFrame` to a 200 ms timeout for the same reason: a hidden document never runs a rAF
-callback, and the pending-bump flag would otherwise stay set and drop every later change. The scene updates
-visible actors and keeps at most two floor views cached. ResizeObserver updates camera fitting. Sprite requests are
-coalesced. React reads immutable Zustand snapshots; TanStack Query deduplicates and cancels
+never visible still shows its floor the moment it is revealed. The store's update coalescing arms both a
+frame callback and a 200 ms timeout for the same reason: a hidden document never runs a frame callback,
+and the pending-bump flag would otherwise stay set and drop every later change. The scene updates the
+visible floor's characters. ResizeObserver updates camera fitting. React reads immutable Zustand snapshots; TanStack Query deduplicates and cancels
 health/resource/usage requests. The live log retains at most 20 sessions with 300 events each, and the
 per-floor chat projection keeps the last 500 messages. Historical domain state is not bounded by
 those live-log limits. Source reload polling is only present in development UI builds.
@@ -304,6 +309,6 @@ those live-log limits. Source reload polling is only present in development UI b
 The unsigned desktop build is assembled with a revision/checksum-pinned Hutch toolchain. Release builds
 validate the tag and its ancestry on `main`; a separate job holds GitHub publication permissions. See
 [STACK.md](STACK.md) for dependencies and [../audit/AUDIT.md](../audit/AUDIT.md) for the tradeoffs,
-including the ones the audit decided against: no framework migration (ADR 001), PixiJS kept (ADR 002), the
-sprite pipeline kept with `sharp` only where it is byte-identical (ADR 003), and the ~900 MB browser image
-split left undone pending an owner decision (B24.1).
+including the ones the audit decided against: no framework migration (ADR 001) and PixiJS kept (ADR 002).
+The sprite pipeline and `sharp` were deleted later, with the art (see [PLAN.md](PLAN.md)); the ~900 MB
+browser image split is left undone pending an owner decision (B24.1).

@@ -1,99 +1,101 @@
-import { errorMessage, type IntakePolicy, type IntakeStatus, type Project } from "@ho/protocol";
+import type { IntakePolicy, IntakeStatus, Project } from "@ho/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import { Button } from "../kit/controls.tsx";
+import { Button, Failure, Switch } from "../kit/controls.tsx";
 import { intakeStatusQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
-import { useUi } from "../store.ts";
+import { useOnline } from "../store.ts";
+import { Input } from "@/components/ui/input";
 
-const when = (iso: string | null): string =>
-  iso === null ? "never" : new Date(iso).toLocaleTimeString();
+const when = (iso: string | null, t: TFunction): string =>
+  iso === null ? t("settings.intakeNever") : new Date(iso).toLocaleTimeString();
 
-type FieldsProps = {
-  intake: IntakePolicy;
-  labels: string;
-  setLabels: (value: string) => void;
-  saveLabels: () => void;
-  update: (patch: Partial<IntakePolicy>) => void;
-};
+const parseLabels = (text: string): string[] =>
+  text
+    .split(",")
+    .map((label) => label.trim())
+    .filter((label) => label !== "");
 
-function IntakeFields({
-  intake,
-  labels,
-  setLabels,
-  saveLabels,
-  update,
-}: FieldsProps): React.JSX.Element {
+const MIN_INTERVAL_S = 30;
+const MAX_INTERVAL_S = 3600;
+
+type FieldsProps = { intake: IntakePolicy; update: (patch: Partial<IntakePolicy>) => void };
+
+/** Text fields commit when they lose focus and follow the policy again when it changes elsewhere. */
+function IntakeFields({ intake, update }: FieldsProps): React.JSX.Element {
   const { t } = useTranslation();
+  const labels = intake.labels.join(", ");
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-      <label className="flex items-center gap-2">
-        {t("settings.intakeEvery")}
-        <input
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2 text-2xs text-foreground/80">
+        <span>{t("settings.intakeEvery")}</span>
+        <Input
+          key={intake.intervalSeconds}
           type="number"
-          min={30}
-          max={3600}
-          className="w-16 rounded-md border border-line bg-ink px-2 py-1"
+          min={MIN_INTERVAL_S}
+          max={MAX_INTERVAL_S}
+          aria-label={t("settings.intakeEvery")}
+          className="h-7 text-xs w-16"
           defaultValue={intake.intervalSeconds}
           onBlur={(e) => {
             const seconds = Number(e.target.value);
             if (
               Number.isInteger(seconds) &&
-              seconds >= 30 &&
-              seconds <= 3600 &&
+              seconds >= MIN_INTERVAL_S &&
+              seconds <= MAX_INTERVAL_S &&
               seconds !== intake.intervalSeconds
             ) {
               update({ intervalSeconds: seconds });
             }
           }}
         />
-        {t("settings.intakeSeconds")}
-      </label>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={intake.dryRun}
-          onChange={(e) => {
-            update({ dryRun: e.target.checked });
-          }}
-        />
-        {t("settings.intakeDry")}
-      </label>
-      <label className="col-span-2 flex items-center gap-2">
-        {t("settings.intakeLabels")}
-        <input
-          className="flex-1 rounded-md border border-line bg-ink px-2 py-1 font-mono"
-          placeholder={t("settings.intakeAllIssues")}
-          value={labels}
-          onChange={(e) => {
-            setLabels(e.target.value);
-          }}
-          onBlur={saveLabels}
-        />
-      </label>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={intake.comment}
-          onChange={(e) => {
-            update({ comment: e.target.checked });
-          }}
-        />
-        {t("settings.intakeComment")}
-      </label>
-      <label className="flex items-center gap-2">
-        {t("settings.intakeAckLabel")}
-        <input
-          className="w-24 rounded-md border border-line bg-ink px-2 py-1 font-mono"
+        <span>{t("settings.intakeSeconds")}</span>
+        <span className="ml-3">{t("settings.intakeAckLabel")}</span>
+        <Input
+          key={intake.ackLabel}
+          aria-label={t("settings.intakeAckLabel")}
+          className="h-7 text-xs w-28 font-mono"
           defaultValue={intake.ackLabel}
           onBlur={(e) => {
-            if (e.target.value.trim() !== intake.ackLabel) {
-              update({ ackLabel: e.target.value.trim() });
+            const ackLabel = e.target.value.trim();
+            if (ackLabel !== intake.ackLabel) {
+              update({ ackLabel });
+            }
+          }}
+        />
+      </div>
+      <label className="flex items-center gap-2 text-2xs text-foreground/80">
+        <span className="shrink-0">{t("settings.intakeLabels")}</span>
+        <Input
+          key={labels}
+          className="h-7 text-xs min-w-0 flex-1 font-mono"
+          placeholder={t("settings.intakeAllIssues")}
+          defaultValue={labels}
+          onBlur={(e) => {
+            const parsed = parseLabels(e.target.value);
+            if (parsed.join(",") !== intake.labels.join(",")) {
+              update({ labels: parsed });
             }
           }}
         />
       </label>
+      <Switch
+        checked={intake.comment}
+        label={t("settings.intakeComment")}
+        hint={t("settings.intakeCommentHint")}
+        onChange={(comment) => {
+          update({ comment });
+        }}
+      />
+      <Switch
+        checked={intake.dryRun}
+        label={t("settings.intakeDry")}
+        hint={t("settings.intakeDryHint")}
+        onChange={(dryRun) => {
+          update({ dryRun });
+        }}
+      />
     </div>
   );
 }
@@ -104,13 +106,13 @@ function IntakeHealth({ status }: { status: IntakeStatus | null }): React.JSX.El
     return null;
   }
   return (
-    <p className="leading-relaxed text-gray-400">
-      {t("settings.intakeLastPoll", { when: when(status.lastPollAt) })}
+    <p className="text-2xs leading-relaxed text-muted-foreground">
+      {t("settings.intakeLastPoll", { when: when(status.lastPollAt, t) })}
       {status.nextPollAt === null
         ? ""
-        : t("settings.intakeNext", { when: when(status.nextPollAt) })}
+        : t("settings.intakeNext", { when: when(status.nextPollAt, t) })}
       {", "}
-      {t("settings.intakeReceived", { received: status.received, duplicates: 0 })}
+      {t("settings.intakeReceivedTotal", { received: status.received })}
       {status.lastError === null ? "" : t("settings.intakeError", { message: status.lastError })}
       {status.lastDryRun.length === 0
         ? ""
@@ -127,12 +129,11 @@ type Props = { project: Project };
  */
 export function IntakeSettings({ project }: Props): React.JSX.Element {
   const { t } = useTranslation();
-  const connection = useUi((s) => s.connection);
+  const online = useOnline();
   const queries = useQueryClient();
-  const all = useQuery({ ...intakeStatusQuery, enabled: connection === "online" });
+  const all = useQuery({ ...intakeStatusQuery, enabled: online });
   const status: IntakeStatus | null =
     all.data?.find((entry) => entry.projectId === project.id) ?? null;
-  const [labels, setLabels] = useState(project.intake.labels.join(", "));
   const invalidateStatus = (): Promise<void> =>
     queries.invalidateQueries({ queryKey: intakeStatusQuery.queryKey });
 
@@ -148,19 +149,6 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
     mutationFn: () => requireClient().intake.poll({ projectId: project.id }),
     onSuccess: invalidateStatus,
   });
-  const failure = save.error ?? poll.error;
-  const update = (patch: Partial<IntakePolicy>): void => {
-    save.mutate(patch);
-  };
-  const saveLabels = (): void => {
-    const parsed = labels
-      .split(",")
-      .map((l) => l.trim())
-      .filter((l) => l !== "");
-    if (parsed.join(",") !== project.intake.labels.join(",")) {
-      update({ labels: parsed });
-    }
-  };
   const polled = poll.data?.[0];
   const message =
     poll.data === undefined
@@ -178,37 +166,36 @@ export function IntakeSettings({ project }: Props): React.JSX.Element {
 
   const { intake } = project;
   return (
-    <div className="mt-3 space-y-3 border-t border-line pt-3 text-xs">
-      <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={intake.enabled}
-            onChange={(e) => {
-              update({ enabled: e.target.checked });
-            }}
-          />
-          {t("settings.intake")}
-        </label>
-        <Button
-          disabled={poll.isPending}
-          onClick={() => {
-            poll.mutate();
+    <div className="space-y-3 text-xs">
+      <div className="flex items-start justify-between gap-3">
+        <Switch
+          checked={intake.enabled}
+          label={t("settings.intakeLabel")}
+          hint={t("settings.intakeHint")}
+          onChange={(enabled) => {
+            save.mutate({ enabled });
           }}
-        >
-          {poll.isPending ? t("settings.intakePolling") : t("settings.intakePoll")}
-        </Button>
+        />
+        <span className="shrink-0">
+          <Button
+            disabled={poll.isPending}
+            onClick={() => {
+              poll.mutate();
+            }}
+          >
+            {poll.isPending ? t("settings.intakePolling") : t("settings.intakePoll")}
+          </Button>
+        </span>
       </div>
       <IntakeFields
         intake={intake}
-        labels={labels}
-        setLabels={setLabels}
-        saveLabels={saveLabels}
-        update={update}
+        update={(patch) => {
+          save.mutate(patch);
+        }}
       />
       <IntakeHealth status={status} />
-      {message === null ? null : <p className="text-emerald-300">{message}</p>}
-      {failure === null ? null : <p className="text-red-400">{errorMessage(failure)}</p>}
+      {message === null ? null : <p className="animate-fade text-2xs text-good">{message}</p>}
+      <Failure error={save.error ?? poll.error} />
     </div>
   );
 }

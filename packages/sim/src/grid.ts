@@ -1,7 +1,7 @@
+import type { Facing } from "@ho/protocol";
 import TinyQueue from "tinyqueue";
 
 export type Point = { x: number; y: number };
-export type Facing = "n" | "s" | "e" | "w";
 
 export const key = (p: Point): number => p.y * 4096 + p.x;
 export const samePoint = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
@@ -16,17 +16,28 @@ export const facingTowards = (from: Point, to: Point): Facing => {
   return dy >= 0 ? "s" : "n";
 };
 
-/** Walkability per tile; mutable so furniture and other actors can reserve cells. */
+/** The four cell neighbours, in the order the path search tries them. */
+export const NEIGHBOURS: readonly Point[] = [
+  { x: 1, y: 0 },
+  { x: -1, y: 0 },
+  { x: 0, y: 1 },
+  { x: 0, y: -1 },
+];
+
+export const neighboursOf = (p: Point): Point[] =>
+  NEIGHBOURS.map((d) => ({ x: p.x + d.x, y: p.y + d.y }));
+
+/** Walkability per cell, fixed for a floor's lifetime; actors are kept apart by reservations, not by the grid. */
 export class Grid {
   readonly width: number;
   readonly height: number;
   readonly #walkable: Uint8Array;
   #clearance: Uint8Array | null = null;
 
-  constructor(width: number, height: number, walkable?: Uint8Array) {
+  constructor(width: number, height: number, walkable: Uint8Array) {
     this.width = width;
     this.height = height;
-    this.#walkable = walkable?.slice() ?? new Uint8Array(width * height).fill(1);
+    this.#walkable = walkable;
   }
 
   inBounds(p: Point): boolean {
@@ -35,17 +46,6 @@ export class Grid {
 
   isWalkable(p: Point): boolean {
     return this.inBounds(p) && this.#walkable[p.y * this.width + p.x] === 1;
-  }
-
-  setWalkable(p: Point, walkable: boolean): void {
-    if (this.inBounds(p)) {
-      const index = p.y * this.width + p.x;
-      const value = walkable ? 1 : 0;
-      if (this.#walkable[index] !== value) {
-        this.#walkable[index] = value;
-        this.#clearance = null;
-      }
-    }
   }
 
   /** Prefer space around walls/furniture without making narrow doors or edge targets unreachable. */
@@ -83,31 +83,17 @@ export class Grid {
     }
     return distances;
   }
-
-  fill(x: number, y: number, w: number, h: number, walkable: boolean): void {
-    for (let yy = y; yy < y + h; yy += 1) {
-      for (let xx = x; xx < x + w; xx += 1) {
-        this.setWalkable({ x: xx, y: yy }, walkable);
-      }
-    }
-  }
 }
-
-const NEIGHBOURS: readonly Point[] = [
-  { x: 1, y: 0 },
-  { x: -1, y: 0 },
-  { x: 0, y: 1 },
-  { x: 0, y: -1 },
-];
-
-export const neighboursOf = (p: Point): Point[] =>
-  NEIGHBOURS.map((d) => ({ x: p.x + d.x, y: p.y + d.y }));
 
 // A turn costs six clear-floor steps: avoid staircases for small clearance gains.
 const TURN_COST = 6;
 type RouteNode = { order: number; p: Point; direction: number; id: number; g: number; f: number };
 
-/** Clearance/turn-weighted A*: excludes `from`, includes `to`; empty when unreachable or trivial. */
+/**
+ * Clearance/turn-weighted A*: excludes `from`, includes `to`; empty when unreachable or trivial.
+ * A destination somebody is standing on is reachable — that is what a meeting point is — while every
+ * other occupied cell is walked around.
+ */
 export function findPath(
   grid: Grid,
   from: Point,
@@ -117,7 +103,7 @@ export function findPath(
   if (samePoint(from, to)) {
     return [];
   }
-  if (!grid.isWalkable(to) || blocked(to)) {
+  if (!grid.isWalkable(to)) {
     return [];
   }
   // Arrival direction is part of the state: it determines the cost of the next turn.

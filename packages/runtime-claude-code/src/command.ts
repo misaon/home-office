@@ -6,31 +6,17 @@ import type { RuntimeSessionSpec } from "@ho/core";
  * which Claude Code reads through `--setting-sources user` and RTK checks before rewriting.
  * `includeGitInstructions: false` because the office supplies its own git workflow and forbids pushing;
  * `bashOutputMaxChars` bounds what a verbose command pours into the context (RTK keeps the full output
- * on tmpfs). The autoupdater is off, so the release channel key would be dead configuration.
+ * on tmpfs). The telemetry and autoupdater switches are environment variables the image sets.
  */
-export const CLAUDE_SETTINGS = {
+const CLAUDE_SETTINGS = {
   attribution: { commit: "", pr: "", sessionUrl: false },
   includeGitInstructions: false,
   bashOutputMaxChars: 10_000,
-  env: {
-    DISABLE_AUTOUPDATER: "1",
-    DISABLE_TELEMETRY: "1",
-    DISABLE_ERROR_REPORTING: "1",
-    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
-    ENABLE_CLAUDEAI_MCP_SERVERS: "false",
-    USE_BUILTIN_RIPGREP: "0",
-  },
 } as const;
 
 type McpConfigEntry =
   | { type: "http"; url: string; headers: Record<string, string> }
   | { type: "stdio"; command: string; args: string[]; env: Record<string, string> };
-
-export type ClaudeCommandOptions = {
-  /** Extra MCP servers to expose besides the session's own. */
-  mcpServers?: Readonly<Record<string, McpConfigEntry>>;
-  pluginDirs?: readonly string[];
-};
 
 const mcpEntry = (spec: RuntimeSessionSpec["mcpServers"][string]): McpConfigEntry =>
   spec.kind === "http"
@@ -38,11 +24,7 @@ const mcpEntry = (spec: RuntimeSessionSpec["mcpServers"][string]): McpConfigEntr
     : { type: "stdio", command: spec.command, args: [...spec.args], env: { ...spec.env } };
 
 /** Builds the `claude` argv for a session. Prompts travel over stdin as stream-json user messages. */
-export function claudeArgv(
-  spec: RuntimeSessionSpec,
-  claudeSessionId: string,
-  options: ClaudeCommandOptions = {},
-): string[] {
+export function claudeArgv(spec: RuntimeSessionSpec, claudeSessionId: string): string[] {
   const argv = [
     "claude",
     "-p",
@@ -79,14 +61,13 @@ export function claudeArgv(
   if (spec.systemPromptAppendix.trim() !== "") {
     argv.push("--append-system-prompt", spec.systemPromptAppendix);
   }
-  const mcpServers: Record<string, McpConfigEntry> = {
-    ...Object.fromEntries(Object.entries(spec.mcpServers).map(([name, s]) => [name, mcpEntry(s)])),
-    ...options.mcpServers,
-  };
+  const mcpServers = Object.fromEntries(
+    Object.entries(spec.mcpServers).map(([name, s]) => [name, mcpEntry(s)]),
+  );
   if (Object.keys(mcpServers).length > 0) {
     argv.push("--mcp-config", JSON.stringify({ mcpServers }));
   }
-  for (const dir of [...spec.pluginDirs, ...(options.pluginDirs ?? [])]) {
+  for (const dir of spec.pluginDirs) {
     argv.push("--plugin-dir", dir);
   }
   return argv;

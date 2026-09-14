@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../kit/controls.tsx";
 import { doctorQuery } from "../queries.ts";
-import { useUi } from "../store.ts";
-import { dockerStatus, imagesStatus, setupNeeded, tokenStatus } from "./status.ts";
+import { useOnline, useUi } from "../store.ts";
+import { setupNeeded, setupReady } from "./status.ts";
 import { DockerStep, ImagesStep, TokenStep } from "./steps-environment.tsx";
 import { SmokeStep } from "./steps-office.tsx";
 
@@ -31,60 +31,69 @@ const dismiss = (): void => {
  * teams are not part of it: the empty office offers the first project itself.
  */
 export function useSetupAutoOpen(): void {
-  const { t } = useTranslation();
-  const connection = useUi((s) => s.connection);
+  const online = useOnline();
   const setSetupOpen = useUi((s) => s.setSetupOpen);
-  const { data: doctor } = useQuery({
-    ...doctorQuery,
-    enabled: connection === "online" && !dismissed(),
-  });
+  const { data: doctor } = useQuery({ ...doctorQuery, enabled: online && !dismissed() });
   useEffect(() => {
-    if (connection === "online" && !dismissed() && doctor !== undefined && setupNeeded(doctor, t)) {
+    if (online && !dismissed() && doctor !== undefined && setupNeeded(doctor)) {
       setSetupOpen(true);
     }
-  }, [connection, doctor, setSetupOpen, t]);
+  }, [online, doctor, setSetupOpen]);
 }
 
-export function SetupOverlay(): React.JSX.Element | null {
+export function SetupOverlay(): React.JSX.Element {
   const { t } = useTranslation();
   const open = useUi((s) => s.setupOpen);
   const setSetupOpen = useUi((s) => s.setSetupOpen);
-  const snapshot = useUi((s) => s.snapshot);
   const floorId = useUi((s) => s.floorId);
-  const connection = useUi((s) => s.connection);
-  const query = useQuery({ ...doctorQuery, enabled: open && connection === "online" });
+  const online = useOnline();
+  const dialog = useRef<HTMLDialogElement>(null);
+  const query = useQuery({ ...doctorQuery, enabled: open && online });
   const doctor = query.data ?? null;
   const refresh = (): void => {
     void query.refetch();
   };
-  if (!open) {
-    return null;
-  }
-  const ready = [dockerStatus(doctor, t), imagesStatus(doctor, t), tokenStatus(doctor, t)].every(
-    (s) => s.state === "ok",
-  );
-  const close = (): void => {
-    dismiss();
-    setSetupOpen(false);
-  };
+  useEffect(() => {
+    const element = dialog.current;
+    if (open) {
+      element?.showModal();
+    } else {
+      element?.close();
+    }
+  }, [open]);
+  const ready = setupReady(doctor);
   return (
-    <div className="absolute inset-0 z-20 flex items-start justify-center overflow-y-auto bg-ink/85 p-8 text-xs">
-      <div className="w-full max-w-2xl space-y-4">
+    <dialog
+      ref={dialog}
+      aria-label={t("setup.title")}
+      className="h-full max-h-none w-full max-w-none overflow-y-auto bg-background/95 p-8 text-xs text-foreground backdrop-blur-sm backdrop:bg-black/60"
+      onClose={() => {
+        dismiss();
+        setSetupOpen(false);
+      }}
+    >
+      <div className="mx-auto w-full max-w-2xl space-y-4">
         <header className="flex items-start justify-between gap-6">
           <div>
-            <h2 className="text-base font-semibold">{t("setup.title")}</h2>
-            <p className="mt-2 leading-relaxed text-gray-400">{t("setup.intro")}</p>
+            <h2 className="text-xl font-semibold tracking-tight">{t("setup.title")}</h2>
+            <p className="mt-2 max-w-md leading-relaxed text-foreground/80">{t("setup.intro")}</p>
           </div>
           <div className="flex shrink-0 gap-3">
             <Button onClick={refresh}>{t("setup.recheck")}</Button>
-            <Button onClick={close}>{ready ? t("common.close") : t("setup.skip")}</Button>
+            <Button
+              onClick={() => {
+                dialog.current?.close();
+              }}
+            >
+              {ready ? t("common.close") : t("setup.skip")}
+            </Button>
           </div>
         </header>
         <DockerStep doctor={doctor} refresh={refresh} />
         <ImagesStep doctor={doctor} refresh={refresh} />
-        <TokenStep doctor={doctor} refresh={refresh} />
-        <SmokeStep key={floorId} snapshot={snapshot} ready={ready} />
+        <TokenStep doctor={doctor} />
+        <SmokeStep key={floorId} ready={ready} />
       </div>
-    </div>
+    </dialog>
   );
 }

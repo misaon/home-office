@@ -1,6 +1,8 @@
+export * from "./attachments.ts";
 export * from "./contract.ts";
 export * from "./domain.ts";
 export * from "./error-message.ts";
+export * from "./errors.ts";
 export * from "./events.ts";
 export * from "./format.ts";
 export * from "./ids.ts";
@@ -10,4 +12,5 @@ export * from "./mcp.ts";
 export * from "./office-layout.ts";
 export * from "./patch.ts";
 export * from "./providers.ts";
+export * from "./repo.ts";
 export * from "./runtime-events.ts";

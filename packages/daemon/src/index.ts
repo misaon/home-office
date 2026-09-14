@@ -1,40 +1,13 @@
 import { chmod, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { type DaemonConfig, resolveHome } from "./config.ts";
-import type { DirectoryPicker } from "./host-dialog.ts";
-import type { DaemonInfo } from "./daemon-info.ts";
-import type { Office } from "./office.ts";
-import { launchDaemon } from "./launch.ts";
+import { type DaemonHandle, type DaemonOptions, launchDaemon } from "./launch.ts";
+import { resolveHome } from "./config.ts";
 import { acquireSingleInstanceLock } from "./single-instance.ts";
 
-export { DaemonConfig, loadConfig, resolveHome } from "./config.ts";
-export { DaemonInfo, daemonInfoPath, daemonUrl, readDaemonInfo } from "./daemon-info.ts";
-export { type DirectoryPicker, osascriptDirectoryPicker } from "./host-dialog.ts";
-export { defaultResourcesRoot, type Resources, resolveResources } from "./paths.ts";
-export { Office } from "./office.ts";
-export { acquireSingleInstanceLock, type LockRelease } from "./single-instance.ts";
-
-export type DaemonHandle = {
-  info: DaemonInfo;
-  office: Office;
-  config: DaemonConfig;
-  stop: () => Promise<void>;
-};
-
-export type DaemonOptions = {
-  /** State directory (config.json, ho.db, daemon.json, logs/); defaults to `HO_HOME` or `~/.config/home-office`. */
-  home?: string;
-  overrides?: Partial<DaemonConfig>;
-  /** Where image contexts, the UI bundle, sprites and migrations live; defaults to the repository. */
-  resourcesRoot?: string;
-  /** Log to this file instead of stdout (the desktop app has no visible stdout). */
-  logFile?: string;
-  /**
-   * Shows the host's directory dialog. The desktop app injects a panel owned by its own window;
-   * without one the daemon falls back to macOS `osascript`.
-   */
-  pickDirectory?: DirectoryPicker;
-};
+export { DaemonConfig, resolveHome } from "./config.ts";
+export { DaemonInfo, daemonAnswers, daemonUrl, officeUrl, readDaemonInfo } from "./daemon-info.ts";
+export type { DirectoryPicker } from "./host-dialog.ts";
+export type { DaemonHandle, DaemonOptions } from "./launch.ts";
 
 export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHandle> {
   const home = options.home ?? resolveHome();

@@ -93,19 +93,21 @@ const StoredObjectKind = z.preprocess(
   ObjectKind,
 );
 
-export type ObjectSpec = {
+type ObjectSpec = {
   /** Cells across and down, unrotated; rotating swaps them. */
   w: number;
   h: number;
   blocks: boolean;
   onWall: boolean;
   arrow: boolean;
+  /** Walked into, so it opens the wall it sits in — the lift car, as a door does. */
+  walkable?: boolean;
 };
 
 export const OBJECT_SPEC: Readonly<Record<ObjectKind, ObjectSpec>> = {
   // The lift car: where staff arrive on the floor. It hangs on a wall as the fittings do, five cells
   // along it and two deep, and is walked into.
-  elevator: { w: 5, h: 2, blocks: false, onWall: true, arrow: true },
+  elevator: { w: 5, h: 2, blocks: false, onWall: true, arrow: true, walkable: true },
   // Desks are one size, 160 × 80 cm, whatever the role; the reception counter is 2 × 0.5 m.
   "desk-developer": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },
   "desk-qa": { w: 6, h: 3, blocks: true, onWall: false, arrow: true },
@@ -139,12 +141,14 @@ export const OBJECT_SPEC: Readonly<Record<ObjectKind, ObjectSpec>> = {
 };
 
 /** The largest office the editor will write, in cells; the grid is drawn per cell, so this bounds the work. */
-export const LAYOUT_MAX = 200;
+const LAYOUT_MAX = 200;
 
 const cell = z.int().min(0).max(LAYOUT_MAX);
 const span = z.int().min(1).max(LAYOUT_MAX);
 
 const LayoutRect = z.object({ x: cell, y: cell, w: span, h: span });
+/** A rectangle of cells, `x`/`y` its top-left corner; the shape every drawn office element shares. */
+export type LayoutRect = z.infer<typeof LayoutRect>;
 
 export const OfficeLayout = z.object({
   /** Names the file it is saved as, so it may only ever be a slug. */

@@ -1,9 +1,9 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "./queries.ts";
 import { createRoot } from "react-dom/client";
 import { App } from "./app.tsx";
 import { startI18n } from "./i18n/index.ts";
-import { bridge } from "./office/runtime.ts";
+import { bridge } from "./office/bridge.ts";
+import { queryClient } from "./queries.ts";
 import { startSync } from "./sync.ts";
 
 const root = document.querySelector("#root");

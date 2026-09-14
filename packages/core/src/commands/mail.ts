@@ -1,25 +1,25 @@
-import type {
-  MailAck,
-  MailConnector,
-  MailItem,
-  MailItemId,
-  NewEvent,
-  Project,
-  ProjectId,
-  Task,
+import {
+  type MailAck,
+  type MailConnector,
+  type MailItem,
+  type MailItemId,
+  type NewEvent,
+  notFound,
+  type Project,
+  type ProjectId,
+  type Task,
 } from "@ho/protocol";
-import { notFound } from "../errors.ts";
-import { mailSourceKey, type ReadModel } from "../model/read-model.ts";
+import { bossOf, findMail } from "../model/queries.ts";
+import type { ReadModel } from "../model/read-model.ts";
 import type { IntakeItem } from "../ports.ts";
-import { err, ok } from "../result.ts";
-import type { CommandContext, CommandResult } from "./context.ts";
-import { bossOf } from "./shared.ts";
+import { type CommandContext, type CommandResult, entity, err, ok } from "../result.ts";
+import { TITLE_MAX } from "./shared.ts";
+import { newTask, readTask } from "./tasks.ts";
 
 const BODY_MAX = 12_000;
-const TITLE_MAX = 200;
 
 /** The task brief: everything the boss (or a worker) needs to act on the issue without opening GitHub. */
-export const formatMailBrief = (project: Project, item: IntakeItem): string => {
+const formatMailBrief = (project: Project, item: IntakeItem): string => {
   const body = item.body.trim();
   const clipped = body.length > BODY_MAX ? `${body.slice(0, BODY_MAX)}\n\n[… truncated]` : body;
   return [
@@ -29,19 +29,6 @@ export const formatMailBrief = (project: Project, item: IntakeItem): string => {
     "",
     clipped === "" ? "(no description)" : clipped,
   ].join("\n");
-};
-
-const mailTitle = (item: IntakeItem): string =>
-  `Issue #${item.externalId}: ${item.title}`.slice(0, TITLE_MAX);
-
-export const findMail = (
-  model: Pick<ReadModel, "mail" | "mailBySource">,
-  projectId: ProjectId,
-  connector: MailConnector,
-  externalId: string,
-): MailItem | undefined => {
-  const id = model.mailBySource.get(mailSourceKey(projectId, connector, externalId));
-  return id === undefined ? undefined : model.mail.get(id);
 };
 
 export type ReceivedMail = { mail: MailItem; task: Task | null; duplicate: boolean };
@@ -64,32 +51,24 @@ export function receiveMail(
   }
   const existing = findMail(model, projectId, connector, item.externalId);
   if (existing !== undefined) {
-    const task = existing.taskId === undefined ? undefined : model.tasks.get(existing.taskId);
-    return ok({ events: [], value: { mail: existing, task: task ?? null, duplicate: true } });
+    return ok({
+      events: [],
+      read: (m) => ({
+        mail: entity(m.mail, existing.id),
+        task: existing.taskId === undefined ? null : (m.tasks.get(existing.taskId) ?? null),
+        duplicate: true,
+      }),
+    });
   }
   const boss = bossOf(model, project.id);
-  const shared = {
-    id: ctx.ids.task(),
-    title: mailTitle(item),
+  const task = newTask(ctx, {
+    projectId: project.id,
+    kind: boss === undefined ? "work" : "triage",
+    title: `Issue #${item.externalId}: ${item.title}`.slice(0, TITLE_MAX),
     brief: formatMailBrief(project, item),
-    reviewRounds: 0,
-    notes: [],
     source: { kind: "mail", connector, externalId: item.externalId },
-    artifacts: {},
-    priority: "normal",
-    createdAt: ctx.now,
-    updatedAt: ctx.now,
-  } satisfies Partial<Task>;
-  const task: Task =
-    boss !== undefined
-      ? {
-          ...shared,
-          projectId: project.id,
-          kind: "triage",
-          status: "assigned",
-          assigneeId: boss.id,
-        }
-      : { ...shared, projectId: project.id, kind: "work", status: "inbox" };
+    assigneeId: boss?.id,
+  });
   const mail: MailItem = {
     id: ctx.ids.mail(),
     projectId: project.id,
@@ -107,7 +86,10 @@ export function receiveMail(
     { type: "mail.received", actor: ctx.actor, payload: { mail } },
     { type: "task.created", actor: ctx.actor, payload: { task } },
   ];
-  return ok({ events, value: { mail, task, duplicate: false } });
+  return ok({
+    events,
+    read: (m) => ({ mail: entity(m.mail, mail.id), task: readTask(task.id)(m), duplicate: false }),
+  });
 }
 
 export function acknowledgeMail(
@@ -116,35 +98,17 @@ export function acknowledgeMail(
   ack: Omit<MailAck, "at">,
   ctx: CommandContext,
 ): CommandResult<MailItem> {
-  const mail = model.mail.get(mailId);
-  if (mail === undefined) {
+  if (!model.mail.has(mailId)) {
     return err(notFound("mail", mailId));
   }
-  const stamped: MailAck = { ...ack, at: ctx.now };
   return ok({
-    events: [{ type: "mail.acknowledged", actor: ctx.actor, payload: { mailId, ack: stamped } }],
-    value: { ...mail, acks: [...mail.acks, stamped] },
+    events: [
+      {
+        type: "mail.acknowledged",
+        actor: ctx.actor,
+        payload: { mailId, ack: { ...ack, at: ctx.now } },
+      },
+    ],
+    read: (m) => entity(m.mail, mailId),
   });
-}
-
-/** Enough of the model to follow a task back to its mail; the UI's immutable snapshot fits too. */
-export type MailLookup = {
-  tasks: ReadonlyMap<Task["id"], Task>;
-  mail: ReadonlyMap<MailItemId, MailItem>;
-};
-
-/** The mail item behind a task: its own, or the one behind the triage task that delegated it. */
-export function mailForTask(model: MailLookup, task: Task): MailItem | undefined {
-  let current: Task | undefined = task;
-  for (let depth = 0; current !== undefined && depth < 4; depth += 1) {
-    const id: Task["id"] = current.id;
-    if (current.source.kind === "mail") {
-      return [...model.mail.values()].find((m) => m.taskId === id);
-    }
-    if (current.source.kind !== "delegation" || current.source.parentTaskId === undefined) {
-      return undefined;
-    }
-    current = model.tasks.get(current.source.parentTaskId);
-  }
-  return undefined;
 }

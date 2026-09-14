@@ -15,8 +15,17 @@ import type {
 } from "@ho/protocol";
 import { create } from "zustand";
 
-export type Panel = "chat" | "board" | "inspector" | "usage" | "resources" | "settings";
-type Connection = "connecting" | "online" | "offline" | "unauthorized" | "rejected";
+export type Panel = "chat" | "board" | "team" | "usage" | "settings";
+export type Connection = "connecting" | "online" | "offline" | "unauthorized" | "rejected";
+
+/** What each connection state says to the viewer, as a dictionary key. */
+export const CONNECTION_KEY = {
+  connecting: "app.connecting",
+  online: "app.connected",
+  offline: "app.offline",
+  unauthorized: "app.noToken",
+  rejected: "app.rejected",
+} as const satisfies Record<Connection, string>;
 
 /** Immutable view of the read model for React: a collection keeps its identity until an event touches it. */
 export type Snapshot = {
@@ -26,8 +35,6 @@ export type Snapshot = {
   sessions: ReadonlyMap<SessionId, Session>;
   chat: ReadonlyMap<ProjectId, readonly ChatMessage[]>;
   mail: ReadonlyMap<MailItemId, MailItem>;
-  /** The projection's own index, shared by reference: only `applyEvent` ever writes it. */
-  agentsByProject: ReadonlyMap<ProjectId, ReadonlySet<AgentId>>;
 };
 
 /** The event-sourced read model, mutated in place by `applyEvent`; the simulation bridge reads it directly. */
@@ -55,7 +62,6 @@ const takeSnapshot = (previous: Snapshot | null): Snapshot => ({
   sessions: changed("sessions") || previous === null ? new Map(model.sessions) : previous.sessions,
   chat: changed("chat") || previous === null ? new Map(model.chat) : previous.chat,
   mail: changed("mail") || previous === null ? new Map(model.mail) : previous.mail,
-  agentsByProject: model.agentsByProject,
 });
 
 /** Floors in the order they were built: the first project is floor 1. */
@@ -64,29 +70,9 @@ export const sortedFloors = (projects: ReadonlyMap<ProjectId, Project>): Project
     (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
   );
 
-/** Recent live runtime events per session (the daemon does not persist them either). */
-const liveLog = new Map<SessionId, LiveEvent[]>();
-const dirtyLive = new Set<SessionId>();
-const LIVE_LIMIT = 300;
-const LIVE_SESSION_LIMIT = 20;
-
-export function pushLive(event: LiveEvent): void {
-  const list = liveLog.get(event.sessionId) ?? [];
-  list.push(event);
-  if (list.length > LIVE_LIMIT) {
-    list.splice(0, list.length - LIVE_LIMIT);
-  }
-  liveLog.delete(event.sessionId);
-  liveLog.set(event.sessionId, list);
-  if (liveLog.size > LIVE_SESSION_LIMIT) {
-    const oldest = liveLog.keys().next();
-    if (oldest.done !== true) {
-      liveLog.delete(oldest.value);
-      dirtyLive.add(oldest.value);
-    }
-  }
-  dirtyLive.add(event.sessionId);
-}
+/** The floor's boss from the snapshot; undefined only mid-removal. */
+export const bossOnFloor = (agents: Snapshot["agents"], floorId: ProjectId): Agent | undefined =>
+  [...agents.values()].find((a) => a.projectId === floorId && a.role === "boss");
 
 type UiState = {
   connection: Connection;
@@ -100,8 +86,6 @@ type UiState = {
   /** The floor (project) shown in the office and the side panels; null until the first project exists. */
   floorId: ProjectId | null;
   addProjectOpen: boolean;
-  /** Character sets the office can draw. Empty while the office is a blank plane of dots. */
-  spriteSets: string[];
   /** The first-run checklist (Docker, images, token, smoke test). */
   setupOpen: boolean;
   setConnection: (connection: Connection) => void;
@@ -124,7 +108,6 @@ export const useUi = create<UiState>()((set) => ({
   selectedAgentId: null,
   floorId: null,
   addProjectOpen: false,
-  spriteSets: [],
   setupOpen: false,
   setConnection: (connection) => {
     set({ connection });
@@ -139,7 +122,7 @@ export const useUi = create<UiState>()((set) => ({
     set({ panel });
   },
   selectAgent: (selectedAgentId) => {
-    set(selectedAgentId === null ? { selectedAgentId } : { selectedAgentId, panel: "inspector" });
+    set(selectedAgentId === null ? { selectedAgentId } : { selectedAgentId, panel: "team" });
   },
   selectFloor: (floorId) => {
     set({ floorId, selectedAgentId: null });
@@ -152,14 +135,26 @@ export const useUi = create<UiState>()((set) => ({
   },
 }));
 
-const HIDDEN_BUMP_MS = 200;
+/** Whether the daemon is reachable right now; queries and mutations are enabled by it. */
+export const useOnline = (): boolean => useUi((s) => s.connection === "online");
 
-const nextBump = (run: () => void): void => {
-  if (document.hidden) {
-    setTimeout(run, HIDDEN_BUMP_MS);
-    return;
-  }
-  requestAnimationFrame(run);
+const BUMP_MS = 200;
+
+/**
+ * Coalesces changes into one React update per frame. A frame callback never runs while the document is
+ * hidden — and the page can be hidden between scheduling one and its firing — so both paths are armed
+ * and whichever comes first wins.
+ */
+export const nextBump = (run: () => void): void => {
+  let done = false;
+  const once = (): void => {
+    if (!done) {
+      done = true;
+      run();
+    }
+  };
+  setTimeout(once, BUMP_MS);
+  requestAnimationFrame(once);
 };
 
 let modelBumpScheduled = false;
@@ -181,29 +176,6 @@ export function scheduleModelBump(): void {
           ? { snapshot }
           : { snapshot, floorId: sortedFloors(snapshot.projects)[0]?.id ?? null },
       );
-    });
-  }
-}
-
-let liveBumpScheduled = false;
-export function scheduleLiveBump(): void {
-  if (!liveBumpScheduled) {
-    liveBumpScheduled = true;
-    nextBump(() => {
-      liveBumpScheduled = false;
-      useUi.setState((s) => {
-        const live = new Map(s.live);
-        for (const id of dirtyLive) {
-          const events = liveLog.get(id);
-          if (events === undefined) {
-            live.delete(id);
-          } else {
-            live.set(id, [...events]);
-          }
-        }
-        dirtyLive.clear();
-        return { live };
-      });
     });
   }
 }

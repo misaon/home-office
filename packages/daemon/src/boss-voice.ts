@@ -3,14 +3,15 @@ import {
   type Agent,
   errorMessage,
   type StoredEvent,
+  SYSTEM_ACTOR,
   type Task,
   type TaskStatus,
 } from "@ho/protocol";
 import type { Logger } from "./logger.ts";
-import type { Office } from "./office.ts";
+import { followEvents, type Office } from "./office.ts";
 import type { OfficeGate } from "./office-gate.ts";
+import { describeOutcome } from "./outcome.ts";
 
-const SYSTEM = { kind: "system" } as const;
 const REPORT_MAX = 600;
 const QUESTION_PREFIX = "question:";
 
@@ -20,16 +21,6 @@ const nameOf = (model: Model, id: Agent["id"] | undefined): string =>
   id === undefined ? "somebody" : (model.agents.get(id)?.name ?? "a colleague");
 
 const quote = (task: Task): string => `“${task.title}”`;
-
-const outcome = (task: Task, reason: string | undefined): string => {
-  const parts = [
-    task.artifacts.report === undefined ? null : task.artifacts.report.slice(0, REPORT_MAX),
-    reason === undefined || reason === "" || reason === task.artifacts.report ? null : reason,
-    task.artifacts.branch === undefined ? null : `Branch: ${task.artifacts.branch}`,
-    task.artifacts.prUrl === undefined ? null : `Pull request: ${task.artifacts.prUrl}`,
-  ].filter((p): p is string => p !== null);
-  return parts.length === 0 ? "" : `\n${parts.join("\n")}`;
-};
 
 /** What Andrew says when a task he created changes hands or state; null for moments he stays quiet about. */
 function statusLine(
@@ -58,7 +49,8 @@ function statusLine(
       : null;
   }
   if (to === "done") {
-    return `${quote(task)} is done.${outcome(task, reason)}`;
+    const outcome = describeOutcome(task, reason, REPORT_MAX);
+    return `${quote(task)} is done.${outcome === "" ? "" : `\n${outcome}`}`;
   }
   if (to === "blocked") {
     // A question is already in the chat as the colleague's own message; only other blocks are reported.
@@ -73,11 +65,11 @@ function statusLine(
 }
 
 /** Whether finished work walks back to the boss before he speaks: somebody else did it and it just ended. */
-const walksBack = (boss: Agent, task: Task, to: TaskStatus): boolean =>
+const walksBack = (boss: Agent, task: Task, to: TaskStatus, reason: string | undefined): boolean =>
   task.kind === "work" &&
   task.assigneeId !== undefined &&
   task.assigneeId !== boss.id &&
-  (to === "done" || to === "blocked");
+  (to === "done" || (to === "blocked" && reason?.startsWith(QUESTION_PREFIX) !== true));
 
 /**
  * The boss's voice in the floor's chat (D23): deterministic status lines when he delegates, when work starts,
@@ -88,10 +80,9 @@ export function startBossVoice(
   gate: OfficeGate,
   log: Logger,
 ): { stop: () => Promise<void> } {
-  const controller = new AbortController();
   const say = async (boss: Agent, text: string, taskId: Task["id"]): Promise<void> => {
     await office
-      .execute(SYSTEM, (m, ctx) => postAgentMessage(m, boss.id, text, taskId, ctx))
+      .execute(SYSTEM_ACTOR, (m, ctx) => postAgentMessage(m, boss.id, text, taskId, ctx))
       .catch((error: unknown) => {
         log.warn({ err: errorMessage(error) }, "boss status message failed");
       });
@@ -115,54 +106,38 @@ export function startBossVoice(
   const onStatus = async (
     event: Extract<StoredEvent, { type: "task.status_changed" }>,
   ): Promise<void> => {
-    const task = office.model.tasks.get(event.payload.taskId);
-    const boss = task === undefined ? undefined : bossOf(office.model, task.projectId);
-    if (task === undefined || boss === undefined) {
+    const { taskId, to, reason } = event.payload;
+    const before = office.model.tasks.get(taskId);
+    const boss = before === undefined ? undefined : bossOf(office.model, before.projectId);
+    if (before === undefined || boss === undefined) {
       return;
     }
-    const { to, reason } = event.payload;
-    const text = statusLine(office.model, boss, task, to, reason);
-    if (text === null) {
-      return;
-    }
-    if (walksBack(boss, task, to)) {
-      await gate.waitFor(task.id, event.at);
+    if (walksBack(boss, before, to, reason)) {
+      await gate.waitFor(before.id, event.at);
     }
     // Artifacts (branch, PR) land right after the status change; re-read so the line carries them.
-    const fresh = office.model.tasks.get(task.id) ?? task;
-    await say(boss, statusLine(office.model, boss, fresh, to, reason) ?? text, task.id);
-  };
-  const pending = new Set<Promise<void>>();
-  const track = (work: Promise<void>): void => {
-    const done = work
-      .catch((error: unknown) => {
-        log.warn({ err: String(error) }, "boss voice failed");
-      })
-      .finally(() => {
-        pending.delete(done);
-      });
-    pending.add(done);
-  };
-  const listening = (async () => {
-    for await (const event of office.store.subscribe(
-      { types: ["task.created", "task.status_changed"] },
-      controller.signal,
-    )) {
-      if (event.type === "task.created") {
-        track(onCreated(event.payload.task));
-      } else if (event.type === "task.status_changed") {
-        track(onStatus(event));
-      }
+    const task = office.model.tasks.get(taskId) ?? before;
+    const text = statusLine(office.model, boss, task, to, reason);
+    if (text !== null) {
+      await say(boss, text, task.id);
     }
-  })().catch((error: unknown) => {
-    log.error({ err: String(error) }, "boss voice subscription failed");
-  });
+  };
+  const following = followEvents(
+    office,
+    ["task.created", "task.status_changed"],
+    (event) =>
+      event.type === "task.created"
+        ? onCreated(event.payload.task)
+        : event.type === "task.status_changed"
+          ? onStatus(event)
+          : undefined,
+    log,
+    "boss voice",
+  );
   return {
     stop: async () => {
-      controller.abort();
       gate.close();
-      await listening;
-      await Promise.allSettled(pending);
+      await following.stop();
     },
   };
 }
