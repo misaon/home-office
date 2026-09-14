@@ -2,7 +2,7 @@ import { errorMessage, type OfficeLayout } from "@ho/protocol";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Button, Caption, FIELD } from "../design/controls.tsx";
-import { Section } from "../design/modal.tsx";
+import { Section } from "../design/section.tsx";
 import { Segmented } from "../design/segmented.tsx";
 import { useKindName } from "../i18n/kinds.ts";
 import { slugify, type Brush, type Note, type OfficeDraft, type Tool } from "./draft.ts";

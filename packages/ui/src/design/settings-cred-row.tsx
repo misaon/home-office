@@ -61,7 +61,7 @@ export function CredRow({
             set({ credOpen: open ? null : name });
           }}
           style={HEAD}
-          className="hopg"
+          className="ho-0b4177"
         >
           <span style={NAME}>{t(`tokens.${NAMED[name]}`)}</span>
           <span

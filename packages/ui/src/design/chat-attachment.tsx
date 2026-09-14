@@ -61,7 +61,7 @@ export function ChatAttachment({ file }: { file: string }): React.JSX.Element {
           set({ attachment: null });
         }}
         style={CLEAR}
-        className="hopb"
+        className="ho-ed6ec7"
       >
         <svg
           width="9"

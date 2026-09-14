@@ -112,7 +112,7 @@ export function UsageHeader({ summary }: { summary: UsageSummary | null }): Reac
                   background: tone.bg,
                   color: tone.fg,
                 }}
-                className="hop4"
+                className="ho-1962ef"
               >
                 {t(label)}
               </button>
@@ -162,7 +162,7 @@ export function UsageHeader({ summary }: { summary: UsageSummary | null }): Reac
                 background: tone.bg,
                 color: tone.fg,
               }}
-              className="hop4"
+              className="ho-1962ef"
             >
               {w}
             </button>

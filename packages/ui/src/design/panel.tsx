@@ -53,7 +53,7 @@ export function Panel(): React.JSX.Element | null {
       {tab === "Usage" ? <Usage floor={floor} /> : null}
       {tab === "Settings" ? <Settings /> : null}
       {sheet !== null && sheet.type === "agent" && sheetDraft !== null ? (
-        <AgentSheet floor={floor} draft={sheetDraft} />
+        <AgentSheet draft={sheetDraft} />
       ) : null}
       {task === undefined ? null : <TaskSheet floor={floor} task={task} />}
     </aside>

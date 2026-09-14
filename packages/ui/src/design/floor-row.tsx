@@ -94,7 +94,7 @@ export function FloorRow({
         border: `1px solid ${current ? "rgba(255,197,49,.25)" : "transparent"}`,
         background: current ? "rgba(255,197,49,.08)" : "transparent",
       }}
-      className="hop1"
+      className="ho-1f9ea1"
     >
       <span
         style={{

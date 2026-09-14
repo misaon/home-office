@@ -109,7 +109,7 @@ export function Settings(): React.JSX.Element {
             cursor: "pointer",
             transition: "all .22s",
           }}
-          className="hopj"
+          className="ho-4ede91"
         >
           {t("project.add")}
         </button>

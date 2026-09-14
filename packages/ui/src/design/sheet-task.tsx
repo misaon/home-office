@@ -67,7 +67,7 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
             move.mutate("done");
           }}
           style={PRIMARY}
-          className="hopm"
+          className="ho-7cc9cc"
         >
           {t("board.moveToDone")}
         </button>
@@ -88,7 +88,7 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
             whiteSpace: "nowrap",
             transition: "all .2s",
           }}
-          className="hop8"
+          className="ho-96ee65"
         >
           {t("board.handBack")}
         </button>

@@ -1,6 +1,7 @@
 # Porting the drawn office into React
 
-The owner had the office drawn and left it in the repository; it lives at `docs/design/Home Office.html`,
+The owner had the office drawn and left it in the repository, at `docs/design/Home Office.html`
+(deleted once the port was finished — see `2026-09-14-design-update.md`);
 where the formatter leaves it alone. They asked for it in our stack — clean, performant React — and for proof that the result is the same picture, pixel for
 pixel. This is what the file turned out to be, how it was ported, and how "the same" was measured.
 

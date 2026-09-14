@@ -1,6 +1,7 @@
-import { type AgentId, errorMessage } from "@ho/protocol";
+import { isSessionActive, type AgentId, errorMessage } from "@ho/protocol";
 import { type Actor, CELL_PX, type World } from "@ho/sim";
-import { Graphics } from "pixi.js";
+import { Container, Graphics } from "pixi.js";
+import { type Badge, makeBadge, updateBadge } from "./badge.ts";
 import { useUi } from "../store.ts";
 import { bridge } from "./bridge.ts";
 import { DOT, DOT_EDGE, DOT_SELECTED } from "./colours.ts";
@@ -15,7 +16,20 @@ const DOT_RADIUS = CELL_PX;
 /** How far the pointer may travel before a click counts as a drag instead of a selection. */
 const DRAG_SLOP_PX = 4;
 
-type DotView = { shape: Graphics; selected: boolean };
+type DotView = { root: Container; shape: Graphics; badge: Badge; selected: boolean };
+
+/** What the pill under a colleague says, and whether the office draws them as working. */
+function captionOf(agentId: AgentId): { caption: string; busy: boolean } | null {
+  const { snapshot } = useUi.getState();
+  const agent = snapshot.agents.get(agentId);
+  if (agent === undefined) {
+    return null;
+  }
+  const busy = [...snapshot.sessions.values()].some(
+    (session) => session.agentId === agentId && isSessionActive(session.state),
+  );
+  return { caption: `${agent.name} · ${busy ? "working" : "idle"}`, busy };
+}
 
 const paint = (shape: Graphics, selected: boolean): void => {
   shape
@@ -108,35 +122,44 @@ class OfficeScene extends MapView {
         this.onSelect(actor.id);
       }
     });
-    this.world.addChild(shape);
-    const view: DotView = { shape, selected: false };
+    const badge = makeBadge();
+    const root = new Container();
+    root.addChild(badge.root, shape);
+    this.world.addChild(root);
+    const view: DotView = { root, shape, badge, selected: false };
     this.#dots.set(actor.id, view);
     return view;
   }
 
   /** Called every frame with the current world: one dot per visible character of the shown floor. */
-  update(world: World, selected: AgentId | null): void {
+  update(world: World, selected: AgentId | null, elapsedMs: number): void {
     const floorId = this.template?.id ?? null;
     for (const actor of world.actors.values()) {
       const view = this.#dots.get(actor.id);
       if (actor.floorId !== floorId || actor.hidden) {
         if (view !== undefined) {
-          view.shape.visible = false;
+          view.root.visible = false;
         }
         continue;
       }
       const dot = view ?? this.#ensureDot(actor);
-      dot.shape.visible = true;
-      dot.shape.position.set((actor.pos.x + 0.5) * CELL_PX, (actor.pos.y + 0.5) * CELL_PX);
+      dot.root.visible = true;
+      dot.root.position.set((actor.pos.x + 0.5) * CELL_PX, (actor.pos.y + 0.5) * CELL_PX);
       const isSelected = actor.id === selected;
       if (dot.selected !== isSelected) {
         dot.selected = isSelected;
         paint(dot.shape, isSelected);
       }
+      // Lola keeps the counter and carries no agent of her own, so she wears no pill.
+      const said = captionOf(actor.id);
+      dot.badge.root.visible = said !== null;
+      if (said !== null) {
+        updateBadge(dot.badge, said.caption, said.busy, elapsedMs, this.camera.scale);
+      }
     }
     for (const [id, view] of this.#dots) {
       if (!world.actors.has(id)) {
-        view.shape.destroy();
+        view.root.destroy({ children: true });
         this.#dots.delete(id);
       }
     }
@@ -169,12 +192,15 @@ export function startOffice(host: HTMLElement): OfficeHandle {
   let disposed = false;
   let followed: AgentId | null = null;
   let unsubscribe: (() => void) | null = null;
+  // The ring under a working colleague runs on the office's own clock, not the document's.
+  let elapsedMs = 0;
   const drawFrame = (dtMs: number): void => {
     try {
       bridge.tick(dtMs);
+      elapsedMs += dtMs;
       const { floorId, selectedAgentId } = useUi.getState();
       scene.showFloor(floorId);
-      scene.update(bridge.world, selectedAgentId);
+      scene.update(bridge.world, selectedAgentId, elapsedMs);
       if (followed !== null) {
         const actor = bridge.world.actors.get(followed);
         if (actor !== undefined && !actor.hidden) {

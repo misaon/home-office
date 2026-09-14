@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { Floor, Member } from "./data.ts";
+import { newDraft } from "./agent-dialog.tsx";
 import { TeamHeader } from "./team-header.tsx";
-import { TeamNew } from "./team-new.tsx";
 import { TeamRow } from "./team-row.tsx";
 import { useDesign } from "./store.ts";
 
@@ -35,14 +35,16 @@ const HIRE: React.CSSProperties = {
 export function Team({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const teamFilter = useDesign((s) => s.teamFilter);
-  const addAgent = useDesign((s) => s.addAgent);
   const set = useDesign((s) => s.set);
-  const update = useDesign((s) => s.update);
 
   const team = floor.team;
   const rows = team.filter((p) => teamFilter === "all" || p.status === teamFilter);
-  const toggleAdd = (): void => {
-    update((s) => ({ addAgent: !s.addAgent, openSelect: null }));
+  const hire = (): void => {
+    set({
+      agentDlg: { mode: "new" },
+      agentDraft: newDraft(team.some((p) => p.role === "boss")),
+      openSelect: null,
+    });
   };
   const open = (person: Member): void => {
     set({
@@ -61,7 +63,7 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
         animation: "slideLeft .42s cubic-bezier(.2,.8,.3,1) both",
       }}
     >
-      <TeamHeader floor={floor} onToggleAdd={toggleAdd} />
+      <TeamHeader floor={floor} onHire={hire} />
       <div style={{ padding: "0 16px 16px" }}>
         <div style={LIST}>
           {rows.map((person, n) => (
@@ -80,7 +82,7 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
             </div>
           ) : null}
         </div>
-        <button type="button" onClick={toggleAdd} style={HIRE} className="hopj">
+        <button type="button" onClick={hire} style={HIRE} className="ho-4ede91">
           <svg
             width="12"
             height="12"
@@ -92,9 +94,8 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
             <line x1="6" y1="2" x2="6" y2="10" />
             <line x1="2" y1="6" x2="10" y2="6" />
           </svg>
-          <span>{addAgent ? t("team.closeForm") : t("team.hire")}</span>
+          <span>{t("team.hire")}</span>
         </button>
-        {addAgent ? <TeamNew floor={floor} /> : null}
       </div>
     </div>
   );

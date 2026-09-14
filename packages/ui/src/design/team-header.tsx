@@ -48,14 +48,13 @@ const CHIP: React.CSSProperties = {
 /** How many people are on the floor, the button that hires another, and the three filters. */
 export function TeamHeader({
   floor,
-  onToggleAdd,
+  onHire,
 }: {
   floor: Floor;
-  onToggleAdd: () => void;
+  onHire: () => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
   const teamFilter = useDesign((s) => s.teamFilter);
-  const addAgent = useDesign((s) => s.addAgent);
   const set = useDesign((s) => s.set);
   const team = floor.team;
 
@@ -80,22 +79,22 @@ export function TeamHeader({
         </div>
         <button
           type="button"
-          onClick={onToggleAdd}
+          onClick={onHire}
           style={{
             padding: "6px 11px",
             borderRadius: "9px",
-            border: `1px solid ${addAgent ? "rgba(255,197,49,.45)" : "#2C2C32"}`,
-            background: addAgent ? "rgba(255,197,49,.12)" : "transparent",
+            border: "1px solid #2C2C32",
+            background: "transparent",
             fontSize: "11.5px",
-            color: addAgent ? "#FFD666" : "#CFCCC6",
+            color: "#CFCCC6",
             cursor: "pointer",
             whiteSpace: "nowrap",
             flex: "0 0 auto",
             transition: "all .2s",
           }}
-          className="hopi"
+          className="ho-abf4b4"
         >
-          {addAgent ? t("common.cancel") : t("team.newAgent")}
+          {t("team.newAgent")}
         </button>
       </div>
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -114,7 +113,7 @@ export function TeamHeader({
                 background: tone.bg,
                 color: tone.fg,
               }}
-              className="hop4"
+              className="ho-1962ef"
             >
               {dot === null ? null : (
                 <span

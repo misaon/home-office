@@ -49,7 +49,7 @@ export function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX
         set({ lightbox: attachment });
       }}
       style={FRAME}
-      className="hop9"
+      className="ho-24cffc"
     >
       {url === null ? (
         <span style={{ ...MONO, fontSize: "10px", color: "#E4C778" }}>

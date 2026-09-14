@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { AddProject } from "./add-project.tsx";
+import { NewFloor } from "./new-floor.tsx";
 import { EditorOverlay } from "../editor/overlay.tsx";
 import { useDevReload } from "../dev-reload.ts";
 import { Setup, useSetupAutoOpen } from "./setup.tsx";
-import { CONNECTION_KEY, useUi } from "../store.ts";
+import { useUi } from "../store.ts";
+import { Confirm } from "./confirm.tsx";
+import { EmptyOffice } from "./empty-office.tsx";
+import { FaultScreen } from "./fault.tsx";
+import { FloorOverlays } from "./overlays.tsx";
 import { Header } from "./header.tsx";
 import { Lightbox } from "./lightbox.tsx";
 import { Panel } from "./panel.tsx";
@@ -51,77 +54,22 @@ const GLOW_B: React.CSSProperties = {
   animation: "drift2 34s ease-in-out infinite",
 };
 
-/** Before the first project there is no floor to draw, so the office asks for one. */
-function EmptyOffice(): React.JSX.Element {
-  const { t } = useTranslation();
-  const connection = useUi((s) => s.connection);
-  const replayed = useUi((s) => s.replayed);
-  const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
-  const ready = connection === "online" && replayed;
-  return (
-    <div style={{ flex: "1", display: "grid", placeItems: "center", padding: "32px" }}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "14px",
-          maxWidth: "420px",
-          textAlign: "center",
-          animation: "riseIn .4s cubic-bezier(.2,.9,.3,1.05) both",
-        }}
-      >
-        <div
-          style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: "700", fontSize: "21px" }}
-        >
-          {t("app.emptyTitle")}
-        </div>
-        <div style={{ fontSize: "12.5px", color: "#ABA8A1", lineHeight: "1.7" }}>
-          {t("app.emptyBody")}
-        </div>
-        {ready ? (
-          <button
-            type="button"
-            onClick={() => {
-              setAddProjectOpen(true);
-            }}
-            style={{
-              padding: "10px 18px",
-              borderRadius: "11px",
-              border: "0",
-              background: "var(--a,#FFC531)",
-              color: "#150F02",
-              fontSize: "12.5px",
-              fontWeight: "600",
-              cursor: "pointer",
-              transition: "all .22s",
-            }}
-            className="hopm"
-          >
-            {t("project.add")}
-          </button>
-        ) : (
-          <div style={{ fontSize: "11.5px", color: "#A6A39C" }}>
-            {t(CONNECTION_KEY[connection])}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /** The office: a lit floor on the left and the five panels on the right. */
 export function App(): React.JSX.Element {
   const [editorFromUrl] = useState(
     () => DEV && new URLSearchParams(window.location.search).has("editor"),
   );
   const hasFloors = useUi((s) => s.snapshot.projects.size > 0);
+  // Until the log has been replayed the office does not yet know whether it has floors; showing the
+  // empty office in that gap would flash the wrong screen at every reload.
+  const empty = useUi((s) => s.replayed && s.snapshot.projects.size === 0);
   const attachOpen = useDesign((s) => s.attachOpen);
   const usageOpen = useDesign((s) => s.usageOpen);
   const openSelect = useDesign((s) => s.openSelect);
   const floorOpen = useDesign((s) => s.floorOpen);
   const lightbox = useDesign((s) => s.lightbox);
   const editor = useDesign((s) => s.editor);
+  const ask = useDesign((s) => s.ask);
   const set = useDesign((s) => s.set);
   useSetupAutoOpen();
   useDevReload();
@@ -141,18 +89,15 @@ export function App(): React.JSX.Element {
         <div style={GLOW_B} />
       </div>
       <Header internal={DEV} hasFloors={hasFloors} />
-      <main
-        style={{ flex: "1", display: "flex", minHeight: "0", position: "relative", zIndex: 10 }}
-      >
-        {hasFloors ? (
-          <>
-            <Stage internal={DEV} />
-            <Panel />
-          </>
-        ) : (
-          <EmptyOffice />
-        )}
-      </main>
+      {empty ? <EmptyOffice /> : null}
+      {hasFloors ? (
+        <main
+          style={{ flex: "1", display: "flex", minHeight: "0", position: "relative", zIndex: 10 }}
+        >
+          <Stage internal={DEV} />
+          <Panel />
+        </main>
+      ) : null}
       {floorOpen ? (
         <div
           role="presentation"
@@ -179,8 +124,16 @@ export function App(): React.JSX.Element {
         />
       ) : null}
       {lightbox === null ? null : <Lightbox attachment={lightbox} />}
-      <AddProject />
+      <FloorOverlays />
+      <NewFloor />
       <Setup />
+      <Confirm
+        ask={ask}
+        onClose={() => {
+          set({ ask: null });
+        }}
+      />
+      <FaultScreen />
       <Toast />
     </div>
   );

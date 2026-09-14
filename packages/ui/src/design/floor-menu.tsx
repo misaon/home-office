@@ -122,7 +122,7 @@ export function FloorMenu(): React.JSX.Element {
           setAddProjectOpen(true);
         }}
         style={ADD}
-        className="hop2"
+        className="ho-0822da"
       >
         <span
           style={{

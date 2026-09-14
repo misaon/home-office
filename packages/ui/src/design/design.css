@@ -241,127 +241,151 @@ a:hover {
   }
 }
 
-/* Hover states: one rule per distinct style-hover attribute in the mockup. */
-.hop0:hover {
+/* Hover states: one rule per distinct style-hover attribute in the drawing.
+   The class name is derived from the rule's own text, so adding a rule never renames another. */
+.ho-be77d5:hover {
   border-color: rgba(255, 197, 49, 0.5) !important;
   background: #191920 !important;
   transform: translateY(-1px) !important;
 }
-.hop1:hover {
+.ho-1f9ea1:hover {
   background: rgba(255, 197, 49, 0.09) !important;
 }
-.hop2:hover {
+.ho-0822da:hover {
   background: rgba(255, 197, 49, 0.1) !important;
 }
-.hop3:hover {
+.ho-2955a9:hover {
   color: #f4f3f0 !important;
   border-color: #45454d !important;
   background: #141417 !important;
 }
-.hop4:hover {
+.ho-1962ef:hover {
   transform: translateY(-1px) !important;
 }
-.hop5:hover {
+.ho-9d2067:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 16px 34px rgba(255, 197, 49, 0.38) !important;
+}
+.ho-32faa9:hover {
   background: rgba(255, 197, 49, 0.16) !important;
   color: #ffd666 !important;
   transform: scale(1.08) !important;
 }
-.hop6:hover {
+.ho-b80f50:hover {
   background: rgba(255, 197, 49, 0.16) !important;
   color: #ffd666 !important;
 }
-.hop7:hover {
+.ho-64c3ab:hover {
   transform: translateY(-1px) !important;
   box-shadow: 0 8px 20px rgba(255, 197, 49, 0.35) !important;
 }
-.hop8:hover {
+.ho-96ee65:hover {
   color: #ffd666 !important;
   border-color: rgba(255, 197, 49, 0.45) !important;
 }
-.hop9:hover {
+.ho-24cffc:hover {
   border-color: rgba(255, 197, 49, 0.7) !important;
   transform: scale(1.01) !important;
 }
-.hopa:hover {
+.ho-819fb6:hover {
+  background: rgba(255, 122, 122, 0.2) !important;
+  border-color: rgba(255, 122, 122, 0.55) !important;
+}
+.ho-8d048f:hover {
   border-color: rgba(255, 197, 49, 0.4) !important;
   box-shadow: 0 0 0 3px rgba(255, 197, 49, 0.07) !important;
 }
-.hopb:hover {
+.ho-ed6ec7:hover {
   background: rgba(255, 197, 49, 0.18) !important;
 }
-.hopc:hover {
+.ho-c09931:hover {
   color: #ffd666 !important;
   border-color: rgba(255, 197, 49, 0.45) !important;
   transform: rotate(90deg) !important;
 }
-.hopd:hover {
+.ho-0e46d1:hover {
   background: rgba(255, 197, 49, 0.1) !important;
   border-color: rgba(255, 197, 49, 0.3) !important;
   transform: translateX(2px) !important;
 }
-.hope:hover {
+.ho-ef3632:hover {
   background: rgba(255, 197, 49, 0.16) !important;
 }
-.hopf:hover {
+.ho-db3c3e:hover {
   transform: translateY(-2px) scale(1.06) !important;
   box-shadow: 0 10px 22px rgba(255, 197, 49, 0.4) !important;
 }
-.hopg:hover {
+.ho-0b4177:hover {
   background: #15151a !important;
 }
-.hoph:hover {
+.ho-de4529:hover {
   color: #ff9e9e !important;
   background: rgba(255, 122, 122, 0.12) !important;
 }
-.hopi:hover {
+.ho-abf4b4:hover {
   border-color: rgba(255, 197, 49, 0.5) !important;
 }
-.hopj:hover {
+.ho-4ede91:hover {
   background: rgba(255, 197, 49, 0.14) !important;
   border-color: rgba(255, 197, 49, 0.65) !important;
 }
-.hopk:hover {
-  border-color: rgba(255, 197, 49, 0.45) !important;
-}
-.hopl:hover {
-  background: rgba(255, 197, 49, 0.13) !important;
-  color: #ffd666 !important;
-}
-.hopm:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 12px 24px rgba(255, 197, 49, 0.35) !important;
-}
-.hopn:hover {
+.ho-53ea10:hover {
   transform: translateY(-1px) !important;
   box-shadow: 0 8px 18px rgba(255, 197, 49, 0.3) !important;
 }
-.hopo:hover {
+.ho-6a6336:hover {
   color: #ff9e9e !important;
   border-color: rgba(255, 122, 122, 0.4) !important;
 }
-.hopp:hover {
+.ho-52fd80:hover {
   background: rgba(255, 122, 122, 0.2) !important;
 }
-.hopq:hover {
+.ho-7cc9cc:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 24px rgba(255, 197, 49, 0.35) !important;
+}
+.ho-fd6e90:hover {
   border-color: rgba(255, 197, 49, 0.4) !important;
   transform: translateY(-1px) !important;
 }
-.hopr:hover {
+.ho-373252:hover {
   transform: translateY(-2px) !important;
   box-shadow: 0 14px 28px rgba(255, 197, 49, 0.35) !important;
 }
-.hops:hover {
+.ho-808a4a:hover {
   border-color: rgba(255, 197, 49, 0.45) !important;
   color: #ffd666 !important;
 }
-.hopt:hover {
+.ho-4f6a3c:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(255, 197, 49, 0.5) !important;
+}
+.ho-13397d:hover {
+  border-color: rgba(255, 197, 49, 0.45) !important;
+}
+.ho-891815:hover {
+  background: rgba(255, 197, 49, 0.13) !important;
+  color: #ffd666 !important;
+}
+.ho-9bc5ec:hover {
   transform: translateY(-2px) !important;
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
+}
+.ho-9a7f58:hover {
+  color: #ffd666 !important;
+}
+.ho-2d2744:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 16px 34px rgba(255, 197, 49, 0.34) !important;
+}
+.ho-2ea730:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45) !important;
 }
 
 /*
  * A real <dialog> for every overlay: the platform brings the focus trap, Escape and the backdrop, so
- * the only thing to do here is take its own chrome away and paint the backdrop the office's own colour.
+ * the only thing to do here is take its own chrome away and paint the backdrop the drawing's colour.
  */
 .ho-dialog {
   border: 0;
@@ -383,4 +407,21 @@ a:hover {
   background: rgba(6, 6, 7, 0.74);
   backdrop-filter: blur(10px);
   animation: fadeIn 0.28s ease both;
+}
+/* The confirm sits over everything else, so its backdrop is darker and blurs harder. */
+.ho-scrim-strong::backdrop {
+  background: rgba(6, 6, 7, 0.78);
+  backdrop-filter: blur(12px);
+  animation: fadeIn 0.24s ease both;
+}
+/* A fault takes the whole screen: the office's own ground, no blur. */
+.ho-scrim-solid::backdrop {
+  background: #0a0a0b;
+  animation: fadeIn 0.3s ease both;
+}
+/* The lightbox darkens more than a dialog and blurs harder still. */
+.ho-scrim-photo::backdrop {
+  background: rgba(6, 6, 7, 0.86);
+  backdrop-filter: blur(14px);
+  animation: fadeIn 0.26s ease both;
 }

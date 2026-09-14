@@ -24,11 +24,6 @@ export type RepoDraft = {
   imports: Set<AgentId>;
 };
 
-export const SOURCES = [
-  { value: "local", label: "project.sourceLocal" },
-  { value: "git", label: "project.sourceGit" },
-] as const satisfies readonly { value: Source; label: string }[];
-
 /** What the user typed for the source that is currently selected. */
 export const typedIn = (draft: RepoDraft): string =>
   (draft.kind === "local" ? draft.path : draft.url).trim();
@@ -94,10 +89,7 @@ export const hintFor = (
 ): Hint => {
   if (text === "") {
     return {
-      text:
-        kind === "local"
-          ? t("project.folderHint")
-          : t("project.urlHint", { forms: REPO_URL_FORMS }),
+      text: kind === "local" ? t("project.folderHint") : t("project.urlHint"),
       tone: "muted",
     };
   }
@@ -127,7 +119,3 @@ const isOldDaemon = (error: unknown): boolean =>
   typeof error === "object" && error !== null && "code" in error && error.code === "NOT_FOUND";
 export const pickFailure = (error: unknown, t: TFunction): string =>
   isOldDaemon(error) ? t("project.oldDaemon") : errorMessage(error);
-
-export type FieldProps = { draft: RepoDraft; setDraft: (draft: RepoDraft) => void; hint: Hint };
-
-/** The local path, with the host's own directory dialog behind the folder button. */

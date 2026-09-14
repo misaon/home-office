@@ -1,5 +1,15 @@
-import { CAPTION } from "./tokens.ts";
+import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
+
+/** The caption every field in a dialog is labelled with. */
+const LABEL: React.CSSProperties = {
+  ...MONO,
+  fontSize: "9.5px",
+  letterSpacing: ".16em",
+  textTransform: "uppercase",
+  color: "#ABA8A1",
+  marginBottom: "8px",
+};
 
 const TRIGGER: React.CSSProperties = {
   width: "100%",
@@ -7,9 +17,9 @@ const TRIGGER: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: "8px",
-  padding: "9px 11px",
-  borderRadius: "10px",
-  background: "#0A0A0C",
+  padding: "12px 13px",
+  borderRadius: "12px",
+  background: "#101013",
   fontSize: "12.5px",
   cursor: "pointer",
   textAlign: "left",
@@ -58,14 +68,22 @@ const ELLIPSIS: React.CSSProperties = {
 export function SelectField({
   scope,
   name,
+  label,
   options,
   value,
+  mono = false,
+  muted = false,
   onPick,
 }: {
   scope: string;
   name: string;
+  label: string;
   options: readonly string[];
   value: string;
+  /** Branches and paths are written in the office's monospace, names and models are not. */
+  mono?: boolean;
+  /** A value that is a placeholder rather than a choice. */
+  muted?: boolean;
   onPick: (next: string) => void;
 }): React.JSX.Element {
   const openSelect = useDesign((s) => s.openSelect);
@@ -76,7 +94,7 @@ export function SelectField({
 
   return (
     <div style={{ position: "relative" }}>
-      <div style={{ ...CAPTION, marginBottom: "7px" }}>{name === "signin" ? "sign-in" : name}</div>
+      <div style={LABEL}>{label}</div>
       <button
         type="button"
         onClick={() => {
@@ -86,10 +104,15 @@ export function SelectField({
             usageOpen: false,
           }));
         }}
-        style={{ ...TRIGGER, border: `1px solid ${open ? "rgba(255,197,49,.5)" : "#2C2C32"}` }}
-        className="hopk"
+        style={{
+          ...TRIGGER,
+          ...(mono ? MONO : {}),
+          ...(mono ? { fontSize: "12px" } : {}),
+          border: `1px solid ${open ? "rgba(255,197,49,.5)" : "#2C2C32"}`,
+        }}
+        className="ho-13397d"
       >
-        <span style={ELLIPSIS}>{value}</span>
+        <span style={{ ...ELLIPSIS, ...(muted ? { color: "#8A8780" } : {}) }}>{value}</span>
         <svg
           style={{
             flex: "0 0 auto",
@@ -119,10 +142,12 @@ export function SelectField({
               }}
               style={{
                 ...OPTION,
+                ...(mono ? MONO : {}),
+                ...(mono ? { fontSize: "12px" } : {}),
                 background: option === value ? "rgba(255,197,49,.12)" : "transparent",
                 color: option === value ? "#FFD666" : "#E9E7E2",
               }}
-              className="hopl"
+              className="ho-891815"
             >
               <span
                 style={{

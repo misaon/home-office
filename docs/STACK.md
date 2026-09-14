@@ -149,10 +149,11 @@ dialog used to.
 
 ## The drawn design: fonts vendored, 2026-09-14
 
-`packages/ui/src/design` is a port of the office the owner had drawn, kept at
-`docs/design/Home Office.html`. That file is a self-extracting bundle: a declarative template plus a small runtime,
-with the assets base64-gzipped in a manifest. The port reads it, it does not run it — nothing in
-`packages/ui` loads the bundle or its runtime.
+`packages/ui/src/design` is a port of the office the owner had drawn. The drawing arrived as a
+self-extracting HTML bundle — a declarative template plus a small runtime, with the assets
+base64-gzipped in a manifest — and was read, never run: nothing in `packages/ui` ever loaded it. The
+bundle is gone now that the design is in the app; what it was and what the two rounds of porting
+changed is recorded in `docs/plans/2026-09-14-design-port.md` and `docs/plans/2026-09-14-design-update.md`.
 
 The design is typeset in three Google fonts, so the three are vendored as woff2 next to the port rather
 than fetched at run time. A desktop app that reaches the network to draw its own chrome is a worse app,

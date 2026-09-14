@@ -90,7 +90,7 @@ export function TeamRow({
         borderTop: `1px solid ${separator(first)}`,
         transition: "background .2s",
       }}
-      className="hopg"
+      className="ho-0b4177"
     >
       <div style={{ width: "3px", flex: "0 0 3px", background: accent }} />
       <div style={INNER}>

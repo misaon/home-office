@@ -32,14 +32,6 @@ export const CAPS: React.CSSProperties = {
   color: "#ABA8A1",
 };
 
-export const FIELD: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 12px",
-  borderRadius: "10px",
-  border: "1px solid #2C2C32",
-  background: "#0A0A0C",
-};
-
 /** A sheet slides over the panel it came from: a back arrow, a title, and the body under it. */
 export function SheetShell({
   title,
@@ -84,7 +76,7 @@ export function SheetShell({
             cursor: "pointer",
             transition: "all .2s",
           }}
-          className="hop8"
+          className="ho-96ee65"
         >
           <svg
             width="12"

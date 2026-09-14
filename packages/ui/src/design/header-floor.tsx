@@ -44,7 +44,7 @@ export function HeaderFloor(): React.JSX.Element | null {
           overflow: "hidden",
           transition: "all .22s cubic-bezier(.2,.8,.3,1)",
         }}
-        className="hop0"
+        className="ho-be77d5"
       >
         <span
           style={{

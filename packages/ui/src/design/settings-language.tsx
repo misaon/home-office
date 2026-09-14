@@ -54,7 +54,7 @@ export function LanguageCard(): React.JSX.Element {
                   background: tone.bg,
                   color: tone.fg,
                 }}
-                className="hop4"
+                className="ho-1962ef"
               >
                 {t(`settings.lang.${code}`)}
               </button>

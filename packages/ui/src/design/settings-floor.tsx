@@ -1,9 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
-import { Confirm } from "./confirm.tsx";
 import { FloorSwitches } from "./settings-floor-switches.tsx";
 import { useUi } from "../store.ts";
 import { MONO, separator } from "./tokens.ts";
@@ -88,8 +86,8 @@ export function SettingsFloor({
   const floorRowOpen = useDesign((s) => s.floorRowOpen);
   const set = useDesign((s) => s.set);
   const flash = useDesign((s) => s.flash);
+  const confirm = useDesign((s) => s.confirm);
   const open = floorRowOpen === floor.id;
-  const [asking, setAsking] = useState(false);
   const openTasks = floor.cards.filter((x) => x.s !== "done").length;
 
   const remove = useMutation({
@@ -120,7 +118,7 @@ export function SettingsFloor({
             set({ floorRowOpen: open ? null : floor.id });
           }}
           style={HEAD}
-          className="hopg"
+          className="ho-0b4177"
         >
           <span
             style={{
@@ -159,26 +157,20 @@ export function SettingsFloor({
               type="button"
               disabled={remove.isPending}
               onClick={() => {
-                setAsking(true);
+                confirm({
+                  title: t("project.removeTitle"),
+                  body: t("project.confirmRemove", { name: floor.name }),
+                  okLabel: t("settings.removeFloor"),
+                  act: () => {
+                    remove.mutate();
+                  },
+                });
               }}
               style={REMOVE}
-              className="hopp"
+              className="ho-52fd80"
             >
               {t("settings.removeFloor")}
             </button>
-            <Confirm
-              open={asking}
-              title={t("project.removeTitle")}
-              body={t("project.confirmRemove", { name: floor.name })}
-              action={t("settings.removeFloor")}
-              onCancel={() => {
-                setAsking(false);
-              }}
-              onConfirm={() => {
-                setAsking(false);
-                remove.mutate();
-              }}
-            />
           </div>
         ) : null}
       </div>

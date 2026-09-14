@@ -1,9 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Card, Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
-import { Confirm } from "./confirm.tsx";
 import { MONO, priority, separator } from "./tokens.ts";
 import { bossOf } from "./live.ts";
 import { useDesign } from "./store.ts";
@@ -68,9 +66,9 @@ export function BoardCard({
   stripe: string;
 }): React.JSX.Element {
   const { t } = useTranslation();
-  const [asking, setAsking] = useState(false);
   const set = useDesign((s) => s.set);
   const flash = useDesign((s) => s.flash);
+  const confirm = useDesign((s) => s.confirm);
   const remove = useMutation({
     mutationFn: () => requireClient().tasks.remove({ id: card.id }),
     onError: (error: Error) => {
@@ -105,21 +103,8 @@ export function BoardCard({
         borderTop: `1px solid ${separator(first)}`,
         transition: "background .2s",
       }}
-      className="hopg"
+      className="ho-0b4177"
     >
-      <Confirm
-        open={asking}
-        title={t("board.remove")}
-        body={t("board.removeConfirm", { title: card.t })}
-        action={t("board.remove")}
-        onCancel={() => {
-          setAsking(false);
-        }}
-        onConfirm={() => {
-          setAsking(false);
-          remove.mutate();
-        }}
-      />
       <div style={{ width: "3px", flex: "0 0 3px", background: stripe }} />
       <div style={BODY}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
@@ -139,11 +124,21 @@ export function BoardCard({
             disabled={remove.isPending}
             onClick={(e) => {
               e.stopPropagation();
-              setAsking(true);
+              confirm({
+                title: t("board.removeTitle"),
+                body: t(card.s === "running" ? "board.removeRunning" : "board.removeConfirm", {
+                  title: card.t,
+                  name: card.who,
+                }),
+                okLabel: t("board.removeAction"),
+                act: () => {
+                  remove.mutate();
+                },
+              });
             }}
             title={t("board.remove")}
             style={BIN}
-            className="hoph"
+            className="ho-de4529"
           >
             <svg
               width="11"

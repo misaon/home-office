@@ -59,7 +59,7 @@ function Round({
   onClick: () => void;
 }): React.JSX.Element {
   return (
-    <button type="button" aria-label={label} onClick={onClick} style={ROUND} className="hop5">
+    <button type="button" aria-label={label} onClick={onClick} style={ROUND} className="ho-32faa9">
       <svg
         width="12"
         height="12"
@@ -177,7 +177,7 @@ export function StageCamera({
           office?.fit();
         }}
         style={WIDE}
-        className="hop6"
+        className="ho-b80f50"
       >
         {t("stage.fit")}
       </button>
@@ -202,7 +202,7 @@ export function StageCamera({
             flex: "0 0 auto",
             transition: "all .2s",
           }}
-          className="hop7"
+          className="ho-64c3ab"
         >
           {t("stage.editFloor")}
         </button>

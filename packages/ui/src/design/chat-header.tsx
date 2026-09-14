@@ -134,7 +134,7 @@ export function ChatHeader({
           cursor: "pointer",
           transition: "all .2s",
         }}
-        className="hop8"
+        className="ho-96ee65"
       >
         <svg
           width="13"

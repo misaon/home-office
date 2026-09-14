@@ -80,7 +80,7 @@ export function Header({
                 set({ editor: true });
               }}
               style={TOOL}
-              className="hop3"
+              className="ho-2955a9"
             >
               <svg
                 width="12"
@@ -103,7 +103,7 @@ export function Header({
               setSetupOpen(true);
             }}
             style={TOOL}
-            className="hop3"
+            className="ho-2955a9"
           >
             <svg
               width="12"
@@ -119,7 +119,7 @@ export function Header({
             {t("app.setup")}
           </button>
         </div>
-        {hasFloors ? <HeaderTabs /> : <div style={{ width: "var(--pw,420px)" }} />}
+        {hasFloors ? <HeaderTabs /> : null}
       </div>
     </header>
   );

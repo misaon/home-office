@@ -1,8 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BoardFilters } from "./board-filters.tsx";
-import { Confirm } from "./confirm.tsx";
 import type { Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
 import { DISPLAY } from "./tokens.ts";
@@ -53,7 +51,7 @@ const CLEAR: React.CSSProperties = {
 export function BoardHeader({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const flash = useDesign((s) => s.flash);
-  const [asking, setAsking] = useState(false);
+  const confirm = useDesign((s) => s.confirm);
   const cards = floor.cards;
   const total = cards.length === 0 ? 1 : cards.length;
   const done = cards.filter((c) => c.s === "done").length;
@@ -92,10 +90,17 @@ export function BoardHeader({ floor }: { floor: Floor }): React.JSX.Element {
             type="button"
             disabled={clear.isPending}
             onClick={() => {
-              setAsking(true);
+              confirm({
+                title: t("board.clearTitle"),
+                body: t("board.clearConfirm", { count: done }),
+                okLabel: t("board.clear"),
+                act: () => {
+                  clear.mutate();
+                },
+              });
             }}
             style={CLEAR}
-            className="hop3"
+            className="ho-2955a9"
           >
             {t("board.clear")}
           </button>
@@ -108,19 +113,6 @@ export function BoardHeader({ floor }: { floor: Floor }): React.JSX.Element {
         <div style={{ background: "#1F1F24", flex: "1" }} />
       </div>
       <BoardFilters floor={floor} />
-      <Confirm
-        open={asking}
-        title={t("board.clearTitle")}
-        body={t("board.clearConfirm", { count: done })}
-        action={t("board.clear")}
-        onCancel={() => {
-          setAsking(false);
-        }}
-        onConfirm={() => {
-          setAsking(false);
-          clear.mutate();
-        }}
-      />
     </div>
   );
 }

@@ -2,6 +2,9 @@ import { chatOf } from "@ho/core";
 import {
   isSessionActive,
   type Agent,
+  type AgentId,
+  type ProjectId,
+  type SessionId,
   type ChatMessage,
   type Project,
   type Task,
@@ -81,6 +84,8 @@ function memberOf(agent: Agent, snapshot: Snapshot, now: number): Member {
     name: agent.name,
     role: agent.role,
     provider: agent.provider,
+    auth: agent.auth,
+    gender: agent.appearance.gender,
     model: agent.model,
     effort: agent.effort,
     status: session === undefined ? "idle" : "working",
@@ -139,6 +144,54 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
       .map((task) => cardOf(task, snapshot)),
     messages: chatOf({ chat: snapshot.chat }, project.id).map((m) => messageOf(m, snapshot)),
   };
+}
+
+/** "now", "-18m", "-2h": how the drawing writes the age of something that already happened. */
+const ago = (iso: string, now: number): string => {
+  const minutes = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000));
+  if (minutes < 1) {
+    return "now";
+  }
+  if (minutes < 60) {
+    return `-${String(minutes)}m`;
+  }
+  const hours = Math.round(minutes / 60);
+  return hours < 48 ? `-${String(hours)}h` : `-${String(Math.round(hours / 24))}d`;
+};
+
+/** The floor's boss while it is actually running something, and the session that can be cut off. */
+export function useBossSession(
+  floorId: ProjectId,
+): { sessionId: SessionId; name: string; doing: string } | null {
+  const snapshot = useUi((s) => s.snapshot);
+  const boss = [...snapshot.agents.values()].find(
+    (a) => a.projectId === floorId && a.role === "boss",
+  );
+  if (boss === undefined) {
+    return null;
+  }
+  const session = [...snapshot.sessions.values()].find(
+    (s) => s.agentId === boss.id && isSessionActive(s.state),
+  );
+  if (session === undefined) {
+    return null;
+  }
+  return {
+    sessionId: session.id,
+    name: boss.name,
+    doing: snapshot.tasks.get(session.taskId)?.title ?? "working",
+  };
+}
+
+/** What this colleague has been at: the tasks they hold or reviewed, newest first. */
+export function useAgentWork(agentId: AgentId): { t: string; x: string }[] {
+  const snapshot = useUi((s) => s.snapshot);
+  const now = useNow();
+  return [...snapshot.tasks.values()]
+    .filter((task) => task.assigneeId === agentId || task.reviewerId === agentId)
+    .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, 4)
+    .map((task) => ({ t: ago(task.updatedAt, now), x: task.title }));
 }
 
 /** Every floor the office has, in the order the picker lists them. */

@@ -28,7 +28,11 @@ const TONES: Record<Tone, React.CSSProperties> = {
   },
 };
 
-const HOVER: Record<Tone, string> = { primary: "hopm", quiet: "hop3", danger: "hopp" };
+const HOVER: Record<Tone, string> = {
+  primary: "ho-7cc9cc",
+  quiet: "ho-2955a9",
+  danger: "ho-52fd80",
+};
 
 export function Button({
   tone = "quiet",

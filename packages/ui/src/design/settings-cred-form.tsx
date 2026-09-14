@@ -102,7 +102,7 @@ export function CredForm({
             save.mutate();
           }}
           style={ACTION}
-          className="hopn"
+          className="ho-53ea10"
         >
           {t("common.save")}
         </button>
@@ -125,7 +125,7 @@ export function CredForm({
               flex: "0 0 auto",
               transition: "all .2s",
             }}
-            className="hopo"
+            className="ho-6a6336"
           >
             {t("tokens.forget")}
           </button>

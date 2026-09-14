@@ -166,7 +166,7 @@ export function UsageMenu({ floorId }: { floorId: ProjectId }): React.JSX.Elemen
           cursor: "pointer",
           transition: "all .2s",
         }}
-        className="hope"
+        className="ho-ef3632"
       >
         {t("usage.openFull")}
       </button>

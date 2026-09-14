@@ -18,12 +18,3 @@ export const separator = (first: boolean): string => (first ? "transparent" : "#
 
 export const MONO: React.CSSProperties = { fontFamily: "'JetBrains Mono',monospace" };
 export const DISPLAY: React.CSSProperties = { fontFamily: "'Space Grotesk',sans-serif" };
-
-/** The small upper-case caption the panels label their fields with. */
-export const CAPTION: React.CSSProperties = {
-  ...MONO,
-  fontSize: "10px",
-  letterSpacing: ".12em",
-  textTransform: "uppercase",
-  color: "#ABA8A1",
-};

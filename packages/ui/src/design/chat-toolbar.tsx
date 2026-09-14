@@ -82,7 +82,7 @@ export function ChatToolbar({
           file.current?.click();
         }}
         style={SQUARE}
-        className="hopc"
+        className="ho-c09931"
       >
         <svg
           width="12"
@@ -109,7 +109,7 @@ export function ChatToolbar({
             background: usageOpen ? "rgba(255,197,49,.14)" : "transparent",
             color: usageOpen ? "#FFD666" : "#CFCCC6",
           }}
-          className="hop8"
+          className="ho-96ee65"
         >
           <svg
             width="12"
@@ -134,7 +134,7 @@ export function ChatToolbar({
         aria-label={t("chat.sendHint")}
         onClick={onSend}
         style={SEND}
-        className="hopf"
+        className="ho-db3c3e"
       >
         <svg
           width="13"

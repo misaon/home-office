@@ -93,6 +93,9 @@ export function Setup(): React.JSX.Element {
     const element = dialog.current;
     if (open) {
       element?.showModal();
+      // showModal() hands focus to the first focusable thing, which is the scrolling sheet: a scroll
+      // container Chrome rings in blue. The dialog itself takes it instead, and wears no ring.
+      element?.focus();
     } else {
       element?.close();
     }

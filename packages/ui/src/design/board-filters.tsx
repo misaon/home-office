@@ -39,7 +39,7 @@ export function BoardFilters({ floor }: { floor: Floor }): React.JSX.Element {
               set({ boardFilter: key });
             }}
             style={{ ...CHIP, border: `1px solid ${tone.bd}`, background: tone.bg, color: tone.fg }}
-            className="hop4"
+            className="ho-1962ef"
           >
             {dot === null ? null : (
               <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: dot }} />

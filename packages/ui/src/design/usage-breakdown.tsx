@@ -80,7 +80,7 @@ export function Breakdown({ name, rows }: { name: string; rows: Row[] }): React.
               borderTop: `1px solid ${separator(i === 0)}`,
               transition: "background .2s",
             }}
-            className="hopg"
+            className="ho-0b4177"
           >
             <div style={{ display: "flex", alignItems: "center", gap: "11px" }}>
               <span style={NAME}>{row.name}</span>

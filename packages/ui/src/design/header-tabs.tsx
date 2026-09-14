@@ -74,7 +74,7 @@ export function HeaderTabs(): React.JSX.Element {
             zIndex: 2,
             color: tab === name ? "#FFD666" : "#ABA8A1",
           }}
-          className="hop4"
+          className="ho-1962ef"
         >
           {t(label)}
         </button>

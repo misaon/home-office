@@ -77,6 +77,12 @@ type UiState = {
   connection: Connection;
   /** True once the stored events were replayed; before that the office does not know whether floors exist. */
   replayed: boolean;
+  /**
+   * When the office first failed to reach the daemon, and still has not. The reconnect loop flips between
+   * `offline` and `connecting` every couple of seconds, so a screen that reacts to `offline` alone would
+   * flash; this is what "gone for a while" is measured from.
+   */
+  offlineSince: number | null;
   snapshot: Snapshot;
   live: ReadonlyMap<SessionId, readonly LiveEvent[]>;
   lastError: string | null;
@@ -98,6 +104,7 @@ type UiState = {
 export const useUi = create<UiState>()((set) => ({
   connection: "connecting",
   replayed: false,
+  offlineSince: null,
   snapshot: takeSnapshot(null),
   live: new Map(),
   lastError: null,
@@ -106,7 +113,15 @@ export const useUi = create<UiState>()((set) => ({
   addProjectOpen: false,
   setupOpen: false,
   setConnection: (connection) => {
-    set({ connection });
+    set((state) => ({
+      connection,
+      offlineSince:
+        connection === "online"
+          ? null
+          : connection === "offline" && state.offlineSince === null
+            ? Date.now()
+            : state.offlineSince,
+    }));
   },
   setReplayed: (replayed) => {
     set({ replayed });

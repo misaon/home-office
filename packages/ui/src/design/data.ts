@@ -1,5 +1,7 @@
 import type {
   AgentId,
+  AuthKind,
+  Gender,
   Attachment,
   ChatMessageId,
   ProjectId,
@@ -26,6 +28,8 @@ export type Member = {
   name: string;
   role: AgentRole;
   provider: string;
+  auth: AuthKind;
+  gender: Gender;
   model: string;
   effort: string;
   status: Presence;

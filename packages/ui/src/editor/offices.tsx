@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Caption } from "../design/controls.tsx";
-import { Section } from "../design/modal.tsx";
+import { Section } from "../design/section.tsx";
 import { layoutsQuery } from "../queries.ts";
 import { useOnline } from "../store.ts";
 
@@ -39,7 +39,7 @@ function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX
             color: "#E9E7E2",
             transition: "all .2s",
           }}
-          className="hop3"
+          className="ho-2955a9"
         >
           {t("editor.chooseFile")}
         </span>
@@ -123,7 +123,7 @@ export function SavedOffices({
               cursor: "pointer",
               transition: "all .2s",
             }}
-            className="hopq"
+            className="ho-fd6e90"
             onClick={() => {
               load(office);
             }}
