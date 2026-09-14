@@ -20,6 +20,13 @@ that is only masking a rule we do not want is not listed here — the rule gets 
 | --- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 7   | `packages/ui/src/i18n/index.ts:47` | `oxlint-disable-next-line typescript/consistent-type-definitions` | i18next's typed keys are reached by augmenting its own `CustomTypeOptions` **interface**; a `type` cannot merge into an interface, so the rule cannot be met here |
 
+## Added 2026-09-14
+
+| #   | Where                                      | Suppression                                              | Assessment                                                                                                                                                                                                            |
+| --- | ------------------------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 8   | `packages/ui/src/design/board-card.tsx:75` | `oxlint-disable-next-line jsx-a11y/prefer-tag-over-role` | The task row carries its own delete button, and a `<button>` may not contain another button, so the row cannot be the tag the rule asks for. It is a `div` with `role="button"`, a label, `tabIndex` and Enter/Space. |
+| 9   | `packages/ui/src/design/team-row.tsx:72`   | `oxlint-disable-next-line jsx-a11y/prefer-tag-over-role` | The colleague row is kept the same element as the board's rows for consistency; same role, label, `tabIndex` and keyboard handling.                                                                                   |
+
 There are **no** `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck` or non-null assertions anywhere in
 the tracked source. Verified:
 

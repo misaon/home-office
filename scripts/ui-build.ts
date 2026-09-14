@@ -32,7 +32,10 @@ async function build(): Promise<void> {
   const previous = `${staging}-previous`;
   try {
     const result = await Bun.build({
-      entrypoints: [resolve(root, "packages/ui/index.html")],
+      entrypoints: [
+        resolve(root, "packages/ui/index.html"),
+        resolve(root, "packages/ui/design.html"),
+      ],
       outdir: staging,
       target: "browser",
       minify: !watch,
@@ -89,6 +92,7 @@ if (watch) {
   const watched = [
     "packages/ui/src",
     "packages/ui/index.html",
+    "packages/ui/design.html",
     "packages/sim/src",
     "packages/core/src",
     "packages/protocol/src",

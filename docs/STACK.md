@@ -164,6 +164,35 @@ The office's palette is expressed in shadcn's own variables in `packages/ui/src/
 `--primary`, hover stays neutral in `--accent`, and the office is dark only, so shadcn's dark values sit
 on `:root` rather than behind `.dark`.
 
+## The drawn design: fonts vendored, 2026-09-14
+
+`packages/ui/src/design` is a port of the office the owner had drawn, kept at
+`docs/design/Home Office.html`. That file is a self-extracting bundle: a declarative template plus a small runtime,
+with the assets base64-gzipped in a manifest. The port reads it, it does not run it — nothing in
+`packages/ui` loads the bundle or its runtime.
+
+The design is typeset in three Google fonts, so the three are vendored as woff2 next to the port rather
+than fetched at run time. A desktop app that reaches the network to draw its own chrome is a worse app,
+and the office is dark, offline-capable and already ships its own bundle:
+
+| Family          | Weights declared | Files | Bytes  |
+| --------------- | ---------------- | ----- | ------ |
+| Instrument Sans | 400, 500, 600    | 2     | 40 996 |
+| JetBrains Mono  | 400, 500         | 6     | 66 164 |
+| Space Grotesk   | 500, 600, 700    | 3     | 48 016 |
+
+Eleven files, 155 176 bytes, in `packages/ui/src/design/fonts`, declared by
+`packages/ui/src/design/fonts.css` with the same `unicode-range` subsetting the original carried. There
+are fewer files than weights because these are variable fonts: one file per subset serves every weight
+of its family, exactly as the original stylesheet had it, and the file names carry the first weight that
+referenced them. The built stylesheet inlines all eleven, so the design makes no font request at all.
+
+The port has its own entry, `packages/ui/design.html` → `src/design/main.tsx`, and its own stylesheet.
+It does not import `src/styles.css`, Tailwind or shadcn: the drawing is expressed in inline styles and
+thirty `:hover` rules, and mixing a second reset into it would move pixels. The knobs the design was
+drawn with (`internalTools`, `accent`, `panelWidth`, `ambientGlow`, `stageTheme`) are readable from the
+query string, which is what lets a variant be held against the original.
+
 ## Primary references
 
 - [Bun install](https://bun.com/docs/pm/cli/install), [isolated workspaces](https://bun.com/docs/pm/isolated-installs), [secrets](https://bun.com/docs/runtime/secrets).
