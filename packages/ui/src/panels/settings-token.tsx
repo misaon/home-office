@@ -7,6 +7,7 @@ import { doctorQuery, secretsStatusQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { useOnline } from "../store.ts";
 import { Card } from "@/components/ui/card";
+import { Button as ShadcnButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const KEYS = [
@@ -25,12 +26,16 @@ export function SecretField({
   secret,
   label,
   stored,
+  compact = false,
 }: {
   secret: SecretKeyName;
   label: string;
   stored: boolean;
+  /** A finished checklist step says it is finished; it does not leave the field open behind it. */
+  compact?: boolean;
 }): React.JSX.Element {
   const { t } = useTranslation();
+  const [replacing, setReplacing] = useState(false);
   const queries = useQueryClient();
   const [value, setValue] = useState("");
   const changed = (): Promise<void> =>
@@ -55,6 +60,35 @@ export function SecretField({
       store.mutate(token);
     }
   };
+  if (compact && stored && !replacing) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-2xs text-muted-foreground">{t("tokens.storedNote")}</span>
+        <ShadcnButton
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="ml-auto"
+          onClick={() => {
+            setReplacing(true);
+          }}
+        >
+          {t("tokens.replaceAction")}
+        </ShadcnButton>
+        <ShadcnButton
+          type="button"
+          variant="ghost"
+          size="xs"
+          disabled={forget.isPending}
+          onClick={() => {
+            forget.mutate();
+          }}
+        >
+          {t("tokens.forget")}
+        </ShadcnButton>
+      </div>
+    );
+  }
   return (
     <div className="space-y-2">
       <div className="flex gap-2">

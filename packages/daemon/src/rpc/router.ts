@@ -1,32 +1,26 @@
 import {
   answerQuestion,
-  assignTask,
   copyAgent,
   createAgent,
   createChannel,
   createProject,
-  clearFinishedTasks,
-  createTask,
   removeAgent,
   removeProject,
   sessionsOfTask,
-  transitionTask,
   triageMessage,
   updateAgent,
   updateProject,
 } from "@ho/core";
-import { contract, errorMessage, HUMAN_ACTOR, isSessionActive, SecretKeyName } from "@ho/protocol";
-import { implement } from "@orpc/server";
+import { errorMessage, HUMAN_ACTOR, isSessionActive, SecretKeyName } from "@ho/protocol";
+import { os } from "./implement.ts";
+import { taskRoutes } from "./tasks.ts";
 import { ensureImages, imageStatus, neededVariants } from "../images.ts";
 import { MANAGED } from "../labels.ts";
 import { listLayouts, saveLayout } from "../layouts.ts";
 import { buildsImages } from "../paths.ts";
 import { inspectRepo } from "../repo-inspect.ts";
 import { usageSummary } from "../usage.ts";
-import type { RpcContext } from "./context.ts";
 import { guarded } from "./guarded.ts";
-
-const os = implement(contract).$context<RpcContext>();
 
 const base = os.use(guarded);
 const PRESENCE_BEAT_MS = 15_000;
@@ -187,38 +181,7 @@ export const router = base.router({
       id: await context.office.execute(HUMAN_ACTOR, (m, ctx) => removeAgent(m, input.id, ctx)),
     })),
   },
-  tasks: {
-    list: base.tasks.list.handler(({ input, context }) =>
-      [...context.office.model.tasks.values()].filter(
-        (task) =>
-          (input.projectId === undefined || task.projectId === input.projectId) &&
-          (input.status === undefined || input.status.includes(task.status)),
-      ),
-    ),
-    get: base.tasks.get.handler(({ input, context, errors }) => {
-      const task = context.office.model.tasks.get(input.id);
-      if (task === undefined) {
-        throw errors.NOT_FOUND({ data: { entity: "task", id: input.id } });
-      }
-      return task;
-    }),
-    create: base.tasks.create.handler(({ input, context }) =>
-      context.office.execute(HUMAN_ACTOR, (m, ctx) => createTask(m, input, ctx)),
-    ),
-    assign: base.tasks.assign.handler(({ input, context }) =>
-      context.office.execute(HUMAN_ACTOR, (m, ctx) => assignTask(m, input, ctx)),
-    ),
-    transition: base.tasks.transition.handler(({ input, context }) =>
-      context.office.execute(HUMAN_ACTOR, (m, ctx) => transitionTask(m, input, ctx)),
-    ),
-    clear: base.tasks.clear.handler(async ({ input, context }) => ({
-      removed: (
-        await context.office.execute(HUMAN_ACTOR, (m, ctx) =>
-          clearFinishedTasks(m, input.projectId, ctx),
-        )
-      ).length,
-    })),
-  },
+  tasks: taskRoutes,
   sessions: {
     list: base.sessions.list.handler(({ input, context }) =>
       (input.taskId === undefined

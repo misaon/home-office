@@ -8,7 +8,9 @@ import { requireClient } from "../rpc.ts";
 import { sortedFloors, useUi } from "../store.ts";
 import { IntakeSettings } from "./settings-intake.tsx";
 import { ServicesSettings } from "./settings-services.tsx";
+import { Button as ShadcnButton } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Confirm } from "../kit/confirm.tsx";
 
 const describeRepo = (p: Project): string => (p.repo.kind === "local" ? p.repo.path : p.repo.url);
 
@@ -77,16 +79,20 @@ function FloorCard({ project, index }: { project: Project; index: number }): Rea
             {describeRepo(project)} · {project.defaultBranch}
           </span>
         </span>
-        <Button
-          variant="danger"
-          onClick={() => {
-            if (window.confirm(t("project.confirmRemove", { name: project.name }))) {
-              remove.mutate();
-            }
+        <Confirm
+          trigger={
+            <ShadcnButton type="button" variant="destructive">
+              {t("common.remove")}
+            </ShadcnButton>
+          }
+          title={t("project.removeTitle")}
+          description={t("project.confirmRemove", { name: project.name })}
+          action={t("common.remove")}
+          destructive
+          onConfirm={() => {
+            remove.mutate();
           }}
-        >
-          {t("common.remove")}
-        </Button>
+        />
       </div>
       <Switch
         checked={project.publish.mode === "pull-request"}

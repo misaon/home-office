@@ -227,3 +227,26 @@ export function clearFinishedTasks(
   }));
   return ok({ events, read: () => finished.map((task) => task.id) });
 }
+
+/**
+ * One task off the board, whatever state it reached. The board belongs to the human: work that was
+ * abandoned, asked a question nobody will answer, or was filed twice is theirs to take down. A task a
+ * session is still holding stays, because removing it would strand the session that reports to it.
+ */
+export function removeTask(
+  model: ReadModel,
+  taskId: TaskId,
+  ctx: CommandContext,
+): CommandResult<TaskId> {
+  const found = requireTask(model, taskId);
+  if (!found.ok) {
+    return found;
+  }
+  if (activeSessionOfTask(model, taskId) !== undefined) {
+    return err(conflict("task has an active session; stop it first"));
+  }
+  return ok({
+    events: [{ type: "task.removed", actor: ctx.actor, payload: { taskId } }],
+    read: () => taskId,
+  });
+}

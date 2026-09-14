@@ -47,6 +47,7 @@ export const cs: typeof en = {
       "Daemon odmítl token této stránky — vytváří nový při každém spuštění. Spusťte znovu `ho ui`.",
   },
   project: {
+    removeTitle: "Odebrat toto podlaží?",
     search: "Hledat podlaží",
     noMatch: "Žádné podlaží neodpovídá.",
     gitRepo_one: "git repozitář · {{count}} branch",
@@ -84,6 +85,7 @@ export const cs: typeof en = {
     needFirst: "Nejdřív přidejte projekt (podlaží).",
   },
   agent: {
+    removeTitle: "Odebrat tohoto kolegu?",
     add: "Přidat zaměstnance",
     name: "Jméno",
     basePrompt: "Základní prompt (osobnost, zvyky, omezení)",
@@ -111,6 +113,9 @@ export const cs: typeof en = {
     neutral: "neutrální",
   },
   board: {
+    remove: "Odebrat",
+    removeConfirm: "Sundat tento úkol z tabule?",
+    clearTitle: "Uklidit hotovou práci",
     clear: "Uklidit hotové",
     clearConfirm: "Sundat z tabule {{count}} hotových úkolů? V logu zůstanou.",
     cleared: "sundáno {{count}}",
@@ -215,6 +220,8 @@ export const cs: typeof en = {
       "Docker compose z repozitáře běží uvnitř sandboxu. Session se službami zabere dva sloty daemona.",
   },
   tokens: {
+    storedNote: "Uloženo v nastaveném úložišti tajemství.",
+    replaceAction: "Nahradit",
     claudeHint:
       "V terminálu spusťte `claude setup-token` a vložte výsledek. Uloží se do nastaveného úložiště tajemství.",
     anthropicHint:

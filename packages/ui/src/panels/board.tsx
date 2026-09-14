@@ -2,10 +2,13 @@ import { isTerminal, mailForTask } from "@ho/core";
 import type { ProjectId, Task, TaskStatus } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Badge, Button, Empty, Failure, Section } from "../kit/controls.tsx";
+import { Badge, Empty, Failure, Section } from "../kit/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { type Snapshot, useUi } from "../store.ts";
+import { Trash2 } from "lucide-react";
+import { Button as ShadcnButton } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Confirm } from "../kit/confirm.tsx";
 
 const COLUMNS = [
   { status: ["inbox", "planned"], title: "board.inbox", tone: "neutral" },
@@ -32,12 +35,39 @@ type CardProps = {
 function TaskCard({ task, agents, tasks, inbox }: CardProps): React.JSX.Element {
   const { t } = useTranslation();
   const selectAgent = useUi((s) => s.selectAgent);
+  const remove = useMutation({
+    mutationFn: () => requireClient().tasks.remove({ id: task.id }),
+  });
   const assignee = task.assigneeId === undefined ? undefined : agents.get(task.assigneeId);
   const reviewer = task.reviewerId === undefined ? undefined : agents.get(task.reviewerId);
   const mail = mailForTask({ tasks, mail: inbox }, task);
   return (
     <Card className="animate-rise space-y-2 p-3 text-xs">
-      <div className="font-medium">{task.title}</div>
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1 font-medium">{task.title}</div>
+        <Confirm
+          trigger={
+            <ShadcnButton
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              title={t("board.remove")}
+              aria-label={t("board.remove")}
+              disabled={remove.isPending}
+            >
+              <Trash2 />
+            </ShadcnButton>
+          }
+          title={t("board.removeConfirm")}
+          description={task.title}
+          action={t("board.remove")}
+          destructive
+          onConfirm={() => {
+            remove.mutate();
+          }}
+        />
+      </div>
+      <Failure error={remove.error} />
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge tone={task.priority === "high" ? "warn" : "neutral"}>{task.priority}</Badge>
         {task.kind === "triage" ? <Badge>{t("board.triage")}</Badge> : null}
@@ -91,16 +121,20 @@ function ClearFinished({
   return (
     <span className="flex items-center gap-2">
       <Failure error={clear.error} />
-      <Button
-        disabled={clear.isPending}
-        onClick={() => {
-          if (window.confirm(t("board.clearConfirm", { count: finished }))) {
-            clear.mutate();
-          }
+      <Confirm
+        trigger={
+          <ShadcnButton type="button" variant="outline" disabled={clear.isPending}>
+            {t("board.clear")}
+          </ShadcnButton>
+        }
+        title={t("board.clearTitle")}
+        description={t("board.clearConfirm", { count: finished })}
+        action={t("board.clear")}
+        destructive
+        onConfirm={() => {
+          clear.mutate();
         }}
-      >
-        {t("board.clear")}
-      </Button>
+      />
     </span>
   );
 }

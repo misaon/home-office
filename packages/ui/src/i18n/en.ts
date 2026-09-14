@@ -46,6 +46,7 @@ export const en = {
       "The daemon refused this page's token — it mints a new one every launch. Run `ho ui` again to reconnect.",
   },
   project: {
+    removeTitle: "Remove this floor?",
     search: "Search floors",
     noMatch: "No floor matches.",
     gitRepo_one: "git repository · {{count}} branch",
@@ -83,6 +84,7 @@ export const en = {
     needFirst: "Add a project (floor) first.",
   },
   agent: {
+    removeTitle: "Remove this colleague?",
     add: "Add agent",
     name: "Name",
     basePrompt: "Base prompt (persona, habits, constraints)",
@@ -110,6 +112,9 @@ export const en = {
     neutral: "neutral",
   },
   board: {
+    remove: "Remove",
+    removeConfirm: "Take this task off the board?",
+    clearTitle: "Clear finished work",
     clear: "Clear finished",
     clearConfirm: "Take {{count}} finished task(s) off this board? The log keeps them.",
     cleared: "{{count}} taken off the board",
@@ -214,6 +219,8 @@ export const en = {
       "The repository's docker compose runs inside the sandbox. A session with services takes two of the daemon's slots.",
   },
   tokens: {
+    storedNote: "Stored in the configured secret store.",
+    replaceAction: "Replace",
     claudeHint:
       "Run `claude setup-token` in a terminal and paste the result. Stored in the configured secret store.",
     anthropicHint:

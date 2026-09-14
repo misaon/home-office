@@ -175,6 +175,7 @@ export function TokenStep({ doctor }: { doctor: Doctor | null }): React.JSX.Elem
           />
         </p>
         <SecretField
+          compact
           secret="anthropic-oauth-token"
           label={t("setup.token")}
           stored={status.state === "ok"}

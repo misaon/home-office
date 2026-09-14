@@ -20,7 +20,9 @@ import { type Snapshot, sortedFloors, useUi } from "../store.ts";
 import { type Choice, ProviderModelFields } from "./agent-fields.tsx";
 import { NewAgent } from "./agent-new.tsx";
 import { SessionBlock } from "./team-sessions.tsx";
+import { Button as ShadcnButton } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Confirm } from "../kit/confirm.tsx";
 
 const choiceOf = (agent: Agent): Choice => ({
   provider: agent.provider,
@@ -98,16 +100,20 @@ function AgentSettings({
           <span className="ml-auto text-2xs text-muted-foreground">{t("agent.runsFloor")}</span>
         ) : (
           <span className="ml-auto">
-            <Button
-              variant="danger"
-              onClick={() => {
-                if (window.confirm(t("agent.confirmRemove", { name: agent.name }))) {
-                  remove.mutate();
-                }
+            <Confirm
+              trigger={
+                <ShadcnButton type="button" variant="destructive">
+                  {t("common.remove")}
+                </ShadcnButton>
+              }
+              title={t("agent.removeTitle")}
+              description={t("agent.confirmRemove", { name: agent.name })}
+              action={t("common.remove")}
+              destructive
+              onConfirm={() => {
+                remove.mutate();
               }}
-            >
-              {t("common.remove")}
-            </Button>
+            />
           </span>
         )}
       </div>

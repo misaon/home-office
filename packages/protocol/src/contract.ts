@@ -83,6 +83,8 @@ export const contract = {
     create: base.input(TaskCreateInput).output(Task),
     assign: base.input(TaskAssignInput).output(Task),
     transition: base.input(TaskTransitionInput).output(Task),
+    /** Takes one task off the board, whatever state it reached; the log keeps every event of it. */
+    remove: base.input(z.object({ id: TaskId })).output(z.object({ id: TaskId })),
     /** Takes a floor's finished work off the board; the log keeps every event of it. */
     clear: base
       .input(z.object({ projectId: ProjectId }))
