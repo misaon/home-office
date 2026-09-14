@@ -20,11 +20,13 @@
   --color-accent: #ffd166;
   --color-accent-soft: #2a2314;
 
-  /* Three weights of writing, far enough apart to rank and each still readable on the card it sits on:
-     measured against `--color-raised`, muted clears 7:1 and faint clears 4.5:1. */
+  /* Three weights of writing, far enough apart to rank and each readable on the darkest ground the
+     office has. Measured against `--color-ink`, which is where the intros and hints actually sit: muted
+     clears 11:1 and faint clears 7:1. Ranking them by dimming until the third one disappears is how the
+     first two palettes ended up with hint text nobody could read. */
   --color-text: #f4f3f1;
-  --color-muted: #b3b2ad;
-  --color-faint: #8a8983;
+  --color-muted: #cbcac5;
+  --color-faint: #a5a49d;
   --color-good: #6ee7a8;
   /* Orange, not amber: a warning that shares the accent's hue reads as the accent. */
   --color-warn: #f2994a;

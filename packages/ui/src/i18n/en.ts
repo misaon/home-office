@@ -46,6 +46,8 @@ export const en = {
       "The daemon refused this page's token — it mints a new one every launch. Run `ho ui` again to reconnect.",
   },
   project: {
+    search: "Search floors",
+    noMatch: "No floor matches.",
     gitRepo_one: "git repository · {{count}} branch",
     gitRepo_few: "git repository · {{count}} branches",
     gitRepo_many: "git repository · {{count}} branches",
@@ -139,8 +141,9 @@ export const en = {
     question: "? {{asker}} on “{{title}}”",
     you: "You",
     label: "Message to the selected floor",
-    placeholder: "Ask the floor for something… (Enter to send, Shift+Enter for a new line)",
-    answerPlaceholder: "Your answer… (Enter to send)",
+    placeholder: "Ask the floor for something…",
+    sendHint: "Enter sends, Shift+Enter makes a new line",
+    answerPlaceholder: "Your answer…",
     empty:
       "Write to the boss of this floor. Lola brings him your message; he plans, delegates and reports back here.",
   },
@@ -228,6 +231,14 @@ export const en = {
     github: "GitHub token",
   },
   usage: {
+    turns: "turns",
+    running: "sessions running",
+    rateLimited: "rate limits",
+    retryAt: "retry at",
+    context: "context {{percent}} %",
+    chipTitle: "Usage",
+    chipNote:
+      "What this office measured in the last day. No provider tells it a plan's quota, so none is shown.",
     all: "all",
     in: "in",
     note: "Token counts come from Claude Code. OpenCode, Gemini CLI and Codex speak ACP, which reports how full the context window is and the session’s cost rather than a token split — those arrive live and are shown per session in Agent.",

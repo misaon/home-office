@@ -154,7 +154,35 @@ text and the floor's answers are grey cards, so the column reads as a conversati
 is read. Warn moved from amber to orange for the same reason — a warning in the accent's own hue reads
 as the accent.
 
-The three weights of writing were measured rather than eyeballed: against a card, muted clears 7:1 and
-faint clears 4.5:1, where the old faint sat at about 2.9:1. A quiet button no longer borrows the surface
-of the card it stands on, and the composer sits on the panel surface, so writing is a place of its own
-rather than the end of the transcript.
+The three weights of writing were measured rather than eyeballed, and then measured again against the
+**darkest** ground rather than a card, because that is where the intros and hints actually sit: muted
+clears 11:1 there and faint clears 7:1. Ranking the three by dimming until the last one disappears is
+how two palettes in a row ended up with hint text nobody could read. A quiet button no longer borrows
+the surface of the card it stands on, and the composer sits on the panel surface, so writing is a place
+of its own rather than the end of the transcript.
+
+The first cut of this made your own messages solid gold. It won the glance and lost the reading, so they
+are a tint again — lighter than the tint that came before it, with a defined edge.
+
+## The chat's own furniture, 2026-09-14
+
+**The composer was a stack of rows and is now one box.** A label row, a field and its padding took a
+third of the panel before a word was written. The field is inside the box, its controls sit on the box's
+own bottom edge, and the field measures itself: two lines to start with, growing with the draft to eight
+and no further, because past that the transcript matters more than the draft. The send hint left the
+placeholder for the field's tooltip, and attaching is an icon rather than a sentence.
+
+**Spend moved into that bottom edge.** A chip carries a dot and a number: the tokens this office
+measured in the last day, and whether anything is running or waiting. It opens a panel with the split,
+the turns, how many sessions are running against how many the window saw, the rate limits it hit, the
+time a provider asked it to come back, and for each running session either its spend or how full its
+context window is. It shows **no percentage of a plan's quota**, and says so in a line at the bottom: no
+provider tells the office what that quota is, so a gauge would be a guess wearing a number.
+
+**The floor is a picker rather than a row of tabs.** Tabs are fine for three projects and unusable for
+thirty. One button, a list that takes typing, and the search reads the repository as well as the name,
+so two floors called `api` are still told apart. The panel beside the office went from 460 to 500 px.
+
+All three lean on one new primitive, `kit/popover.tsx`: where a surface anchored to a control goes, when
+it leaves, and what closes it. The select's own dropdown was already that code, so it moved rather than
+being copied.

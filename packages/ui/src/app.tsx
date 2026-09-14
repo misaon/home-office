@@ -1,4 +1,3 @@
-import type { ProjectId } from "@ho/protocol";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDevReload } from "./dev-reload.ts";
@@ -6,13 +5,14 @@ import { EditorOverlay } from "./editor/overlay.tsx";
 import { Button } from "./kit/controls.tsx";
 import { OfficeCanvas } from "./office/office-canvas.tsx";
 import { AddProjectModal } from "./panels/add-project.tsx";
+import { FloorPicker } from "./panels/floor-picker.tsx";
 import { BoardPanel } from "./panels/board.tsx";
 import { ChatPanel } from "./panels/chat.tsx";
 import { SettingsPanel } from "./panels/settings.tsx";
 import { TeamPanel } from "./panels/team.tsx";
 import { UsagePanel } from "./panels/usage.tsx";
 import { SetupOverlay, useSetupAutoOpen } from "./setup/overlay.tsx";
-import { CONNECTION_KEY, type Panel, sortedFloors, useUi } from "./store.ts";
+import { CONNECTION_KEY, type Panel, useUi } from "./store.ts";
 
 /** The office editor is an internal tool: this is replaced by a constant at build time, so a production
  * bundle contains neither the branch nor the import. */
@@ -52,33 +52,13 @@ function PanelBody({ panel }: { panel: Panel }): React.JSX.Element {
   );
 }
 
-/** Floor tabs in the header: numbered by creation, the "+" adds a project (a new floor). */
-function FloorTabs({ floorId }: { floorId: ProjectId | null }): React.JSX.Element {
+/** The floor the office is showing, and the one button that adds another. */
+function Floors(): React.JSX.Element {
   const { t } = useTranslation();
-  const projects = useUi((s) => s.snapshot.projects);
-  const selectFloor = useUi((s) => s.selectFloor);
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
   return (
-    <nav className="flex min-w-0 items-center gap-1.5 overflow-x-auto">
-      {sortedFloors(projects).map((p, i) => (
-        <button
-          key={p.id}
-          type="button"
-          aria-pressed={p.id === floorId}
-          title={p.repo.kind === "local" ? p.repo.path : p.repo.url}
-          className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-xs active:scale-[0.98] ${
-            p.id === floorId
-              ? "border-accent/50 bg-accent-soft text-accent shadow-glow"
-              : "border-line bg-raised text-muted hover:border-line-strong hover:text-text"
-          }`}
-          onClick={() => {
-            selectFloor(p.id);
-          }}
-        >
-          <span className="font-mono text-2xs opacity-70">{String(i + 1)}</span>
-          <span className="max-w-40 truncate">{p.name}</span>
-        </button>
-      ))}
+    <nav className="flex min-w-0 items-center gap-1.5">
+      <FloorPicker />
       <button
         type="button"
         className="shrink-0 rounded-lg border border-dashed border-line px-2.5 py-1.5 text-xs text-faint hover:border-accent/50 hover:text-accent active:scale-[0.98]"
@@ -154,7 +134,6 @@ export function App(): React.JSX.Element {
   );
   const panel = useUi((s) => s.panel);
   const selectPanel = useUi((s) => s.selectPanel);
-  const floorId = useUi((s) => s.floorId);
   const hasFloors = useUi((s) => s.snapshot.projects.size > 0);
   const setSetupOpen = useUi((s) => s.setSetupOpen);
   useSetupAutoOpen();
@@ -174,7 +153,7 @@ export function App(): React.JSX.Element {
         <header className={`flex items-center gap-4 px-4 ${BAR}`}>
           <span className="shrink-0 font-semibold tracking-tight">Home Office</span>
           <Connection />
-          {hasFloors ? <FloorTabs floorId={floorId} /> : null}
+          {hasFloors ? <Floors /> : null}
           <span className="ml-auto flex shrink-0 gap-2">
             {DEV ? (
               <Button
@@ -201,7 +180,7 @@ export function App(): React.JSX.Element {
         <div className="min-h-0 flex-1">{hasFloors ? <OfficeCanvas /> : <EmptyOffice />}</div>
       </main>
       {hasFloors ? (
-        <aside className="flex w-[460px] shrink-0 flex-col border-l border-line bg-ink">
+        <aside className="flex w-[500px] shrink-0 flex-col border-l border-line bg-ink">
           <nav className={`flex ${BAR}`} aria-label={t("nav.label")}>
             {PANELS.map((p) => (
               <button

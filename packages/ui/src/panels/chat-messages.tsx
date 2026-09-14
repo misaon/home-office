@@ -107,22 +107,23 @@ export function Messages({
       {messages.length === 0 ? <Empty>{t("chat.empty")}</Empty> : null}
       {messages.map((m, i) => {
         // What you said is gold and what the floor answered is grey, so a glance down the column reads
-        // as a conversation before a single word of it is read.
+        // as a conversation before a single word of it is read. The gold is a tint rather than the
+        // colour itself: solid accent won the glance and lost the reading.
         const mine = m.author.kind === "human";
         return (
           <div
             key={m.id}
-            className={`max-w-[92%] rounded-2xl px-3.5 py-2.5 text-sm shadow-card ${
+            className={`max-w-[92%] rounded-2xl px-3.5 py-2.5 text-sm shadow-card ring-1 ring-white/[0.04] ring-inset ${
               i < backlog ? "" : "animate-rise"
             } ${
               mine
-                ? "ml-auto rounded-br-md bg-accent text-ink"
-                : "rounded-bl-md border border-line-strong bg-raised ring-1 ring-white/[0.04] ring-inset"
+                ? "ml-auto rounded-br-md border border-accent/40 bg-accent/20"
+                : "rounded-bl-md border border-line-strong bg-raised"
             }`}
           >
             <div
               className={`mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs ${
-                mine ? "text-ink/60" : "text-faint"
+                mine ? "text-accent/80" : "text-faint"
               }`}
             >
               <span>

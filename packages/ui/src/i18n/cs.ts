@@ -47,6 +47,8 @@ export const cs: typeof en = {
       "Daemon odmítl token této stránky — vytváří nový při každém spuštění. Spusťte znovu `ho ui`.",
   },
   project: {
+    search: "Hledat podlaží",
+    noMatch: "Žádné podlaží neodpovídá.",
     gitRepo_one: "git repozitář · {{count}} branch",
     gitRepo_few: "git repozitář · {{count}} branche",
     gitRepo_many: "git repozitář · {{count}} branchí",
@@ -140,8 +142,9 @@ export const cs: typeof en = {
     question: "? {{asker}} k „{{title}}“",
     you: "Vy",
     label: "Zpráva vybranému podlaží",
-    placeholder: "Napište podlaží, co potřebujete… (Enter odešle, Shift+Enter nový řádek)",
-    answerPlaceholder: "Vaše odpověď… (Enter odešle)",
+    placeholder: "Napište podlaží, co potřebujete…",
+    sendHint: "Enter odešle, Shift+Enter udělá nový řádek",
+    answerPlaceholder: "Vaše odpověď…",
     empty:
       "Napište šéfovi tohoto podlaží. Lola mu vaši zprávu donese; on ji naplánuje, rozdělí kolegům a sem napíše, jak to dopadlo.",
   },
@@ -229,6 +232,14 @@ export const cs: typeof en = {
     github: "GitHub token",
   },
   usage: {
+    turns: "turns",
+    running: "běžících session",
+    rateLimited: "rate limity",
+    retryAt: "zkusí znovu v",
+    context: "kontext {{percent}} %",
+    chipTitle: "Spotřeba",
+    chipNote:
+      "Co tato kancelář naměřila za poslední den. Kvótu tarifu jí žádný poskytovatel neřekne, takže ji neukazuje.",
     all: "vše",
     in: "in",
     note: "Počty tokenů hlásí Claude Code. OpenCode, Gemini CLI a Codex mluví ACP, které místo rozpadu tokenů hlásí zaplnění kontextového okna a cenu session — ta přichází živě a je vidět u jednotlivých session v panelu Zaměstnanec.",

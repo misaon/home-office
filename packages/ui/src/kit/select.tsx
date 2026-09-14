@@ -1,105 +1,10 @@
-import { type RefObject, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { EXIT_MS } from "./motion.ts";
+import { useEffect, useRef, useState } from "react";
+import { Popover, usePopover } from "./popover.tsx";
 
 type SelectOption<T extends string> = { value: T; label: string };
 
-/** The gap between the field and its list, and the list's bounds. */
-const GAP = 6;
-const MAX_MENU = 260;
-const MIN_BELOW = 160;
-const EDGE = 12;
-
-type Box = { left: number; width: number; maxHeight: number; top?: number; bottom?: number };
-type Phase = "closed" | "open" | "closing";
-
-/** Under the field when there is room for a list worth reading, over it when there is not. */
-const place = (field: DOMRect): Box => {
-  const below = window.innerHeight - field.bottom - EDGE;
-  const above = field.top - EDGE;
-  const drop = below >= MIN_BELOW || below >= above;
-  return {
-    left: field.left,
-    width: field.width,
-    maxHeight: Math.min(MAX_MENU, Math.max(below, above)),
-    ...(drop ? { top: field.bottom + GAP } : { bottom: window.innerHeight - field.top + GAP }),
-  };
-};
-
-type Dropdown = {
-  phase: Phase;
-  box: Box | null;
-  active: number;
-  setActive: (index: number) => void;
-  start: (from: number) => void;
-  close: () => void;
-};
-
-/**
- * When the list is on screen, where, and which row the keyboard is on. The list leaves on a clock rather
- * than on a transition event, so a dropped frame cannot strand it, and anything that moves the field
- * closes it, because a list placed once cannot follow.
- */
-function useDropdown(field: RefObject<HTMLButtonElement | null>): Dropdown {
-  const [phase, setPhase] = useState<Phase>("closed");
-  const [box, setBox] = useState<Box | null>(null);
-  const [active, setActive] = useState(0);
-  const open = phase === "open";
-
-  const close = (): void => {
-    setPhase((now) => (now === "open" ? "closing" : now));
-  };
-
-  useEffect(() => {
-    const timer =
-      phase === "closing"
-        ? setTimeout(() => {
-            setPhase("closed");
-          }, EXIT_MS)
-        : null;
-    return () => {
-      if (timer !== null) {
-        clearTimeout(timer);
-      }
-    };
-  }, [phase]);
-
-  useEffect(() => {
-    const outside = (event: PointerEvent): void => {
-      if (!(event.target instanceof Node) || field.current?.contains(event.target) !== true) {
-        close();
-      }
-    };
-    if (open) {
-      document.addEventListener("pointerdown", outside);
-      window.addEventListener("scroll", close, true);
-      window.addEventListener("resize", close);
-    }
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-    };
-  }, [open, field]);
-
-  return {
-    phase,
-    box,
-    active,
-    setActive,
-    close,
-    start: (from) => {
-      const rect = field.current?.getBoundingClientRect();
-      if (rect !== undefined) {
-        setBox(place(rect));
-        setActive(Math.max(0, from));
-        setPhase("open");
-      }
-    },
-  };
-}
-
-function Chevron({ open }: { open: boolean }): React.JSX.Element {
+/** The one arrow in the office that says "this opens", pointing the other way once it has. */
+export function Chevron({ open }: { open: boolean }): React.JSX.Element {
   return (
     <svg
       viewBox="0 0 16 16"
@@ -118,65 +23,41 @@ function Chevron({ open }: { open: boolean }): React.JSX.Element {
   );
 }
 
-type MenuProps<T extends string> = {
-  box: Box;
-  options: readonly SelectOption<T>[];
-  value: T | "";
-  active: number;
-  leaving: boolean;
-  mono: boolean;
-  onHover: (index: number) => void;
-  onPick: (index: number) => void;
-};
-
-/** The list itself, in the document's own corner so no panel's overflow can cut it off. */
-function Menu<T extends string>({
-  box,
-  options,
-  value,
+/** One row of a list of choices: the current one is marked, not merely coloured. */
+export function Option({
+  label,
+  hint,
+  selected,
   active,
-  leaving,
-  mono,
+  mono = false,
   onHover,
   onPick,
-}: MenuProps<T>): React.JSX.Element {
-  const list = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    list.current?.children[active]?.scrollIntoView({ block: "nearest" });
-  }, [active]);
-  return createPortal(
-    <div
-      ref={list}
-      role="listbox"
-      style={box}
-      className={`animate-pop fixed z-50 overflow-y-auto overscroll-contain rounded-xl border border-line-strong bg-raised p-1 shadow-lift ring-1 ring-white/[0.04] ring-inset ${
-        leaving ? "[animation-direction:reverse]" : ""
-      }`}
+}: {
+  label: string;
+  hint?: string;
+  selected: boolean;
+  active: boolean;
+  mono?: boolean;
+  onHover: () => void;
+  onPick: () => void;
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={selected}
+      className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm ${
+        mono ? "font-mono" : ""
+      } ${active ? "bg-line/70" : ""} ${selected ? "text-accent" : "text-muted"}`}
+      onPointerEnter={onHover}
+      onClick={onPick}
     >
-      {options.map((option, index) => (
-        <button
-          key={option.value}
-          type="button"
-          role="option"
-          aria-selected={option.value === value}
-          className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm ${
-            mono ? "font-mono" : ""
-          } ${index === active ? "bg-line/70" : ""} ${
-            option.value === value ? "text-accent" : "text-muted"
-          }`}
-          onPointerEnter={() => {
-            onHover(index);
-          }}
-          onClick={() => {
-            onPick(index);
-          }}
-        >
-          <span className="min-w-0 flex-1 truncate">{option.label}</span>
-          {option.value === value ? <span aria-hidden="true">✓</span> : null}
-        </button>
-      ))}
-    </div>,
-    document.body,
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {hint === undefined ? null : (
+        <span className="shrink-0 font-mono text-2xs text-faint">{hint}</span>
+      )}
+      {selected ? <span aria-hidden="true">✓</span> : null}
+    </button>
   );
 }
 
@@ -207,11 +88,22 @@ export function Select<T extends string>({
   mono = false,
 }: Props<T>): React.JSX.Element {
   const field = useRef<HTMLButtonElement>(null);
-  const menu = useDropdown(field);
-  const open = menu.phase === "open";
+  const list = useRef<HTMLDivElement>(null);
+  const menu = usePopover(field, list);
+  const [active, setActive] = useState(0);
   const current = options.findIndex((option) => option.value === value);
   const label = options[current]?.label ?? placeholder ?? "";
 
+  useEffect(() => {
+    if (menu.open) {
+      list.current?.children[active]?.scrollIntoView({ block: "nearest" });
+    }
+  }, [menu.open, active]);
+
+  const show = (): void => {
+    setActive(Math.max(0, current));
+    menu.start();
+  };
   const pick = (index: number): void => {
     const option = options[index];
     if (option !== undefined) {
@@ -224,17 +116,17 @@ export function Select<T extends string>({
   const onKeyDown = (event: React.KeyboardEvent): void => {
     const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
     const commit = event.key === "Enter" || event.key === " ";
-    if (!open) {
+    if (!menu.open) {
       if (step !== 0 || commit) {
         event.preventDefault();
-        menu.start(current);
+        show();
       }
     } else if (step !== 0) {
       event.preventDefault();
-      menu.setActive(Math.min(options.length - 1, Math.max(0, menu.active + step)));
+      setActive((now) => Math.min(options.length - 1, Math.max(0, now + step)));
     } else if (commit) {
       event.preventDefault();
-      pick(menu.active);
+      pick(active);
     } else if (event.key === "Escape" || event.key === "Tab") {
       menu.close();
     }
@@ -247,17 +139,17 @@ export function Select<T extends string>({
         id={id}
         type="button"
         aria-haspopup="listbox"
-        aria-expanded={open}
+        aria-expanded={menu.open}
         disabled={disabled || options.length === 0}
         className={`flex w-full items-center gap-2 rounded-lg border bg-ink/60 px-3 py-2 text-left text-sm disabled:pointer-events-none disabled:opacity-40 ${
-          open ? "border-accent/70" : "border-line hover:border-line-strong"
+          menu.open ? "border-accent/70" : "border-line hover:border-line-strong"
         }`}
         onKeyDown={onKeyDown}
         onClick={() => {
-          if (open) {
+          if (menu.open) {
             menu.close();
           } else {
-            menu.start(current);
+            show();
           }
         }}
       >
@@ -268,20 +160,25 @@ export function Select<T extends string>({
         >
           {label}
         </span>
-        <Chevron open={open} />
+        <Chevron open={menu.open} />
       </button>
-      {menu.phase === "closed" || menu.box === null ? null : (
-        <Menu
-          box={menu.box}
-          options={options}
-          value={value}
-          active={menu.active}
-          leaving={menu.phase === "closing"}
-          mono={mono}
-          onHover={menu.setActive}
-          onPick={pick}
-        />
-      )}
+      <Popover popover={menu} surface={list} className="p-1">
+        {options.map((option, index) => (
+          <Option
+            key={option.value}
+            label={option.label}
+            selected={option.value === value}
+            active={index === active}
+            mono={mono}
+            onHover={() => {
+              setActive(index);
+            }}
+            onPick={() => {
+              pick(index);
+            }}
+          />
+        ))}
+      </Popover>
     </>
   );
 }

@@ -1,15 +1,71 @@
 import { type Attachment, ATTACHMENT_TYPES, ATTACHMENTS_MAX } from "@ho/protocol";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { rejects, upload } from "../attachments.ts";
-import { CONTROL, Failure } from "../kit/controls.tsx";
+import { Failure } from "../kit/controls.tsx";
 import { Reveal } from "../kit/reveal.tsx";
 import { PendingFiles } from "./chat-files.tsx";
+import { UsageChip } from "./chat-usage.tsx";
 
 /** What the file picker offers; the office takes the same list however a file arrives. */
 const ACCEPT = Object.keys(ATTACHMENT_TYPES)
   .map((extension) => `.${extension}`)
   .join(",");
+
+/** Two lines to start with, eight at most: past that the transcript matters more than the draft. */
+const MIN_HEIGHT = 40;
+const MAX_HEIGHT = 160;
+
+function ClipIcon(): React.JSX.Element {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10.8 5.2 6.3 9.7a1.6 1.6 0 0 0 2.3 2.3l4.8-4.8a3.2 3.2 0 0 0-4.5-4.5L3.8 8a4.8 4.8 0 0 0 6.8 6.8l3.7-3.7" />
+    </svg>
+  );
+}
+
+/** The composer's own bottom edge: who it goes to, what it has cost, and the one way to add a file. */
+function Toolbar({
+  to,
+  attach,
+}: {
+  to: React.ReactNode;
+  attach: (picked: readonly File[]) => void;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center gap-1 px-2 pb-1.5 text-2xs text-muted">
+      <span className="min-w-0 flex-1 truncate">{to}</span>
+      <UsageChip />
+      <label
+        className="flex shrink-0 cursor-pointer items-center rounded-lg px-2 py-1 text-muted hover:bg-line/50 hover:text-text"
+        title={t("chat.attach")}
+      >
+        <ClipIcon />
+        <span className="sr-only">{t("chat.attach")}</span>
+        <input
+          type="file"
+          multiple
+          className="hidden"
+          accept={ACCEPT}
+          onChange={(e) => {
+            attach([...(e.target.files ?? [])]);
+            e.target.value = "";
+          }}
+        />
+      </label>
+    </div>
+  );
+}
 
 type Props = {
   /** Who the message goes to, said in the words the panel above chose. */
@@ -25,7 +81,9 @@ type Props = {
 };
 
 /**
- * Where a message is written: the text, the files that go with it, and the drop target for both. A
+ * Where a message is written: the text, the files that go with it, and the drop target for both. It is
+ * one box rather than a stack of rows — the field grows with the draft and its controls sit on its own
+ * bottom edge, so an empty composer costs the transcript two lines instead of a third of the panel. A
  * dropped or picked file is uploaded straight away, so sending is only ever the descriptors.
  */
 export function Composer({
@@ -40,8 +98,18 @@ export function Composer({
   submit,
 }: Props): React.JSX.Element {
   const { t } = useTranslation();
+  const field = useRef<HTMLTextAreaElement>(null);
   const [dropping, setDropping] = useState(false);
   const [uploadError, setUploadError] = useState<unknown>(null);
+
+  // The field is measured, not counted in rows: a wrapped line is a line the reader can see.
+  useLayoutEffect(() => {
+    const element = field.current;
+    if (element !== null) {
+      element.style.height = "0px";
+      element.style.height = `${String(Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, element.scrollHeight)))}px`;
+    }
+  }, [text]);
 
   const attach = (picked: readonly File[]): void => {
     setUploadError(null);
@@ -67,10 +135,7 @@ export function Composer({
 
   return (
     <div
-      // Writing is its own place rather than the end of the transcript, so it sits on the panel surface.
-      className={`shrink-0 space-y-2 border-t p-4 transition-colors duration-[var(--duration-base)] ${
-        dropping ? "border-accent/60 bg-accent/[0.09]" : "border-line bg-panel"
-      }`}
+      className="shrink-0 border-t border-line bg-panel px-3 py-2.5"
       onDragOver={(e) => {
         e.preventDefault();
         setDropping(true);
@@ -100,39 +165,35 @@ export function Composer({
           />
         </div>
       </Reveal>
-      <div className="flex items-center gap-3 text-xs text-muted">
-        {to}
-        <label className="ml-auto cursor-pointer rounded-lg px-2 py-1 text-2xs text-muted hover:bg-line/40 hover:text-text">
-          {t("chat.attach")}
-          <input
-            type="file"
-            multiple
-            className="hidden"
-            accept={ACCEPT}
-            onChange={(e) => {
-              attach([...(e.target.files ?? [])]);
-              e.target.value = "";
-            }}
-          />
-        </label>
+      <div
+        className={`rounded-xl border bg-ink/60 transition-colors duration-[var(--duration-base)] ${
+          dropping
+            ? "border-accent/60 bg-accent/[0.09]"
+            : "border-line focus-within:border-accent/60"
+        }`}
+      >
+        <textarea
+          ref={field}
+          aria-label={t("chat.label")}
+          title={t("chat.sendHint")}
+          maxLength={20_000}
+          rows={2}
+          disabled={disabled}
+          className="block w-full resize-none bg-transparent px-3 pt-2.5 pb-1 text-sm text-text placeholder:text-faint focus:outline-none"
+          placeholder={placeholder}
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+        />
+        <Toolbar to={to} attach={attach} />
       </div>
-      <textarea
-        aria-label={t("chat.label")}
-        maxLength={20_000}
-        disabled={disabled}
-        className={`${CONTROL} h-20 resize-none`}
-        placeholder={placeholder}
-        value={text}
-        onChange={(e) => {
-          setText(e.target.value);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            submit();
-          }
-        }}
-      />
     </div>
   );
 }
