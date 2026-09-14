@@ -14,7 +14,7 @@ import {
   staleImages,
   tokenState,
 } from "./status.ts";
-import { SetupStep, type StepStatus } from "../design/setup-step.tsx";
+import { STEP_BODY, SetupStep, WIDE, type StepStatus } from "../design/setup-step.tsx";
 
 type EnvProps = { doctor: Doctor | null; refresh: () => void };
 
@@ -68,8 +68,8 @@ export function DockerStep({ doctor, refresh }: EnvProps): React.JSX.Element {
   return (
     <SetupStep index={1} title={t("setup.docker")} status={status}>
       {status.state === "ok" ? null : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <p style={{ fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
+        <div style={STEP_BODY}>
+          <p style={{ ...WIDE, fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
             {t("setup.dockerIntro")}
           </p>
           <Button onClick={refresh}>{t("setup.checkAgain")}</Button>
@@ -135,8 +135,8 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
 
   return (
     <SetupStep index={2} title={t("setup.images")} status={status}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        <p style={{ fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
+      <div style={STEP_BODY}>
+        <p style={{ ...WIDE, fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
           {t("setup.imagesIntro")}
         </p>
         {status.state === "ok" && !build.isPending ? null : (
@@ -156,6 +156,7 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
           <pre
             ref={log}
             style={{
+              ...WIDE,
               maxHeight: "176px",
               overflowY: "auto",
               borderRadius: "11px",
@@ -181,8 +182,8 @@ export function TokenStep({ doctor }: { doctor: Doctor | null }): React.JSX.Elem
   const status = tokenStatus(doctor, t);
   return (
     <SetupStep index={3} title={t("setup.token")} status={status}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        <p style={{ fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
+      <div style={STEP_BODY}>
+        <p style={{ ...WIDE, fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
           <Trans
             i18nKey="setup.tokenIntro"
             components={{
@@ -192,11 +193,13 @@ export function TokenStep({ doctor }: { doctor: Doctor | null }): React.JSX.Elem
             }}
           />
         </p>
-        <SecretField
-          secret="anthropic-oauth-token"
-          label={t("setup.token")}
-          stored={status.state === "ok"}
-        />
+        <div style={WIDE}>
+          <SecretField
+            secret="anthropic-oauth-token"
+            label={t("setup.token")}
+            stored={status.state === "ok"}
+          />
+        </div>
       </div>
     </SetupStep>
   );

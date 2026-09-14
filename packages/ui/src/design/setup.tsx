@@ -6,7 +6,6 @@ import { setupNeeded, setupReady } from "../setup/status.ts";
 import { DockerStep, ImagesStep, TokenStep } from "../setup/steps-environment.tsx";
 import { SmokeStep } from "../setup/steps-office.tsx";
 import { useOnline, useUi } from "../store.ts";
-import { Button } from "./controls.tsx";
 import { DISPLAY } from "./tokens.ts";
 
 const DISMISSED_KEY = "ho.setup.dismissed";
@@ -48,6 +47,19 @@ const CENTRE: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   padding: "32px",
+};
+
+/** The checklist's own two header buttons, a size smaller than the ones the steps carry. */
+const QUIET: React.CSSProperties = {
+  padding: "8px 13px",
+  borderRadius: "10px",
+  border: "1px solid #2C2C32",
+  background: "transparent",
+  fontSize: "12px",
+  color: "#CFCCC6",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+  transition: "all .2s",
 };
 
 const SHEET: React.CSSProperties = {
@@ -132,10 +144,18 @@ export function Setup(): React.JSX.Element {
               </div>
             </div>
             <div style={{ display: "flex", gap: "7px" }}>
-              <Button onClick={refresh} disabled={query.isFetching}>
+              <button
+                type="button"
+                onClick={refresh}
+                disabled={query.isFetching}
+                style={QUIET}
+                className="ho-2955a9"
+              >
                 {t("setup.recheck")}
-              </Button>
-              <Button onClick={close}>{ready ? t("common.close") : t("setup.skip")}</Button>
+              </button>
+              <button type="button" onClick={close} style={QUIET} className="ho-2955a9">
+                {ready ? t("common.close") : t("setup.skip")}
+              </button>
             </div>
           </div>
           <div style={{ padding: "8px 26px 26px" }}>

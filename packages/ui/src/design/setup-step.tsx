@@ -32,6 +32,20 @@ const TAG: React.CSSProperties = {
   borderRadius: "99px",
 };
 
+/**
+ * What a step stacks under its description. The drawing gives a step one content-sized button, so the
+ * stack does not stretch its children; anything that is a block in its own right says so with `WIDE`.
+ */
+export const STEP_BODY: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: "12px",
+};
+
+/** A paragraph, a log or a field: as wide as the step, not as wide as its own text. */
+export const WIDE: React.CSSProperties = { alignSelf: "stretch" };
+
 /** One row of the checklist: number, title, how it stands, and the step's own controls. */
 export function SetupStep({
   index,

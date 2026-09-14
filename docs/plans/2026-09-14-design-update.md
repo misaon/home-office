@@ -63,6 +63,25 @@ design was kept and the words were made true.
   ones at work. The office's PixiJS scene now draws both: the pill keeps its drawn size while the floor
   zooms under it, and the ring runs the stylesheet's own `ring` curve on the office ticker.
 
+## Two things measurement found that reading could not
+
+The owner noticed the setup checklist's buttons stretching the full width of the dialog, which the
+drawing never did. Both of these came out of that:
+
+- **The checklist's stacks stretched their own children.** A step's controls sat in a
+  `flex-direction: column`, whose default `align-items: stretch` makes a button as wide as the step.
+  `STEP_BODY` in `setup-step.tsx` now aligns to the start, and the three children that really are blocks
+  (the paragraph, the build log, the reply quote, the token field) say so with `WIDE`. The dialog's own
+  two header buttons were the shared control size (`9px 15px`, 12.5px); the drawing gives them
+  `8px 13px` at 12px, which they now have.
+- **None of the three typefaces were loading at all.** The daemon's static CSP named `default-src 'self'`
+  and no `font-src`, and the bundle inlines the vendored woff2 as `data:` URLs — so every `@font-face`
+  was blocked and the whole office silently rendered in the system fallback. Measured in the browser:
+  before the fix `Instrument Sans`, `JetBrains Mono` and `Space Grotesk` all measured 279.2 px for the
+  same string, exactly like `serif`; after adding `font-src 'self' data:` they measure 321.2 / 360 /
+  333.6 px — the same numbers the drawing measures. Every text width in the app was slightly wrong
+  until this, which is why the button widths were the symptom that surfaced it.
+
 ## Verified
 
 Every screen was driven in headless Chrome against a private daemon (its own `HO_HOME`, its own port)
@@ -74,6 +93,12 @@ and held against the drawing opened from the file system.
   new floor, floor picker, task sheet, confirm (danger and safe), fault (engine offline, with the log
   open), setup.
 - `sessions.stop` was pressed from the office against a live session and the office said so.
+- Rendered geometry compared element by element (`button`, `input`, `textarea`, `select`, `pre`,
+  `blockquote`, `label`) between the app and the drawing on chat, board, team, usage, settings, the setup
+  checklist, the agent sheet, the agent dialog, the new-floor dialog, the floor picker, chat search, the
+  task sheet, confirm, the lightbox and the fault screen: every pair within 2 px. The one standing
+  difference is the picture on a chat message, which is as wide as its bubble and so as wide as the words
+  of the message the two sides happen to carry.
 - `bun run check` passes: six typecheck programs, `oxlint --deny-warnings`, `oxfmt --check`, `knip`,
   and the production UI build.
 

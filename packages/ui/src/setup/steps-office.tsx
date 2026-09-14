@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Button, Failure } from "../design/controls.tsx";
 import { requireClient } from "../rpc.ts";
 import { bossOnFloor, type Snapshot, useUi } from "../store.ts";
-import { SetupStep, type StepStatus } from "../design/setup-step.tsx";
+import { STEP_BODY, SetupStep, WIDE, type StepStatus } from "../design/setup-step.tsx";
 
 const HELLO =
   "Hello! This is the first-run check of Home Office. Reply with one short sentence confirming you are online; do not delegate anything.";
@@ -90,8 +90,8 @@ export function SmokeStep({ ready }: { ready: boolean }): React.JSX.Element {
     sent === null || floorId === null ? undefined : replyTo(snapshot.chat, sent, floorId);
   return (
     <SetupStep index={4} title={t("setup.smokeTest")} status={status}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        <p style={{ fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
+      <div style={STEP_BODY}>
+        <p style={{ ...WIDE, fontSize: "12px", lineHeight: "1.7", color: "#ABA8A1" }}>
           {t("setup.smokeIntro", {
             boss: boss?.name ?? t("setup.theBoss"),
             model: boss?.model ?? t("setup.bossModel"),
@@ -100,6 +100,7 @@ export function SmokeStep({ ready }: { ready: boolean }): React.JSX.Element {
         {reply !== undefined ? (
           <blockquote
             style={{
+              ...WIDE,
               animation: "riseIn .3s ease both",
               borderRadius: "11px",
               border: "1px solid #26262C",

@@ -1,11 +1,16 @@
 import { realpath, stat } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 
+/**
+ * `font-src` is spelled out because the office's three typefaces are inlined into the bundle's
+ * stylesheet as `data:` URLs: without it they fall through to `default-src 'self'`, every `@font-face`
+ * is blocked, and the whole UI silently renders in the system fallback.
+ */
 const HEADERS = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
   "content-security-policy":
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
 };
 
 /**
