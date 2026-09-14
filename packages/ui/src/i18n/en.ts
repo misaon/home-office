@@ -1,6 +1,7 @@
 // The office speaks English by default. Every other language is checked against these keys by the
 // compiler, so a missing translation is a type error rather than a blank label.
 import { enEditor } from "./en-editor.ts";
+import { enOffice } from "./en-office.ts";
 import { enSetup } from "./en-setup.ts";
 
 export const en = {
@@ -82,6 +83,12 @@ export const en = {
     confirmRemove:
       "Remove floor {{name}} with its boss and staff? Tasks and history stay in the log.",
     needFirst: "Add a project (floor) first.",
+    removed: "{{name}} removed",
+    summary: "{{agents}} agents · {{open}} open",
+    summaryTasks: "{{agents}} agents · {{open}} open tasks",
+    working: "{{count}} working",
+    blocked: "{{count}} blocked",
+    quiet: "quiet",
   },
   agent: {
     removeTitle: "Remove this colleague?",
@@ -99,6 +106,12 @@ export const en = {
     gender: "Gender",
     copyToFloor: "Copy to floor",
     pickFloor: "choose a floor…",
+    hired: "{{name}} joined {{floor}}",
+    namePlaceholder: "e.g. Nora",
+    promptPlaceholder: "Persona, habits, constraints…",
+    removed: "{{name}} left {{floor}}",
+    save: "Save changes",
+    updated: "{{name}} updated",
   },
   roles: {
     boss: "boss",
@@ -129,6 +142,13 @@ export const en = {
     done: "Done",
     triage: "triage",
     empty: "Nothing on this floor yet. Write to the boss in Chat and he turns it into tasks.",
+    all: "All",
+    assignedTo: "Assigned to {{name}}",
+    emptyLane: "Nothing in this lane.",
+    finished: "{{done}} of {{total}} tasks finished",
+    handBack: "Hand back",
+    moveToDone: "Move to done",
+    unassigned: "unassigned",
   },
   chat: {
     thinking: "is thinking…",
@@ -154,6 +174,11 @@ export const en = {
     answerPlaceholder: "Your answer…",
     empty:
       "Write to the boss of this floor. Lola brings him your message; he plans, delegates and reports back here.",
+    clickToClose: "Click anywhere to close",
+    lookAtThis: "Have a look at this.",
+    noBoss: "No boss on this floor yet",
+    noHits: "Nothing in this conversation matches that.",
+    search: "Search this conversation",
   },
   session: {
     usage: "{{input}} in · {{output}} out · {{cache}} cache · {{turns}} turns",
@@ -168,19 +193,6 @@ export const en = {
     error: "error {{code}}: {{message}}",
     noSessions: "No sessions yet.",
     services: "services: {{state}}",
-  },
-  resources: {
-    refresh: "Refresh",
-    pruned: "removed {{containers}} containers, {{volumes}} volumes, {{images}} images",
-    prune: "Prune now",
-    pruning: "Pruning…",
-    noInventory: "No inventory yet.",
-    images: "Images",
-    noneRunning: "No containers right now.",
-    noneStored: "No volumes right now.",
-    pruneHint: "Removes stopped sandboxes, expired task volumes and dangling images.",
-    containers: "Containers",
-    volumes: "Volumes",
   },
   settings: {
     intakeEvery: "every",
@@ -217,6 +229,10 @@ export const en = {
     servicesLabel: "Own container engine",
     servicesHint:
       "The repository's docker compose runs inside the sandbox. A session with services takes two of the daemon's slots.",
+    title: "Office settings",
+    removeFloor: "Remove this floor",
+    languageSet: "Office language changed",
+    lang: { en: "English", cs: "Čeština" },
   },
   tokens: {
     storedNote: "Stored in the configured secret store.",
@@ -239,41 +255,21 @@ export const en = {
     gemini: "Gemini API key",
     geminiHint: "Gemini CLI agents and OpenCode with google/… models (Google AI Studio key).",
     github: "GitHub token",
-  },
-  usage: {
-    contextLabel: "Context window",
-    turns: "turns",
-    running: "sessions running",
-    rateLimited: "rate limits",
-    retryAt: "retry at",
-    context: "context {{percent}} %",
-    chipTitle: "Usage",
-    chipNote:
-      "What this office measured in the last day. No provider tells it a plan's quota, so none is shown.",
-    all: "all",
-    in: "in",
-    note: "Token counts come from Claude Code. OpenCode, Gemini CLI and Codex speak ACP, which reports how full the context window is and the session’s cost rather than a token split — those arrive live and are shown per session in Agent.",
-    window: "Window",
-    day: "24 h",
-    week: "7 d",
-    byAgent: "By agent",
-    byProject: "By project",
-    byDay: "By day",
-    noData: "No data yet.",
-    tokens: "Tokens",
-    resources: "Resources",
-    limits: "{{count}} rate limits",
-    name: "name",
-    out: "out",
-    cache: "cache",
-    sessions: "sessions",
+    forgotten: "{{name}} forgotten",
   },
   team: {
     intro: "Everyone on this floor. Open a card to see what they are doing, or configure them.",
     onFloor: "On floor {{floor}}",
     working: "working",
     configure: "Configure",
+    all: "All",
+    closeForm: "Close the form",
+    empty: "Nobody here yet — hire this floor's boss first.",
+    hire: "Hire someone new",
+    idle: "idle",
+    newAgent: "+ New agent",
   },
+  ...enOffice,
   ...enSetup,
   ...enEditor,
 };

@@ -1,6 +1,7 @@
 import { DISPLAY, MONO } from "./tokens.ts";
-import { useDesign, useFloor } from "./store.ts";
-import type { Member } from "./data.ts";
+import { useTranslation } from "react-i18next";
+import type { Floor, Member } from "./data.ts";
+import { useDesign } from "./store.ts";
 
 const BAR: React.CSSProperties = {
   flex: "0 0 auto",
@@ -59,8 +60,16 @@ const SPEC: React.CSSProperties = {
 };
 
 /** Who you are talking to — or, once you ask for it, the search over what was said. */
-export function ChatHeader({ boss, hits }: { boss: Member; hits: string }): React.JSX.Element {
-  const floor = useFloor();
+export function ChatHeader({
+  floor,
+  boss,
+  hits,
+}: {
+  floor: Floor;
+  boss: Member | undefined;
+  hits: string;
+}): React.JSX.Element {
+  const { t } = useTranslation();
   const query = useDesign((s) => s.query);
   const searchOpen = useDesign((s) => s.searchOpen);
   const set = useDesign((s) => s.set);
@@ -70,7 +79,7 @@ export function ChatHeader({ boss, hits }: { boss: Member; hits: string }): Reac
     <div style={BAR}>
       <div style={{ position: "relative", width: "34px", height: "34px", flex: "0 0 34px" }}>
         <div style={AVATAR}>
-          <span>{boss.i}</span>
+          <span>{boss?.i ?? "?"}</span>
         </div>
         <span style={ONLINE} />
       </div>
@@ -81,7 +90,7 @@ export function ChatHeader({ boss, hits }: { boss: Member; hits: string }): Reac
             onChange={(e) => {
               set({ query: e.target.value });
             }}
-            placeholder="Search this conversation"
+            placeholder={t("chat.search")}
             style={{
               flex: "1",
               minWidth: "0",
@@ -96,15 +105,19 @@ export function ChatHeader({ boss, hits }: { boss: Member; hits: string }): Reac
         </div>
       ) : (
         <div style={{ flex: "1", minWidth: "0" }}>
-          <div style={{ ...DISPLAY, fontWeight: "600", fontSize: "14px" }}>{boss.name}</div>
+          <div style={{ ...DISPLAY, fontWeight: "600", fontSize: "14px" }}>
+            {boss?.name ?? t("chat.noBoss")}
+          </div>
           <div style={SPEC}>
-            {`${boss.role} · ${boss.model.toLowerCase()} / ${boss.effort} · ${floor.name}`}
+            {boss === undefined
+              ? floor.name
+              : `${boss.role} · ${boss.model.toLowerCase()} / ${boss.effort} · ${floor.name}`}
           </div>
         </div>
       )}
       <button
         type="button"
-        aria-label="Search this conversation"
+        aria-label={t("chat.search")}
         onClick={() => {
           update((s) => ({ searchOpen: !s.searchOpen, query: "" }));
         }}

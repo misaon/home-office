@@ -96,13 +96,27 @@ The first compares the computed `animation` and `transition` of every element in
 forces `:hover` on each button in turn through `CSS.forcePseudoState` and diffs the page each time —
 101 hover states over five scenes.
 
-## What this is not
+## What happened next
 
-The port is the drawing, and the drawing runs on fixtures. It is reachable at `design.html`, beside the
-office's own `index.html`; nothing in the live app imports it and nothing in it talks to the daemon.
-Wiring these panels to real projects, agents, tasks and usage is the next piece of work, and the moment
-it starts, pixel-for-pixel against this file stops being the test — real content is not the fixture
-content. That is why the port and the verification landed first, and together.
+The owner did not want two offices, so the fixtures and the preview entry are gone and these components
+are now *the* office: `index.html` renders them against the daemon. The measurements above therefore
+describe the port at the moment it was made, and they are no longer re-runnable — real content is not
+the fixture content, which is exactly why the verification landed before the wiring rather than after.
+
+What the wiring changed, and why:
+
+- **The stage draws the real office.** The mockup sketched a light floor with two drifting discs; the
+  product renders a pixel-art office in PixiJS. The sketch was a placeholder for it, so the frame, the
+  scan line and the camera bar are the design's and what they contain is the real canvas. The bar drives
+  the real camera through a handle `startOffice` now returns.
+- **The board grew a fourth lane.** The drawing has three; a task has nine states. `inbox` and `planned`
+  had nowhere to go, so they get a lane of their own, drawn in the same language as the other three.
+- **Three drawn things had nothing behind them and were dropped:** the attach menu's three sources
+  (there is one — a file), the "subscription window" meter (no provider tells the office a plan's
+  quota), and the four mock setup steps (the real checklist does Docker, images, token and smoke test).
+- **Three surfaces still wear the old skin:** the setup overlay, the add-project dialog and the internal
+  editor. They are real, working tools that the drawing either sketched or never drew, and restyling
+  them is the next piece of work.
 
 One rule was suppressed twice, in `board-card.tsx` and `team-row.tsx`: `jsx-a11y/prefer-tag-over-role`,
 where a row is drawn as a `div` with `role="button"`. The board's row carries its own delete button and

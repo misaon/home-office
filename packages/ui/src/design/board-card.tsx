@@ -1,6 +1,10 @@
-import type { Card } from "./data.ts";
+import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import type { Card, Floor } from "./data.ts";
+import { requireClient } from "../rpc.ts";
 import { MONO, priority, separator } from "./tokens.ts";
-import { BOSS_FALLBACK, useDesign, useFloor } from "./store.ts";
+import { bossOf } from "./live.ts";
+import { useDesign } from "./store.ts";
 
 const BODY: React.CSSProperties = { flex: "1", minWidth: "0", padding: "12px 13px" };
 
@@ -51,19 +55,26 @@ const META: React.CSSProperties = {
 
 /** One task as a row: what it is, who has it, and the bin that takes it off the board. */
 export function BoardCard({
+  floor,
   card,
   first,
   stripe,
 }: {
+  floor: Floor;
   card: Card;
   first: boolean;
   stripe: string;
 }): React.JSX.Element {
-  const floor = useFloor();
+  const { t } = useTranslation();
   const set = useDesign((s) => s.set);
-  const patchCur = useDesign((s) => s.patchCur);
   const flash = useDesign((s) => s.flash);
-  const mine = card.who === (floor.team[0] ?? BOSS_FALLBACK).name;
+  const remove = useMutation({
+    mutationFn: () => requireClient().tasks.remove({ id: card.id }),
+    onError: (error: Error) => {
+      flash(error.message);
+    },
+  });
+  const mine = card.who === bossOf(floor)?.name;
   const { pFg } = priority(card.p);
   const open = (): void => {
     set({ sheet: { type: "task", id: card.id } });
@@ -104,17 +115,17 @@ export function BoardCard({
               color: mine ? "#FFD666" : "#D6D3CD",
             }}
           >
-            <span>{card.who.charAt(0)}</span>
+            <span>{card.who === "" ? "·" : card.who.charAt(0)}</span>
           </span>
           <button
             type="button"
-            aria-label="Delete task"
+            aria-label={t("board.remove")}
+            disabled={remove.isPending}
             onClick={(e) => {
               e.stopPropagation();
-              patchCur({ cards: floor.cards.filter((y) => y.id !== card.id) });
-              flash("Task deleted");
+              remove.mutate();
             }}
-            title="Delete task"
+            title={t("board.remove")}
             style={BIN}
             className="hoph"
           >
@@ -135,12 +146,12 @@ export function BoardCard({
         <div style={META}>
           <span style={{ display: "flex", alignItems: "center", gap: "5px", color: pFg }}>
             <span style={{ width: "5px", height: "5px", borderRadius: "1px", background: pFg }} />
-            <span>{card.p}</span>
+            <span>{t(`priority.${card.p}`)}</span>
           </span>
           <span style={{ opacity: ".4" }}>·</span>
-          <span>{card.k}</span>
+          <span>{t(`taskKind.${card.k}`)}</span>
           <span style={{ opacity: ".4" }}>·</span>
-          <span>{card.who}</span>
+          <span>{card.who === "" ? t("board.unassigned") : card.who}</span>
           <span style={{ opacity: ".4" }}>·</span>
           <span>{card.at}</span>
         </div>

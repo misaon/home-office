@@ -1,6 +1,7 @@
 // Czech: the office's own vocabulary is translated, while the words a developer reads in git, Docker
 // and the provider CLIs stay as they are — commit, branch, pull request, token, session, prune.
 import { csEditor } from "./cs-editor.ts";
+import { csOffice } from "./cs-office.ts";
 import { csSetup } from "./cs-setup.ts";
 import type { en } from "./en.ts";
 
@@ -83,6 +84,12 @@ export const cs: typeof en = {
     confirmRemove:
       "Odebrat podlaží {{name}} i s jeho šéfem a lidmi? Úkoly a historie zůstanou v logu.",
     needFirst: "Nejdřív přidejte projekt (podlaží).",
+    removed: "{{name}} odebráno",
+    summary: "{{agents}} agentů · {{open}} otevřených",
+    summaryTasks: "{{agents}} agentů · {{open}} otevřených úkolů",
+    working: "{{count}} pracuje",
+    blocked: "{{count}} zablokováno",
+    quiet: "klid",
   },
   agent: {
     removeTitle: "Odebrat tohoto kolegu?",
@@ -100,6 +107,12 @@ export const cs: typeof en = {
     gender: "Pohlaví",
     copyToFloor: "Zkopírovat na podlaží",
     pickFloor: "vyberte podlaží…",
+    hired: "{{name}} nastoupil/a na {{floor}}",
+    namePlaceholder: "např. Nora",
+    promptPlaceholder: "Osobnost, návyky, omezení…",
+    removed: "{{name}} opustil/a {{floor}}",
+    save: "Uložit změny",
+    updated: "{{name}} upraven/a",
   },
   roles: {
     boss: "šéf",
@@ -130,6 +143,13 @@ export const cs: typeof en = {
     done: "Hotovo",
     triage: "triage",
     empty: "Na tomto podlaží zatím nic není. Napište šéfovi do chatu a on z toho udělá úkoly.",
+    all: "Vše",
+    assignedTo: "Přiřazeno: {{name}}",
+    emptyLane: "V této dráze nic není.",
+    finished: "Hotovo {{done}} z {{total}} úkolů",
+    handBack: "Vrátit zpět",
+    moveToDone: "Označit za hotové",
+    unassigned: "nepřiřazeno",
   },
   chat: {
     thinking: "přemýšlí…",
@@ -155,6 +175,11 @@ export const cs: typeof en = {
     answerPlaceholder: "Vaše odpověď…",
     empty:
       "Napište šéfovi tohoto podlaží. Lola mu vaši zprávu donese; on ji naplánuje, rozdělí kolegům a sem napíše, jak to dopadlo.",
+    clickToClose: "Kliknutím kamkoli zavřete",
+    lookAtThis: "Mrkni na tohle.",
+    noBoss: "Na tomto podlaží zatím není šéf",
+    noHits: "Tomu v této konverzaci nic neodpovídá.",
+    search: "Hledat v konverzaci",
   },
   session: {
     usage: "{{input}} in · {{output}} out · {{cache}} cache · turns {{turns}}",
@@ -169,19 +194,6 @@ export const cs: typeof en = {
     error: "chyba {{code}}: {{message}}",
     noSessions: "Zatím žádné session.",
     services: "služby: {{state}}",
-  },
-  resources: {
-    refresh: "Obnovit",
-    pruned: "odebráno {{containers}} kontejnerů, {{volumes}} volumes, {{images}} images",
-    prune: "Uklidit",
-    pruning: "Uklízím…",
-    noInventory: "Zatím není co ukázat.",
-    images: "Image",
-    noneRunning: "Žádné kontejnery.",
-    noneStored: "Žádné volumes.",
-    pruneHint: "Odebere zastavené sandboxy, prošlé volumes úkolů a osiřelé image.",
-    containers: "Kontejnery",
-    volumes: "Volumes",
   },
   settings: {
     intakeEvery: "každých",
@@ -218,6 +230,10 @@ export const cs: typeof en = {
     servicesLabel: "Vlastní kontejnerový engine",
     servicesHint:
       "Docker compose z repozitáře běží uvnitř sandboxu. Session se službami zabere dva sloty daemona.",
+    title: "Nastavení kanceláře",
+    removeFloor: "Odebrat toto podlaží",
+    languageSet: "Jazyk kanceláře změněn",
+    lang: { en: "English", cs: "Čeština" },
   },
   tokens: {
     storedNote: "Uloženo v nastaveném úložišti tajemství.",
@@ -240,41 +256,21 @@ export const cs: typeof en = {
     gemini: "Gemini API klíč",
     geminiHint: "Zaměstnanci na Gemini CLI a OpenCode s modely google/… (klíč z Google AI Studio).",
     github: "GitHub token",
-  },
-  usage: {
-    contextLabel: "Kontextové okno",
-    turns: "turns",
-    running: "běžících session",
-    rateLimited: "rate limity",
-    retryAt: "zkusí znovu v",
-    context: "kontext {{percent}} %",
-    chipTitle: "Spotřeba",
-    chipNote:
-      "Co tato kancelář naměřila za poslední den. Kvótu tarifu jí žádný poskytovatel neřekne, takže ji neukazuje.",
-    all: "vše",
-    in: "in",
-    note: "Počty tokenů hlásí Claude Code. OpenCode, Gemini CLI a Codex mluví ACP, které místo rozpadu tokenů hlásí zaplnění kontextového okna a cenu session — ta přichází živě a je vidět u jednotlivých session v panelu Zaměstnanec.",
-    window: "Okno",
-    day: "24 h",
-    week: "7 d",
-    byAgent: "Po zaměstnancích",
-    byProject: "Po projektech",
-    byDay: "Po dnech",
-    noData: "Zatím žádná data.",
-    tokens: "Tokeny",
-    resources: "Zdroje",
-    limits: "rate limitů: {{count}}",
-    name: "jméno",
-    out: "out",
-    cache: "cache",
-    sessions: "sessions",
+    forgotten: "{{name}} zapomenuto",
   },
   team: {
     intro: "Všichni na tomto podlaží. Kliknutím na kartu uvidíte, co dělají, nebo je nastavíte.",
     onFloor: "Na podlaží {{floor}}",
     working: "pracuje",
     configure: "Nastavit",
+    all: "Vše",
+    closeForm: "Zavřít formulář",
+    empty: "Zatím tu nikdo není — nejdřív najměte šéfa podlaží.",
+    hire: "Najmout někoho nového",
+    idle: "nečinný",
+    newAgent: "+ Nový agent",
   },
+  ...csOffice,
   ...csSetup,
   ...csEditor,
 };

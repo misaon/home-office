@@ -1,4 +1,10 @@
-import { BOSS_FALLBACK, useDesign, useFloor } from "./store.ts";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { AgentId } from "@ho/protocol";
+import type { OfficeHandle } from "../office/scene.ts";
+import { useUi } from "../store.ts";
+import { bossOf, useFloor } from "./live.ts";
+import { useDesign } from "./store.ts";
 
 const BAR: React.CSSProperties = {
   position: "absolute",
@@ -70,23 +76,66 @@ function Round({
   );
 }
 
-/** The camera's own controls, floating over the floor: how close you are, and who you follow. */
-export function StageCamera({ internal }: { internal: boolean }): React.JSX.Element {
-  const floor = useFloor();
-  const zoom = useDesign((s) => s.zoom);
-  const followOn = useDesign((s) => s.followOn);
-  const set = useDesign((s) => s.set);
-  const update = useDesign((s) => s.update);
+/** Keeping the boss selected is what the office already means by following someone. */
+function FollowBoss({ id, name }: { id: AgentId; name: string }): React.JSX.Element {
+  const { t } = useTranslation();
+  const selected = useUi((s) => s.selectedAgentId);
+  const selectAgent = useUi((s) => s.selectAgent);
   const flash = useDesign((s) => s.flash);
-  const boss = floor.team[0] ?? BOSS_FALLBACK;
+  const on = selected === id;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        selectAgent(on ? null : id);
+        flash(on ? t("stage.released") : t("stage.following", { name }));
+      }}
+      style={{
+        ...WIDE,
+        background: on ? "rgba(255,197,49,.16)" : "transparent",
+        color: on ? "#FFD666" : "#CFCCC6",
+      }}
+    >
+      {t("stage.follow", { name })}
+    </button>
+  );
+}
+
+/** The camera's own controls, floating over the floor: how close you are, and who you follow. */
+export function StageCamera({
+  internal,
+  office,
+}: {
+  internal: boolean;
+  office: OfficeHandle | null;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const floor = useFloor();
+  const set = useDesign((s) => s.set);
+  const [zoom, setZoom] = useState(100);
+  const boss = floor === null ? undefined : bossOf(floor);
+
+  // The camera also moves under the pointer and the wheel, so the read-out follows it rather than
+  // only our own clicks.
+  useEffect(() => {
+    if (office === null) {
+      return undefined;
+    }
+    const timer = setInterval(() => {
+      setZoom(office.percent());
+    }, 200);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [office]);
 
   return (
     <div style={BAR}>
       <Round
-        label="Zoom out"
+        label={t("stage.zoomOut")}
         plus={false}
         onClick={() => {
-          update((s) => ({ zoom: Math.max(50, s.zoom - 10) }));
+          office?.zoomOut();
         }}
       />
       <div
@@ -101,10 +150,10 @@ export function StageCamera({ internal }: { internal: boolean }): React.JSX.Elem
         <span>{zoom}</span>%
       </div>
       <Round
-        label="Zoom in"
+        label={t("stage.zoomIn")}
         plus
         onClick={() => {
-          update((s) => ({ zoom: Math.min(200, s.zoom + 10) }));
+          office?.zoomIn();
         }}
       />
       <div
@@ -118,27 +167,14 @@ export function StageCamera({ internal }: { internal: boolean }): React.JSX.Elem
       <button
         type="button"
         onClick={() => {
-          set({ zoom: 100 });
+          office?.fit();
         }}
         style={WIDE}
         className="hop6"
       >
-        Fit
+        {t("stage.fit")}
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          set({ followOn: !followOn });
-          flash(followOn ? "Camera released" : `Camera follows ${boss.name}`);
-        }}
-        style={{
-          ...WIDE,
-          background: followOn ? "rgba(255,197,49,.16)" : "transparent",
-          color: followOn ? "#FFD666" : "#CFCCC6",
-        }}
-      >
-        {`Follow ${boss.name}`}
-      </button>
+      {boss === undefined ? null : <FollowBoss id={boss.id} name={boss.name} />}
       {internal ? (
         <button
           type="button"
@@ -161,7 +197,7 @@ export function StageCamera({ internal }: { internal: boolean }): React.JSX.Elem
           }}
           className="hop7"
         >
-          Edit floor
+          {t("stage.editFloor")}
         </button>
       ) : null}
     </div>

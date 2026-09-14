@@ -1,8 +1,13 @@
+import { SecretKeyName } from "@ho/protocol";
+import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { secretsStatusQuery } from "../queries.ts";
+import { useUi } from "../store.ts";
+import { CredRow } from "./settings-cred-row.tsx";
 import { LanguageCard } from "./settings-language.tsx";
-import { SettingsCreds } from "./settings-creds.tsx";
 import { SettingsFloor } from "./settings-floor.tsx";
 import { DISPLAY, MONO } from "./tokens.ts";
-import { useDesign } from "./store.ts";
+import { useFloors } from "./live.ts";
 
 const HEADING: React.CSSProperties = {
   ...MONO,
@@ -10,6 +15,13 @@ const HEADING: React.CSSProperties = {
   letterSpacing: ".16em",
   textTransform: "uppercase",
   color: "#ABA8A1",
+};
+
+const CARD: React.CSSProperties = {
+  borderRadius: "14px",
+  background: "#101013",
+  border: "1px solid #232328",
+  overflow: "hidden",
 };
 
 /** A section rule with its name on the left and its count on the right. */
@@ -25,9 +37,11 @@ function Rule({ name, count }: { name: string; count: string }): React.JSX.Eleme
 
 /** The office itself: the language it speaks, the keys it holds and the floors it has. */
 export function Settings(): React.JSX.Element {
-  const creds = useDesign((s) => s.creds);
-  const floors = useDesign((s) => s.floors);
-  const addFloor = useDesign((s) => s.addFloor);
+  const { t } = useTranslation();
+  const floors = useFloors();
+  const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
+  const secrets = useQuery(secretsStatusQuery);
+  const present = secrets.data?.present ?? [];
 
   return (
     <div
@@ -54,35 +68,34 @@ export function Settings(): React.JSX.Element {
             lineHeight: "1",
           }}
         >
-          Office settings
+          {t("settings.title")}
         </div>
         <div style={{ fontSize: "11.5px", color: "#ABA8A1", marginTop: "8px", lineHeight: "1.6" }}>
-          The office itself. The people on each floor live in Team.
+          {t("settings.intro")}
         </div>
       </div>
       <div style={{ padding: "0 16px 16px" }}>
         <LanguageCard />
         <Rule
-          name="credentials"
-          count={`${String(creds.filter((x) => x.status === "stored").length)}/${String(creds.length)}`}
+          name={t("settings.credentials")}
+          count={`${String(present.length)}/${String(SecretKeyName.options.length)}`}
         />
-        <SettingsCreds />
-        <Rule name="floors (projects)" count={String(floors.length)} />
-        <div
-          style={{
-            borderRadius: "14px",
-            background: "#101013",
-            border: "1px solid #232328",
-            overflow: "hidden",
-          }}
-        >
+        <div style={{ ...CARD, marginBottom: "18px" }}>
+          {SecretKeyName.options.map((name, i) => (
+            <CredRow key={name} name={name} stored={present.includes(name)} first={i === 0} />
+          ))}
+        </div>
+        <Rule name={t("project.floors")} count={String(floors.length)} />
+        <div style={CARD}>
           {floors.map((floor, index) => (
-            <SettingsFloor key={floor.name} floor={floor} index={index} first={index === 0} />
+            <SettingsFloor key={floor.id} floor={floor} index={index} first={index === 0} />
           ))}
         </div>
         <button
           type="button"
-          onClick={addFloor}
+          onClick={() => {
+            setAddProjectOpen(true);
+          }}
           style={{
             width: "100%",
             marginTop: "12px",
@@ -98,7 +111,7 @@ export function Settings(): React.JSX.Element {
           }}
           className="hopj"
         >
-          + Add a project (floor)
+          {t("project.add")}
         </button>
       </div>
     </div>

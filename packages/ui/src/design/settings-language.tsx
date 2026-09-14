@@ -1,12 +1,11 @@
+import { useTranslation } from "react-i18next";
+import { LANGUAGES, setLanguage, type Language } from "../i18n/index.ts";
 import { pill } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
-const LANGS = ["English", "Čeština"] as const;
-
-/** Which language the office speaks to you in; the agents are briefed in English regardless. */
+/** Which language the office speaks to you in; agents are briefed in English regardless. */
 export function LanguageCard(): React.JSX.Element {
-  const lang = useDesign((s) => s.lang);
-  const set = useDesign((s) => s.set);
+  const { t, i18n } = useTranslation();
   const flash = useDesign((s) => s.flash);
   return (
     <div
@@ -28,23 +27,22 @@ export function LanguageCard(): React.JSX.Element {
         }}
       >
         <div style={{ flex: "1", minWidth: "120px" }}>
-          <div style={{ fontSize: "13px" }}>Language</div>
+          <div style={{ fontSize: "13px" }}>{t("settings.language")}</div>
           <div style={{ fontSize: "11px", color: "#A6A39C", marginTop: "4px", lineHeight: "1.5" }}>
-            Agents are always briefed in English.
+            {t("settings.languageHint")}
           </div>
         </div>
         <div style={{ display: "flex", gap: "5px", flex: "0 0 auto" }}>
-          {LANGS.map((name) => {
-            const tone = pill(lang === name);
+          {LANGUAGES.map((code: Language) => {
+            const tone = pill(i18n.language === code);
             return (
               <button
                 type="button"
-                key={name}
+                key={code}
                 onClick={() => {
-                  set({ lang: name });
-                  flash(
-                    name === "English" ? "Office language: English" : "Jazyk kanceláře: čeština",
-                  );
+                  void setLanguage(code).then(() => {
+                    flash(t("settings.languageSet"));
+                  });
                 }}
                 style={{
                   padding: "6px 13px",
@@ -58,7 +56,7 @@ export function LanguageCard(): React.JSX.Element {
                 }}
                 className="hop4"
               >
-                {name}
+                {t(`settings.lang.${code}`)}
               </button>
             );
           })}

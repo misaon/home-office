@@ -1,22 +1,12 @@
 import type { SecretKeyName } from "@ho/protocol";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Button, Failure, Section } from "../kit/controls.tsx";
+import { Button, Failure } from "../kit/controls.tsx";
 import { doctorQuery, secretsStatusQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
-import { useOnline } from "../store.ts";
-import { Card } from "@/components/ui/card";
 import { Button as ShadcnButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-const KEYS = [
-  { key: "anthropic-oauth-token", label: "tokens.claude", hint: "tokens.claudeHint" },
-  { key: "anthropic-api-key", label: "tokens.anthropic", hint: "tokens.anthropicHint" },
-  { key: "openai-api-key", label: "tokens.openai", hint: "tokens.openaiHint" },
-  { key: "gemini-api-key", label: "tokens.gemini", hint: "tokens.geminiHint" },
-  { key: "github-token", label: "tokens.github", hint: "tokens.githubHint" },
-] as const satisfies readonly { key: SecretKeyName; label: string; hint: string }[];
 
 /**
  * A password field with Save, and Forget once the secret is stored; the setup checklist and Settings share
@@ -124,28 +114,5 @@ export function SecretField({
       </div>
       <Failure error={store.error ?? forget.error} />
     </div>
-  );
-}
-
-export function TokenSettings(): React.JSX.Element {
-  const { t } = useTranslation();
-  const online = useOnline();
-  const status = useQuery({ ...secretsStatusQuery, enabled: online });
-  const present = status.data?.present ?? [];
-  return (
-    <Section title={t("settings.credentials")}>
-      {KEYS.map(({ key, label, hint }) => (
-        <Card key={key} className="animate-rise space-y-2.5 p-4 text-xs">
-          <div className="flex items-center justify-between">
-            <span className="font-medium">{t(label)}</span>
-            <Badge tone={present.includes(key) ? "good" : "neutral"}>
-              {present.includes(key) ? t("tokens.stored") : t("tokens.missing")}
-            </Badge>
-          </div>
-          <p className="text-2xs leading-relaxed text-muted-foreground">{t(hint)}</p>
-          <SecretField secret={key} label={t(label)} stored={present.includes(key)} />
-        </Card>
-      ))}
-    </Section>
   );
 }

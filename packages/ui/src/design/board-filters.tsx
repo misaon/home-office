@@ -1,12 +1,14 @@
+import { useTranslation } from "react-i18next";
+import type { Floor, Lane } from "./data.ts";
 import { MONO, pill } from "./tokens.ts";
-import { countBy, useDesign, useFloor } from "./store.ts";
+import { useDesign } from "./store.ts";
 
 const FILTERS = [
-  ["all", "All", null],
-  ["running", "In progress", "var(--a,#FFC531)"],
-  ["blocked", "Blocked", "#FF9E9E"],
-  ["done", "Done", "#5BD9A0"],
-] as const;
+  ["all", "board.all", null],
+  ["running", "board.inProgress", "var(--a,#FFC531)"],
+  ["blocked", "board.blocked", "#FF9E9E"],
+  ["done", "board.done", "#5BD9A0"],
+] as const satisfies readonly [Lane | "all", string, string | null][];
 
 const CHIP: React.CSSProperties = {
   display: "flex",
@@ -20,11 +22,10 @@ const CHIP: React.CSSProperties = {
 };
 
 /** Which lanes the board is showing, each with how many cards it holds. */
-export function BoardFilters(): React.JSX.Element {
-  const floor = useFloor();
+export function BoardFilters({ floor }: { floor: Floor }): React.JSX.Element {
+  const { t } = useTranslation();
   const boardFilter = useDesign((s) => s.boardFilter);
   const set = useDesign((s) => s.set);
-  const cards = floor.cards;
 
   return (
     <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -43,9 +44,9 @@ export function BoardFilters(): React.JSX.Element {
             {dot === null ? null : (
               <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: dot }} />
             )}
-            <span>{label}</span>
+            <span>{t(label)}</span>
             <span style={{ ...MONO, fontSize: "10.5px", opacity: ".75" }}>
-              {key === "all" ? cards.length : countBy(cards, key)}
+              {key === "all" ? floor.cards.length : floor.cards.filter((c) => c.s === key).length}
             </span>
           </button>
         );

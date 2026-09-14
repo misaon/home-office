@@ -1,23 +1,68 @@
-import { CAPS, FIELD, PRIMARY, SheetShell } from "./sheet-shell.tsx";
+import { AgentRole, EffortLevel, ProviderId } from "@ho/protocol";
+import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import type { Floor, Member } from "./data.ts";
+import { requireClient } from "../rpc.ts";
 import { AgentStatus } from "./sheet-agent-status.tsx";
-import { SelectField } from "./select-field.tsx";
-import { useDesign, useFloor } from "./store.ts";
-import type { Member } from "./data.ts";
+import { AgentFields } from "./sheet-agent-fields.tsx";
+import { CAPS, FIELD, PRIMARY, SheetShell } from "./sheet-shell.tsx";
+import { useDesign } from "./store.ts";
 
-const FIELDS: [keyof Member, readonly string[]][] = [
-  ["role", ["worker", "boss"]],
-  ["provider", ["Claude Code", "OpenCode", "Codex", "Gemini CLI"]],
-  ["model", ["Opus", "Sonnet", "Haiku"]],
-  ["effort", ["low", "medium", "high"]],
-];
+const DANGER: React.CSSProperties = {
+  padding: "11px 15px",
+  borderRadius: "11px",
+  border: "1px solid rgba(255,122,122,.3)",
+  background: "rgba(255,122,122,.1)",
+  color: "#FFB3B3",
+  fontSize: "12.5px",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+  transition: "all .2s",
+};
 
 /** One colleague, opened up: what they are doing now, and everything you can change about them. */
-export function AgentSheet({ draft, index }: { draft: Member; index: number }): React.JSX.Element {
-  const floor = useFloor();
+export function AgentSheet({ draft, floor }: { draft: Member; floor: Floor }): React.JSX.Element {
+  const { t } = useTranslation();
   const set = useDesign((s) => s.set);
   const update = useDesign((s) => s.update);
-  const patchCur = useDesign((s) => s.patchCur);
   const flash = useDesign((s) => s.flash);
+  const done = (message: string): void => {
+    set({ sheet: null, sheetDraft: null });
+    flash(message);
+  };
+  const fail = (error: Error): void => {
+    flash(error.message);
+  };
+
+  const save = useMutation({
+    mutationFn: () =>
+      requireClient().agents.update({
+        id: draft.id,
+        patch: {
+          name: draft.name.trim(),
+          role: AgentRole.parse(draft.role),
+          provider: ProviderId.parse(draft.provider),
+          model: draft.model.trim(),
+          effort: EffortLevel.parse(draft.effort),
+          basePrompt: draft.prompt,
+        },
+      }),
+    onSuccess: () => {
+      done(t("agent.updated", { name: draft.name }));
+    },
+    onError: fail,
+  });
+  const remove = useMutation({
+    mutationFn: () => requireClient().agents.remove({ id: draft.id }),
+    onSuccess: () => {
+      done(t("agent.removed", { name: draft.name, floor: floor.name }));
+    },
+    onError: fail,
+  });
+
+  const patch = (next: Partial<Member>): void => {
+    update((s) => ({ sheetDraft: s.sheetDraft === null ? null : { ...s.sheetDraft, ...next } }));
+  };
 
   return (
     <SheetShell
@@ -25,47 +70,21 @@ export function AgentSheet({ draft, index }: { draft: Member; index: number }): 
       subtitle={`${draft.provider} · ${draft.model} / ${draft.effort}`}
     >
       <AgentStatus draft={draft} />
-      <div style={{ ...CAPS, marginBottom: "7px" }}>name</div>
+      <div style={{ ...CAPS, marginBottom: "7px" }}>{t("agent.name")}</div>
       <input
         value={draft.name}
         onChange={(e) => {
-          const name = e.target.value;
-          update((s) => ({ sheetDraft: s.sheetDraft === null ? null : { ...s.sheetDraft, name } }));
+          patch({ name: e.target.value });
         }}
         style={{ ...FIELD, fontSize: "13px", marginBottom: "14px" }}
       />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "11px",
-          marginBottom: "14px",
-        }}
-      >
-        {FIELDS.map(([name, options]) => (
-          <SelectField
-            key={name}
-            scope="sheet"
-            name={name}
-            options={options}
-            value={String(draft[name])}
-            onPick={(next) => {
-              update((s) => ({
-                sheetDraft: s.sheetDraft === null ? null : { ...s.sheetDraft, [name]: next },
-              }));
-            }}
-          />
-        ))}
-      </div>
-      <div style={{ ...CAPS, marginBottom: "7px" }}>base prompt</div>
+      <AgentFields draft={draft} patch={patch} />
+      <div style={{ ...CAPS, marginBottom: "7px" }}>{t("agent.basePrompt")}</div>
       <textarea
         rows={5}
         value={draft.prompt}
         onChange={(e) => {
-          const prompt = e.target.value;
-          update((s) => ({
-            sheetDraft: s.sheetDraft === null ? null : { ...s.sheetDraft, prompt },
-          }));
+          patch({ prompt: e.target.value });
         }}
         style={{
           ...FIELD,
@@ -79,37 +98,25 @@ export function AgentSheet({ draft, index }: { draft: Member; index: number }): 
       <div style={{ display: "flex", gap: "9px" }}>
         <button
           type="button"
+          disabled={save.isPending}
           onClick={() => {
-            patchCur({ team: floor.team.map((p, n) => (n === index ? { ...draft } : p)) });
-            set({ sheet: null, sheetDraft: null });
-            flash("Agent updated");
+            save.mutate();
           }}
           style={PRIMARY}
           className="hopm"
         >
-          Save changes
+          {t("agent.save")}
         </button>
         <button
           type="button"
+          disabled={remove.isPending}
           onClick={() => {
-            patchCur({ team: floor.team.filter((_, n) => n !== index) });
-            set({ sheet: null, sheetDraft: null });
-            flash("Agent removed from the floor");
+            remove.mutate();
           }}
-          style={{
-            padding: "11px 15px",
-            borderRadius: "11px",
-            border: "1px solid rgba(255,122,122,.3)",
-            background: "rgba(255,122,122,.1)",
-            color: "#FFB3B3",
-            fontSize: "12.5px",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-            transition: "all .2s",
-          }}
+          style={DANGER}
           className="hopp"
         >
-          Remove
+          {t("common.remove")}
         </button>
       </div>
     </SheetShell>

@@ -1,5 +1,6 @@
 import type { Message } from "./data.ts";
 import { MONO } from "./tokens.ts";
+import { useTranslation } from "react-i18next";
 import { useDesign } from "./store.ts";
 
 const META: React.CSSProperties = { ...MONO, fontSize: "10px", letterSpacing: ".04em" };
@@ -44,6 +45,7 @@ export function ChatMessage({
   message: Message;
   boss: string;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const set = useDesign((s) => s.set);
   return (
     <div
@@ -56,20 +58,22 @@ export function ChatMessage({
       {message.mine ? (
         <div style={MINE}>
           <div style={{ ...META, color: "#E4C778", marginBottom: "5px" }}>
-            You · <span>{message.time}</span>
+            {t("chat.you")} · <span>{message.time}</span>
           </div>
           <div style={{ ...BODY, color: "#F9F4E7" }}>{message.text}</div>
           {message.img === undefined ? null : (
             <button
               type="button"
               onClick={() => {
-                set({ lightbox: true });
+                if (message.attachment !== undefined) {
+                  set({ lightbox: message.attachment });
+                }
               }}
               style={THUMB}
               className="hop9"
             >
               <span style={{ ...MONO, fontSize: "10px", color: "#E4C778" }}>
-                <span>{message.img}</span> · click to open
+                <span>{message.img}</span> · {t("chat.imageOpen")}
               </span>
             </button>
           )}

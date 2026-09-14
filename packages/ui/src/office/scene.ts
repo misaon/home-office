@@ -148,7 +148,17 @@ class OfficeScene extends MapView {
  * Pixi ticker (stopped while the document is hidden, where a still frame is drawn on every store change
  * instead), the visibility watch and the dev console handle.
  */
-export function startOffice(host: HTMLElement): () => void {
+/** What React can do to the office once it is running: the camera, and stopping it. */
+export type OfficeHandle = {
+  stop: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  fit: () => void;
+  /** How close the floor is, for the camera bar's read-out. */
+  percent: () => number;
+};
+
+export function startOffice(host: HTMLElement): OfficeHandle {
   const scene = new OfficeScene();
   let disposed = false;
   let unsubscribe: (() => void) | null = null;
@@ -203,11 +213,23 @@ export function startOffice(host: HTMLElement): () => void {
         useUi.getState().setError(errorMessage(error));
       }
     });
-  return () => {
-    disposed = true;
-    bridge.setWatching(false);
-    unsubscribe?.();
-    document.removeEventListener("visibilitychange", onVisibility);
-    scene.destroy();
+  return {
+    stop: () => {
+      disposed = true;
+      bridge.setWatching(false);
+      unsubscribe?.();
+      document.removeEventListener("visibilitychange", onVisibility);
+      scene.destroy();
+    },
+    zoomIn: () => {
+      scene.camera.zoomStep(1.25);
+    },
+    zoomOut: () => {
+      scene.camera.zoomStep(1 / 1.25);
+    },
+    fit: () => {
+      scene.camera.fit();
+    },
+    percent: () => scene.camera.percent,
   };
 }

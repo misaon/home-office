@@ -1,12 +1,87 @@
+import { isImageType, type Attachment } from "@ho/protocol";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { attachmentUrl } from "../attachments.ts";
 import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
+/** The strip under the picture: what the file is, and the way out. */
+function LightboxBar({
+  attachment,
+  onClose,
+}: {
+  attachment: Attachment;
+  onClose: () => void;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <div
+      style={{
+        flex: "0 0 auto",
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        padding: "13px 16px",
+        background: "#111114",
+        borderTop: "1px solid #26262C",
+      }}
+    >
+      <span
+        style={{
+          flex: "1",
+          minWidth: "0",
+          ...MONO,
+          fontSize: "11.5px",
+          color: "#CFCCC6",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {`${attachment.name} · ${(attachment.bytes / 1024).toFixed(0)} kB`}
+      </span>
+      <button
+        type="button"
+        onClick={onClose}
+        style={{
+          padding: "8px 13px",
+          borderRadius: "9px",
+          border: "0",
+          background: "var(--a,#FFC531)",
+          color: "#150F02",
+          fontSize: "12px",
+          fontWeight: "600",
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {t("common.close")}
+      </button>
+    </div>
+  );
+}
+
 /** An attachment at full size, over everything, closed by clicking anywhere. */
-export function Lightbox(): React.JSX.Element {
+export function Lightbox({ attachment }: { attachment: Attachment }): React.JSX.Element {
+  const { t } = useTranslation();
   const set = useDesign((s) => s.set);
+  const [url, setUrl] = useState<string | null>(null);
   const close = (): void => {
-    set({ lightbox: false });
+    set({ lightbox: null });
   };
+
+  useEffect(() => {
+    let live = true;
+    void attachmentUrl(attachment).then((value) => {
+      if (live) {
+        setUrl(value);
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [attachment]);
+
   return (
     <div
       role="presentation"
@@ -44,79 +119,30 @@ export function Lightbox(): React.JSX.Element {
           style={{
             flex: "1",
             minHeight: "0",
-            backgroundImage:
-              "repeating-linear-gradient(135deg,rgba(255,197,49,.16) 0 16px,rgba(255,197,49,.05) 16px 32px)",
+            background: "#0C0C0E",
             display: "grid",
             placeItems: "center",
+            overflow: "hidden",
           }}
         >
-          <span style={{ ...MONO, fontSize: "13px", color: "#E4C778" }}>
-            floor-plan.png · 2 400 × 1 350
-          </span>
+          {!isImageType(attachment.mime) ? (
+            <span style={{ ...MONO, fontSize: "13px", color: "#E4C778" }}>{attachment.name}</span>
+          ) : url === null ? (
+            <span style={{ ...MONO, fontSize: "13px", color: "#E4C778" }}>
+              {t("common.checking")}
+            </span>
+          ) : (
+            <img
+              src={url}
+              alt={attachment.name}
+              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+            />
+          )}
         </div>
-        <div
-          style={{
-            flex: "0 0 auto",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            padding: "13px 16px",
-            background: "#111114",
-            borderTop: "1px solid #26262C",
-          }}
-        >
-          <span
-            style={{
-              flex: "1",
-              minWidth: "0",
-              ...MONO,
-              fontSize: "11.5px",
-              color: "#CFCCC6",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            floor-plan.png · sent 21:38 · 1.2 MB
-          </span>
-          <button
-            type="button"
-            style={{
-              padding: "8px 13px",
-              borderRadius: "9px",
-              border: "1px solid #2C2C32",
-              background: "transparent",
-              fontSize: "12px",
-              color: "#CFCCC6",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              transition: "all .2s",
-            }}
-            className="hop8"
-          >
-            Download
-          </button>
-          <button
-            type="button"
-            onClick={close}
-            style={{
-              padding: "8px 13px",
-              borderRadius: "9px",
-              border: "0",
-              background: "var(--a,#FFC531)",
-              color: "#150F02",
-              fontSize: "12px",
-              fontWeight: "600",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Close
-          </button>
-        </div>
+        <LightboxBar attachment={attachment} onClose={close} />
       </div>
       <span style={{ fontSize: "11.5px", color: "#A6A39C", flex: "0 0 auto" }}>
-        Click anywhere to close
+        {t("chat.clickToClose")}
       </span>
     </div>
   );

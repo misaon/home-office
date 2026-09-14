@@ -187,11 +187,12 @@ are fewer files than weights because these are variable fonts: one file per subs
 of its family, exactly as the original stylesheet had it, and the file names carry the first weight that
 referenced them. The built stylesheet inlines all eleven, so the design makes no font request at all.
 
-The port has its own entry, `packages/ui/design.html` → `src/design/main.tsx`, and its own stylesheet.
-It does not import `src/styles.css`, Tailwind or shadcn: the drawing is expressed in inline styles and
-thirty `:hover` rules, and mixing a second reset into it would move pixels. The knobs the design was
-drawn with (`internalTools`, `accent`, `panelWidth`, `ambientGlow`, `stageTheme`) are readable from the
-query string, which is what lets a variant be held against the original.
+These components are the office: `packages/ui/index.html` renders them, and `packages/ui/src/design/live.ts`
+is the single place that says the daemon's domain in the drawing's narrower language — three lanes and a
+queue rather than nine task states, working-or-idle rather than five session states. The drawing is
+expressed in inline styles and thirty `:hover` rules in `design.css`; `styles.css` (Tailwind and shadcn)
+is still loaded for the three surfaces that have not been restyled yet — the setup overlay, the
+add-project dialog and the internal editor.
 
 ## Primary references
 

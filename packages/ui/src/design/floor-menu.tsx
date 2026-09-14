@@ -1,4 +1,7 @@
+import { useTranslation } from "react-i18next";
 import { FloorRow } from "./floor-row.tsx";
+import { useFloors } from "./live.ts";
+import { useUi } from "../store.ts";
 import { useDesign } from "./store.ts";
 
 const PANEL: React.CSSProperties = {
@@ -41,13 +44,14 @@ const ADD: React.CSSProperties = {
 
 /** Which floor the office is showing, with a search because a workshop can have many. */
 export function FloorMenu(): React.JSX.Element {
-  const floors = useDesign((s) => s.floors);
-  const floorSel = useDesign((s) => s.floorSel);
+  const { t } = useTranslation();
+  const floors = useFloors();
+  const floorId = useUi((s) => s.floorId);
+  const selectFloor = useUi((s) => s.selectFloor);
+  const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
   const floorQuery = useDesign((s) => s.floorQuery);
   const floorX = useDesign((s) => s.floorX);
   const set = useDesign((s) => s.set);
-  const flash = useDesign((s) => s.flash);
-  const addFloor = useDesign((s) => s.addFloor);
 
   const needle = floorQuery.trim().toLowerCase();
   const rows = floors
@@ -73,7 +77,7 @@ export function FloorMenu(): React.JSX.Element {
           onChange={(e) => {
             set({ floorQuery: e.target.value });
           }}
-          placeholder="Search floors"
+          placeholder={t("project.search")}
           style={{
             flex: "1",
             minWidth: "0",
@@ -97,10 +101,10 @@ export function FloorMenu(): React.JSX.Element {
             key={floor.name}
             floor={floor}
             index={index}
-            current={index === floorSel}
+            current={floor.id === floorId}
             onPick={() => {
-              set({ floorSel: index, floorOpen: false, sheet: null, query: "", searchOpen: false });
-              flash(`Moved to ${floor.name}`);
+              selectFloor(floor.id);
+              set({ floorOpen: false, sheet: null, query: "", searchOpen: false });
             }}
           />
         ))}
@@ -111,7 +115,15 @@ export function FloorMenu(): React.JSX.Element {
         ) : null}
       </div>
       <div style={{ height: "1px", background: "#26262C", margin: "6px 4px" }} />
-      <button type="button" onClick={addFloor} style={ADD} className="hop2">
+      <button
+        type="button"
+        onClick={() => {
+          set({ floorOpen: false });
+          setAddProjectOpen(true);
+        }}
+        style={ADD}
+        className="hop2"
+      >
         <span
           style={{
             width: "22px",
@@ -135,7 +147,7 @@ export function FloorMenu(): React.JSX.Element {
             <line x1="2" y1="6" x2="10" y2="6" />
           </svg>
         </span>
-        <span style={{ fontSize: "12.5px", color: "#FFD666" }}>Add a project (floor)</span>
+        <span style={{ fontSize: "12.5px", color: "#FFD666" }}>{t("project.add")}</span>
       </button>
     </div>
   );

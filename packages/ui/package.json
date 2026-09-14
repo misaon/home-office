@@ -14,7 +14,6 @@
     "@orpc/contract": "catalog:",
     "@tanstack/react-query": "catalog:",
     "class-variance-authority": "0.7.1",
-    "cmdk": "1.1.1",
     "cn": "0.3.0",
     "i18next": "catalog:",
     "lucide-react": "1.45.0",

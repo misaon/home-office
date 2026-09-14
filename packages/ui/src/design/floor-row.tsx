@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
 import { MONO } from "./tokens.ts";
 
@@ -45,7 +46,8 @@ const PILL: React.CSSProperties = {
 /** How busy a floor is, said in one pill: who is working, or what is stuck, or that it is quiet. */
 function busyOf(floor: Floor): {
   busy: boolean;
-  label: string;
+  working: number;
+  blocked: number;
   dot: string;
   bg: string;
   bd: string;
@@ -57,11 +59,8 @@ function busyOf(floor: Floor): {
   const busy = working > 0 || running > 0;
   return {
     busy,
-    label: busy
-      ? `${String(working > 0 ? working : running)} working`
-      : blocked > 0
-        ? `${String(blocked)} blocked`
-        : "quiet",
+    working: working > 0 ? working : running,
+    blocked,
     dot: busy ? "var(--a,#FFC531)" : blocked > 0 ? "#FF9E9E" : "#6E6B66",
     bg: busy ? "rgba(255,197,49,.1)" : blocked > 0 ? "rgba(255,122,122,.1)" : "#1B1B20",
     bd: busy ? "rgba(255,197,49,.3)" : blocked > 0 ? "rgba(255,122,122,.28)" : "#2C2C32",
@@ -81,6 +80,7 @@ export function FloorRow({
   current: boolean;
   onPick: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const busy = busyOf(floor);
   const open = floor.cards.filter((x) => x.s !== "done").length;
 
@@ -108,7 +108,7 @@ export function FloorRow({
       <span style={{ flex: "1", minWidth: "0" }}>
         <span style={{ ...NAME, color: current ? "#FFD666" : "#E9E7E2" }}>{floor.name}</span>
         <span style={{ display: "block", fontSize: "10.5px", color: "#A6A39C", marginTop: "3px" }}>
-          {`${String(floor.team.length)}${floor.team.length === 1 ? " agent · " : " agents · "}${String(open)} open`}
+          {t("project.summary", { agents: floor.team.length, open })}
         </span>
       </span>
       <span style={{ ...PILL, background: busy.bg, border: `1px solid ${busy.bd}` }}>
@@ -131,7 +131,11 @@ export function FloorRow({
           ) : null}
         </span>
         <span style={{ ...MONO, fontSize: "9.5px", whiteSpace: "nowrap", color: busy.fg }}>
-          {busy.label}
+          {busy.busy
+            ? t("project.working", { count: busy.working })
+            : busy.blocked > 0
+              ? t("project.blocked", { count: busy.blocked })
+              : t("project.quiet")}
         </span>
       </span>
     </button>

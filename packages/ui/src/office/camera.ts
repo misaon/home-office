@@ -49,6 +49,19 @@ export class Camera {
     this.#clamp();
   }
 
+  /**
+   * How close the floor is, as a percentage of the zoom that fits it: 100 % is the whole floor in view,
+   * and it is the number the camera bar reads out.
+   */
+  get percent(): number {
+    return Math.round((this.#zoom / this.#fitZoom()) * 100);
+  }
+
+  /** Zooms about the middle of the view, which is what a button press means. */
+  zoomStep(factor: number): void {
+    this.zoomBy(factor, this.#view.width / 2, this.#view.height / 2);
+  }
+
   /** The cell under a canvas pixel (may be off the map). */
   cellAt(canvasX: number, canvasY: number): { x: number; y: number } {
     return {

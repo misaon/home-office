@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import { ROLE_KEY } from "../i18n/labels.ts";
 import type { Member } from "./data.ts";
 import { DISPLAY, MONO, separator } from "./tokens.ts";
 
@@ -62,6 +64,7 @@ export function TeamRow({
   first: boolean;
   onOpen: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const working = person.status === "working";
   const chief = person.role === "boss";
   const accent = working ? "var(--a,#FFC531)" : "#3A3A41";
@@ -110,7 +113,7 @@ export function TeamRow({
                 color: chief ? "#FFD666" : "#BEBBB4",
               }}
             >
-              {person.role}
+              {t(ROLE_KEY[person.role])}
             </span>
           </div>
           <div style={META}>
@@ -123,7 +126,7 @@ export function TeamRow({
               }}
             >
               <span style={{ ...DOT, background: accent }} />
-              <span>{person.status}</span>
+              <span>{t(`team.${person.status}`)}</span>
             </span>
             <span style={{ opacity: ".4" }}>·</span>
             <span>{`${person.model.toLowerCase()} / ${person.effort}`}</span>

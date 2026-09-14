@@ -1,10 +1,12 @@
+import { useTranslation } from "react-i18next";
+import type { Floor } from "./data.ts";
 import { DISPLAY, MONO, pill } from "./tokens.ts";
-import { useDesign, useFloor } from "./store.ts";
+import { useDesign } from "./store.ts";
 
 const FILTERS = [
-  ["all", "All", null],
-  ["working", "Working", "var(--a,#FFC531)"],
-  ["idle", "Idle", "#8E8B85"],
+  ["all", "team.all", null],
+  ["working", "team.working", "var(--a,#FFC531)"],
+  ["idle", "team.idle", "#8E8B85"],
 ] as const;
 
 const TOP: React.CSSProperties = {
@@ -44,8 +46,14 @@ const CHIP: React.CSSProperties = {
 };
 
 /** How many people are on the floor, the button that hires another, and the three filters. */
-export function TeamHeader({ onToggleAdd }: { onToggleAdd: () => void }): React.JSX.Element {
-  const floor = useFloor();
+export function TeamHeader({
+  floor,
+  onToggleAdd,
+}: {
+  floor: Floor;
+  onToggleAdd: () => void;
+}): React.JSX.Element {
+  const { t } = useTranslation();
   const teamFilter = useDesign((s) => s.teamFilter);
   const addAgent = useDesign((s) => s.addAgent);
   const set = useDesign((s) => s.set);
@@ -87,7 +95,7 @@ export function TeamHeader({ onToggleAdd }: { onToggleAdd: () => void }): React.
           }}
           className="hopi"
         >
-          {addAgent ? "Cancel" : "+ New agent"}
+          {addAgent ? t("common.cancel") : t("team.newAgent")}
         </button>
       </div>
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -113,7 +121,7 @@ export function TeamHeader({ onToggleAdd }: { onToggleAdd: () => void }): React.
                   style={{ width: "6px", height: "6px", borderRadius: "50%", background: dot }}
                 />
               )}
-              <span>{label}</span>
+              <span>{t(label)}</span>
               <span style={{ ...MONO, fontSize: "10.5px", opacity: ".75" }}>
                 {key === "all" ? team.length : team.filter((p) => p.status === key).length}
               </span>

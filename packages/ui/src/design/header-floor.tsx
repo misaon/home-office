@@ -1,21 +1,30 @@
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { FloorMenu } from "./floor-menu.tsx";
 import { MONO } from "./tokens.ts";
-import { useDesign, useFloor } from "./store.ts";
+import { useFloor, useFloors } from "./live.ts";
+import { useDesign } from "./store.ts";
 
 /** Which floor you are on, and the door to all the others. */
-export function HeaderFloor(): React.JSX.Element {
+export function HeaderFloor(): React.JSX.Element | null {
+  const { t } = useTranslation();
+  const floors = useFloors();
   const floor = useFloor();
-  const floorSel = useDesign((s) => s.floorSel);
   const floorOpen = useDesign((s) => s.floorOpen);
   const update = useDesign((s) => s.update);
   const button = useRef<HTMLButtonElement>(null);
+  if (floor === null) {
+    return null;
+  }
+  const index = floors.findIndex((f) => f.id === floor.id);
 
   return (
     <div style={{ position: "relative", flex: "0 1 auto", minWidth: "0" }}>
       <button
         type="button"
         ref={button}
+        title={floor.name}
+        aria-label={t("project.floors")}
         onClick={() => {
           const left =
             button.current === null ? 18 : Math.round(button.current.getBoundingClientRect().left);
@@ -52,7 +61,7 @@ export function HeaderFloor(): React.JSX.Element {
             fontWeight: "500",
           }}
         >
-          <span>{floorSel + 1}</span>
+          <span>{index + 1}</span>
         </span>
         <span
           style={{

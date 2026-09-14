@@ -1,6 +1,9 @@
 import { HeaderBrand } from "./header-brand.tsx";
 import { HeaderFloor } from "./header-floor.tsx";
 import { HeaderTabs } from "./header-tabs.tsx";
+import { useTranslation } from "react-i18next";
+import { Connection } from "./connection.tsx";
+import { useUi } from "../store.ts";
 import { useDesign } from "./store.ts";
 
 const BAR: React.CSSProperties = {
@@ -33,7 +36,15 @@ const TOOL: React.CSSProperties = {
 };
 
 /** The office's own top bar: who you are looking at, and which of the five panels is open. */
-export function Header({ internal }: { internal: boolean }): React.JSX.Element {
+export function Header({
+  internal,
+  hasFloors,
+}: {
+  internal: boolean;
+  hasFloors: boolean;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const setSetupOpen = useUi((s) => s.setSetupOpen);
   const set = useDesign((s) => s.set);
 
   return (
@@ -49,7 +60,8 @@ export function Header({ internal }: { internal: boolean }): React.JSX.Element {
         }}
       >
         <HeaderBrand />
-        <HeaderFloor />
+        <Connection />
+        {hasFloors ? <HeaderFloor /> : null}
       </div>
       <div style={{ display: "flex", alignItems: "stretch", height: "100%", flex: "0 0 auto" }}>
         <div
@@ -82,13 +94,13 @@ export function Header({ internal }: { internal: boolean }): React.JSX.Element {
                 <line x1="1.6" y1="5.4" x2="12.4" y2="5.4" />
                 <line x1="5.4" y1="5.4" x2="5.4" y2="12.4" />
               </svg>
-              Editor
+              {t("app.editorButton")}
             </button>
           ) : null}
           <button
             type="button"
             onClick={() => {
-              set({ setup: true });
+              setSetupOpen(true);
             }}
             style={TOOL}
             className="hop3"
@@ -104,10 +116,10 @@ export function Header({ internal }: { internal: boolean }): React.JSX.Element {
               <circle cx="7" cy="7" r="2.4" />
               <circle cx="7" cy="7" r="5.4" />
             </svg>
-            Setup
+            {t("app.setup")}
           </button>
         </div>
-        <HeaderTabs />
+        {hasFloors ? <HeaderTabs /> : <div style={{ width: "var(--pw,420px)" }} />}
       </div>
     </header>
   );

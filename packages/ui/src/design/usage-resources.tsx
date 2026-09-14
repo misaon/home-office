@@ -1,148 +1,98 @@
+import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { resourcesQuery } from "../queries.ts";
+import type { Floor } from "./data.ts";
 import { MONO, separator } from "./tokens.ts";
-import { useFloor } from "./store.ts";
 
-const LANE: React.CSSProperties = {
-  flex: "1",
-  height: "4px",
-  borderRadius: "99px",
-  background: "#1F1F24",
+const CARD: React.CSSProperties = {
+  borderRadius: "14px",
+  background: "#101013",
+  border: "1px solid #232328",
   overflow: "hidden",
-  minWidth: "40px",
+  marginBottom: "18px",
 };
 
-const LABEL: React.CSSProperties = { ...MONO, fontSize: "10px", color: "#A6A39C", width: "30px" };
-const READING: React.CSSProperties = {
+const RULE: React.CSSProperties = {
   ...MONO,
   fontSize: "10px",
-  color: "#CFCCC6",
-  width: "36px",
-  textAlign: "right",
+  letterSpacing: ".16em",
+  textTransform: "uppercase",
+  color: "#ABA8A1",
 };
 
-/** One sandbox's two meters. */
-function Meter({
-  name,
-  value,
-  fill,
-  delay,
-  spaced = false,
-}: {
-  name: string;
-  value: string;
-  fill: string;
-  delay: string;
-  spaced?: boolean;
-}): React.JSX.Element {
+const NAME: React.CSSProperties = {
+  ...MONO,
+  fontSize: "12px",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const gb = (bytes: number): string => `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+
+/** A rule with its count on the right. */
+function Rule({ name, count }: { name: string; count: string }): React.JSX.Element {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "9px",
-        ...(spaced ? { marginBottom: "7px" } : {}),
-      }}
-    >
-      <span style={LABEL}>{name}</span>
-      <span style={LANE}>
-        <span
-          style={{
-            display: "block",
-            height: "100%",
-            background: fill,
-            transformOrigin: "left",
-            animation: `growX ${delay} cubic-bezier(.2,.9,.3,1) both`,
-            width: value,
-          }}
-        />
-      </span>
-      <span style={READING}>{value}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "0 2px 9px" }}>
+      <span style={RULE}>{name}</span>
+      <span style={{ flex: "1", height: "1px", background: "#1F1F24" }} />
+      <span style={{ ...MONO, fontSize: "10.5px", color: "#A6A39C" }}>{count}</span>
     </div>
   );
 }
 
-/** What the floor is running on: one box per agent, and the engine underneath them. */
-export function UsageResources(): React.JSX.Element {
-  const floor = useFloor();
-  const boxes = floor.team.map((p) => ({
-    name: `${p.name.toLowerCase()}-${floor.name}`,
-    dot: p.status === "working" ? "#5BD9A0" : "#3A3A41",
-    up: p.status === "working" ? "up 41m" : "idle 12m",
-    cpu: p.status === "working" ? "34%" : "4%",
-    mem: p.status === "working" ? "58%" : "21%",
-  }));
+/** What the office is actually running on: the sandboxes that exist and the disk they hold. */
+export function UsageResources({ floor }: { floor: Floor }): React.JSX.Element {
+  const { t } = useTranslation();
+  const query = useQuery({ ...resourcesQuery, refetchInterval: 20_000 });
+  const inventory = query.data;
+
+  if (inventory === undefined) {
+    return (
+      <div style={{ padding: "16px 2px", fontSize: "12px", color: "#A6A39C" }}>
+        {query.isError ? t("resources.failed") : t("common.checking")}
+      </div>
+    );
+  }
 
   return (
     <div style={{ animation: "fadeUp .35s ease both" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "0 2px 9px" }}>
-        <span
-          style={{
-            ...MONO,
-            fontSize: "10px",
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            color: "#ABA8A1",
-          }}
-        >
-          sandboxes
-        </span>
-        <span style={{ flex: "1", height: "1px", background: "#1F1F24" }} />
-        <span style={{ ...MONO, fontSize: "10.5px", color: "#A6A39C" }}>{floor.team.length}</span>
-      </div>
-      <div
-        style={{
-          borderRadius: "14px",
-          background: "#101013",
-          border: "1px solid #232328",
-          overflow: "hidden",
-          marginBottom: "18px",
-        }}
-      >
-        {boxes.map((box, i) => (
-          <div
-            key={box.name}
-            style={{
-              display: "flex",
-              alignItems: "stretch",
-              borderTop: `1px solid ${separator(i === 0)}`,
-            }}
-          >
-            <div style={{ width: "3px", flex: "0 0 3px", background: box.dot }} />
-            <div style={{ flex: "1", minWidth: "0", padding: "12px 13px" }}>
+      <Rule name={t("resources.containers")} count={String(inventory.containers.length)} />
+      <div style={CARD}>
+        {inventory.containers.map((box, i) => {
+          const up = box.state === "running";
+          return (
+            <div
+              key={box.name}
+              style={{
+                display: "flex",
+                alignItems: "stretch",
+                borderTop: `1px solid ${separator(i === 0)}`,
+              }}
+            >
               <div
-                style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}
-              >
-                <span
-                  style={{
-                    ...MONO,
-                    fontSize: "12px",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {box.name}
-                </span>
-                <div style={{ flex: "1" }} />
-                <span style={{ ...MONO, fontSize: "10px", color: "#A6A39C", flex: "0 0 auto" }}>
-                  {box.up}
-                </span>
+                style={{ width: "3px", flex: "0 0 3px", background: up ? "#5BD9A0" : "#3A3A41" }}
+              />
+              <div style={{ flex: "1", minWidth: "0", padding: "12px 13px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={NAME}>{box.name}</span>
+                  <div style={{ flex: "1" }} />
+                  <span style={{ ...MONO, fontSize: "10px", color: "#A6A39C", flex: "0 0 auto" }}>
+                    {box.state}
+                  </span>
+                </div>
+                <div style={{ ...MONO, fontSize: "10px", color: "#A6A39C", marginTop: "6px" }}>
+                  {box.kind}
+                </div>
               </div>
-              <Meter
-                name="cpu"
-                value={box.cpu}
-                fill="linear-gradient(90deg,#E0A400,#FFC531)"
-                delay=".9s"
-                spaced
-              />
-              <Meter
-                name="mem"
-                value={box.mem}
-                fill="linear-gradient(90deg,#8C7A2E,#D9C06A)"
-                delay="1.1s"
-              />
             </div>
+          );
+        })}
+        {inventory.containers.length === 0 ? (
+          <div style={{ padding: "16px 13px", fontSize: "12px", color: "#A6A39C" }}>
+            {t("resources.noneRunning")}
           </div>
-        ))}
+        ) : null}
         <div
           style={{
             display: "flex",
@@ -164,13 +114,18 @@ export function UsageResources(): React.JSX.Element {
             }}
           />
           <div style={{ flex: "1", minWidth: "0" }}>
-            <div style={{ fontSize: "13px" }}>Docker engine</div>
+            <div style={{ fontSize: "13px" }}>{t("resources.engine")}</div>
             <div style={{ ...MONO, fontSize: "10.5px", color: "#A6A39C", marginTop: "3px" }}>
-              running · 4 images · 12.4 GB
+              {t("resources.held", {
+                volumes: inventory.snapshot.volumes,
+                images: gb(inventory.snapshot.imagesBytes),
+                disk: gb(inventory.snapshot.volumesBytes),
+              })}
             </div>
           </div>
         </div>
       </div>
+      <Rule name={t("resources.floor")} count={floor.name} />
     </div>
   );
 }

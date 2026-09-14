@@ -1,4 +1,6 @@
-import type { Cred } from "./data-setup.ts";
+import type { SecretKeyName } from "@ho/protocol";
+import { useTranslation } from "react-i18next";
+import { CredForm, NAMED } from "./settings-cred-form.tsx";
 import { MONO, separator } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
@@ -32,65 +34,20 @@ const TAG: React.CSSProperties = {
   flex: "0 0 auto",
 };
 
-const FIELD: React.CSSProperties = {
-  flex: "1",
-  minWidth: "120px",
-  padding: "9px 11px",
-  borderRadius: "10px",
-  border: "1px solid #2C2C32",
-  background: "#0A0A0C",
-  ...MONO,
-  fontSize: "11.5px",
-};
-
-const SAVE: React.CSSProperties = {
-  padding: "9px 14px",
-  borderRadius: "10px",
-  border: "0",
-  background: "var(--a,#FFC531)",
-  color: "#150F02",
-  fontSize: "12px",
-  fontWeight: "600",
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-  flex: "0 0 auto",
-  transition: "all .2s",
-};
-
-const FORGET: React.CSSProperties = {
-  padding: "9px 12px",
-  borderRadius: "10px",
-  border: "1px solid #2C2C32",
-  background: "transparent",
-  fontSize: "12px",
-  color: "#CFCCC6",
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-  flex: "0 0 auto",
-  transition: "all .2s",
-};
-
-/** One key the office holds: whether it has it, what it is for, and where to paste a new one. */
+/** One key the office holds: whether it has it, and the door to pasting a new one. */
 export function CredRow({
-  cred,
-  index,
+  name,
+  stored,
   first,
 }: {
-  cred: Cred;
-  index: number;
+  name: SecretKeyName;
+  stored: boolean;
   first: boolean;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const credOpen = useDesign((s) => s.credOpen);
-  const update = useDesign((s) => s.update);
-  const flash = useDesign((s) => s.flash);
-  const stored = cred.status === "stored";
-  const open = credOpen === index;
-  const setStatus = (status: Cred["status"], note: string): void => {
-    update((s) => ({
-      creds: s.creds.map((x, n) => (n === index ? { ...x, status, value: "" } : x)),
-    }));
-    flash(note);
-  };
+  const set = useDesign((s) => s.set);
+  const open = credOpen === name;
 
   return (
     <div
@@ -101,12 +58,12 @@ export function CredRow({
         <button
           type="button"
           onClick={() => {
-            update((s) => ({ credOpen: s.credOpen === index ? null : index }));
+            set({ credOpen: open ? null : name });
           }}
           style={HEAD}
           className="hopg"
         >
-          <span style={NAME}>{cred.name}</span>
+          <span style={NAME}>{t(`tokens.${NAMED[name]}`)}</span>
           <span
             style={{
               ...TAG,
@@ -114,7 +71,7 @@ export function CredRow({
               color: stored ? "#8FE8C4" : "#BEBBB4",
             }}
           >
-            {cred.status}
+            {stored ? t("tokens.stored") : t("tokens.missing")}
           </span>
           <svg
             style={{
@@ -133,55 +90,7 @@ export function CredRow({
             <polyline points="4.5,3 8,6 4.5,9" />
           </svg>
         </button>
-        {open ? (
-          <div style={{ padding: "0 13px 14px", animation: "riseIn .28s ease both" }}>
-            <div
-              style={{
-                fontSize: "11.5px",
-                color: "#A6A39C",
-                lineHeight: "1.6",
-                marginBottom: "11px",
-              }}
-            >
-              {cred.desc}
-            </div>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <input
-                value={cred.value}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  update((s) => ({
-                    creds: s.creds.map((x, n) => (n === index ? { ...x, value } : x)),
-                  }));
-                }}
-                placeholder={stored ? "paste a new token to replace it" : "paste token"}
-                style={FIELD}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setStatus("stored", `${cred.name} stored`);
-                }}
-                style={SAVE}
-                className="hopn"
-              >
-                Save
-              </button>
-              {stored ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStatus("missing", `${cred.name} forgotten`);
-                  }}
-                  style={FORGET}
-                  className="hopo"
-                >
-                  Forget
-                </button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+        {open ? <CredForm name={name} stored={stored} /> : null}
       </div>
     </div>
   );

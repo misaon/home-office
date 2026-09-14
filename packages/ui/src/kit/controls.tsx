@@ -1,17 +1,9 @@
 import { errorMessage } from "@ho/protocol";
-import { useId } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge as ShadcnBadge } from "@/components/ui/badge";
 import { Button as ShadcnButton } from "@/components/ui/button";
-import {
-  Empty as ShadcnEmpty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-} from "@/components/ui/empty";
 import { Field as ShadcnField, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Separator } from "@/components/ui/separator";
-import { Switch as ShadcnSwitch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /**
@@ -80,41 +72,6 @@ export function Field({
   );
 }
 
-/** One thing that is on or off, with its consequence written beside it rather than left to guess at. */
-export function Switch({
-  checked,
-  onChange,
-  label,
-  hint,
-  disabled = false,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  label: React.ReactNode;
-  hint?: React.ReactNode;
-  disabled?: boolean;
-}): React.JSX.Element {
-  const id = useId();
-  return (
-    <div className={`flex items-start gap-3 ${disabled ? "opacity-50" : ""}`}>
-      <ShadcnSwitch
-        id={id}
-        checked={checked}
-        disabled={disabled}
-        className="mt-0.5"
-        onCheckedChange={onChange}
-      />
-      <div className="grid min-w-0 gap-1">
-        <FieldLabel htmlFor={id} className="font-normal">
-          {label}
-        </FieldLabel>
-        {hint === undefined ? null : <FieldDescription>{hint}</FieldDescription>}
-      </div>
-    </div>
-  );
-}
-
-/** Two or three exclusive choices side by side, for a switch that changes which fields apply. */
 export function Segmented<T extends string>({
   value,
   options,
@@ -205,17 +162,5 @@ export function Failure({ error }: { error: unknown }): React.JSX.Element | null
     <Alert variant="destructive">
       <AlertDescription>{errorMessage(error)}</AlertDescription>
     </Alert>
-  );
-}
-
-/** Nothing here yet, said in a way that tells the reader what would put something here. */
-export function Empty({ children }: { children: React.ReactNode }): React.JSX.Element {
-  return (
-    <ShadcnEmpty className="border border-dashed">
-      <EmptyHeader>
-        <EmptyDescription>{children}</EmptyDescription>
-      </EmptyHeader>
-      <EmptyContent />
-    </ShadcnEmpty>
   );
 }

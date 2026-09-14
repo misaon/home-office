@@ -1,13 +1,16 @@
+import { useTranslation } from "react-i18next";
 import { BoardCard } from "./board-card.tsx";
 import { BoardHeader } from "./board-header.tsx";
+import type { Floor, Lane } from "./data.ts";
 import { MONO } from "./tokens.ts";
-import { useDesign, useFloor } from "./store.ts";
+import { useDesign } from "./store.ts";
 
 const LANES = [
-  ["running", "in progress", "var(--a,#FFC531)"],
-  ["blocked", "blocked", "#FF9E9E"],
-  ["done", "done", "#5BD9A0"],
-] as const;
+  ["queued", "board.inbox", "#6E6B66"],
+  ["running", "board.inProgress", "var(--a,#FFC531)"],
+  ["blocked", "board.blocked", "#FF9E9E"],
+  ["done", "board.done", "#5BD9A0"],
+] as const satisfies readonly [Lane, string, string][];
 
 const RULE: React.CSSProperties = {
   ...MONO,
@@ -24,11 +27,10 @@ const CARD: React.CSSProperties = {
   overflow: "hidden",
 };
 
-/** What the floor is carrying: a share finished, three lanes, and one card per task. */
-export function Board(): React.JSX.Element {
-  const floor = useFloor();
+/** What the floor is carrying: a share finished, four lanes, and one card per task. */
+export function Board({ floor }: { floor: Floor }): React.JSX.Element {
+  const { t } = useTranslation();
   const boardFilter = useDesign((s) => s.boardFilter);
-  const cards = floor.cards;
 
   return (
     <div
@@ -40,11 +42,11 @@ export function Board(): React.JSX.Element {
         animation: "slideLeft .42s cubic-bezier(.2,.8,.3,1) both",
       }}
     >
-      <BoardHeader />
+      <BoardHeader floor={floor} />
       <div style={{ flex: "1", minHeight: "0", overflowY: "auto", padding: "16px" }}>
         {LANES.filter(([key]) => boardFilter === "all" || boardFilter === key).map(
-          ([key, name, dot]) => {
-            const items = cards.filter((x) => x.s === key);
+          ([key, label, dot]) => {
+            const items = floor.cards.filter((x) => x.s === key);
             return (
               <div key={key} style={{ marginBottom: "18px" }}>
                 <div
@@ -53,7 +55,7 @@ export function Board(): React.JSX.Element {
                   <span
                     style={{ width: "6px", height: "6px", borderRadius: "50%", background: dot }}
                   />
-                  <span style={RULE}>{name}</span>
+                  <span style={RULE}>{t(label)}</span>
                   <span style={{ flex: "1", height: "1px", background: "#1F1F24" }} />
                   <span style={{ ...MONO, fontSize: "10.5px", color: "#A6A39C" }}>
                     {items.length}
@@ -61,11 +63,17 @@ export function Board(): React.JSX.Element {
                 </div>
                 <div style={CARD}>
                   {items.map((card, i) => (
-                    <BoardCard key={card.id} card={card} first={i === 0} stripe={dot} />
+                    <BoardCard
+                      key={card.id}
+                      floor={floor}
+                      card={card}
+                      first={i === 0}
+                      stripe={dot}
+                    />
                   ))}
                   {items.length === 0 ? (
                     <div style={{ padding: "16px 13px", fontSize: "12px", color: "#A6A39C" }}>
-                      Nothing in this lane.
+                      {t("board.emptyLane")}
                     </div>
                   ) : null}
                 </div>

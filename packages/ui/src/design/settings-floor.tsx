@@ -1,6 +1,9 @@
+import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
-import { PullRequestToggle } from "./settings-pr.tsx";
-import { IntakeSections } from "./settings-intake.tsx";
+import { requireClient } from "../rpc.ts";
+import { FloorSwitches } from "./settings-floor-switches.tsx";
+import { useUi } from "../store.ts";
 import { MONO, separator } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
@@ -78,13 +81,23 @@ export function SettingsFloor({
   index: number;
   first: boolean;
 }): React.JSX.Element {
-  const floorSel = useDesign((s) => s.floorSel);
+  const { t } = useTranslation();
+  const current = useUi((s) => s.floorId) === floor.id;
   const floorRowOpen = useDesign((s) => s.floorRowOpen);
-  const update = useDesign((s) => s.update);
+  const set = useDesign((s) => s.set);
   const flash = useDesign((s) => s.flash);
-  const current = index === floorSel;
-  const open = floorRowOpen === index;
+  const open = floorRowOpen === floor.id;
   const openTasks = floor.cards.filter((x) => x.s !== "done").length;
+
+  const remove = useMutation({
+    mutationFn: () => requireClient().projects.remove({ id: floor.id }),
+    onSuccess: () => {
+      flash(t("project.removed", { name: floor.name }));
+    },
+    onError: (error: Error) => {
+      flash(error.message);
+    },
+  });
 
   return (
     <div
@@ -101,7 +114,7 @@ export function SettingsFloor({
         <button
           type="button"
           onClick={() => {
-            update((s) => ({ floorRowOpen: s.floorRowOpen === index ? null : index }));
+            set({ floorRowOpen: open ? null : floor.id });
           }}
           style={HEAD}
           className="hopg"
@@ -120,7 +133,7 @@ export function SettingsFloor({
             <span
               style={{ display: "block", fontSize: "10.5px", color: "#A6A39C", marginTop: "4px" }}
             >
-              {`${String(floor.team.length)}${floor.team.length === 1 ? " agent · " : " agents · "}${String(openTasks)} open tasks`}
+              {t("project.summaryTasks", { agents: floor.team.length, open: openTasks })}
             </span>
           </span>
           <svg
@@ -137,24 +150,18 @@ export function SettingsFloor({
         {open ? (
           <div style={{ padding: "0 13px 14px", animation: "riseIn .28s ease both" }}>
             <div style={PATH}>{floor.path}</div>
-            <PullRequestToggle floor={floor} index={index} />
-            <div style={{ height: "1px", background: "#232328", margin: "14px 0" }} />
-            <IntakeSections floor={floor} index={index} />
+            <FloorSwitches floor={floor} />
             <div style={{ height: "1px", background: "#1F1F24", margin: "14px 0" }} />
             <button
               type="button"
+              disabled={remove.isPending}
               onClick={() => {
-                update((s) => ({
-                  floors: s.floors.filter((_, n) => n !== index),
-                  floorSel: 0,
-                  floorRowOpen: 0,
-                }));
-                flash(`${floor.name} removed`);
+                remove.mutate();
               }}
               style={REMOVE}
               className="hopp"
             >
-              Remove this floor
+              {t("settings.removeFloor")}
             </button>
           </div>
         ) : null}

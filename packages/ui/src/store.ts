@@ -15,7 +15,6 @@ import type {
 } from "@ho/protocol";
 import { create } from "zustand";
 
-export type Panel = "chat" | "board" | "team" | "usage" | "settings";
 export type Connection = "connecting" | "online" | "offline" | "unauthorized" | "rejected";
 
 /** What each connection state says to the viewer, as a dictionary key. */
@@ -81,7 +80,6 @@ type UiState = {
   snapshot: Snapshot;
   live: ReadonlyMap<SessionId, readonly LiveEvent[]>;
   lastError: string | null;
-  panel: Panel;
   selectedAgentId: AgentId | null;
   /** The floor (project) shown in the office and the side panels; null until the first project exists. */
   floorId: ProjectId | null;
@@ -91,7 +89,6 @@ type UiState = {
   setConnection: (connection: Connection) => void;
   setReplayed: (replayed: boolean) => void;
   setError: (message: string | null) => void;
-  selectPanel: (panel: Panel) => void;
   selectAgent: (agentId: AgentId | null) => void;
   selectFloor: (floorId: ProjectId | null) => void;
   setAddProjectOpen: (open: boolean) => void;
@@ -104,7 +101,6 @@ export const useUi = create<UiState>()((set) => ({
   snapshot: takeSnapshot(null),
   live: new Map(),
   lastError: null,
-  panel: "chat",
   selectedAgentId: null,
   floorId: null,
   addProjectOpen: false,
@@ -118,11 +114,8 @@ export const useUi = create<UiState>()((set) => ({
   setError: (lastError) => {
     set({ lastError });
   },
-  selectPanel: (panel) => {
-    set({ panel });
-  },
   selectAgent: (selectedAgentId) => {
-    set(selectedAgentId === null ? { selectedAgentId } : { selectedAgentId, panel: "team" });
+    set({ selectedAgentId });
   },
   selectFloor: (floorId) => {
     set({ floorId, selectedAgentId: null });

@@ -1,24 +1,33 @@
-import { useEffect } from "react";
-import { Editor } from "./editor.tsx";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { AddProjectModal } from "../panels/add-project.tsx";
+import { EditorOverlay } from "../editor/overlay.tsx";
+import { useDevReload } from "../dev-reload.ts";
+import { SetupOverlay, useSetupAutoOpen } from "../setup/overlay.tsx";
+import { CONNECTION_KEY, useUi } from "../store.ts";
 import { Header } from "./header.tsx";
 import { Lightbox } from "./lightbox.tsx";
 import { Panel } from "./panel.tsx";
-import { Setup } from "./setup.tsx";
 import { Stage } from "./stage.tsx";
 import { Toast } from "./toast.tsx";
 import { useDesign } from "./store.ts";
 
-/**
- * The knobs the design was drawn with. Their defaults are the drawing: change one and you are looking
- * at a variant, not at the original.
- */
-export type DesignProps = {
-  internalTools?: boolean;
-  accent?: string;
-  panelWidth?: number;
-  ambientGlow?: boolean;
-  stageTheme?: "Light floor" | "Dark floor";
-};
+/** The office editor is internal: a production bundle carries neither the branch nor the import. */
+const DEV = process.env.NODE_ENV === "development";
+
+const SHELL: React.CSSProperties = {
+  height: "100vh",
+  display: "flex",
+  flexDirection: "column",
+  background: "#0A0A0B",
+  color: "#F4F3F0",
+  position: "relative",
+  overflow: "hidden",
+  "--a": "#FFC531",
+  "--pw": "420px",
+  "--floor": "#EDEBE4",
+  "--gridl": "rgba(0,0,0,.07)",
+} as React.CSSProperties;
 
 const GLOW_A: React.CSSProperties = {
   position: "absolute",
@@ -42,74 +51,113 @@ const GLOW_B: React.CSSProperties = {
   animation: "drift2 34s ease-in-out infinite",
 };
 
-/** The office, as drawn: a lit floor on the left and the five panels on the right. */
-export function DesignApp({
-  internalTools = false,
-  accent = "#FFC531",
-  panelWidth = 420,
-  ambientGlow = true,
-  stageTheme = "Light floor",
-}: DesignProps): React.JSX.Element {
-  const floorOpen = useDesign((s) => s.floorOpen);
+/** Before the first project there is no floor to draw, so the office asks for one. */
+function EmptyOffice(): React.JSX.Element {
+  const { t } = useTranslation();
+  const connection = useUi((s) => s.connection);
+  const replayed = useUi((s) => s.replayed);
+  const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
+  const ready = connection === "online" && replayed;
+  return (
+    <div style={{ flex: "1", display: "grid", placeItems: "center", padding: "32px" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "14px",
+          maxWidth: "420px",
+          textAlign: "center",
+          animation: "riseIn .4s cubic-bezier(.2,.9,.3,1.05) both",
+        }}
+      >
+        <div
+          style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: "700", fontSize: "21px" }}
+        >
+          {t("app.emptyTitle")}
+        </div>
+        <div style={{ fontSize: "12.5px", color: "#ABA8A1", lineHeight: "1.7" }}>
+          {t("app.emptyBody")}
+        </div>
+        {ready ? (
+          <button
+            type="button"
+            onClick={() => {
+              setAddProjectOpen(true);
+            }}
+            style={{
+              padding: "10px 18px",
+              borderRadius: "11px",
+              border: "0",
+              background: "var(--a,#FFC531)",
+              color: "#150F02",
+              fontSize: "12.5px",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "all .22s",
+            }}
+            className="hopm"
+          >
+            {t("project.add")}
+          </button>
+        ) : (
+          <div style={{ fontSize: "11.5px", color: "#A6A39C" }}>
+            {t(CONNECTION_KEY[connection])}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** The office: a lit floor on the left and the five panels on the right. */
+export function App(): React.JSX.Element {
+  const [editorFromUrl] = useState(
+    () => DEV && new URLSearchParams(window.location.search).has("editor"),
+  );
+  const hasFloors = useUi((s) => s.snapshot.projects.size > 0);
   const attachOpen = useDesign((s) => s.attachOpen);
   const usageOpen = useDesign((s) => s.usageOpen);
   const openSelect = useDesign((s) => s.openSelect);
+  const floorOpen = useDesign((s) => s.floorOpen);
   const lightbox = useDesign((s) => s.lightbox);
-  const setup = useDesign((s) => s.setup);
   const editor = useDesign((s) => s.editor);
   const set = useDesign((s) => s.set);
-  const update = useDesign((s) => s.update);
-  const runCounts = useDesign((s) => s.runCounts);
-  const light = stageTheme === "Light floor";
-
-  useEffect(() => {
-    runCounts();
-  }, [runCounts]);
+  useSetupAutoOpen();
+  useDevReload();
 
   return (
-    <div
-      style={
-        {
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          background: "#0A0A0B",
-          color: "#F4F3F0",
-          position: "relative",
+    <div style={SHELL}>
+      <div
+        style={{
+          position: "absolute",
+          inset: "0",
+          pointerEvents: "none",
           overflow: "hidden",
-          "--a": accent,
-          "--pw": `${String(panelWidth)}px`,
-          "--floor": light ? "#EDEBE4" : "#0F0F12",
-          "--gridl": light ? "rgba(0,0,0,.07)" : "rgba(255,197,49,.1)",
-        } as React.CSSProperties
-      }
-    >
-      {ambientGlow ? (
-        <div
-          style={{
-            position: "absolute",
-            inset: "0",
-            pointerEvents: "none",
-            overflow: "hidden",
-            zIndex: 0,
-          }}
-        >
-          <div style={GLOW_A} />
-          <div style={GLOW_B} />
-        </div>
-      ) : null}
-      <Header internal={internalTools} />
+          zIndex: 0,
+        }}
+      >
+        <div style={GLOW_A} />
+        <div style={GLOW_B} />
+      </div>
+      <Header internal={DEV} hasFloors={hasFloors} />
       <main
         style={{ flex: "1", display: "flex", minHeight: "0", position: "relative", zIndex: 10 }}
       >
-        <Stage internal={internalTools} />
-        <Panel />
+        {hasFloors ? (
+          <>
+            <Stage internal={DEV} />
+            <Panel />
+          </>
+        ) : (
+          <EmptyOffice />
+        )}
       </main>
       {floorOpen ? (
         <div
           role="presentation"
           onClick={() => {
-            update((s) => ({ floorOpen: !s.floorOpen, floorQuery: "" }));
+            set({ floorOpen: false });
           }}
           style={{ position: "fixed", inset: "0", zIndex: 35 }}
         />
@@ -123,9 +171,16 @@ export function DesignApp({
           style={{ position: "fixed", inset: "0", zIndex: 28 }}
         />
       ) : null}
-      {internalTools && editor ? <Editor /> : null}
-      {lightbox ? <Lightbox /> : null}
-      {setup ? <Setup /> : null}
+      {DEV && (editor || editorFromUrl) ? (
+        <EditorOverlay
+          onClose={() => {
+            set({ editor: false });
+          }}
+        />
+      ) : null}
+      {lightbox === null ? null : <Lightbox attachment={lightbox} />}
+      <AddProjectModal />
+      <SetupOverlay />
       <Toast />
     </div>
   );

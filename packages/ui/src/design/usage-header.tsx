@@ -1,8 +1,13 @@
+import type { UsageSummary } from "@ho/protocol";
+import { useTranslation } from "react-i18next";
 import { DISPLAY, MONO, pill } from "./tokens.ts";
 import { fmt, useDesign, type Window } from "./store.ts";
 
 const WINDOWS: Window[] = ["24 h", "7 d", "all"];
-const VIEWS = ["Tokens", "Resources"] as const;
+const VIEWS = [
+  ["Tokens", "usage.tokens"],
+  ["Resources", "usage.resources"],
+] as const;
 
 const PILL: React.CSSProperties = {
   padding: "6px 11px",
@@ -49,19 +54,22 @@ const KEY: React.CSSProperties = {
 };
 
 /** The headline figure, how it splits, and over which window it was counted. */
-export function UsageHeader(): React.JSX.Element {
-  const counts = useDesign((s) => s.counts);
+export function UsageHeader({ summary }: { summary: UsageSummary | null }): React.JSX.Element {
+  const { t } = useTranslation();
   const win = useDesign((s) => s.win);
   const usageView = useDesign((s) => s.usageView);
   const set = useDesign((s) => s.set);
-  const runCounts = useDesign((s) => s.runCounts);
 
-  const spend = counts.in + counts.out;
+  const totals = summary?.totals;
+  const input = totals?.inputTokens ?? 0;
+  const output = totals?.outputTokens ?? 0;
+  const cache = totals?.cacheReadTokens ?? 0;
+  const spend = input + output;
   const pct = (n: number): string => `${String(Math.round((n / Math.max(1, spend)) * 100))}%`;
   const composition = [
-    { name: "in", value: fmt(counts.in), color: "#8C7A2E", pct: pct(counts.in) },
-    { name: "out", value: fmt(counts.out), color: "var(--a,#FFC531)", pct: pct(counts.out) },
-    { name: "cache", value: fmt(counts.cache), color: "#5BD9A0", pct: "0%" },
+    { name: t("usage.in"), value: fmt(input), color: "#8C7A2E", pct: pct(input) },
+    { name: t("usage.out"), value: fmt(output), color: "var(--a,#FFC531)", pct: pct(output) },
+    { name: t("usage.cache"), value: fmt(cache), color: "#5BD9A0", pct: "0%" },
   ];
 
   return (
@@ -81,12 +89,15 @@ export function UsageHeader(): React.JSX.Element {
           >
             <span style={TOTAL}>{fmt(spend)}</span>
             <span style={{ fontSize: "11.5px", color: "#ABA8A1", whiteSpace: "nowrap" }}>
-              {`tokens · ${win === "all" ? "all time" : `last ${win}`} · ${String(counts.sessions)}${counts.sessions === 1 ? " session" : " sessions"}`}
+              {t("usage.headline", {
+                window: win === "all" ? t("usage.allTime") : t("usage.lastWindow", { window: win }),
+                count: summary?.sessions ?? 0,
+              })}
             </span>
           </div>
         </div>
         <div style={{ display: "flex", gap: "5px", flex: "0 0 auto" }}>
-          {VIEWS.map((view) => {
+          {VIEWS.map(([view, label]) => {
             const tone = pill(usageView === view);
             return (
               <button
@@ -103,7 +114,7 @@ export function UsageHeader(): React.JSX.Element {
                 }}
                 className="hop4"
               >
-                {view}
+                {t(label)}
               </button>
             );
           })}
@@ -142,7 +153,6 @@ export function UsageHeader(): React.JSX.Element {
               key={w}
               onClick={() => {
                 set({ win: w });
-                runCounts();
               }}
               style={{
                 ...PILL,

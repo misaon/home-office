@@ -18,7 +18,7 @@
       "project": ["src/**/*.ts"]
     },
     "packages/ui": {
-      "entry": ["src/main.tsx", "src/styles.css", "src/design/main.tsx", "src/design/design.css"],
+      "entry": ["src/main.tsx", "src/styles.css", "src/design/design.css"],
       "project": ["src/**/*.{ts,tsx,css}"],
       "ignore": ["src/components/ui/**"]
     },

@@ -1,9 +1,12 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import type { Floor } from "./data.ts";
 import { ChatComposer } from "./chat-composer.tsx";
 import { ChatHeader } from "./chat-header.tsx";
 import { ChatMessage } from "./chat-message.tsx";
 import { MONO } from "./tokens.ts";
-import { BOSS_FALLBACK, useDesign, useFloor } from "./store.ts";
+import { bossOf } from "./live.ts";
+import { useDesign } from "./store.ts";
 
 const LIST: React.CSSProperties = {
   flex: "1",
@@ -34,28 +37,29 @@ const DOT: React.CSSProperties = {
   background: "#FFC531",
 };
 
-/** Three dots and a name, for the beat between sending and being answered. */
-function Typing({ name }: { name: string }): React.JSX.Element {
+/** Three dots and a name, for as long as somebody on this floor is actually working. */
+function Working({ name }: { name: string }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <div style={BUBBLE}>
       {["", ".15s ", ".3s "].map((delay) => (
         <span key={delay} style={{ ...DOT, animation: `dots 1.2s ease-in-out ${delay}infinite` }} />
       ))}
       <span style={{ ...MONO, fontSize: "10px", color: "#ABA8A1", marginLeft: "4px" }}>
-        <span>{name}</span> is thinking
+        {t("chat.thinking", { name })}
       </span>
     </div>
   );
 }
 
 /** The conversation with the floor's boss: who you are talking to, what was said, and the composer. */
-export function Chat(): React.JSX.Element {
-  const floor = useFloor();
+export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
+  const { t } = useTranslation();
   const query = useDesign((s) => s.query);
-  const typing = useDesign((s) => s.typing);
   const list = useRef<HTMLDivElement>(null);
 
-  const boss = floor.team[0] ?? BOSS_FALLBACK;
+  const boss = bossOf(floor);
+  const busy = floor.team.some((p) => p.status === "working");
   const needle = query.trim().toLowerCase();
   const shown =
     needle === ""
@@ -82,14 +86,19 @@ export function Chat(): React.JSX.Element {
       }}
     >
       <ChatHeader
+        floor={floor}
         boss={boss}
-        hits={needle === "" ? "" : `${String(shown.length)}/${String(floor.messages.length)}`}
+        hits={
+          needle === ""
+            ? ""
+            : t("common.ofTotal", { shown: shown.length, total: floor.messages.length })
+        }
       />
       <div ref={list} style={LIST}>
         {shown.map((m) => (
-          <ChatMessage key={m.id} message={m} boss={boss.name} />
+          <ChatMessage key={m.id} message={m} boss={boss?.name ?? t("chat.colleague")} />
         ))}
-        {typing ? <Typing name={boss.name} /> : null}
+        {busy && boss !== undefined ? <Working name={boss.name} /> : null}
         {needle !== "" && shown.length === 0 ? (
           <div
             style={{
@@ -99,11 +108,11 @@ export function Chat(): React.JSX.Element {
               color: "#ABA8A1",
             }}
           >
-            Nothing in this conversation matches that.
+            {t("chat.noHits")}
           </div>
         ) : null}
       </div>
-      <ChatComposer />
+      <ChatComposer floor={floor} />
     </div>
   );
 }
