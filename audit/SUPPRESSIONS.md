@@ -41,6 +41,12 @@ spawns that binary (`scripts/ui-build.ts` resolves it through the package graph 
 only sees dependencies that are imported. The reference is real and would throw at build time if the
 package were missing.
 
+## Added 2026-09-15
+
+| #   | Where                            | Suppression                                                   | Assessment                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| --- | -------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 11  | `packages/ui/src/design/app.css` | `@source not inline("backdrop-blur-[10px] animate-fade-280")` | Not a lint suppression but a build one, recorded here for the same reason. The modal's backdrop class list makes Tailwind's scanner emit these two utilities bare as well as `backdrop:`-prefixed, and no element in the office wears the bare forms: 642 bytes nothing selects. Narrow on purpose — the lightbox and the camera bar do write `backdrop-blur-[14px]`, `[18px]` and `animate-fade-260` bare, and those keep their rules. With the line the stylesheet is rule-for-rule identical to the build before the consolidation. |
+
 There are **no** `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck` or non-null assertions anywhere in
 the tracked source. Verified:
 

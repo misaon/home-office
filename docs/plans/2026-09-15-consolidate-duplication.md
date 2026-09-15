@@ -124,23 +124,71 @@ different error surfaces. Only the two mutations overlap, and a hook for them wo
 one, so this is removing a feature, not removing rot — 22 files and the `images/agent/plugins/reviewer`
 skill pack. Raised with the owner on 2026-09-15 and deliberately left out of this task.
 
-## Phases
+## What the work came to
 
-| Phase | Work                          | Validation                                                        |
-| ----- | ----------------------------- | ----------------------------------------------------------------- |
-| 1     | Items 6, 7 (core), 8 (import) | `bun run check`                                                   |
-| 2     | Items 1–5 (UI)                | `bun run check`                                                   |
-| 3     | Item 9 (the approved change)  | `bun run check`                                                   |
-| 4     | Verification                  | 28-state pixel comparison against `32066f9`, then `bun run check` |
+| Phase | Work                          | Commit    |
+| ----- | ----------------------------- | --------- |
+| 1     | Items 6, 7 (core), 8 (import) | `b5d01b9` |
+| 2     | Items 1-5 (UI)                | `3723bb1` |
+| 3     | Item 9 (the approved change)  | `1d37e02` |
 
-## How it is verified
+Item 5 turned out weaker than the survey first reported, and the correction is worth keeping: the first
+count treated repeated `<path d="...">` values as repeated icons, but the `<svg>` elements around them
+differ in size and stroke width, so only **one** of the 42 is a byte-identical duplicate — the tick,
+which item 2 removed anyway. The chevron and the plus are the same geometry at four sizes each, so they
+moved into `icons.tsx` as components taking a size and a stroke width. The other 34 stay inline.
 
-The same harness the Tailwind rewrite was proved with, reused: two builds served side by side — this
-branch's parent on one port, the branch on another — driven through 28 states of the office by headless
-Chrome over CDP, screenshotted at 1440×900 with animations cancelled and the PixiJS canvas hidden, so
-the comparison covers every pixel of the viewport at zero tolerance.
+The line count is not the story either, and saying so is the point of writing it down. `packages/core`
+lost five lines; `packages/ui/src` gained six, because 412 lines of repetition came out and three new
+shared files put 178 back, doc comments included. What changed is that the "entity or `not_found`" rule
+is written once instead of nineteen times, and that four modals, two pick cards, two chip rows and two
+attachment fetches are one of each. The shipped bundle is 3 KiB smaller.
 
-The expected result is 28 of 28 byte-identical, with one exception that must be argued rather than
-explained away: the confirm dialog's backdrop under item 9. That state is shot with the animation held
-still, so even it should match; if any other state differs, the difference is a regression and not a
-finding.
+## Two things the verification found that the plan did not predict
+
+### A production build that drops a class constant
+
+`PickCard` rendered with no `relative`, no `flex`, no icon tile, and its tick positioned against the
+viewport instead of the card's corner — a 29% pixel difference across six states. The source was
+correct and so was the unminified build. In a `.tsx` module with **no import statements at all**,
+`Bun.build` with `minify` and `reactCompiler` drops a module-level constant that a component
+interpolates into a template literal; the minified bundle contains no trace of the string. Isolated by
+toggling a single import and grepping the bundle. `pick-card.tsx` now imports its tick from
+`icons.tsx`, which is both the natural home for a mark the office draws twice and an import the module
+needs. Recorded in [docs/STACK.md](../STACK.md) with the boundaries of what is and is not affected.
+
+### 642 bytes of stylesheet nothing selects
+
+Naming the modal's backdrop classes in a constant makes Tailwind's scanner emit `.backdrop-blur-[10px]`
+and `.animate-fade-280` bare as well as `backdrop:`-prefixed, and the office wears neither bare form.
+`app.css` carries one `@source not inline(...)` for exactly those two; the `[14px]`/`[18px]` blurs and
+`animate-fade-260`, which the lightbox and the camera bar do write bare, keep their rules. Recorded in
+[audit/SUPPRESSIONS.md](../../audit/SUPPRESSIONS.md) as entry 11.
+
+A smaller one came out of writing that down: a doc comment reading "the scrim and the blur" put a
+`.blur` rule in the stylesheet. Tailwind scans every `@source` file as text, comments included.
+
+## How it was verified
+
+Two builds served side by side from two daemons on their own scratch `HO_HOME`s seeded from one copy of
+the same database — the branch's parent (`32066f9`) on 47820, the branch on 47821 — and driven through
+28 states of the office by headless Chrome over CDP, screenshotted at 1440x900 with animations
+cancelled outright and the PixiJS canvas hidden, so the comparison covers every pixel of the viewport
+at zero tolerance.
+
+**26 of 28 byte-identical.** The two that differ are data, not code, and that is shown rather than
+asserted: shooting the baseline against _itself_ produces the same 80 px in `sheet-agent` (a relative
+timestamp) and the same 43 440 px in `usage-res` (Docker's disk figures).
+
+The stylesheet is **rule-for-rule identical** to the baseline's, compared as sets of compiled rules.
+
+The one intended visual change was measured directly rather than left to a screenshot with animations
+switched off: the confirm dialog's `::backdrop` computed `animation-duration` is 0.28s on the baseline
+and 0.24s on the branch, with `background-color: rgba(6, 6, 7, 0.78)` and `backdrop-filter: blur(12px)`
+identical on both sides.
+
+One process note worth keeping, because it nearly produced a false result: the first re-shoot reported
+the same eight differences as the run before it. The restart of the branch daemon had failed — `pkill`
+matched nothing, because `HO_HOME` is an environment variable and not part of the command line — so the
+port was still serving the previous bundle, and the log said so. Check what the port actually serves
+(`curl -s <url> | grep index-`) before believing a comparison.

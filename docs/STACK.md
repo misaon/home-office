@@ -233,6 +233,38 @@ The stylesheet grew by 57 130 bytes and the script shrank by 27 874, for 29 256 
 files together. The two `@keyframes` that disappeared are `float1` and `float2`: `design.css` defined them
 and nothing used them.
 
+### Two things the scanner does that cost pixels or bytes, measured 2026-09-15
+
+**The scanner reads comments.** Every `@source` file is scanned as text, prose included. A doc comment
+that said "the scrim and the blur" put a `.blur` rule in the stylesheet that no element wears. Do not
+write a bare utility name in a comment inside `packages/ui/src`.
+
+**Some class lists yield bare candidates as well as prefixed ones.** The modal's backdrop classes make
+the scanner emit `.backdrop-blur-[10px]` and `.animate-fade-280` alongside the `backdrop:`-prefixed
+rules the office actually wears — 642 bytes nothing selects. `app.css` carries one
+`@source not inline("backdrop-blur-[10px] animate-fade-280")` for exactly those two. The blocklist is
+narrow on purpose: `backdrop-blur-[14px]`, `[18px]` and `animate-fade-260` are written bare by the
+lightbox and the camera bar and must keep their rules. With the line in place the stylesheet is
+rule-for-rule identical to the build before this work.
+
+### The production build drops a constant a bare module interpolates, Bun 1.4.2
+
+In a `.tsx` module with **no import statements at all**, `Bun.build` with `minify` and `reactCompiler`
+— what `scripts/ui-build.ts` runs for a production build — drops a module-level constant that a
+component interpolates into a template literal. The minified bundle contains no trace of the string;
+the unminified (`--watch`) build is correct. A constant used as a bare identifier (`className={TICK}`)
+survives either way, and a module with any import is unaffected, which is why `pick-card.tsx` imports
+its tick rather than drawing it.
+
+Measured 2026-09-15 by toggling that one import and grepping the bundle. It cost a whole component's
+layout — a card with no `relative`, no `flex`, no icon tile and its tick positioned against the
+viewport — and neither `bun run check` nor the type system can see it. Nine other modules under
+`packages/ui/src` have no imports: `office/colours.ts` (17 constants), five i18n dictionaries (one
+each), and `design/icons.tsx`, `design/section.tsx` and `design/segmented.tsx` (none). Not one of them
+interpolates a module constant into a template literal inside a component, so not one is affected
+today — but three of them are one edit away from it. A plain `bun build --minify` on a non-React
+fixture does **not** reproduce the drop.
+
 ## Primary references
 
 - [Bun install](https://bun.com/docs/pm/cli/install), [isolated workspaces](https://bun.com/docs/pm/isolated-installs), [secrets](https://bun.com/docs/runtime/secrets).

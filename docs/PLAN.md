@@ -88,6 +88,29 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-15 — Owner task: simplify and modernise the whole monorepo — Measured first: over the 278
+  TypeScript files the repository owns there is no `any`, seven commented type assertions, no
+  `forwardRef`/`useMemo`/`useCallback`, `Promise.withResolvers` at all seven sites and
+  `AsyncDisposableStack` at all four, so there was no modernisation backlog to work through. What a
+  duplicate-block scan did find was nine groups, and those were the task. In the core, nineteen
+  commands opened with the same four lines of "fetch it, check for undefined, return `notFound`";
+  `withProject`/`withAgent`/`withTask`/`withSession` write that rule once, and `removeProject` stopped
+  carrying a copy of `removeTask`. In the UI, four files each had their own `<dialog>`, two files had
+  the same pick card down to the tick, two had the same filter chip and two the same attachment fetch:
+  `Modal`, `PickCard`, `FilterChips`, `useAttachmentUrl` and `icons.tsx`. The confirm dialog's six
+  contradictory backdrop classes became the three it was written with, which moves its backdrop fade
+  from 280 ms to 240 ms — the only visible change, and the owner's call. Verification turned up two
+  things the plan had not predicted: a production build that **drops a class constant** in a `.tsx`
+  module with no imports (`Bun.build` with `minify` and `reactCompiler`, Bun 1.4.2 — it cost a whole
+  component's layout and no check in the repository can see it), and 642 bytes of stylesheet nothing
+  selects. Both are recorded in [docs/STACK.md](STACK.md), the second also as
+  [suppression 11](../audit/SUPPRESSIONS.md). Deliberately not done and left as the owner's decision:
+  removing the `reviewer` and `clerk` roles, which is removing a feature rather than removing rot.
+  26 of the 28 shot states are byte-identical to the previous build, the other two proven to be data
+  drift by shooting the baseline against itself. Plan, measurements and the process note about a failed
+  daemon restart that nearly produced a false result:
+  [the task plan](plans/2026-09-15-consolidate-duplication.md).
+
 - 2026-09-15 — Owner question: why two answers, and why does the model not answer at all — A failed
   triage said the same sentence twice: `settle` posted the runtime's own text as the boss's reply, then
   filed it as the reason the task blocked, and the boss reads that reason out. The event log shows both
