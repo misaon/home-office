@@ -13,7 +13,7 @@ import { bossOf, findMail } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import type { IntakeItem } from "../ports.ts";
 import { type CommandContext, type CommandResult, entity, err, ok } from "../result.ts";
-import { TITLE_MAX } from "./shared.ts";
+import { TITLE_MAX, withProject } from "./shared.ts";
 import { newTask, readTask } from "./tasks.ts";
 
 const BODY_MAX = 12_000;
@@ -45,50 +45,52 @@ export function receiveMail(
   item: IntakeItem,
   ctx: CommandContext,
 ): CommandResult<ReceivedMail> {
-  const project = model.projects.get(projectId);
-  if (project === undefined) {
-    return err(notFound("project", projectId));
-  }
-  const existing = findMail(model, projectId, connector, item.externalId);
-  if (existing !== undefined) {
+  return withProject(model, projectId, (project): CommandResult<ReceivedMail> => {
+    const existing = findMail(model, projectId, connector, item.externalId);
+    if (existing !== undefined) {
+      return ok({
+        events: [],
+        read: (m) => ({
+          mail: entity(m.mail, existing.id),
+          task: existing.taskId === undefined ? null : (m.tasks.get(existing.taskId) ?? null),
+          duplicate: true,
+        }),
+      });
+    }
+    const boss = bossOf(model, project.id);
+    const task = newTask(ctx, {
+      projectId: project.id,
+      kind: boss === undefined ? "work" : "triage",
+      title: `Issue #${item.externalId}: ${item.title}`.slice(0, TITLE_MAX),
+      brief: formatMailBrief(project, item),
+      source: { kind: "mail", connector, externalId: item.externalId },
+      assigneeId: boss?.id,
+    });
+    const mail: MailItem = {
+      id: ctx.ids.mail(),
+      projectId: project.id,
+      connector,
+      externalId: item.externalId,
+      url: item.url,
+      title: item.title.slice(0, 300),
+      author: item.author.slice(0, 100),
+      labels: item.labels.map((l) => l.slice(0, 50)),
+      receivedAt: ctx.now,
+      taskId: task.id,
+      acks: [],
+    };
+    const events: NewEvent[] = [
+      { type: "mail.received", actor: ctx.actor, payload: { mail } },
+      { type: "task.created", actor: ctx.actor, payload: { task } },
+    ];
     return ok({
-      events: [],
+      events,
       read: (m) => ({
-        mail: entity(m.mail, existing.id),
-        task: existing.taskId === undefined ? null : (m.tasks.get(existing.taskId) ?? null),
-        duplicate: true,
+        mail: entity(m.mail, mail.id),
+        task: readTask(task.id)(m),
+        duplicate: false,
       }),
     });
-  }
-  const boss = bossOf(model, project.id);
-  const task = newTask(ctx, {
-    projectId: project.id,
-    kind: boss === undefined ? "work" : "triage",
-    title: `Issue #${item.externalId}: ${item.title}`.slice(0, TITLE_MAX),
-    brief: formatMailBrief(project, item),
-    source: { kind: "mail", connector, externalId: item.externalId },
-    assigneeId: boss?.id,
-  });
-  const mail: MailItem = {
-    id: ctx.ids.mail(),
-    projectId: project.id,
-    connector,
-    externalId: item.externalId,
-    url: item.url,
-    title: item.title.slice(0, 300),
-    author: item.author.slice(0, 100),
-    labels: item.labels.map((l) => l.slice(0, 50)),
-    receivedAt: ctx.now,
-    taskId: task.id,
-    acks: [],
-  };
-  const events: NewEvent[] = [
-    { type: "mail.received", actor: ctx.actor, payload: { mail } },
-    { type: "task.created", actor: ctx.actor, payload: { task } },
-  ];
-  return ok({
-    events,
-    read: (m) => ({ mail: entity(m.mail, mail.id), task: readTask(task.id)(m), duplicate: false }),
   });
 }
 

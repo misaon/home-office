@@ -17,7 +17,7 @@ import {
 import { activeSessionOfTask, resumableSession, sessionsOfAgent } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, entity, err, ok } from "../result.ts";
-import { statusChange } from "./shared.ts";
+import { statusChange, withSession } from "./shared.ts";
 
 const readSession =
   (id: SessionId) =>
@@ -97,28 +97,26 @@ export function changeSessionState(
   },
   ctx: CommandContext,
 ): CommandResult<Session> {
-  const session = model.sessions.get(input.sessionId);
-  if (session === undefined) {
-    return err(notFound("session", input.sessionId));
-  }
-  if (!isSessionActive(session.state)) {
-    // Teardown can run twice (the happy path and the catch); a settled session simply stays settled.
-    return ok({ events: [], read: readSession(session.id) });
-  }
-  const { sessionId, state, runtimeSessionId, sandboxId, services, reason } = input;
-  return ok({
-    events: [
-      {
-        type: "session.state_changed",
-        actor: ctx.actor,
-        payload: {
-          sessionId,
-          state,
-          ...compact({ runtimeSessionId, sandboxId, services, reason }),
+  return withSession(model, input.sessionId, (session) => {
+    if (!isSessionActive(session.state)) {
+      // Teardown can run twice (the happy path and the catch); a settled session simply stays settled.
+      return ok({ events: [], read: readSession(session.id) });
+    }
+    const { sessionId, state, runtimeSessionId, sandboxId, services, reason } = input;
+    return ok({
+      events: [
+        {
+          type: "session.state_changed",
+          actor: ctx.actor,
+          payload: {
+            sessionId,
+            state,
+            ...compact({ runtimeSessionId, sandboxId, services, reason }),
+          },
         },
-      },
-    ],
-    read: readSession(session.id),
+      ],
+      read: readSession(session.id),
+    });
   });
 }
 
@@ -127,13 +125,12 @@ export function recordSessionUsage(
   input: { sessionId: SessionId; usage: Usage },
   ctx: CommandContext,
 ): CommandResult<Session> {
-  if (!model.sessions.has(input.sessionId)) {
-    return err(notFound("session", input.sessionId));
-  }
-  return ok({
-    events: [{ type: "session.usage_recorded", actor: ctx.actor, payload: input }],
-    read: readSession(input.sessionId),
-  });
+  return withSession(model, input.sessionId, () =>
+    ok({
+      events: [{ type: "session.usage_recorded", actor: ctx.actor, payload: input }],
+      read: readSession(input.sessionId),
+    }),
+  );
 }
 
 export function endSession(
@@ -141,12 +138,10 @@ export function endSession(
   input: { sessionId: SessionId; state: "stopped" | "failed"; reason?: string },
   ctx: CommandContext,
 ): CommandResult<Session> {
-  const session = model.sessions.get(input.sessionId);
-  if (session === undefined) {
-    return err(notFound("session", input.sessionId));
-  }
-  const events: NewEvent[] = isSessionActive(session.state)
-    ? [{ type: "session.ended", actor: ctx.actor, payload: { ...input, endedAt: ctx.now } }]
-    : [];
-  return ok({ events, read: readSession(session.id) });
+  return withSession(model, input.sessionId, (session) => {
+    const events: NewEvent[] = isSessionActive(session.state)
+      ? [{ type: "session.ended", actor: ctx.actor, payload: { ...input, endedAt: ctx.now } }]
+      : [];
+    return ok({ events, read: readSession(session.id) });
+  });
 }
