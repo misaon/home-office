@@ -553,4 +553,15 @@
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
+  /*
+   * Where a vertical and a horizontal scrollbar meet there is a corner, and it is not the track: left
+   * alone it takes the user agent's default, which on a page that declares no dark colour scheme is
+   * white. The build log is where the office shows it — a `<pre>` does not wrap, and `overflow-y: auto`
+   * makes `overflow-x` compute to `auto`, so both bars appear and the corner with them. Measured
+   * 2026-09-15 with scrollbars forced visible: rgb(255,255,255) against tracks at rgb(10,10,12).
+   */
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }
