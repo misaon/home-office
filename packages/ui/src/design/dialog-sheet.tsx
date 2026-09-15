@@ -1,23 +1,80 @@
 import { useEffect, useRef } from "react";
 
 /**
- * The shape both of the office's big dialogs arrive in: a sheet that pops in over a blurred office,
- * a lit header, a body, and a footer that says what will happen. A real `<dialog>`, so the platform
- * brings the focus trap, Escape and the backdrop.
+ * The shape the office's dialogs arrive in: a real `<dialog>` that fills the viewport, so the platform
+ * brings the focus trap, Escape and the backdrop; a room inside it that a click can land in to dismiss
+ * what stands there; and, for the two big ones, a sheet that pops in with a lit header, a body and a
+ * footer that says what will happen.
  */
 
 /** The room around the sheet. A `<dialog>` this size covers the viewport, so its own `::backdrop` is
  *  never what the pointer lands on: this element is, and a click that stops here is a click outside. */
-export const CENTRE = "h-full flex items-center justify-center p-32";
+const CENTRE = "h-full flex items-center justify-center p-32";
 
 /** Closes when the click landed on the room and not on the sheet standing in it. */
-export const outside =
+const outside =
   (close: () => void) =>
   (event: React.MouseEvent<HTMLElement>): void => {
     if (event.target === event.currentTarget) {
       close();
     }
   };
+
+/** The dialog element itself, which is only ever a transparent, chromeless pane over the office. */
+export const DIALOG =
+  "border-0 p-0 m-0 max-w-none max-h-none w-full h-full bg-transparent text-inherit overflow-hidden outline-none focus:outline-none focus-visible:outline-none";
+
+/** What the office is seen through while a dialog is up. */
+export const BACKDROP =
+  "backdrop:bg-scrim-a74 backdrop:backdrop-blur-[10px] backdrop:animate-fade-280";
+
+/**
+ * A modal and the room inside it. `open` drives the platform's own `showModal`/`close`, Escape and a
+ * click in the room both call `onClose`, and whatever is handed in stands in the middle of the room.
+ */
+export function Modal({
+  open,
+  label,
+  backdrop = BACKDROP,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  label: string;
+  /** Only Confirm dims further than the rest; everything else takes the office's own scrim. */
+  backdrop?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const element = dialog.current;
+    if (open) {
+      element?.showModal();
+      // showModal() hands focus to the first focusable thing, which is the scrolling sheet: a scroll
+      // container Chrome rings in blue. The dialog itself takes it instead, and wears no ring.
+      element?.focus();
+    } else {
+      element?.close();
+    }
+  }, [open]);
+
+  return (
+    <dialog
+      ref={dialog}
+      className={`${DIALOG} ${backdrop}`}
+      aria-label={label}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+    >
+      <div role="presentation" className={CENTRE} onClick={outside(onClose)}>
+        {children}
+      </div>
+    </dialog>
+  );
+}
 
 const GLOW =
   "absolute -top-90 -left-40 w-280 h-280 rounded-half bg-[radial-gradient(circle,var(--color-accent-a12),transparent_68%)] pointer-events-none";
@@ -56,42 +113,19 @@ export function DialogSheet({
   onClose: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const element = dialog.current;
-    if (open) {
-      element?.showModal();
-      // showModal() hands focus to the first focusable thing, which is the scrolling sheet: a scroll
-      // container Chrome rings in blue. The dialog itself takes it instead, and wears no ring.
-      element?.focus();
-    } else {
-      element?.close();
-    }
-  }, [open]);
-
   return (
-    <dialog
-      ref={dialog}
-      className="border-0 p-0 m-0 max-w-none max-h-none w-full h-full bg-transparent text-inherit overflow-hidden outline-none focus:outline-none focus-visible:outline-none backdrop:bg-scrim-a74 backdrop:backdrop-blur-[10px] backdrop:animate-fade-280"
-      aria-label={label}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
-    >
-      <div role="presentation" className={CENTRE} onClick={outside(onClose)}>
-        <div
-          className="w-(--sheet) max-h-full overflow-y-auto rounded-20 bg-dialog border border-border-sheet shadow-dialog animate-pop-440"
-          style={{ "--sheet": width }}
-        >
-          <div className="relative pt-24 px-26 pb-20 overflow-hidden">
-            <div className={GLOW} />
-            <div className="relative flex items-start gap-14">{head}</div>
-          </div>
-          <div className="pt-0 px-26 pb-22">{children}</div>
-          <div className={FOOT}>{footer}</div>
+    <Modal open={open} label={label} onClose={onClose}>
+      <div
+        className="w-(--sheet) max-h-full overflow-y-auto rounded-20 bg-dialog border border-border-sheet shadow-dialog animate-pop-440"
+        style={{ "--sheet": width }}
+      >
+        <div className="relative pt-24 px-26 pb-20 overflow-hidden">
+          <div className={GLOW} />
+          <div className="relative flex items-start gap-14">{head}</div>
         </div>
+        <div className="pt-0 px-26 pb-22">{children}</div>
+        <div className={FOOT}>{footer}</div>
       </div>
-    </dialog>
+    </Modal>
   );
 }

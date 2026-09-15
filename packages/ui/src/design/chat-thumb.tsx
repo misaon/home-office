@@ -1,7 +1,6 @@
 import { isImageType, type Attachment } from "@ho/protocol";
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { attachmentUrl } from "../attachments.ts";
+import { useAttachmentUrl } from "../attachments.ts";
 import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
@@ -12,23 +11,8 @@ const FRAME =
 export function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);
-  const [url, setUrl] = useState<string | null>(null);
   const image = isImageType(attachment.mime);
-
-  useEffect(() => {
-    if (!image) {
-      return undefined;
-    }
-    let live = true;
-    void attachmentUrl(attachment).then((value) => {
-      if (live) {
-        setUrl(value);
-      }
-    });
-    return () => {
-      live = false;
-    };
-  }, [attachment, image]);
+  const url = useAttachmentUrl(attachment, image);
 
   return (
     <button

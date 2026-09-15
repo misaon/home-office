@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { Floor, Member } from "./data.ts";
 import { newDraft } from "./agent-dialog.tsx";
+import { Plus } from "./icons.tsx";
 import { TeamHeader } from "./team-header.tsx";
 import { TeamRow } from "./team-row.tsx";
 import { useDesign } from "./store.ts";
@@ -57,17 +58,7 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
           onClick={hire}
           className={`hover:bg-accent-a14 hover:border-accent-a65 ${HIRE}`}
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          >
-            <line x1="6" y1="2" x2="6" y2="10" />
-            <line x1="2" y1="6" x2="10" y2="6" />
-          </svg>
+          <Plus size={12} strokeWidth={1.6} />
           <span>{t("team.hire")}</span>
         </button>
       </div>

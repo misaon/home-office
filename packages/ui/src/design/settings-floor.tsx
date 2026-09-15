@@ -2,19 +2,11 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
+import { Chevron } from "./icons.tsx";
 import { FloorSwitches } from "./settings-floor-switches.tsx";
 import { useUi } from "../store.ts";
 import { MONO, separator } from "./tokens.ts";
 import { useDesign } from "./store.ts";
-
-const CHEVRON = {
-  width: 9,
-  height: 9,
-  viewBox: "0 0 12 12",
-  fill: "none",
-  strokeWidth: "1.5",
-  strokeLinecap: "round",
-} as const;
 
 const HEAD =
   "w-full flex items-center gap-10 p-13 border-0 bg-transparent cursor-pointer text-left transition-[background] duration-200";
@@ -79,12 +71,11 @@ export function SettingsFloor({
               {t("project.summaryTasks", { agents: floor.team.length, open: openTasks })}
             </span>
           </span>
-          <svg
+          <Chevron
+            size={9}
+            strokeWidth={1.5}
             className={`flex-[0_0_auto] stroke-ink-meta transition-transform duration-300 ${open ? "rotate-90" : "rotate-0"}`}
-            {...CHEVRON}
-          >
-            <polyline points="4.5,3 8,6 4.5,9" />
-          </svg>
+          />
         </button>
         {open ? (
           <div className="pt-0 px-13 pb-14 animate-rise-280">

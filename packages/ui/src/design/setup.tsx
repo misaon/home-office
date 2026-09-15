@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { doctorQuery } from "../queries.ts";
 import { setupNeeded, setupReady } from "../setup/status.ts";
 import { DockerStep, ImagesStep, TokenStep } from "../setup/steps-environment.tsx";
 import { useOnline, useUi } from "../store.ts";
 import { DISPLAY } from "./tokens.ts";
-import { CENTRE, outside } from "./dialog-sheet.tsx";
+import { Modal } from "./dialog-sheet.tsx";
 
 const DISMISSED_KEY = "ho.setup.dismissed";
 
@@ -67,63 +67,38 @@ export function Setup(): React.JSX.Element {
     setSetupOpen(false);
   };
 
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const element = dialog.current;
-    if (open) {
-      element?.showModal();
-      // showModal() hands focus to the first focusable thing, which is the scrolling sheet: a scroll
-      // container Chrome rings in blue. The dialog itself takes it instead, and wears no ring.
-      element?.focus();
-    } else {
-      element?.close();
-    }
-  }, [open]);
-
   return (
-    <dialog
-      ref={dialog}
-      className="border-0 p-0 m-0 max-w-none max-h-none w-full h-full bg-transparent text-inherit overflow-hidden outline-none focus:outline-none focus-visible:outline-none backdrop:bg-scrim-a74 backdrop:backdrop-blur-[10px] backdrop:animate-fade-280"
-      aria-label={t("setup.title")}
-      onCancel={(event) => {
-        event.preventDefault();
-        close();
-      }}
-    >
-      <div role="presentation" className={CENTRE} onClick={outside(close)}>
-        <div className={SHEET}>
-          <div className={HEAD}>
-            <div className="flex-1 min-w-200">
-              <div className={`${DISPLAY} font-bold text-21 tracking-tight`}>
-                {t("setup.title")}
-              </div>
-              <div className="text-12h text-ink-label mt-6 leading-prose">{t("setup.intro")}</div>
-            </div>
-            <div className="flex gap-7">
-              <button
-                type="button"
-                onClick={refresh}
-                disabled={query.isFetching}
-                className={`hover:text-ink hover:border-border-hover hover:bg-raised ${QUIET}`}
-              >
-                {t("setup.recheck")}
-              </button>
-              <button
-                type="button"
-                onClick={close}
-                className={`hover:text-ink hover:border-border-hover hover:bg-raised ${QUIET}`}
-              >
-                {ready ? t("common.close") : t("setup.skip")}
-              </button>
-            </div>
+    <Modal open={open} label={t("setup.title")} onClose={close}>
+      <div className={SHEET}>
+        <div className={HEAD}>
+          <div className="flex-1 min-w-200">
+            <div className={`${DISPLAY} font-bold text-21 tracking-tight`}>{t("setup.title")}</div>
+            <div className="text-12h text-ink-label mt-6 leading-prose">{t("setup.intro")}</div>
           </div>
-          <div className="pt-8 px-26 pb-26">
-            <DockerStep doctor={doctor} refresh={refresh} />
-            <ImagesStep doctor={doctor} refresh={refresh} />
-            <TokenStep doctor={doctor} />
+          <div className="flex gap-7">
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={query.isFetching}
+              className={`hover:text-ink hover:border-border-hover hover:bg-raised ${QUIET}`}
+            >
+              {t("setup.recheck")}
+            </button>
+            <button
+              type="button"
+              onClick={close}
+              className={`hover:text-ink hover:border-border-hover hover:bg-raised ${QUIET}`}
+            >
+              {ready ? t("common.close") : t("setup.skip")}
+            </button>
           </div>
         </div>
+        <div className="pt-8 px-26 pb-26">
+          <DockerStep doctor={doctor} refresh={refresh} />
+          <ImagesStep doctor={doctor} refresh={refresh} />
+          <TokenStep doctor={doctor} />
+        </div>
       </div>
-    </dialog>
+    </Modal>
   );
 }

@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { UsageMenu, useContextFill } from "./chat-usage-menu.tsx";
 import type { Floor } from "./data.ts";
+import { Plus } from "./icons.tsx";
 import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
@@ -53,17 +54,7 @@ export function ChatToolbar({
         }}
         className={`hover:text-accent-soft hover:border-accent-a45 hover:rotate-90 ${SQUARE}`}
       >
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 12 12"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        >
-          <line x1="6" y1="2" x2="6" y2="10" />
-          <line x1="2" y1="6" x2="10" y2="6" />
-        </svg>
+        <Plus size={12} strokeWidth={1.5} />
       </button>
       <div className="flex-1" />
       <div className="relative flex-[0_0_auto]">

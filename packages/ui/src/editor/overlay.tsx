@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { OFFICE_SIZE } from "@ho/sim";
 import { layoutsQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
+import { BACKDROP, DIALOG } from "../design/dialog-sheet.tsx";
 import { EditorCanvas } from "./canvas.tsx";
 import { EditorDrawer } from "./drawer.tsx";
 import {
@@ -63,7 +64,7 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
   return (
     <dialog
       ref={dialog}
-      className="border-0 p-0 m-0 max-w-none max-h-none w-full h-full bg-transparent text-inherit overflow-hidden outline-none focus:outline-none focus-visible:outline-none backdrop:bg-scrim-a74 backdrop:backdrop-blur-[10px] backdrop:animate-fade-280"
+      className={`${DIALOG} ${BACKDROP}`}
       aria-label={t("editor.title")}
       onCancel={(event) => {
         event.preventDefault();

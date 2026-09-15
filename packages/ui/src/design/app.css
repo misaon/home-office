@@ -14,6 +14,15 @@
 @source "../editor";
 @source "../setup";
 @source "../office";
+/*
+ * Two candidates the scanner reads out of the modal's class list that no element ever wears:
+ * `backdrop:backdrop-blur-[10px]` and `backdrop:animate-fade-280` also yield the bare utilities, and
+ * the office writes neither. Measured 2026-09-15 against Tailwind 4.3.3: without this line the sheet
+ * carries 642 bytes of `.backdrop-blur-[10px]` and `.animate-fade-280` that nothing selects. The
+ * prefixed forms are unaffected, as are `backdrop-blur-[14px]`/`[18px]` and `animate-fade-260`,
+ * which the lightbox and the camera bar do write bare.
+ */
+@source not inline("backdrop-blur-[10px] animate-fade-280");
 
 /*
  * Tailwind's own `hover:` is wrapped in `@media (hover: hover)`, so on a touch pointer it stops

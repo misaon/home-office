@@ -1,6 +1,7 @@
 import type { SecretKeyName } from "@ho/protocol";
 import { useTranslation } from "react-i18next";
 import { CredForm, NAMED } from "./settings-cred-form.tsx";
+import { Chevron } from "./icons.tsx";
 import { MONO, separator } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
@@ -43,17 +44,11 @@ export function CredRow({
           >
             {stored ? t("tokens.stored") : t("tokens.missing")}
           </span>
-          <svg
+          <Chevron
+            size={9}
+            strokeWidth={1.5}
             className={`flex-[0_0_auto] transition-transform duration-300 ${open ? "rotate-90" : "rotate-0"} stroke-ink-meta`}
-            width="9"
-            height="9"
-            viewBox="0 0 12 12"
-            fill="none"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          >
-            <polyline points="4.5,3 8,6 4.5,9" />
-          </svg>
+          />
         </button>
         {open ? <CredForm name={name} stored={stored} /> : null}
       </div>

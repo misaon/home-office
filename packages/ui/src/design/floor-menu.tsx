@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { FloorRow } from "./floor-row.tsx";
+import { Plus } from "./icons.tsx";
 import { useFloors } from "./live.ts";
 import { useUi } from "../store.ts";
 import { useDesign } from "./store.ts";
@@ -78,17 +79,7 @@ export function FloorMenu(): React.JSX.Element {
         className={`hover:bg-accent-a10 ${ADD}`}
       >
         <span className="w-22 h-22 flex-[0_0_22px] rounded-7 grid place-items-center bg-accent-a14">
-          <svg
-            className="stroke-accent"
-            width="11"
-            height="11"
-            viewBox="0 0 12 12"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          >
-            <line x1="6" y1="2" x2="6" y2="10" />
-            <line x1="2" y1="6" x2="10" y2="6" />
-          </svg>
+          <Plus size={11} strokeWidth={1.6} className="stroke-accent" />
         </span>
         <span className="text-12h text-accent-soft">{t("project.add")}</span>
       </button>

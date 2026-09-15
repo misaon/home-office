@@ -2,6 +2,7 @@ import type { ParseKeys } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type Check, CheckRow } from "./fault-check.tsx";
+import { Chevron } from "./icons.tsx";
 import {
   BODY,
   CARD,
@@ -139,18 +140,11 @@ export function FaultBody({
           }}
           className={`hover:text-accent-soft ${TOGGLE}`}
         >
-          <svg
+          <Chevron
+            size={9}
+            strokeWidth={1.6}
             className={`transition-transform duration-300 ${logOpen ? "rotate-90" : "rotate-0"}`}
-            width="9"
-            height="9"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          >
-            <polyline points="4.5,3 8,6 4.5,9" />
-          </svg>{" "}
+          />{" "}
           <span>{t(logOpen ? "fault.hideLog" : "fault.showLog")}</span>
         </button>
         {logOpen ? <pre className={LOG}>{fault.log}</pre> : null}
