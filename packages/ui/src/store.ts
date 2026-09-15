@@ -1,17 +1,18 @@
 import { type Collection, createReadModel, type ReadModel } from "@ho/core";
-import type {
-  Agent,
-  AgentId,
-  ChatMessage,
-  LiveEvent,
-  MailItem,
-  MailItemId,
-  Project,
-  ProjectId,
-  Session,
-  SessionId,
-  Task,
-  TaskId,
+import {
+  type Agent,
+  type AgentId,
+  type ChatMessage,
+  isSessionActive,
+  type LiveEvent,
+  type MailItem,
+  type MailItemId,
+  type Project,
+  type ProjectId,
+  type Session,
+  type SessionId,
+  type Task,
+  type TaskId,
 } from "@ho/protocol";
 import { create } from "zustand";
 
@@ -63,6 +64,13 @@ const takeSnapshot = (previous: Snapshot | null): Snapshot => ({
   mail: changed("mail") || previous === null ? new Map(model.mail) : previous.mail,
 });
 
+/**
+ * The session this colleague is in right now, if any. The office asks it from three places — the dot on
+ * the floor, the team list and the boss's own line — and the snapshot carries no index to ask it with.
+ */
+export const activeSessionOf = (snapshot: Snapshot, agentId: AgentId): Session | undefined =>
+  [...snapshot.sessions.values()].find((s) => s.agentId === agentId && isSessionActive(s.state));
+
 /** Floors in the order they were built: the first project is floor 1. */
 export const sortedFloors = (projects: ReadonlyMap<ProjectId, Project>): Project[] =>
   [...projects.values()].toSorted(
@@ -81,7 +89,6 @@ type UiState = {
   offlineSince: number | null;
   snapshot: Snapshot;
   live: ReadonlyMap<SessionId, readonly LiveEvent[]>;
-  lastError: string | null;
   selectedAgentId: AgentId | null;
   /** The floor (project) shown in the office and the side panels; null until the first project exists. */
   floorId: ProjectId | null;
@@ -90,7 +97,6 @@ type UiState = {
   setupOpen: boolean;
   setConnection: (connection: Connection) => void;
   setReplayed: (replayed: boolean) => void;
-  setError: (message: string | null) => void;
   selectAgent: (agentId: AgentId | null) => void;
   selectFloor: (floorId: ProjectId | null) => void;
   setAddProjectOpen: (open: boolean) => void;
@@ -103,7 +109,6 @@ export const useUi = create<UiState>()((set) => ({
   offlineSince: null,
   snapshot: takeSnapshot(null),
   live: new Map(),
-  lastError: null,
   selectedAgentId: null,
   floorId: null,
   addProjectOpen: false,
@@ -121,9 +126,6 @@ export const useUi = create<UiState>()((set) => ({
   },
   setReplayed: (replayed) => {
     set({ replayed });
-  },
-  setError: (lastError) => {
-    set({ lastError });
   },
   selectAgent: (selectedAgentId) => {
     set({ selectedAgentId });

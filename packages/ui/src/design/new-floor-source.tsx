@@ -1,3 +1,4 @@
+import { RadioGroup } from "@base-ui/react/radio-group";
 import { compact, repoSourceOf } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -55,7 +56,7 @@ function LocalField({
             value={draft.path}
             placeholder="/Users/you/projects/app"
             onChange={(e) => {
-              const value = e.target.value;
+              const { value } = e.target;
               setDraft(
                 repoSourceOf(value).kind === "git"
                   ? { ...draft, kind: "git", url: value, path: "", branch: "" }
@@ -163,22 +164,17 @@ export function FloorSource({
   return (
     <>
       <div className={`${CAP} text-9h mb-10`}>{t("project.whereCode")}</div>
-      <div className="grid grid-cols-2 gap-10 mb-20">
-        <SourceCard
-          kind="local"
-          on={draft.kind === "local"}
-          onPick={() => {
-            setDraft({ ...draft, kind: "local", branch: "" });
-          }}
-        />
-        <SourceCard
-          kind="git"
-          on={draft.kind === "git"}
-          onPick={() => {
-            setDraft({ ...draft, kind: "git", branch: "" });
-          }}
-        />
-      </div>
+      <RadioGroup
+        aria-label={t("project.whereCode")}
+        value={draft.kind}
+        onValueChange={(next) => {
+          setDraft({ ...draft, kind: next === "git" ? "git" : "local", branch: "" });
+        }}
+        className="grid grid-cols-2 gap-10 mb-20"
+      >
+        <SourceCard kind="local" />
+        <SourceCard kind="git" />
+      </RadioGroup>
       {draft.kind === "local" ? (
         <LocalField
           draft={draft}

@@ -1,7 +1,9 @@
+import { Collapsible } from "@base-ui/react/collapsible";
 import type { ParseKeys } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type Check, CheckRow } from "./fault-check.tsx";
+import { ChevronRight } from "lucide-react";
 import {
   BODY,
   CARD,
@@ -132,28 +134,19 @@ export function FaultBody({
             <CheckRow key={check.name} check={check} first={i === 0} />
           ))}
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setLogOpen(!logOpen);
-          }}
-          className={`hover:text-accent-soft ${TOGGLE}`}
-        >
-          <svg
-            className={`transition-transform duration-300 ${logOpen ? "rotate-90" : "rotate-0"}`}
-            width="9"
-            height="9"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          >
-            <polyline points="4.5,3 8,6 4.5,9" />
-          </svg>{" "}
-          <span>{t(logOpen ? "fault.hideLog" : "fault.showLog")}</span>
-        </button>
-        {logOpen ? <pre className={LOG}>{fault.log}</pre> : null}
+        <Collapsible.Root open={logOpen} onOpenChange={setLogOpen}>
+          <Collapsible.Trigger className={`hover:text-accent-soft ${TOGGLE}`}>
+            <ChevronRight
+              size={9}
+              strokeWidth={1.6}
+              className="transition-transform duration-300 rotate-0 data-panel-open:rotate-90"
+            />{" "}
+            <span>{t(logOpen ? "fault.hideLog" : "fault.showLog")}</span>
+          </Collapsible.Trigger>
+          <Collapsible.Panel>
+            <pre className={LOG}>{fault.log}</pre>
+          </Collapsible.Panel>
+        </Collapsible.Root>
         <FaultActions primary={fault.primary} onSetup={onSetup} onCopy={onCopy} />
         <div className={`mt-16 ${MONO} text-10h text-ink-ghost`}>{reference}</div>
       </div>

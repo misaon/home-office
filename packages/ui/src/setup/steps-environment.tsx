@@ -121,9 +121,9 @@ export function ImagesStep({ doctor, refresh }: EnvProps): React.JSX.Element {
         })) {
           setLines((prev) => [...prev.slice(-LOG_LIMIT), line]);
         }
-      } catch (failure) {
+      } catch (error) {
         if (!aborter.signal.aborted) {
-          throw failure;
+          throw error;
         }
       }
     },

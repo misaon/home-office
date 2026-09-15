@@ -1,3 +1,4 @@
+import { Dialog } from "@base-ui/react/dialog";
 import { defaultChoice } from "@ho/core";
 import { EffortLevel, ProviderId, type AgentRole } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
@@ -43,6 +44,7 @@ function AgentDialogFoot({
   name,
   draft,
   busy,
+  taken,
   onCancel,
   onSave,
   onRemove,
@@ -51,6 +53,8 @@ function AgentDialogFoot({
   name: string;
   draft: AgentDraft;
   busy: boolean;
+  /** Someone else on this floor already answers to this name. */
+  taken: boolean;
   onCancel: () => void;
   onSave: () => void;
   onRemove: (id: Member["id"]) => void;
@@ -59,7 +63,7 @@ function AgentDialogFoot({
   const confirm = useDesign((s) => s.confirm);
   return (
     <>
-      {id === null ? null : (
+      {id === null || draft.role === "boss" ? null : (
         <button
           type="button"
           disabled={busy}
@@ -78,23 +82,24 @@ function AgentDialogFoot({
           {t("common.remove")}
         </button>
       )}
-      <span className={HINT}>
+      <span className={`${HINT} ${taken ? "text-bad-soft" : ""}`}>
         {name === ""
           ? t("agent.nameFirst")
-          : `${draft.provider} · ${draft.model} / ${draft.effort}`}
+          : taken
+            ? t("agent.nameTaken")
+            : `${draft.provider} · ${draft.model} / ${draft.effort}`}
       </span>
-      <button
-        type="button"
+      <Dialog.Close
         onClick={onCancel}
         className={`hover:text-ink hover:border-border-hover hover:bg-raised ${CANCEL}`}
       >
         {t("common.cancel")}
-      </button>
+      </Dialog.Close>
       <button
         type="button"
-        disabled={name === "" || busy}
+        disabled={name === "" || taken || busy}
         onClick={onSave}
-        className={`hover:-translate-y-2 hover:shadow-lift-lg ${COMMIT} ${name === "" ? "bg-edge-lit" : "bg-accent"} ${name === "" ? "text-ink-ghost" : "text-accent-ink"}`}
+        className={`hover:-translate-y-2 hover:shadow-lift-lg ${COMMIT} ${name === "" || taken ? "bg-edge-lit" : "bg-accent"} ${name === "" || taken ? "text-ink-ghost" : "text-accent-ink"}`}
       >
         {id === null ? t("agent.hire") : t("agent.save")}
       </button>
@@ -139,12 +144,12 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
   const dlg = useDesign((s) => s.agentDlg);
   const draft = useDesign((s) => s.agentDraft);
   const set = useDesign((s) => s.set);
-  const update = useDesign((s) => s.update);
+
   const flash = useDesign((s) => s.flash);
 
   const editing = dlg?.mode === "edit" ? floor.team.find((p) => p.id === dlg.id) : undefined;
   const close = (): void => {
-    set({ agentDlg: null, agentDraft: null, openSelect: null });
+    set({ agentDlg: null, agentDraft: null });
   };
   const done = (message: string): void => {
     close();
@@ -154,6 +159,18 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
     flash(error.message);
   };
   const name = draft === null ? "" : draft.name.trim();
+  /**
+   * Two colleagues on one floor answering to the same name is a mess the office cannot undo: the chat,
+   * the board and the boss's delegation all name people rather than ids. The dialog refuses it here,
+   * case-insensitively, counting everyone but whoever is being edited.
+   */
+  const taken =
+    name !== "" &&
+    floor.team.some(
+      (person) =>
+        person.id !== (dlg?.mode === "edit" ? dlg.id : null) &&
+        person.name.trim().toLowerCase() === name.toLowerCase(),
+    );
 
   const save = useMutation({
     mutationFn: () =>
@@ -185,7 +202,7 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
   const working = editing?.status === "working";
   const boss = floor.team.find((p) => p.role === "boss" && p.id !== editing?.id);
   const patch = (next: Partial<AgentDraft>): void => {
-    update((s) => ({ agentDraft: s.agentDraft === null ? null : { ...s.agentDraft, ...next } }));
+    set((s) => ({ agentDraft: s.agentDraft === null ? null : { ...s.agentDraft, ...next } }));
   };
   const pickRole = (role: AgentRole): void => {
     if (role !== "boss" && editing?.role === "boss") {
@@ -193,7 +210,6 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
       return;
     }
     patch({ role });
-    set({ openSelect: null });
   };
 
   return (
@@ -221,6 +237,7 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
           name={name}
           draft={draft}
           busy={save.isPending || remove.isPending}
+          taken={taken}
           onCancel={close}
           onSave={() => {
             save.mutate();

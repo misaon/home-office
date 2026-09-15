@@ -29,7 +29,10 @@ export const createFileSecretStore = (path: string): SecretStore => {
     return next;
   };
   return {
-    get: async (key: SecretKeyName) => (await load())[key] ?? null,
+    get: async (key: SecretKeyName) => {
+      const stored = await load();
+      return stored[key] ?? null;
+    },
     set: (key: SecretKeyName, value: string) =>
       mutate((contents) => ({ ...contents, [key]: value })),
     delete: (key: SecretKeyName) =>

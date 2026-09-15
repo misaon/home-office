@@ -1,3 +1,4 @@
+import { Accordion } from "@base-ui/react/accordion";
 import { SecretKeyName } from "@ho/protocol";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -46,17 +47,17 @@ export function Settings(): React.JSX.Element {
           name={t("settings.credentials")}
           count={`${String(present.length)}/${String(SecretKeyName.options.length)}`}
         />
-        <div className={`${CARD} mb-18`}>
+        <Accordion.Root className={`${CARD} mb-18`}>
           {SecretKeyName.options.map((name, i) => (
             <CredRow key={name} name={name} stored={present.includes(name)} first={i === 0} />
           ))}
-        </div>
+        </Accordion.Root>
         <Rule name={t("project.floors")} count={String(floors.length)} />
-        <div className={CARD}>
+        <Accordion.Root className={CARD}>
           {floors.map((floor, index) => (
             <SettingsFloor key={floor.id} floor={floor} index={index} first={index === 0} />
           ))}
-        </div>
+        </Accordion.Root>
         <button
           type="button"
           onClick={() => {

@@ -41,16 +41,15 @@ export function createGithubIssuesConnector(): IntakeConnector {
     id: GITHUB_ISSUES_CONNECTOR,
     poll: async (project: Project, cancel?: Cancellation): Promise<IntakeItem[]> => {
       const target = ghTarget(project);
-      const repo =
+      const named =
         target.cwd === undefined
-          ? target.args[1]
-          : (
-              await gh(
-                ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
-                target.cwd,
-                cancel,
-              )
-            ).trim();
+          ? undefined
+          : await gh(
+              ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+              target.cwd,
+              cancel,
+            );
+      const repo = named === undefined ? target.args[1] : named.trim();
       if (repo === undefined || !/^[a-z0-9-]+\/[a-z0-9_.-]+$/iu.test(repo)) {
         throw new Error("invalid GitHub repository identity");
       }

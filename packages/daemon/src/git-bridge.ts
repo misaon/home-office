@@ -73,7 +73,8 @@ export async function prepareRepo(
     volume,
     null,
   );
-  if ((await run(provider, probe)).ok) {
+  const probed = await run(provider, probe);
+  if (probed.ok) {
     return;
   }
   const clone = (ref: string): SandboxSpec =>
@@ -84,7 +85,8 @@ export async function prepareRepo(
       volume,
       { path: sourcePath, mode: "ro" },
     );
-  if ((await run(provider, clone(branch))).ok) {
+  const cloned = await run(provider, clone(branch));
+  if (cloned.ok) {
     return;
   }
   await runOrThrow(provider, clone(defaultBranch), "clone");

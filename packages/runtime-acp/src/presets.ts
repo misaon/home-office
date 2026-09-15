@@ -22,7 +22,7 @@ const LOCAL_PROVIDERS: Readonly<Record<string, { name: string; baseURL: string }
 /** OpenCode's provider block for `ollama/<model>` and `lmstudio/<model>`; cloud providers need none. */
 const providerBlock = (model: string): Record<string, unknown> => {
   const slash = model.indexOf("/");
-  const prefix = slash < 0 ? "" : model.slice(0, slash);
+  const prefix = slash === -1 ? "" : model.slice(0, slash);
   const local = LOCAL_PROVIDERS[prefix];
   if (local === undefined) {
     return {};

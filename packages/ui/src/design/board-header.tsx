@@ -22,7 +22,7 @@ export function BoardHeader({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const flash = useDesign((s) => s.flash);
   const confirm = useDesign((s) => s.confirm);
-  const cards = floor.cards;
+  const { cards } = floor;
   const total = cards.length === 0 ? 1 : cards.length;
   const done = cards.filter((c) => c.s === "done").length;
   const share = (lane: string): string =>

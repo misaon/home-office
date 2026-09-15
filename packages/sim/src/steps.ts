@@ -29,7 +29,7 @@ function advanceWalk(
       return;
     }
   }
-  const next = step.path[0];
+  const [next] = step.path;
   if (next === undefined) {
     actor.pos = { ...actor.tile };
     finishStep(actor);
@@ -94,7 +94,7 @@ export function advanceStep(
   dtMs: number,
   occupancy: OccupancyIndex,
 ): void {
-  const step = actor.steps[0];
+  const [step] = actor.steps;
   if (step === undefined) {
     return;
   }

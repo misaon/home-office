@@ -1,8 +1,9 @@
-import { isSessionActive, type AgentId, errorMessage } from "@ho/protocol";
+import { type AgentId, errorMessage } from "@ho/protocol";
 import { t } from "i18next";
 import { type Actor, CELL_PX, type World } from "@ho/sim";
 import { Container, Graphics } from "pixi.js";
-import { type Badge, makeBadge, updateBadge } from "./badge.ts";
+import { type Badge, captionOf, makeBadge, updateBadge } from "./badge.ts";
+import { useDesign } from "../design/store.ts";
 import { useUi } from "../store.ts";
 import { bridge } from "./bridge.ts";
 import { DOT, DOT_EDGE, DOT_SELECTED } from "./colours.ts";
@@ -18,37 +19,6 @@ const DOT_RADIUS = CELL_PX;
 const DRAG_SLOP_PX = 4;
 
 type DotView = { root: Container; shape: Graphics; badge: Badge; selected: boolean };
-
-/** What Lola is doing, in the words the pill has room for. */
-function receptionWork(actor: Actor): { caption: string; busy: boolean } {
-  const carrying = actor.emotion?.kind === "envelope";
-  const doing = carrying
-    ? actor.activity === "handover"
-      ? t("stage.handingOver")
-      : t("stage.carrying")
-    : actor.activity === "receive" || actor.activity === "drop"
-      ? t("stage.atMail")
-      : t("stage.atReception");
-  return { caption: `${t("stage.receptionist")} · ${doing}`, busy: carrying };
-}
-
-/** What the pill under a character says, and whether the office draws them as working. */
-function captionOf(actor: Actor): { caption: string; busy: boolean } | null {
-  // Lola keeps the counter and is nobody's agent, so her pill comes from the floor rather than the
-  // read model — she is the only character on it the daemon has no record of.
-  if (actor.kind === "receptionist") {
-    return receptionWork(actor);
-  }
-  const { snapshot } = useUi.getState();
-  const agent = snapshot.agents.get(actor.id);
-  if (agent === undefined) {
-    return null;
-  }
-  const busy = [...snapshot.sessions.values()].some(
-    (session) => session.agentId === actor.id && isSessionActive(session.state),
-  );
-  return { caption: `${agent.name} · ${t(busy ? "team.working" : "team.idle")}`, busy };
-}
 
 const paint = (shape: Graphics, selected: boolean): void => {
   shape
@@ -208,6 +178,14 @@ export type OfficeHandle = {
 export function startOffice(host: HTMLElement): OfficeHandle {
   const scene = new OfficeScene();
   let disposed = false;
+  /** A frame that throws throws again on the next one, so the office says it once, out loud. */
+  let toldTheHuman = false;
+  const report = (error: unknown): void => {
+    if (!toldTheHuman) {
+      toldTheHuman = true;
+      useDesign.getState().flash(t("app.officeFailed", { message: errorMessage(error) }));
+    }
+  };
   let followed: AgentId | null = null;
   let unsubscribe: (() => void) | null = null;
   // The ring under a working colleague runs on the office's own clock, not the document's.
@@ -226,7 +204,7 @@ export function startOffice(host: HTMLElement): OfficeHandle {
         }
       }
     } catch (error) {
-      useUi.getState().setError(errorMessage(error));
+      report(error);
     }
   };
   const stillFrame = (): void => {
@@ -267,7 +245,7 @@ export function startOffice(host: HTMLElement): OfficeHandle {
       // No office to watch: the daemon must not wait for walks that will never be drawn.
       bridge.setWatching(false);
       if (!disposed) {
-        useUi.getState().setError(errorMessage(error));
+        report(error);
       }
     });
   return {

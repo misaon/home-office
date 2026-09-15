@@ -205,9 +205,9 @@ export function nearestWalkable(world: World, floorId: string, target: Point): P
         }
       }
     }
-    const nearest = ring
+    const [nearest] = ring
       .filter((p) => floor.grid.isWalkable(p))
-      .toSorted((a, b) => manhattan(a, target) - manhattan(b, target))[0];
+      .toSorted((a, b) => manhattan(a, target) - manhattan(b, target));
     if (nearest !== undefined) {
       return nearest;
     }
@@ -263,5 +263,5 @@ export const pendingDeliveries = (actor: Actor): Step[] => {
   const index = actor.steps.findLastIndex(
     (step) => step.kind === "emit" && step.event.kind === "delivered",
   );
-  return index < 0 ? [] : actor.steps.slice(0, index + 1);
+  return index === -1 ? [] : actor.steps.slice(0, index + 1);
 };

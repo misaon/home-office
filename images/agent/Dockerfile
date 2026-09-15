@@ -40,7 +40,7 @@ WORKDIR /work
 CMD ["bun", "/usr/local/bin/ho-runner.js"]
 
 FROM base AS claude-code
-ARG CLAUDE_CODE_VERSION=2.1.263-r1
+ARG CLAUDE_CODE_VERSION=2.1.272-r1
 RUN wget -qO /etc/apk/keys/claude-code.rsa.pub https://downloads.claude.ai/keys/claude-code.rsa.pub \
  && echo "395759c1f7449ef4cdef305a42e820f3c766d6090d142634ebdb049f113168b6  /etc/apk/keys/claude-code.rsa.pub" | sha256sum -c - \
  && echo "https://downloads.claude.ai/claude-code/apk/latest" >> /etc/apk/repositories \

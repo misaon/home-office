@@ -33,6 +33,7 @@ export const cs: typeof en = {
     settingsHint: "Jazyk, přihlašovací údaje a napojení podlaží",
   },
   app: {
+    officeFailed: "Kancelář se nepodařilo vykreslit: {{message}}",
     connecting: "Připojuji se k daemonovi…",
     connected: "Připojeno",
     offline: "Daemon je offline — zkouším znovu…",
@@ -68,6 +69,7 @@ export const cs: typeof en = {
     neutral: "neutrální",
   },
   board: {
+    filters: "Filtrovat nástěnku podle stavu",
     remove: "Odebrat",
     removeConfirm: "Sundat tento úkol z tabule?",
     clearTitle: "Uklidit hotovou práci",
@@ -217,6 +219,7 @@ export const cs: typeof en = {
     forgotten: "{{name}} zapomenuto",
   },
   team: {
+    filters: "Filtrovat tým podle stavu",
     intro: "Všichni na tomto podlaží. Kliknutím na kartu uvidíte, co dělají, nebo je nastavíte.",
     onFloor: "Na podlaží {{floor}}",
     working: "pracuje",

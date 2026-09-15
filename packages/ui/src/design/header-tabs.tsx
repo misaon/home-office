@@ -1,3 +1,4 @@
+import { Tabs } from "@base-ui/react/tabs";
 import { useTranslation } from "react-i18next";
 import { useDesign, type Tab } from "./store.ts";
 
@@ -21,28 +22,34 @@ export function HeaderTabs(): React.JSX.Element {
   };
 
   return (
-    <nav
-      aria-label={t("nav.label")}
+    <Tabs.Root
+      value={tab}
+      onValueChange={(next) => {
+        const picked = TABS.find(([name]) => name === next);
+        if (picked !== undefined) {
+          set({ tab: picked[0], sheet: null });
+        }
+      }}
+      render={<nav />}
       className="w-420 flex-[0_0_420px] border-l border-line flex relative"
     >
-      <div className={`${MARKER} h-2 bg-accent shadow-tab translate-x-(--slide)`} style={slide} />
-      <div
-        className={`${MARKER} h-30 bg-[linear-gradient(180deg,var(--color-accent-a00),var(--color-accent-a11))] translate-x-(--slide) pointer-events-none`}
-        style={slide}
-      />
-      {TABS.map(([name, label, hint]) => (
-        <button
-          type="button"
-          key={name}
-          title={t(hint)}
-          onClick={() => {
-            set({ tab: name, sheet: null, openSelect: null });
-          }}
-          className={`hover:-translate-y-1 flex-1 border-0 bg-transparent cursor-pointer text-12h font-medium py-1 px-6 whitespace-nowrap transition-[color,transform] duration-250 relative z-2 ${tab === name ? "text-accent-soft" : "text-ink-label"}`}
-        >
-          {t(label)}
-        </button>
-      ))}
-    </nav>
+      <Tabs.List aria-label={t("nav.label")} className="flex flex-1 relative">
+        <div className={`${MARKER} h-2 bg-accent shadow-tab translate-x-(--slide)`} style={slide} />
+        <div
+          className={`${MARKER} h-30 bg-[linear-gradient(180deg,var(--color-accent-a00),var(--color-accent-a11))] translate-x-(--slide) pointer-events-none`}
+          style={slide}
+        />
+        {TABS.map(([name, label, hint]) => (
+          <Tabs.Tab
+            key={name}
+            value={name}
+            title={t(hint)}
+            className={`hover:-translate-y-1 flex-1 border-0 bg-transparent cursor-pointer text-12h font-medium py-1 px-6 whitespace-nowrap transition-[color,transform] duration-250 relative z-2 ${tab === name ? "text-accent-soft" : "text-ink-label"}`}
+          >
+            {t(label)}
+          </Tabs.Tab>
+        ))}
+      </Tabs.List>
+    </Tabs.Root>
   );
 }

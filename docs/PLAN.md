@@ -88,6 +88,98 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-15 — Owner task: find libraries that would shrink or improve the codebase — The survey
+  measured 26 102 lines of first-party TypeScript, largest file 289 lines, and found little commodity
+  code left: `sandbox-docker` stays because dockerode drags `@grpc/grpc-js` and `protobufjs` onto a
+  229-line `fetch({unix})` client, the runner's line pump stays because `Bun.JSONL` gives neither
+  arbitrary text nor its 1 MiB guard, and `Bun.Terminal` turned out to be a pty spawner rather than a
+  handle on our own stdin. What it did find was the office's own popovers: no `role="listbox"`, no
+  `aria-expanded`, no arrow keys, and Escape over an open select discarding the whole form. The owner's
+  answer was to go further than the finding — **Base UI as the single core for every component that has
+  a primitive** — plus commander, lucide-react and simple-git, with a free hand on the visuals. Fifteen
+  components moved, seven fields of popover state and two invisible scrims stopped existing, and ADR 006
+  is reversed rather than contradicted. The screenshots found four real defects the typechecker could
+  not, including a scrim that stopped covering the header because a portalled div is not the browser's
+  top layer. Cost: +201 KiB on the UI bundle (+10.8 %).
+  [The task plan](plans/2026-09-15-library-adoption.md).
+
+- 2026-09-15 — Owner task: audit every npm library and research a more modern alternative — The sweep
+  found **nothing deprecated across 210 installed package versions** and nothing abandoned, so the work
+  was bumps rather than replacements: eleven catalog pins (Zod 4.6.5, React 19.3.0, oRPC 1.15.1,
+  react-i18next 17.0.14, `@types/react` 19.3.0, knip 6.35.1, oxfmt 0.68.0), four in the agent images
+  and the Claude Code APK at 2.1.272-r1. `oxfmt` 0.68.0 was checked before adoption because a formatter
+  bump can rewrite a tree: it reformats nothing here. The one library removed is `yoctocolors`, whose
+  work `styleText` from `node:util` now does — measured identical in all four terminal conditions,
+  including inside a compiled binary. Researched and **declined**, each with the figure that decided it:
+  Valibot (86 348 → 3 671 bytes on one schema, but Zod sits in nine packages), Paraglide JS (−73 kB
+  against ~40 call sites and Czech plural suffixes), LogTape (0.32 M weekly against pino's 36 M, for one
+  file), tRPC (oRPC is already the faster and newer of the two), Jotai and TanStack Store (Zustand plus
+  TanStack Query is the 2026 pairing), heap-js and `bun-plugin-tailwind`, whose last publish is eleven
+  months old. Verification: 28 office states byte-identical, the compiled stylesheet unchanged, all four
+  image targets rebuilt and reporting their new versions, and a wrong claim in the previous round's
+  record corrected — the `usage-res` state's 43 440 px is the resources panel still loading, not Docker
+  disk drift, and it flakes on the baseline too. [The task plan](plans/2026-09-15-dependency-audit.md).
+
+- 2026-09-15 — Owner task: find the most modern linter, deploy it at its strictest, fix everything —
+  Three candidates were measured against this repository rather than read about. **Rslint 0.9.2** (Go on
+  typescript-go, the newest and at 806 ms the fastest) **panics reproducibly** on this codebase and
+  covers 197 of the 385 rules it enforced, so replacing oxlint with it would have dropped 188 — every
+  React rule including `rules-of-hooks`, `strict-boolean-expressions`, `switch-exhaustiveness-check`,
+  `import/no-cycle`, all 21 `oxc` correctness rules — and made the linting _less_ strict, not more.
+  **Biome 2.5.13** has no coherent "strictest" setting: `preset: "all"` turns on Qwik, Solid and React
+  rules at once. So oxlint stayed, at 1.83.0, with `style` and `nursery` added and `restriction` left
+  off (it bans `async`/`await`, optional chaining and rest/spread). **385 → 554 enforced rules**;
+  10 135 findings became 81 after exclusions and all 81 were fixed in the code — named capture groups,
+  `(await f()).x` given names, `DomainFailure` → `DomainFailureError`, an import that sat mid-file since
+  the drawing port. Thirty-four rules are off with a reason each, two of them because they **deadlock
+  with oxfmt** in the same pipeline (measured both directions). `oxlint --fix` broke the build once, by
+  rewriting the React `CSSProperties` augmentation into a `Record` that replaces the type instead of
+  widening it. **Known gap: oxlint has no CSS rules** — the Tailwind compile in `bun run check` gates
+  CSS syntax, nothing gates CSS lint quality, and closing that needs a second tool the owner chose not
+  to add. 27 of 28 shot states byte-identical, the 28th proven to be Docker's disk figures drifting.
+  [The task plan](plans/2026-09-15-strict-linting.md).
+
+- 2026-09-15 — Owner task: a second, more thorough round of simplification — The first round looked for
+  repeated text; this one looked for state the office keeps and never reads, and work it redoes every
+  render. Four fields were dead: `openIntake` and `openServices` had no reference anywhere,
+  `attachOpen` was cleared in four places and **never set to true**, and `lastError` was written twice
+  by `office/scene.ts` and read by nobody — which meant an office whose canvas failed looked exactly
+  like an office with nothing on the floor. That one is now a toast, said once however many frames
+  throw (measured: 59 throwing frames, one message). `attachOpen`/`usageOpen`/`openSelect` were three
+  fields holding one fact with the invariant maintained by hand in four places, and are one `popover`;
+  `set` and `update` wrapped the identical zustand call, so `update` is gone. `useFloor()` dressed every
+  floor — team, cards and messages — to return one, on every store change, for eight components; it
+  dresses one. Three copies of "is this colleague in a session" became `activeSessionOf`, the two floor
+  orderings became one, and `retention.idleStopMinutes` — a configuration knob with a default that no
+  code read — is out of `DaemonConfig` by the owner's decision. Deliberately not done: removing the
+  write-only `Session.sandboxId` and `MailItem.receivedAt` (they are the event log's record, not code
+  nobody calls) and giving the UI snapshot the read model's indexes (more machinery than it removes).
+  All 28 shot states byte-identical to the previous build. Plan, measurements and the two things the
+  survey itself got wrong: [the task plan](plans/2026-09-15-second-simplification-round.md).
+
+- 2026-09-15 — Owner task: simplify and modernise the whole monorepo — Measured first: over the 278
+  TypeScript files the repository owns there is no `any`, seven commented type assertions, no
+  `forwardRef`/`useMemo`/`useCallback`, `Promise.withResolvers` at all seven sites and
+  `AsyncDisposableStack` at all four, so there was no modernisation backlog to work through. What a
+  duplicate-block scan did find was nine groups, and those were the task. In the core, nineteen
+  commands opened with the same four lines of "fetch it, check for undefined, return `notFound`";
+  `withProject`/`withAgent`/`withTask`/`withSession` write that rule once, and `removeProject` stopped
+  carrying a copy of `removeTask`. In the UI, four files each had their own `<dialog>`, two files had
+  the same pick card down to the tick, two had the same filter chip and two the same attachment fetch:
+  `Modal`, `PickCard`, `FilterChips`, `useAttachmentUrl` and `icons.tsx`. The confirm dialog's six
+  contradictory backdrop classes became the three it was written with, which moves its backdrop fade
+  from 280 ms to 240 ms — the only visible change, and the owner's call. Verification turned up two
+  things the plan had not predicted: a production build that **drops a class constant** in a `.tsx`
+  module with no imports (`Bun.build` with `minify` and `reactCompiler`, Bun 1.4.2 — it cost a whole
+  component's layout and no check in the repository can see it), and 642 bytes of stylesheet nothing
+  selects. Both are recorded in [docs/STACK.md](STACK.md), the second also as
+  [suppression 11](../audit/SUPPRESSIONS.md). Deliberately not done and left as the owner's decision:
+  removing the `reviewer` and `clerk` roles, which is removing a feature rather than removing rot.
+  26 of the 28 shot states are byte-identical to the previous build, the other two proven to be data
+  drift by shooting the baseline against itself. Plan, measurements and the process note about a failed
+  daemon restart that nearly produced a false result:
+  [the task plan](plans/2026-09-15-consolidate-duplication.md).
+
 - 2026-09-15 — Owner question: why two answers, and why does the model not answer at all — A failed
   triage said the same sentence twice: `settle` posted the runtime's own text as the boss's reply, then
   filed it as the reason the task blocked, and the boss reads that reason out. The event log shows both

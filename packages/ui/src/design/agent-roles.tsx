@@ -1,5 +1,7 @@
 import type { AgentRole } from "@ho/protocol";
+import { RadioGroup } from "@base-ui/react/radio-group";
 import { useTranslation } from "react-i18next";
+import { PickCard } from "./pick-card.tsx";
 
 /**
  * Who this colleague is. The office hires two of its four roles here — the boss, while the floor has
@@ -8,7 +10,7 @@ import { useTranslation } from "react-i18next";
  * rather than letting the dialog say they are something else.
  */
 
-const MARKS: Record<AgentRole, React.JSX.Element> = {
+export const ROLE_MARKS: Record<AgentRole, React.JSX.Element> = {
   boss: (
     <svg
       width="15"
@@ -70,62 +72,6 @@ const MARKS: Record<AgentRole, React.JSX.Element> = {
   ),
 };
 
-const CARD =
-  "relative flex flex-col items-start gap-9 p-14 rounded-14 cursor-pointer text-left transition-all duration-240 ease-soft";
-
-const TICK = "absolute top-12 right-12 w-16 h-16 rounded-half bg-accent grid place-items-center";
-
-function RoleCard({
-  role,
-  on,
-  onPick,
-}: {
-  role: AgentRole;
-  on: boolean;
-  onPick: () => void;
-}): React.JSX.Element {
-  const { t } = useTranslation();
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      className={`hover:-translate-y-2 hover:border-accent-a50 ${CARD} border ${on ? "border-accent-a45" : "border-border"} ${on ? "bg-accent-a07" : "bg-card"}`}
-    >
-      <span
-        className={`w-30 h-30 rounded-10 grid place-items-center ${on ? "bg-accent-a16" : "bg-tile"} ${on ? "text-accent-soft" : "text-ink-faint"}`}
-      >
-        {MARKS[role]}
-      </span>
-      <span className="block">
-        <span
-          className={`block text-13 font-semibold ${on ? "text-accent-soft" : "text-ink-warm"}`}
-        >
-          {t(`agent.role_${role}`)}
-        </span>
-        <span className="block text-11h text-ink-meta mt-4 leading-body">
-          {t(`agent.roleDesc_${role}`)}
-        </span>
-      </span>
-      {on ? (
-        <span className={TICK}>
-          <svg
-            className="stroke-accent-ink"
-            width="9"
-            height="9"
-            viewBox="0 0 10 10"
-            fill="none"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="1.8,5.2 4,7.4 8.2,2.6" />
-          </svg>
-        </span>
-      ) : null}
-    </button>
-  );
-}
-
 /** The boss only while the chair is free, the worker always, and this colleague's own role if it is
  *  neither of those. */
 const offered = (value: AgentRole, bossTaken: boolean): AgentRole[] => {
@@ -144,19 +90,27 @@ export function RoleCards({
   bossTaken: boolean;
   onPick: (role: AgentRole) => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const cards = offered(value, bossTaken);
   return (
-    <div className={`grid gap-10 mb-18 ${cards.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+    <RadioGroup
+      aria-label={t("agent.whoTheyAre")}
+      value={value}
+      onValueChange={(next) => {
+        onPick(next);
+      }}
+      className={`grid gap-10 mb-18 ${cards.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+    >
       {cards.map((role) => (
-        <RoleCard
+        <PickCard
           key={role}
-          role={role}
-          on={role === value}
-          onPick={() => {
-            onPick(role);
-          }}
+          value={role}
+          mark={ROLE_MARKS[role]}
+          title={t(`agent.role_${role}`)}
+          hint={t(`agent.roleDesc_${role}`)}
+          gap="gap-9"
         />
       ))}
-    </div>
+    </RadioGroup>
   );
 }

@@ -43,6 +43,10 @@ if (!(await Bun.file(binary).exists())) {
     await Bun.write(file, bytes);
     await $`tar -xzf ${file} --strip-components=1 -C ${staging}`;
     await rm(file);
+    // A target that exists without its binary is a download that died half way — the checksum above
+    // has already vouched for what is about to replace it, and `rename` refuses a directory that is
+    // not empty, so the remains go first.
+    await rm(target, { recursive: true, force: true });
     await rename(staging, target);
   } finally {
     await rm(staging, { recursive: true, force: true });

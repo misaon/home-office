@@ -1,17 +1,21 @@
 import {
+  type Agent,
   type AgentId,
   type ChatMessage,
   compact,
-  type DomainError,
   type NewEvent,
   notFound,
+  type Project,
+  type ProjectId,
+  type Session,
+  type SessionId,
   type Task,
   type TaskId,
   type TaskNote,
   type TaskStatus,
 } from "@ho/protocol";
 import type { ReadModel } from "../model/read-model.ts";
-import { type CommandContext, err, ok, type Result } from "../result.ts";
+import { type CommandContext, type CommandResult, err } from "../result.ts";
 
 export const TITLE_MAX = 200;
 
@@ -65,7 +69,41 @@ export const chatEvent = (ctx: CommandContext, message: ChatMessage): NewEvent =
   payload: { message },
 });
 
-export const requireTask = (model: ReadModel, taskId: TaskId): Result<Task, DomainError> => {
-  const task = model.tasks.get(taskId);
-  return task === undefined ? err(notFound("task", taskId)) : ok(task);
-};
+/**
+ * The entity a command works on, handed to the rest of the command — or the `not_found` each one of
+ * them used to write out for itself. A command that needs nothing from the entity but its existence
+ * ignores the argument.
+ */
+const withEntity =
+  <Id extends string, Value>(
+    kind: Parameters<typeof notFound>[0],
+    entities: ReadonlyMap<Id, Value>,
+  ) =>
+  <T>(id: Id, then: (value: Value) => CommandResult<T>): CommandResult<T> => {
+    const value = entities.get(id);
+    return value === undefined ? err(notFound(kind, id)) : then(value);
+  };
+
+export const withProject = <T>(
+  model: ReadModel,
+  projectId: ProjectId,
+  then: (project: Project) => CommandResult<T>,
+): CommandResult<T> => withEntity("project", model.projects)(projectId, then);
+
+export const withAgent = <T>(
+  model: ReadModel,
+  agentId: AgentId,
+  then: (agent: Agent) => CommandResult<T>,
+): CommandResult<T> => withEntity("agent", model.agents)(agentId, then);
+
+export const withTask = <T>(
+  model: ReadModel,
+  taskId: TaskId,
+  then: (task: Task) => CommandResult<T>,
+): CommandResult<T> => withEntity("task", model.tasks)(taskId, then);
+
+export const withSession = <T>(
+  model: ReadModel,
+  sessionId: SessionId,
+  then: (session: Session) => CommandResult<T>,
+): CommandResult<T> => withEntity("session", model.sessions)(sessionId, then);

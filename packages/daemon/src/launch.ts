@@ -81,7 +81,7 @@ export async function launchDaemon(
   const mcp = new McpGateway(office, log);
   const gate = new OfficeGate(log);
   // The port is known only after listening; sessions read the URLs lazily.
-  let port = config.port;
+  let { port } = config;
   const sessions = new SessionManager({
     office,
     provider,
@@ -131,7 +131,7 @@ export async function launchDaemon(
     await sessions.stopAll();
     await server.stop();
   });
-  port = server.port;
+  ({ port } = server);
   const info: DaemonInfo = {
     host: config.host,
     port,

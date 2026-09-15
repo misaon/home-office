@@ -1,22 +1,22 @@
 import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
-import { DISPLAY, MONO, pill } from "./tokens.ts";
+import { type Chip, FilterChips } from "./filter-chips.tsx";
+import { DISPLAY } from "./tokens.ts";
 import { useDesign } from "./store.ts";
+
+type Key = "all" | "working" | "idle";
 
 const FILTERS = [
   ["all", "team.all", null],
   ["working", "team.working", "bg-accent"],
   ["idle", "team.idle", "bg-ink-idle"],
-] as const;
+] as const satisfies readonly [Key, string, string | null][];
 
 const TOP = "flex items-baseline justify-between gap-10 mb-14";
 
 const COUNT = `${DISPLAY} font-bold text-30 tracking-display leading-flat whitespace-nowrap`;
 
 const LABEL = "text-11h text-ink-label overflow-hidden text-ellipsis whitespace-nowrap";
-
-const CHIP =
-  "flex items-center gap-7 py-6 px-11 rounded-pill cursor-pointer text-12 transition-all duration-220 ease-soft";
 
 /** How many people are on the floor, the button that hires another, and the three filters. */
 export function TeamHeader({
@@ -29,7 +29,13 @@ export function TeamHeader({
   const { t } = useTranslation();
   const teamFilter = useDesign((s) => s.teamFilter);
   const set = useDesign((s) => s.set);
-  const team = floor.team;
+  const { team } = floor;
+  const chips: Chip<Key>[] = FILTERS.map(([key, label, dot]) => ({
+    key,
+    label,
+    dot,
+    count: key === "all" ? team.length : team.filter((p) => p.status === key).length,
+  }));
 
   return (
     <div className="pt-16 px-16 pb-14 border-b border-line mb-16">
@@ -48,27 +54,14 @@ export function TeamHeader({
           {t("team.newAgent")}
         </button>
       </div>
-      <div className="flex gap-6 flex-wrap">
-        {FILTERS.map(([key, label, dot]) => {
-          const tone = pill(teamFilter === key);
-          return (
-            <button
-              type="button"
-              key={key}
-              onClick={() => {
-                set({ teamFilter: key });
-              }}
-              className={`${CHIP} ${tone} hover:-translate-y-1`}
-            >
-              {dot === null ? null : <span className={`w-6 h-6 rounded-half ${dot}`} />}
-              <span>{t(label)}</span>
-              <span className={`${MONO} text-10h opacity-75`}>
-                {key === "all" ? team.length : team.filter((p) => p.status === key).length}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <FilterChips
+        label={t("team.filters")}
+        chips={chips}
+        value={teamFilter}
+        onPick={(key) => {
+          set({ teamFilter: key });
+        }}
+      />
     </div>
   );
 }

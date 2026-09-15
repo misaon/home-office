@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { requireClient } from "../rpc.ts";
 import { MONO } from "./tokens.ts";
+import { useDesign } from "./store.ts";
 
 /** The dictionary names these by what they are, not by the store's key. */
 export const NAMED: Record<SecretKeyName, "claude" | "anthropic" | "openai" | "gemini" | "github"> =
@@ -14,7 +15,6 @@ export const NAMED: Record<SecretKeyName, "claude" | "anthropic" | "openai" | "g
     "gemini-api-key": "gemini",
     "github-token": "github",
   };
-import { useDesign } from "./store.ts";
 
 const FIELD = `flex-1 min-w-120 py-9 px-11 rounded-10 border border-border-strong bg-well ${MONO} text-11h`;
 

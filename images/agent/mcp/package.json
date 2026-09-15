@@ -3,7 +3,7 @@
   "private": true,
   "description": "Browser MCP servers preinstalled in the Home Office agent image; versions pinned, see docs/STACK.md.",
   "dependencies": {
-    "@playwright/mcp": "0.0.80",
+    "@playwright/mcp": "0.0.81",
     "chrome-devtools-mcp": "1.9.0"
   }
 }

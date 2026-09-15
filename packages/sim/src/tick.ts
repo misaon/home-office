@@ -38,7 +38,7 @@ function runElevator(world: World, floorId: string, floor: Floor, dtMs: number):
   );
   switch (e.phase) {
     case "closed": {
-      const next = e.queue[0];
+      const [next] = e.queue;
       if (next !== undefined && world.time >= e.nextAt) {
         // The car arrives: the passenger stands behind the closed doors and shows through as they part.
         const passenger = world.actors.get(next);

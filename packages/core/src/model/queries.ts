@@ -14,7 +14,7 @@ import {
 } from "@ho/protocol";
 import { mailSourceKey, type ReadModel, resolve } from "./read-model.ts";
 
-/** Enough of the model to find a floor's staff; the UI's immutable snapshot fits too. */
+/** Enough of the model to find a floor's staff: the entity map and the index over it. */
 type Roster = {
   agents: ReadonlyMap<AgentId, Agent>;
   agentsByProject: ReadonlyMap<ProjectId, ReadonlySet<AgentId>>;

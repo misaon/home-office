@@ -13,7 +13,7 @@ export const createRng = (seed: number): Rng => {
     let t = state;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
   return {
     next,
@@ -28,7 +28,7 @@ export const hashSeed = (text: string): number => {
   let h = 0x811c9dc5;
   for (let i = 0; i < text.length; i += 1) {
     h ^= text.codePointAt(i) ?? 0;
-    h = Math.imul(h, 0x01000193);
+    h = Math.imul(h, 0x01_00_01_93);
   }
   return h >>> 0;
 };

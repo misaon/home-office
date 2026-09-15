@@ -107,6 +107,7 @@ export function EditorDrawer({
       <OfficeFields draft={draft} setDraft={setDraft} />
       <Section title={t("editor.tool")}>
         <Segmented
+          label={t("editor.tool")}
           value={tool}
           options={TOOLS.map(({ value, label }) => ({ value, label: t(label) }))}
           onChange={setTool}

@@ -97,7 +97,7 @@ function useGone(since: number | null): boolean {
 const referenceOf = (log: string): string => {
   let hash = 0x811c9dc5;
   for (const character of log) {
-    hash = Math.imul(hash ^ (character.codePointAt(0) ?? 0), 0x01000193) >>> 0;
+    hash = Math.imul(hash ^ (character.codePointAt(0) ?? 0), 0x01_00_01_93) >>> 0;
   }
   return hash.toString(16).padStart(8, "0");
 };

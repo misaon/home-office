@@ -22,7 +22,8 @@ export function useDevReload(): void {
           signal: controller.signal,
         });
         if (response.ok) {
-          const revision = (await response.text()).trim();
+          const text = await response.text();
+          const revision = text.trim();
           if (previous !== null && revision !== previous) {
             window.location.reload();
             return;

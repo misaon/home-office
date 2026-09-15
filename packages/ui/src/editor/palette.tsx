@@ -1,3 +1,5 @@
+import { Toggle } from "@base-ui/react/toggle";
+import { ToggleGroup } from "@base-ui/react/toggle-group";
 // The palette of the active tool: what can be painted, what it is called and how much room it takes.
 import { DoorKind, OBJECT_SPEC, ObjectKind, RoomKind, WallMaterial } from "@ho/protocol";
 import type { TFunction } from "i18next";
@@ -24,12 +26,15 @@ const SCHEMA = {
 
 /** Every choice of the active tool, two to a row, with a footprint where a piece has one. */
 function Choices({
+  label,
   options,
   value,
   size,
   name,
   pick,
 }: {
+  /** What the grid of choices is for; a toggle group carries its own name. */
+  label: string;
   options: readonly string[];
   value: string;
   size: (option: string) => string | null;
@@ -37,27 +42,33 @@ function Choices({
   pick: (option: string) => void;
 }): React.JSX.Element {
   return (
-    <div className="grid grid-cols-2 gap-6">
+    <ToggleGroup
+      aria-label={label}
+      value={[value]}
+      onValueChange={(next) => {
+        const picked = options.find((option) => option === next.at(-1));
+        if (picked !== undefined) {
+          pick(picked);
+        }
+      }}
+      className="grid grid-cols-2 gap-6"
+    >
       {options.map((option) => {
         const footprint = size(option);
         return (
-          <button
+          <Toggle
             key={option}
-            type="button"
-            aria-pressed={option === value}
+            value={option}
             className={`rounded-9 py-7 px-9 text-left text-11 leading-snug break-words cursor-pointer transition-all duration-200 border ${option === value ? "border-accent-a55" : "border-border-strong"} ${option === value ? "bg-accent-a10" : "bg-card"} ${option === value ? "text-accent-soft" : "text-ink-quiet"}`}
-            onClick={() => {
-              pick(option);
-            }}
           >
             {name(option)}
             {footprint === null ? null : (
               <span className="block mt-3 font-mono text-ink-meta">{footprint}</span>
             )}
-          </button>
+          </Toggle>
         );
       })}
-    </div>
+    </ToggleGroup>
   );
 }
 
@@ -121,6 +132,7 @@ export function Palette({
         </p>
       ) : null}
       <Choices
+        label={t("editor.palette")}
         options={options}
         value={brush[tool]}
         size={tool === "object" ? (option) => footprintOf(option, t) : () => null}

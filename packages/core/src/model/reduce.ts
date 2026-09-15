@@ -134,10 +134,6 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
   }
 }
 
-/**
- * The floor is gone: its staff left with `agent.removed`, and its tasks, their sessions, its chat and
- * its mail go with it. Sessions are keyed by task, so nothing else would ever clean them up.
- */
 /** Everything one task owns in the projection: the task, its place on a floor, and its sessions. */
 function removeTask(model: ReadModel, taskId: TaskId, projectId: ProjectId): void {
   for (const sessionId of model.sessionsByTask.get(taskId) ?? []) {
@@ -153,20 +149,17 @@ function removeTask(model: ReadModel, taskId: TaskId, projectId: ProjectId): voi
   dropFrom(model.tasksByProject, projectId, taskId);
 }
 
+/**
+ * The floor is gone: its staff left with `agent.removed`, and its tasks, their sessions, its chat and
+ * its mail go with it. Sessions are keyed by task, so nothing else would ever clean them up.
+ */
 function removeProject(model: ReadModel, projectId: ProjectId): void {
   model.projects.delete(projectId);
   model.agentsByProject.delete(projectId);
-  for (const taskId of model.tasksByProject.get(projectId) ?? []) {
-    for (const sessionId of model.sessionsByTask.get(taskId) ?? []) {
-      const session = model.sessions.get(sessionId);
-      if (session !== undefined) {
-        dropFrom(model.sessionsByAgent, session.agentId, sessionId);
-      }
-      model.sessions.delete(sessionId);
-      model.activeSessions.delete(sessionId);
-    }
-    model.sessionsByTask.delete(taskId);
-    model.tasks.delete(taskId);
+  // A copy, because removing a task drops it from the very set this walks.
+  const owned = new Set(model.tasksByProject.get(projectId));
+  for (const taskId of owned) {
+    removeTask(model, taskId, projectId);
   }
   model.tasksByProject.delete(projectId);
   model.chat.delete(projectId);
@@ -229,7 +222,7 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
     }
     case "agent.created":
     case "agent.updated": {
-      const agent = event.payload.agent;
+      const { agent } = event.payload;
       model.agents.set(agent.id, agent);
       indexInto(model.agentsByProject, agent.projectId, agent.id);
       break;
@@ -258,13 +251,13 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
       break;
     }
     case "chat.message_posted": {
-      const message = event.payload.message;
+      const { message } = event.payload;
       const floor = model.chat.get(message.projectId) ?? [];
       model.chat.set(message.projectId, [...floor, message].slice(-CHAT_TAIL));
       break;
     }
     case "mail.received": {
-      const mail = event.payload.mail;
+      const { mail } = event.payload;
       model.mail.set(mail.id, mail);
       model.mailBySource.set(
         mailSourceKey(mail.projectId, mail.connector, mail.externalId),

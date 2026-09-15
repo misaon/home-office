@@ -1,6 +1,15 @@
 # ADR 006 — B5.1: Should the CLI adopt a framework?
 
-**Status:** decided — a declarative command table, no framework. **Confidence:** medium-high.
+**Status:** **REVERSED 2026-09-15** — commander 15.0.0 now parses, generates the help and dispatches.
+The original decision and its reasoning are kept below unedited, because the reasoning did not change:
+commander's string-keyed options really do add a second validation style beside the Zod one, and the
+declarative table really did already generate its own help. What changed is the owner's answer, given
+on 2026-09-15 when he was asked whether to reopen this. What shipped keeps the command table and the
+typed accessors and replaces only the engine: `args.ts` is gone, `flags.ts` holds the accessors, and
+the sixteen command modules changed nothing but an import path. Net across `apps/cli`: 157 lines
+deleted, 124 added. See [the adoption plan](../../docs/plans/2026-09-15-library-adoption.md).
+
+**Original status:** decided — a declarative command table, no framework. **Confidence:** medium-high.
 **Date:** 2026-09-08. Registry figures from the sweep in `audit/DEPENDENCIES.md`.
 
 ## The problem

@@ -11,7 +11,7 @@ import { delegationAck, outcomeAck, type SourceAck } from "./intake-acks.ts";
 import type { Logger } from "./logger.ts";
 import { followEvents, type Office } from "./office.ts";
 
-const FIRST_POLL_MS = 1_000;
+const FIRST_POLL_MS = 1000;
 
 type ProjectState = {
   timer: ReturnType<typeof setTimeout> | null;

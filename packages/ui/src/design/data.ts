@@ -58,8 +58,6 @@ export type Message = {
   who?: string;
   time: string;
   text: string;
-  /** The first attachment's name, which is what the drawing shows on a bubble. */
-  img?: string;
   attachment?: Attachment;
 };
 

@@ -25,6 +25,7 @@ export const enEditor = {
     name: "Name",
     file: "File",
     fileHint: "taken from the name",
+    palette: "Pieces of the chosen tool",
     tool: "Tool",
     wall: "Wall",
     room: "Room",

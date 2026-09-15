@@ -66,8 +66,9 @@ function heart(draft: OfficeDraft, cells: readonly number[]): { x: number; y: nu
   }
   let deepest = cells[0] ?? 0;
   let best = 0;
-  for (let head = 0; head < queue.length; head += 1) {
-    const index = queue[head] ?? 0;
+  // The queue grows while this walks it — that is the breadth-first search — and an array's own
+  // iterator re-reads the length on every step, so the pushes below are picked up.
+  for (const index of queue) {
     const distance = depth.get(index) ?? 1;
     if (distance > best) {
       best = distance;

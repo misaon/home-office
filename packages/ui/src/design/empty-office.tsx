@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Plus } from "lucide-react";
 import { DISPLAY, MONO } from "./tokens.ts";
 import { useUi } from "../store.ts";
 
@@ -50,17 +51,7 @@ function EmptyActions(): React.JSX.Element {
         }}
         className={`hover:-translate-y-2 hover:shadow-lift-2xl ${PRIMARY}`}
       >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 12 12"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        >
-          <line x1="6" y1="2" x2="6" y2="10" />
-          <line x1="2" y1="6" x2="10" y2="6" />
-        </svg>
+        <Plus size={14} strokeWidth={1.8} />
         {t("app.emptyCreate")}
       </button>
       <button

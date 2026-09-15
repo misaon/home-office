@@ -58,9 +58,8 @@ export async function serveStatic(
     if (!within(actual)) {
       return new Response("forbidden", { status: 403 });
     }
-    return (await stat(actual)).isFile()
-      ? new Response(Bun.file(actual), { headers: headers(cache) })
-      : null;
+    const found = await stat(actual);
+    return found.isFile() ? new Response(Bun.file(actual), { headers: headers(cache) }) : null;
   };
   return (
     (await fileResponse(target, HASHED.test(decoded) ? IMMUTABLE : NEVER)) ??

@@ -1,4 +1,4 @@
-import { bold, cyan, dim, green, red } from "yoctocolors";
+import { styleText } from "node:util";
 
 export const line = (text: string): void => {
   process.stdout.write(`${text}\n`);
@@ -13,14 +13,15 @@ export const fail = (message: string): never => {
   process.exit(1);
 };
 
-const plain = <T>(text: T): T => text;
-const paint = process.stdout.isTTY && Bun.env["NO_COLOR"] === undefined;
-
-/** Colour only on a terminal, and never when NO_COLOR is set (https://no-color.org). */
+/**
+ * Colour only on a terminal that can take it, and never when NO_COLOR is set (https://no-color.org).
+ * `styleText` asks stdout for its colour depth on every call and answers plain text when there is
+ * none, so neither the gate this module used to keep nor a colour package is needed to hold that rule.
+ */
 export const colour = {
-  bold: paint ? bold : plain,
-  dim: paint ? dim : plain,
-  ok: paint ? green : plain,
-  bad: paint ? red : plain,
-  id: paint ? cyan : plain,
+  bold: (text: string): string => styleText("bold", text),
+  dim: (text: string): string => styleText("dim", text),
+  ok: (text: string): string => styleText("green", text),
+  bad: (text: string): string => styleText("red", text),
+  id: (text: string): string => styleText("cyan", text),
 };
