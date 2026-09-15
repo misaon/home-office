@@ -1,36 +1,21 @@
-import { useEffect, useRef } from "react";
+import { Dialog } from "@base-ui/react/dialog";
 
 /**
- * The shape the office's dialogs arrive in: a real `<dialog>` that fills the viewport, so the platform
- * brings the focus trap, Escape and the backdrop; a room inside it that a click can land in to dismiss
- * what stands there; and, for the two big ones, a sheet that pops in with a lit header, a body and a
- * footer that says what will happen.
+ * The shape the office's dialogs arrive in. Base UI brings the focus trap, Escape, the scrim and the
+ * dismiss-on-outside-press; what stays here is the room the sheet stands in and the sheet itself, with
+ * a lit header, a body and a footer that says what will happen.
  */
 
-/** The room around the sheet. A `<dialog>` this size covers the viewport, so its own `::backdrop` is
- *  never what the pointer lands on: this element is, and a click that stops here is a click outside. */
-const CENTRE = "h-full flex items-center justify-center p-32";
-
-/** Closes when the click landed on the room and not on the sheet standing in it. */
-const outside =
-  (close: () => void) =>
-  (event: React.MouseEvent<HTMLElement>): void => {
-    if (event.target === event.currentTarget) {
-      close();
-    }
-  };
-
-/** The dialog element itself, which is only ever a transparent, chromeless pane over the office. */
-export const DIALOG =
-  "border-0 p-0 m-0 max-w-none max-h-none w-full h-full bg-transparent text-inherit overflow-hidden outline-none focus:outline-none focus-visible:outline-none";
+/** The room around the sheet, and what closes when the pointer lands in it rather than on the sheet. */
+const CENTRE = "fixed inset-0 flex items-center justify-center p-32";
 
 /** What the office is seen through while a dialog is up. */
 export const BACKDROP =
-  "backdrop:bg-scrim-a74 backdrop:backdrop-blur-[10px] backdrop:animate-fade-280";
+  "fixed inset-0 bg-scrim-a74 backdrop-blur-[10px] transition-opacity duration-280 data-starting-style:opacity-0 data-ending-style:opacity-0";
 
 /**
- * A modal and the room inside it. `open` drives the platform's own `showModal`/`close`, Escape and a
- * click in the room both call `onClose`, and whatever is handed in stands in the middle of the room.
+ * A modal and the room inside it. `open` drives Base UI's own state, Escape and a press in the room
+ * both call `onClose`, and whatever is handed in stands in the middle of the room.
  */
 export function Modal({
   open,
@@ -46,33 +31,24 @@ export function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const element = dialog.current;
-    if (open) {
-      element?.showModal();
-      // showModal() hands focus to the first focusable thing, which is the scrolling sheet: a scroll
-      // container Chrome rings in blue. The dialog itself takes it instead, and wears no ring.
-      element?.focus();
-    } else {
-      element?.close();
-    }
-  }, [open]);
-
   return (
-    <dialog
-      ref={dialog}
-      className={`${DIALOG} ${backdrop}`}
-      aria-label={label}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
+    <Dialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          onClose();
+        }
       }}
     >
-      <div role="presentation" className={CENTRE} onClick={outside(onClose)}>
-        {children}
-      </div>
-    </dialog>
+      <Dialog.Portal>
+        <Dialog.Backdrop className={backdrop} />
+        <Dialog.Viewport className={CENTRE}>
+          <Dialog.Popup aria-label={label} className="max-h-full outline-none">
+            {children}
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

@@ -1,6 +1,6 @@
+import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { useTranslation } from "react-i18next";
 import { DISPLAY } from "./tokens.ts";
-import { Modal } from "./dialog-sheet.tsx";
 
 export type Ask = {
   title: string;
@@ -18,12 +18,10 @@ const FOOT = "flex items-center justify-end gap-9 py-14 px-24 border-t border-li
 
 /**
  * This dialog dims a shade further and settles a little sooner than the office's other sheets, because
- * it is asking rather than showing. It used to say so twice over: the element carried both these three
- * classes and the shared three, and Tailwind settles such a conflict by which rule it emits last, not
- * by the order written — so two of the three that won were this dialog's own and the timing was the
- * other dialogs', at 280 ms. These are the three it was written with.
+ * it is asking rather than showing.
  */
-const BACKDROP = "backdrop:bg-scrim-a78 backdrop:backdrop-blur-[12px] backdrop:animate-fade-240";
+const BACKDROP =
+  "fixed inset-0 bg-scrim-a78 backdrop-blur-[12px] transition-opacity duration-240 data-starting-style:opacity-0 data-ending-style:opacity-0";
 
 /** How bad this is, as one mark: a warning triangle, or a circle that only wants to be sure. */
 function AskMark({ danger }: { danger: boolean }): React.JSX.Element {
@@ -99,8 +97,8 @@ function AskFoot({
 }
 
 /**
- * Asking before something cannot be undone. The office's modal brings the focus trap, Escape and the
- * backdrop; what this adds is the icon that says how bad this is.
+ * Asking before something cannot be undone. An alert dialog rather than a plain one, so a press in the
+ * room outside it does not count as an answer; what this adds is the icon that says how bad this is.
  */
 export function Confirm({
   ask,
@@ -112,23 +110,35 @@ export function Confirm({
   const danger = ask?.danger !== false;
 
   return (
-    <Modal open={ask !== null} label={ask?.title ?? ""} backdrop={BACKDROP} onClose={onClose}>
-      <div className={SHEET}>
-        <div className="flex gap-14 pt-22 px-24 pb-18">
-          <AskMark danger={danger} />
-          <div className="flex-1 min-w-0">
-            <div
-              className={`${DISPLAY} font-bold text-17 tracking-tight leading-heading text-pretty`}
-            >
-              {ask?.title ?? ""}
+    <AlertDialog.Root
+      open={ask !== null}
+      onOpenChange={(next) => {
+        if (!next) {
+          onClose();
+        }
+      }}
+    >
+      <AlertDialog.Portal>
+        <AlertDialog.Backdrop className={BACKDROP} />
+        <AlertDialog.Viewport className="fixed inset-0 flex items-center justify-center p-32">
+          <AlertDialog.Popup className={`outline-none ${SHEET}`}>
+            <div className="flex gap-14 pt-22 px-24 pb-18">
+              <AskMark danger={danger} />
+              <div className="flex-1 min-w-0">
+                <AlertDialog.Title
+                  className={`${DISPLAY} font-bold text-17 tracking-tight leading-heading text-pretty`}
+                >
+                  {ask?.title ?? ""}
+                </AlertDialog.Title>
+                <AlertDialog.Description className="text-12h text-ink-label mt-8 leading-prose text-pretty">
+                  {ask?.body ?? ""}
+                </AlertDialog.Description>
+              </div>
             </div>
-            <div className="text-12h text-ink-label mt-8 leading-prose text-pretty">
-              {ask?.body ?? ""}
-            </div>
-          </div>
-        </div>
-        <AskFoot ask={ask} danger={danger} onClose={onClose} />
-      </div>
-    </Modal>
+            <AskFoot ask={ask} danger={danger} onClose={onClose} />
+          </AlertDialog.Popup>
+        </AlertDialog.Viewport>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
   );
 }

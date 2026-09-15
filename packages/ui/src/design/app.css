@@ -15,14 +15,12 @@
 @source "../setup";
 @source "../office";
 /*
- * Two candidates the scanner reads out of the modal's class list that no element ever wears:
- * `backdrop:backdrop-blur-[10px]` and `backdrop:animate-fade-280` also yield the bare utilities, and
- * the office writes neither. Measured 2026-09-15 against Tailwind 4.3.3: without this line the sheet
- * carries 642 bytes of `.backdrop-blur-[10px]` and `.animate-fade-280` that nothing selects. The
- * prefixed forms are unaffected, as are `backdrop-blur-[14px]`/`[18px]` and `animate-fade-260`,
- * which the lightbox and the camera bar do write bare.
+ * There was an exclusion here. It existed because the scrim was the `::backdrop` pseudo-element and the
+ * scanner read the bare utilities out of the modal's prefixed class list, where nothing wore them. The
+ * scrim is now a real element rendered by Base UI, so the office writes those utilities for real and the
+ * exclusion would have quietly taken the dialog's blur out of the build. Measured 2026-09-15: with it,
+ * the stylesheet has no `.backdrop-blur-[10px]` rule at all.
  */
-@source not inline("backdrop-blur-[10px] animate-fade-280");
 
 /*
  * Tailwind's own `hover:` is wrapped in `@media (hover: hover)`, so on a touch pointer it stops

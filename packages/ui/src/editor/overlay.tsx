@@ -1,11 +1,12 @@
 import type { OfficeLayout } from "@ho/protocol";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OFFICE_SIZE } from "@ho/sim";
 import { layoutsQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
-import { BACKDROP, DIALOG } from "../design/dialog-sheet.tsx";
+import { Dialog } from "@base-ui/react/dialog";
+import { BACKDROP } from "../design/dialog-sheet.tsx";
 import { EditorCanvas } from "./canvas.tsx";
 import { EditorDrawer } from "./drawer.tsx";
 import {
@@ -56,50 +57,54 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
     mutationFn: (office: OfficeLayout) => requireClient().layouts.save(office),
     onSuccess: () => queries.invalidateQueries({ queryKey: layoutsQuery.queryKey }),
   });
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    dialog.current?.showModal();
-  }, []);
-
   return (
-    <dialog
-      ref={dialog}
-      className={`${DIALOG} ${BACKDROP}`}
-      aria-label={t("editor.title")}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
+    <Dialog.Root
+      open
+      onOpenChange={(next) => {
+        if (!next) {
+          onClose();
+        }
       }}
     >
-      <div className="h-full flex bg-ground">
-        <EditorDrawer
-          draft={draft}
-          setDraft={setDraft}
-          tool={tool}
-          setTool={setTool}
-          brush={brush}
-          setBrush={setBrush}
-          note={note}
-          setNote={setNote}
-          save={save}
-          onClose={onClose}
-        />
-        <div className="min-w-0 flex-1 bg-floor">
-          <EditorCanvas
-            draft={draft}
-            tool={tool}
-            brush={brush}
-            onRotate={() => {
-              setBrush(rotate);
-            }}
-            onPaint={(rect, erasing) => {
-              const result = erasing ? erase(draft, tool, rect) : paint(draft, tool, rect, brush);
-              setDraft(result.next);
-              setNote(result.note);
-            }}
-          />
-        </div>
-      </div>
-    </dialog>
+      <Dialog.Portal>
+        <Dialog.Backdrop className={BACKDROP} />
+        <Dialog.Viewport className="fixed inset-0">
+          <Dialog.Popup
+            aria-label={t("editor.title")}
+            className="w-full h-full outline-none flex bg-ground"
+          >
+            <EditorDrawer
+              draft={draft}
+              setDraft={setDraft}
+              tool={tool}
+              setTool={setTool}
+              brush={brush}
+              setBrush={setBrush}
+              note={note}
+              setNote={setNote}
+              save={save}
+              onClose={onClose}
+            />
+            <div className="min-w-0 flex-1 bg-floor">
+              <EditorCanvas
+                draft={draft}
+                tool={tool}
+                brush={brush}
+                onRotate={() => {
+                  setBrush(rotate);
+                }}
+                onPaint={(rect, erasing) => {
+                  const result = erasing
+                    ? erase(draft, tool, rect)
+                    : paint(draft, tool, rect, brush);
+                  setDraft(result.next);
+                  setNote(result.note);
+                }}
+              />
+            </div>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
