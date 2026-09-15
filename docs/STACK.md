@@ -1,6 +1,6 @@
 # Home Office technology stack
 
-Reviewed 2026-09-09. Exact application dependency pins live in the root `package.json` catalog and
+Reviewed 2026-09-09; dependency sweep re-run 2026-09-15. Exact application dependency pins live in the root `package.json` catalog and
 `bun.lock`. Sandbox npm trees have their own `package-lock.json` files. Version numbers below record
 what this repository uses, not a promise that a release remains the newest. Recheck vendor sources and
 compatibility before updating. The September 2026 deep audit records how each choice was checked, what it
@@ -16,21 +16,21 @@ kept as history and is not evidence about the current tree.
 | Runtime / package manager | Bun 1.4.2                                    | TypeScript execution, SQLite, HTTP/WS, compiled executables, isolated workspaces and catalogs                                |
 | Types                     | TypeScript 7.0.2                             | Native compiler; explicit strict options in `tsconfig.base.json`                                                             |
 | Lint                      | oxlint 1.83.0, oxlint-tsgolint 7.0.2001      | Type-aware; every category except `restriction`; 554 rules, React hooks and accessibility included                           |
-| Format / unused code      | oxfmt 0.67.0, Knip 6.35.0                    | Formatting and workspace-aware source/dependency coverage, including CSS                                                     |
-| Validation / RPC          | Zod 4.5.4, oRPC 1.15.0                       | Boundary validation and shared client/server contract                                                                        |
+| Format / unused code      | oxfmt 0.68.0, Knip 6.35.1                    | Formatting and workspace-aware source/dependency coverage, including CSS                                                     |
+| Validation / RPC          | Zod 4.6.5, oRPC 1.15.1                       | Boundary validation and shared client/server contract                                                                        |
 | Persistence               | `bun:sqlite` (Bun 1.4.2)                     | Embedded event log; the schema is applied at open and versioned with `PRAGMA user_version`                                   |
 | Logging                   | Pino 10.3.1                                  | Structured NDJSON; the desktop app's file destination rotates at 8 MiB, keeping one previous file                            |
 | Single instance           | `fs.mkdir` plus a pid liveness check         | Own ~25 lines; replaced proper-lockfile, which had gone quiet (ADR 005)                                                      |
 | Desktop                   | Electrobun 2.0.1, Hutch 0.25.0               | Native shell with the daemon in its Bun main process                                                                         |
-| UI                        | React / React DOM 19.2.8                     | Panels compiled with Bun's React Compiler integration                                                                        |
+| UI                        | React / React DOM 19.3.0                     | Panels compiled with Bun's React Compiler integration                                                                        |
 | Client state              | Zustand 5.0.15, TanStack Query 5.102.8       | Event projection and abortable cached RPC queries                                                                            |
 | Styling                   | Tailwind CSS 4.3.3, `@tailwindcss/cli` 4.3.3 | The whole drawing as utilities; a CSS-first theme compiled by the CLI inside the Bun build                                   |
 | Rendering                 | PixiJS 8.20.1                                | Sprite batching, static floor textures and animated office rendering                                                         |
 | Pathfinding queue         | TinyQueue 3.0.0                              | Heap for the simulation's weighted A* search                                                                                 |
 | Agent protocols           | ACP SDK 1.4.0, MCP SDK 1.30.0                | Provider sessions and scoped office tools                                                                                    |
 | Secrets                   | `Bun.secrets`, atomic file fallback          | Keychain / libsecret / Credential Manager, chosen by whether the host store answers; no secret ever in a subprocess argument |
-| Localisation              | i18next 26.4.2, react-i18next 17.0.13        | The office's own text in English and Czech, with typed keys; +93 KiB on the UI bundle (1018 → 1111 KiB)                      |
-| CLI                       | yoctocolors 2.2.0                            | CLI colour gated on a TTY                                                                                                    |
+| Localisation              | i18next 26.4.2, react-i18next 17.0.14        | The office's own text in English and Czech, with typed keys; +93 KiB on the UI bundle (1018 → 1111 KiB)                      |
+| CLI                       | `styleText` (`node:util`, Bun 1.4.2)         | CLI colour, gated by the runtime on the stream's colour depth and NO_COLOR                                                   |
 
 The native secret API is experimental; retain the explicit file
 backend as an operational fallback. Do not assume API compatibility with arbitrary Node tooling just
@@ -39,7 +39,7 @@ had to fall back to `node:crypto` for it.
 
 i18next and react-i18next were checked against the npm registry on 2026-09-10: i18next 26.4.2
 (published 2026-09-03, 66 releases in twelve months, MIT, no runtime dependencies, 19.7 M weekly) and
-react-i18next 17.0.13 (2026-09-01, 53 releases, MIT, 14.3 M weekly, `@babel/runtime` +
+react-i18next 17.0.14 (2026-09-13, 53 releases, MIT, 14.3 M weekly, `@babel/runtime` +
 `html-parse-stringify` + `use-sync-external-store`, repository last pushed 2026-09-03, not archived).
 Both accept `typescript ^5 || ^6 || ^7` and react `>= 16.8`. The owner chose them over a hand-written
 dictionary; the measured alternatives were Lingui at 10.4 kB and react-intl at ~20 kB min+gzip. Czech
@@ -86,12 +86,12 @@ ready in 1–2 s; the reasoning and the rejected alternatives are in the
 
 | Image target  | Installed provider                                          | Invocation                                       |
 | ------------- | ----------------------------------------------------------- | ------------------------------------------------ |
-| `claude-code` | Official Claude Code APK 2.1.263-r1                         | `claude -p` with stream-json input/output        |
-| `opencode`    | opencode-ai 1.18.29                                         | `opencode acp --cwd <repo>`                      |
-| `gemini-cli`  | @google/gemini-cli 0.58.0                                   | `gemini --acp --model <id> --approval-mode yolo` |
-| `codex`       | @agentclientprotocol/codex-acp 1.10.0, locked Codex 0.153.4 | `codex-acp`, model/effort via `CODEX_CONFIG`     |
+| `claude-code` | Official Claude Code APK 2.1.272-r1                         | `claude -p` with stream-json input/output        |
+| `opencode`    | opencode-ai 1.18.31                                         | `opencode acp --cwd <repo>`                      |
+| `gemini-cli`  | @google/gemini-cli 0.59.0                                   | `gemini --acp --model <id> --approval-mode yolo` |
+| `codex`       | @agentclientprotocol/codex-acp 1.11.0, locked Codex 0.153.4 | `codex-acp`, model/effort via `CODEX_CONFIG`     |
 
-Browser MCP packages are @playwright/mcp 0.0.80 and chrome-devtools-mcp 1.9.0, preinstalled with locked
+Browser MCP packages are @playwright/mcp 0.0.81 and chrome-devtools-mcp 1.9.0, preinstalled with locked
 transitive dependencies. They use Alpine Chromium, not downloaded browser builds. Both images and
 runtime code must be reviewed when their CLI flags change. Playwright is exposed by default; DevTools
 is opt-in. All four image targets and git-bridge built during the audit; npm audits reported no known
@@ -114,7 +114,10 @@ vulnerabilities in their locked npm trees. That is not a comprehensive OS-image 
 - Keep SQLite for a single local writer. A server database does not fix event replay growth.
   Add event snapshots/retention and measured query indexes before introducing a database service.
 - Use focused libraries for maintained commodity logic where one exists and is alive: TinyQueue for the
-  priority queue, TanStack Query for repeated request state, `yoctocolors` for CLI colour. The audit's library sweep (43 candidates, ADR 005)
+  priority queue and TanStack Query for repeated request state. The CLI's colour went the other way on
+  2026-09-15: `yoctocolors` was removed for `styleText` from `node:util`, which Bun 1.4.2 implements.
+  Measured identical in all four conditions the CLI cares about — piped, `TERM=dumb`, `TERM=xterm-256color`
+  and `NO_COLOR=1` — including inside a `bun build --compile` binary. The audit's library sweep (43 candidates, ADR 005)
   also found the opposite: `proper-lockfile` was **removed** — last published 2022-06-24 — and replaced by
   an atomic `mkdir` plus a pid liveness check; `neverthrow`, `ts-pattern`, `it-pushable`, `cli-table3`,
   `picocolors`, `pino-roll` and eleven more were rejected on activity or fit, each with its figures

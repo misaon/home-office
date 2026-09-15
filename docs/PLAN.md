@@ -88,6 +88,23 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-15 — Owner task: audit every npm library and research a more modern alternative — The sweep
+  found **nothing deprecated across 210 installed package versions** and nothing abandoned, so the work
+  was bumps rather than replacements: eleven catalog pins (Zod 4.6.5, React 19.3.0, oRPC 1.15.1,
+  react-i18next 17.0.14, `@types/react` 19.3.0, knip 6.35.1, oxfmt 0.68.0), four in the agent images
+  and the Claude Code APK at 2.1.272-r1. `oxfmt` 0.68.0 was checked before adoption because a formatter
+  bump can rewrite a tree: it reformats nothing here. The one library removed is `yoctocolors`, whose
+  work `styleText` from `node:util` now does — measured identical in all four terminal conditions,
+  including inside a compiled binary. Researched and **declined**, each with the figure that decided it:
+  Valibot (86 348 → 3 671 bytes on one schema, but Zod sits in nine packages), Paraglide JS (−73 kB
+  against ~40 call sites and Czech plural suffixes), LogTape (0.32 M weekly against pino's 36 M, for one
+  file), tRPC (oRPC is already the faster and newer of the two), Jotai and TanStack Store (Zustand plus
+  TanStack Query is the 2026 pairing), heap-js and `bun-plugin-tailwind`, whose last publish is eleven
+  months old. Verification: 28 office states byte-identical, the compiled stylesheet unchanged, all four
+  image targets rebuilt and reporting their new versions, and a wrong claim in the previous round's
+  record corrected — the `usage-res` state's 43 440 px is the resources panel still loading, not Docker
+  disk drift, and it flakes on the baseline too. [The task plan](plans/2026-09-15-dependency-audit.md).
+
 - 2026-09-15 — Owner task: find the most modern linter, deploy it at its strictest, fix everything —
   Three candidates were measured against this repository rather than read about. **Rslint 0.9.2** (Go on
   typescript-go, the newest and at 806 ms the fastest) **panics reproducibly** on this codebase and
