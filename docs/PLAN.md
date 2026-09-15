@@ -88,6 +88,21 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-15 — Owner task: find libraries that would shrink or improve the codebase — The survey
+  measured 26 102 lines of first-party TypeScript, largest file 289 lines, and found little commodity
+  code left: `sandbox-docker` stays because dockerode drags `@grpc/grpc-js` and `protobufjs` onto a
+  229-line `fetch({unix})` client, the runner's line pump stays because `Bun.JSONL` gives neither
+  arbitrary text nor its 1 MiB guard, and `Bun.Terminal` turned out to be a pty spawner rather than a
+  handle on our own stdin. What it did find was the office's own popovers: no `role="listbox"`, no
+  `aria-expanded`, no arrow keys, and Escape over an open select discarding the whole form. The owner's
+  answer was to go further than the finding — **Base UI as the single core for every component that has
+  a primitive** — plus commander, lucide-react and simple-git, with a free hand on the visuals. Fifteen
+  components moved, seven fields of popover state and two invisible scrims stopped existing, and ADR 006
+  is reversed rather than contradicted. The screenshots found four real defects the typechecker could
+  not, including a scrim that stopped covering the header because a portalled div is not the browser's
+  top layer. Cost: +201 KiB on the UI bundle (+10.8 %).
+  [The task plan](plans/2026-09-15-library-adoption.md).
+
 - 2026-09-15 — Owner task: audit every npm library and research a more modern alternative — The sweep
   found **nothing deprecated across 210 installed package versions** and nothing abandoned, so the work
   was bumps rather than replacements: eleven catalog pins (Zod 4.6.5, React 19.3.0, oRPC 1.15.1,

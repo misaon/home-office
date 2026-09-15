@@ -157,3 +157,76 @@ Recorded so the next sweep does not re-litigate them.
 Each phase ends with `bun run check` and, for phases 1–5, the 28-state office comparison. Phase 1 is
 deliberately the smallest one that exercises every risk in the migration, so that a failure there is
 cheap.
+
+## What the work came to
+
+| Phase | Work                                                                   | Commit    |
+| ----- | ---------------------------------------------------------------------- | --------- |
+| 1     | `@base-ui/react` in the catalog; the Select                            | `d832a62` |
+| 3     | The dialogs — `Modal`, `Confirm`, the lightbox, the editor overlay     | `5a2596b` |
+| 2     | The two menus, and `floorOpen` / `floorX` / `popover`                  | `b5aa01f` |
+| 4     | Switch, Radio, ToggleGroup, Accordion, and `credOpen` / `floorRowOpen` | `fd22183` |
+| 5     | lucide-react                                                           | `bcb7a5b` |
+| 6     | commander, reversing ADR 006                                           | `525ea3e` |
+| 7     | simple-git for `repo-inspect.ts`                                       | `ecc0803` |
+| —     | The four defects the screenshots found                                 | `a160ed9` |
+
+Phases 2 and 3 swapped places once the Select was measured: while the dialogs were still native
+`<dialog>` elements, everything outside them was inert, so the portalled listbox could not take focus
+and the arrow keys did nothing. Moving the dialogs first removed that boundary.
+
+**Seven fields of UI state no longer exist**: `popover`, `floorOpen`, `floorX`, `credOpen` and
+`floorRowOpen` in the design store, plus the two invisible full-screen scrims in `app.tsx` and the eight
+places that cleared `popover` by hand. Base UI owns each popup's open state, so there is no invariant
+left to forget.
+
+### What the office looks like now
+
+28 states, each compared against the office as it stood before Base UI:
+
+| Outcome                                     | States |
+| ------------------------------------------- | -----: |
+| byte-identical                              |      7 |
+| 36–124 px (0.003–0.01 %) — the lucide marks |      8 |
+| 0.08–1.3 % — the dialogs and their forms    |      5 |
+| 3.4 % — `usage-res`, the known flaky state  |      1 |
+| 5.6–15.3 % — open menus and the lightbox    |      5 |
+| not reachable by the harness any more       |      2 |
+
+The last row is honest rather than hidden: Base UI renders a radio as a `span` with `role="radio"`, and
+the harness clicks by finding a `BUTTON` or an `A` whose text matches, so `new-floor-git` and
+`agent-select-open` can no longer be driven. The control itself was verified directly instead —
+`role="radiogroup"`, two `role="radio"` children, ArrowRight and ArrowLeft moving the selection.
+
+### What the Select actually gained
+
+Measured through CDP against the running office, after the dialogs moved:
+
+| Before                                  | After                                                                                        |
+| --------------------------------------- | -------------------------------------------------------------------------------------------- |
+| no `role="listbox"`, no `role="option"` | `role="listbox"`, three `role="option"`, `aria-selected` on the value                        |
+| no `aria-expanded`                      | `aria-expanded` false → true → false                                                         |
+| arrow keys did nothing                  | neutral → male → female → male, no wrap at the ends                                          |
+| **Escape discarded the whole form**     | Escape closes the select and returns focus to the trigger; a second Escape closes the dialog |
+
+### The cost, measured
+
+| Bundle after                 |   KiB |
+| ---------------------------- | ----: |
+| before Base UI               | 1 859 |
+| Select                       | 1 984 |
+| dialogs                      | 2 002 |
+| menus                        | 2 029 |
+| switches, cards, chips, rows | 2 053 |
+| lucide                       | 2 055 |
+| checkbox and repairs         | 2 060 |
+
+**+201 KiB, +10.8 %** — less than the 265 781 bytes the twelve-namespace probe predicted, because the
+office does not use every part of every namespace. `apps/cli` is 157 lines lighter and 124 heavier.
+
+### The instrument, twice
+
+Both times a measurement looked alarming it was the instrument first. The 97 % figure was a stale
+launch token. And the earlier claim in this document that the select's list is clipped by its scroll
+container was withdrawn before any code was written, because the browser said it has 168 px of headroom.
+Check what the port is serving, and check what the query is selecting, before believing either.
