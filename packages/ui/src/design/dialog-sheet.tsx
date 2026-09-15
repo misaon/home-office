@@ -6,12 +6,16 @@ import { Dialog } from "@base-ui/react/dialog";
  * a lit header, a body and a footer that says what will happen.
  */
 
-/** The room around the sheet, and what closes when the pointer lands in it rather than on the sheet. */
-const CENTRE = "fixed inset-0 flex items-center justify-center p-32";
+/**
+ * The room around the sheet. A native `<dialog>` used to put this in the browser's top layer, where no
+ * z-index could reach it; Base UI portals to the body instead, so the office's own scale applies and
+ * the room has to be told it stands above the header, which is `z-40`.
+ */
+const CENTRE = "fixed inset-0 z-60 p-32";
 
 /** What the office is seen through while a dialog is up. */
 export const BACKDROP =
-  "fixed inset-0 bg-scrim-a74 backdrop-blur-[10px] transition-opacity duration-280 data-starting-style:opacity-0 data-ending-style:opacity-0";
+  "fixed inset-0 z-60 bg-scrim-a74 backdrop-blur-[10px] transition-opacity duration-280 data-starting-style:opacity-0 data-ending-style:opacity-0";
 
 /**
  * A modal and the room inside it. `open` drives Base UI's own state, Escape and a press in the room
@@ -43,7 +47,10 @@ export function Modal({
       <Dialog.Portal>
         <Dialog.Backdrop className={backdrop} />
         <Dialog.Viewport className={CENTRE}>
-          <Dialog.Popup aria-label={label} className="max-h-full outline-none">
+          <Dialog.Popup
+            aria-label={label}
+            className="w-full h-full flex items-center justify-center outline-none"
+          >
             {children}
           </Dialog.Popup>
         </Dialog.Viewport>
@@ -92,7 +99,7 @@ export function DialogSheet({
   return (
     <Modal open={open} label={label} onClose={onClose}>
       <div
-        className="w-(--sheet) max-h-full overflow-y-auto rounded-20 bg-dialog border border-border-sheet shadow-dialog animate-pop-440"
+        className="w-(--sheet) max-h-[calc(100vh-64px)] overflow-y-auto rounded-20 bg-dialog border border-border-sheet shadow-dialog animate-pop-440"
         style={{ "--sheet": width }}
       >
         <div className="relative pt-24 px-26 pb-20 overflow-hidden">

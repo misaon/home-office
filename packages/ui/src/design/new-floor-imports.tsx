@@ -1,3 +1,5 @@
+import { Checkbox } from "@base-ui/react/checkbox";
+import { Check } from "lucide-react";
 import type { Agent, AgentId } from "@ho/protocol";
 import { useTranslation } from "react-i18next";
 import type { RepoDraft } from "./add-project-inspect.ts";
@@ -52,14 +54,17 @@ export function FloorImports({
             <div className={`${CAP} text-9 mb-6`}>{group.floor}</div>
             {group.agents.map((agent) => (
               <label key={agent.id} className="flex items-center gap-9 py-4 px-0 cursor-pointer">
-                <input
-                  type="checkbox"
+                <Checkbox.Root
                   checked={draft.imports.has(agent.id)}
-                  onChange={() => {
+                  onCheckedChange={() => {
                     toggle(agent.id);
                   }}
-                  className="accent-accent my-3 ml-4 mr-3"
-                />
+                  className="my-3 ml-4 mr-3 w-14 h-14 flex-[0_0_14px] grid place-items-center rounded-5 border border-border-strong bg-card outline-none cursor-pointer transition-colors duration-180 data-checked:bg-accent data-checked:border-accent"
+                >
+                  <Checkbox.Indicator className="grid place-items-center text-accent-ink">
+                    <Check size={10} strokeWidth={2.4} />
+                  </Checkbox.Indicator>
+                </Checkbox.Root>
                 <span className="text-12h">{agent.name}</span>
                 <span className={`${MONO} text-10 text-ink-meta`}>
                   {t(ROLE_KEY[agent.role])} · {agent.model}/{agent.effort}

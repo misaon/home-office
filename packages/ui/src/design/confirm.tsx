@@ -21,7 +21,7 @@ const FOOT = "flex items-center justify-end gap-9 py-14 px-24 border-t border-li
  * it is asking rather than showing.
  */
 const BACKDROP =
-  "fixed inset-0 bg-scrim-a78 backdrop-blur-[12px] transition-opacity duration-240 data-starting-style:opacity-0 data-ending-style:opacity-0";
+  "fixed inset-0 z-60 bg-scrim-a78 backdrop-blur-[12px] transition-opacity duration-240 data-starting-style:opacity-0 data-ending-style:opacity-0";
 
 /** How bad this is, as one mark: a warning triangle, or a circle that only wants to be sure. */
 function AskMark({ danger }: { danger: boolean }): React.JSX.Element {
@@ -120,22 +120,24 @@ export function Confirm({
     >
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className={BACKDROP} />
-        <AlertDialog.Viewport className="fixed inset-0 flex items-center justify-center p-32">
-          <AlertDialog.Popup className={`outline-none ${SHEET}`}>
-            <div className="flex gap-14 pt-22 px-24 pb-18">
-              <AskMark danger={danger} />
-              <div className="flex-1 min-w-0">
-                <AlertDialog.Title
-                  className={`${DISPLAY} font-bold text-17 tracking-tight leading-heading text-pretty`}
-                >
-                  {ask?.title ?? ""}
-                </AlertDialog.Title>
-                <AlertDialog.Description className="text-12h text-ink-label mt-8 leading-prose text-pretty">
-                  {ask?.body ?? ""}
-                </AlertDialog.Description>
+        <AlertDialog.Viewport className="fixed inset-0 z-60 p-32">
+          <AlertDialog.Popup className="w-full h-full flex items-center justify-center outline-none">
+            <div className={SHEET}>
+              <div className="flex gap-14 pt-22 px-24 pb-18">
+                <AskMark danger={danger} />
+                <div className="flex-1 min-w-0">
+                  <AlertDialog.Title
+                    className={`${DISPLAY} font-bold text-17 tracking-tight leading-heading text-pretty`}
+                  >
+                    {ask?.title ?? ""}
+                  </AlertDialog.Title>
+                  <AlertDialog.Description className="text-12h text-ink-label mt-8 leading-prose text-pretty">
+                    {ask?.body ?? ""}
+                  </AlertDialog.Description>
+                </div>
               </div>
+              <AskFoot ask={ask} danger={danger} onClose={onClose} />
             </div>
-            <AskFoot ask={ask} danger={danger} onClose={onClose} />
           </AlertDialog.Popup>
         </AlertDialog.Viewport>
       </AlertDialog.Portal>

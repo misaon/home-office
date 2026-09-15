@@ -1,6 +1,11 @@
 # ADR 005 — C5: Where do we write code a light, modern third-party library could write for us?
 
-**Status:** decided. **Confidence:** high.
+**Status:** decided, with three items revisited on 2026-09-15 — see
+[the adoption plan](../../docs/plans/2026-09-15-library-adoption.md). Item 6 (`yoctocolors`) was
+**withdrawn**: the platform does it, and `styleText` from `node:util` replaced the package. Item 11
+(TinyQueue) and item 8 (`neverthrow`) were re-measured and **stand**. The sweep also added what this
+ADR did not look at, because it started from our own code and not from the drawing: the office's
+popovers, dialogs and form controls, which are now Base UI. **Confidence:** high.
 **Date:** 2026-09-08. Every figure comes from the npm registry sweep recorded in `audit/DEPENDENCIES.md`.
 
 ## The problem

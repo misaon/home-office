@@ -68,7 +68,7 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
     >
       <Dialog.Portal>
         <Dialog.Backdrop className={BACKDROP} />
-        <Dialog.Viewport className="fixed inset-0">
+        <Dialog.Viewport className="fixed inset-0 z-90">
           <Dialog.Popup
             aria-label={t("editor.title")}
             className="w-full h-full outline-none flex bg-ground"

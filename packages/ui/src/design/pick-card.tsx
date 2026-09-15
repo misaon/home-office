@@ -10,7 +10,7 @@ import { Check } from "lucide-react";
  */
 
 const CARD =
-  "relative flex flex-col items-start p-14 rounded-14 cursor-pointer text-left transition-all duration-240 ease-soft border bg-card border-border data-checked:border-accent-a45 data-checked:bg-accent-a07";
+  "relative flex flex-col items-start p-14 rounded-14 cursor-pointer text-left outline-none transition-all duration-240 ease-soft border bg-card border-border data-checked:border-accent-a45 data-checked:bg-accent-a07";
 
 const TILE =
   "w-30 h-30 rounded-10 grid place-items-center bg-tile text-ink-faint group-data-checked:bg-accent-a16 group-data-checked:text-accent-soft";

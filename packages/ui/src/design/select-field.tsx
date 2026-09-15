@@ -42,53 +42,55 @@ export function SelectField({
   const type = mono ? `${MONO} text-12` : "text-12h";
 
   return (
-    <Select.Root
-      value={value}
-      onValueChange={(next) => {
-        if (typeof next === "string") {
-          onPick(next);
-        }
-      }}
-    >
-      <Select.Label className={LABEL}>{label}</Select.Label>
-      <Select.Trigger className={`${TRIGGER} ${type}`}>
-        <Select.Value className={`${ELLIPSIS} ${muted ? "text-ink-ghost" : ""}`} />
-        <Select.Icon
-          className="flex-[0_0_auto] transition-transform duration-250 data-popup-open:rotate-180"
-          render={
-            <svg
-              width="9"
-              height="9"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              className="stroke-ink-meta"
-            >
-              <polyline points="3,4.5 6,8 9,4.5" />
-            </svg>
+    <div>
+      <Select.Root
+        value={value}
+        onValueChange={(next) => {
+          if (typeof next === "string") {
+            onPick(next);
           }
-        />
-      </Select.Trigger>
-      <Select.Portal>
-        <Select.Positioner
-          className="z-45 outline-none"
-          sideOffset={6}
-          alignItemWithTrigger={false}
-        >
-          <Select.Popup className={POPUP}>
-            <Select.List>
-              {options.map((option) => (
-                <Select.Item key={option} value={option} className={`group ${OPTION} ${type}`}>
-                  <span className={DOT} />
-                  <Select.ItemText className={ELLIPSIS}>{option}</Select.ItemText>
-                </Select.Item>
-              ))}
-            </Select.List>
-          </Select.Popup>
-        </Select.Positioner>
-      </Select.Portal>
-    </Select.Root>
+        }}
+      >
+        <Select.Label className={LABEL}>{label}</Select.Label>
+        <Select.Trigger className={`${TRIGGER} ${type}`}>
+          <Select.Value className={`${ELLIPSIS} ${muted ? "text-ink-ghost" : ""}`} />
+          <Select.Icon
+            className="flex-[0_0_auto] transition-transform duration-250 data-popup-open:rotate-180"
+            render={
+              <svg
+                width="9"
+                height="9"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                className="stroke-ink-meta"
+              >
+                <polyline points="3,4.5 6,8 9,4.5" />
+              </svg>
+            }
+          />
+        </Select.Trigger>
+        <Select.Portal>
+          <Select.Positioner
+            className="z-45 outline-none"
+            sideOffset={6}
+            alignItemWithTrigger={false}
+          >
+            <Select.Popup className={POPUP}>
+              <Select.List>
+                {options.map((option) => (
+                  <Select.Item key={option} value={option} className={`group ${OPTION} ${type}`}>
+                    <span className={DOT} />
+                    <Select.ItemText className={ELLIPSIS}>{option}</Select.ItemText>
+                  </Select.Item>
+                ))}
+              </Select.List>
+            </Select.Popup>
+          </Select.Positioner>
+        </Select.Portal>
+      </Select.Root>
+    </div>
   );
 }
