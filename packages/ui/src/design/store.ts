@@ -1,4 +1,9 @@
 import type { AgentId, AgentRole, AuthKind, Attachment, Gender, TaskId } from "@ho/protocol";
+import {
+  useMutation,
+  type UseMutationOptions,
+  type UseMutationResult,
+} from "@tanstack/react-query";
 import { create } from "zustand";
 import type { Ask } from "./confirm.tsx";
 import type { Lane, Member } from "./data.ts";
@@ -94,6 +99,23 @@ export const useDesign = create<Design>((set) => ({
     }, 2400);
   },
 }));
+
+/**
+ * Every mutation in the office reports failure the same way: the daemon's own message, in the toast.
+ * Twelve call sites wrote that handler out; this writes it once. `onError` is not accepted, so a site
+ * cannot quietly grow a different way of failing — changing that is a deliberate edit, not an omission.
+ */
+export function useOfficeMutation<TData, TVariables>(
+  options: Omit<UseMutationOptions<TData, Error, TVariables>, "onError">,
+): UseMutationResult<TData, Error, TVariables> {
+  const flash = useDesign((s) => s.flash);
+  return useMutation({
+    ...options,
+    onError: (error: Error) => {
+      flash(error.message);
+    },
+  });
+}
 
 /** Thin spaces between thousands, the way the design writes every number. */
 export const fmt = (n: number): string => String(n).replaceAll(/\B(?=(?:\d{3})+(?!\d))/gu, " ");

@@ -7,13 +7,36 @@ import { useUi } from "../store.ts";
 import { Confirm } from "./confirm.tsx";
 import { EmptyOffice } from "./empty-office.tsx";
 import { FaultScreen } from "./fault.tsx";
-import { FloorOverlays } from "./overlays.tsx";
 import { Header } from "./header.tsx";
 import { Lightbox } from "./lightbox.tsx";
 import { Panel } from "./panel.tsx";
 import { Stage } from "./stage.tsx";
-import { Toast } from "./toast.tsx";
 import { useDesign } from "./store.ts";
+import { AgentDialog } from "./agent-dialog.tsx";
+import { useFloor } from "./live.ts";
+
+/** The dialogs that belong to a floor but stand over the whole office. */
+function FloorOverlays(): React.JSX.Element | null {
+  const floor = useFloor();
+  if (floor === null) {
+    return null;
+  }
+  return <AgentDialog floor={floor} />;
+}
+
+/** What just happened, said once and then gone. */
+function Toast(): React.JSX.Element | null {
+  const toast = useDesign((s) => s.toast);
+  if (toast === null) {
+    return null;
+  }
+  return (
+    <div className="fixed bottom-28 left-1/2 z-90 flex items-center gap-10 py-11 px-16 rounded-12 bg-toast border border-accent-a35 shadow-toast animate-toast">
+      <span className="w-7 h-7 rounded-half bg-accent shadow-glow-gold flex-[0_0_auto]" />
+      <span className="text-12h text-ink-warm">{toast}</span>
+    </div>
+  );
+}
 
 /** The office editor is internal: a production bundle carries neither the branch nor the import. */
 const DEV = process.env.NODE_ENV === "development";

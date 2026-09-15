@@ -1,5 +1,4 @@
 import { type ChatSendInput } from "@ho/protocol";
-import { useMutation } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { rejects, upload } from "../attachments.ts";
@@ -8,7 +7,7 @@ import { ChatAttachment } from "./chat-attachment.tsx";
 import { ChatToolbar } from "./chat-toolbar.tsx";
 import { ChatWorking } from "./chat-working.tsx";
 import type { Floor } from "./data.ts";
-import { useDesign } from "./store.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
 
 const BOX = "relative rounded-15 p-12 transition-[border-color,background,box-shadow] duration-250";
 
@@ -29,11 +28,8 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
   // highlight from blinking while the file travels over the composer's own controls.
   const depth = useRef(0);
 
-  const send = useMutation({
+  const send = useOfficeMutation({
     mutationFn: (input: ChatSendInput) => requireClient().chat.send(input),
-    onError: (error: Error) => {
-      flash(error.message);
-    },
   });
 
   const submit = (): void => {
