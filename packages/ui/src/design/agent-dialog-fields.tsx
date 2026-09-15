@@ -63,8 +63,6 @@ export function AgentDialogFields({
         />
       </div>
       <SelectField
-        scope="dlg"
-        name="provider"
         label={t("agent.provider")}
         options={ProviderId.options.map((id) => PROVIDERS[id].name)}
         value={catalogue.name}
@@ -85,8 +83,6 @@ export function AgentDialogFields({
         </div>
       ) : (
         <SelectField
-          scope="dlg"
-          name="model"
           label={t("agent.model")}
           options={options}
           value={labelOfModel(provider, draft.model)}
@@ -100,8 +96,6 @@ export function AgentDialogFields({
         </div>
       ) : (
         <SelectField
-          scope="dlg"
-          name="effort"
           label={t("agent.effort")}
           options={catalogue.effortLevels}
           value={EffortLevel.parse(draft.effort)}
@@ -111,8 +105,6 @@ export function AgentDialogFields({
         />
       )}
       <SelectField
-        scope="dlg"
-        name="auth"
         label={t("agent.auth")}
         options={catalogue.authKinds}
         value={draft.auth}
@@ -121,8 +113,6 @@ export function AgentDialogFields({
         }}
       />
       <SelectField
-        scope="dlg"
-        name="gender"
         label={t("agent.gender")}
         options={Gender.options.map((g) => t(GENDER_KEY[g]))}
         value={t(GENDER_KEY[draft.gender])}

@@ -38,8 +38,6 @@ export function FloorDetails({
         />
       </div>
       <SelectField
-        scope="nf"
-        name="branch"
         label={t("project.branchCap")}
         mono
         muted={branch === ""}
