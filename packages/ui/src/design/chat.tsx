@@ -1,61 +1,41 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import type { Floor } from "./data.ts";
 import { ChatComposer } from "./chat-composer.tsx";
 import { ChatHeader } from "./chat-header.tsx";
 import { ChatMessage } from "./chat-message.tsx";
 import { MONO } from "./tokens.ts";
-import { BOSS_FALLBACK, useDesign, useFloor } from "./store.ts";
+import { bossOf } from "./live.ts";
+import { useDesign } from "./store.ts";
 
-const LIST: React.CSSProperties = {
-  flex: "1",
-  minHeight: "0",
-  overflowY: "auto",
-  padding: "16px",
-  display: "flex",
-  flexDirection: "column",
-  gap: "11px",
-};
+const LIST = "flex-1 min-h-0 overflow-y-auto p-16 flex flex-col gap-11";
 
-const BUBBLE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "7px",
-  padding: "11px 14px",
-  borderRadius: "15px 15px 15px 5px",
-  background: "#141418",
-  border: "1px solid #26262C",
-  width: "fit-content",
-  animation: "fadeUp .3s ease both",
-};
+const BUBBLE =
+  "flex items-center gap-7 py-11 px-14 rounded-15 rounded-bl-5 bg-toast border border-border w-fit animate-lift-300";
 
-const DOT: React.CSSProperties = {
-  width: "5px",
-  height: "5px",
-  borderRadius: "50%",
-  background: "#FFC531",
-};
+const DOT = "w-5 h-5 rounded-half bg-accent";
 
-/** Three dots and a name, for the beat between sending and being answered. */
-function Typing({ name }: { name: string }): React.JSX.Element {
+/** Three dots and a name, for as long as somebody on this floor is actually working. */
+function Working({ name }: { name: string }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
-    <div style={BUBBLE}>
-      {["", ".15s ", ".3s "].map((delay) => (
-        <span key={delay} style={{ ...DOT, animation: `dots 1.2s ease-in-out ${delay}infinite` }} />
+    <div className={BUBBLE}>
+      {["0s", ".15s", ".3s"].map((delay) => (
+        <span key={delay} className={`${DOT} animate-dots wait`} style={{ "--wait": delay }} />
       ))}
-      <span style={{ ...MONO, fontSize: "10px", color: "#ABA8A1", marginLeft: "4px" }}>
-        <span>{name}</span> is thinking
-      </span>
+      <span className={`${MONO} text-10 text-ink-label ml-4`}>{t("chat.thinking", { name })}</span>
     </div>
   );
 }
 
 /** The conversation with the floor's boss: who you are talking to, what was said, and the composer. */
-export function Chat(): React.JSX.Element {
-  const floor = useFloor();
+export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
+  const { t } = useTranslation();
   const query = useDesign((s) => s.query);
-  const typing = useDesign((s) => s.typing);
   const list = useRef<HTMLDivElement>(null);
 
-  const boss = floor.team[0] ?? BOSS_FALLBACK;
+  const boss = bossOf(floor);
+  const busy = floor.team.some((p) => p.status === "working");
   const needle = query.trim().toLowerCase();
   const shown =
     needle === ""
@@ -72,38 +52,26 @@ export function Chat(): React.JSX.Element {
   });
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "0",
-        flex: "1",
-        animation: "slideLeft .42s cubic-bezier(.2,.8,.3,1) both",
-      }}
-    >
+    <div className="flex flex-col min-h-0 flex-1 animate-slide-420">
       <ChatHeader
+        floor={floor}
         boss={boss}
-        hits={needle === "" ? "" : `${String(shown.length)}/${String(floor.messages.length)}`}
+        hits={
+          needle === ""
+            ? ""
+            : t("common.ofTotal", { shown: shown.length, total: floor.messages.length })
+        }
       />
-      <div ref={list} style={LIST}>
+      <div ref={list} className={LIST}>
         {shown.map((m) => (
-          <ChatMessage key={m.id} message={m} boss={boss.name} />
+          <ChatMessage key={m.id} message={m} boss={boss?.name ?? t("chat.colleague")} />
         ))}
-        {typing ? <Typing name={boss.name} /> : null}
+        {busy && boss !== undefined ? <Working name={boss.name} /> : null}
         {needle !== "" && shown.length === 0 ? (
-          <div
-            style={{
-              padding: "22px 4px",
-              textAlign: "center",
-              fontSize: "12.5px",
-              color: "#ABA8A1",
-            }}
-          >
-            Nothing in this conversation matches that.
-          </div>
+          <div className="py-22 px-4 text-center text-12h text-ink-label">{t("chat.noHits")}</div>
         ) : null}
       </div>
-      <ChatComposer />
+      <ChatComposer floor={floor} />
     </div>
   );
 }

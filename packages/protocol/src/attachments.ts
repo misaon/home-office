@@ -17,7 +17,7 @@ export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
  * What the office accepts and, more importantly, what it serves back: the daemon answers with the type it
  * recorded here, never with one sniffed from the bytes. SVG is deliberately absent — it is a script vector.
  */
-export const ATTACHMENT_TYPES: Readonly<Record<string, string>> = {
+const ATTACHMENT_TYPES: Readonly<Record<string, string>> = {
   png: "image/png",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",

@@ -1,23 +1,19 @@
-import { CAPS, FIELD, PRIMARY, SheetShell } from "./sheet-shell.tsx";
-import { AgentStatus } from "./sheet-agent-status.tsx";
-import { SelectField } from "./select-field.tsx";
-import { useDesign, useFloor } from "./store.ts";
+import { useTranslation } from "react-i18next";
+import { draftOf } from "./agent-dialog.tsx";
 import type { Member } from "./data.ts";
+import { useAgentWork } from "./live.ts";
+import { AgentStatus } from "./sheet-agent-status.tsx";
+import { CAPS, PRIMARY, SheetShell } from "./sheet-shell.tsx";
+import { MONO, separator } from "./tokens.ts";
+import { useDesign } from "./store.ts";
 
-const FIELDS: [keyof Member, readonly string[]][] = [
-  ["role", ["worker", "boss"]],
-  ["provider", ["Claude Code", "OpenCode", "Codex", "Gemini CLI"]],
-  ["model", ["Opus", "Sonnet", "Haiku"]],
-  ["effort", ["low", "medium", "high"]],
-];
+const LIST = "rounded-13 bg-card border border-edge overflow-hidden mb-16";
 
-/** One colleague, opened up: what they are doing now, and everything you can change about them. */
-export function AgentSheet({ draft, index }: { draft: Member; index: number }): React.JSX.Element {
-  const floor = useFloor();
+/** One colleague, opened up: what they are doing now, what they have been doing, and the way in. */
+export function AgentSheet({ draft }: { draft: Member }): React.JSX.Element {
+  const { t } = useTranslation();
   const set = useDesign((s) => s.set);
-  const update = useDesign((s) => s.update);
-  const patchCur = useDesign((s) => s.patchCur);
-  const flash = useDesign((s) => s.flash);
+  const work = useAgentWork(draft.id);
 
   return (
     <SheetShell
@@ -25,93 +21,33 @@ export function AgentSheet({ draft, index }: { draft: Member; index: number }): 
       subtitle={`${draft.provider} · ${draft.model} / ${draft.effort}`}
     >
       <AgentStatus draft={draft} />
-      <div style={{ ...CAPS, marginBottom: "7px" }}>name</div>
-      <input
-        value={draft.name}
-        onChange={(e) => {
-          const name = e.target.value;
-          update((s) => ({ sheetDraft: s.sheetDraft === null ? null : { ...s.sheetDraft, name } }));
-        }}
-        style={{ ...FIELD, fontSize: "13px", marginBottom: "14px" }}
-      />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "11px",
-          marginBottom: "14px",
-        }}
-      >
-        {FIELDS.map(([name, options]) => (
-          <SelectField
-            key={name}
-            scope="sheet"
-            name={name}
-            options={options}
-            value={String(draft[name])}
-            onPick={(next) => {
-              update((s) => ({
-                sheetDraft: s.sheetDraft === null ? null : { ...s.sheetDraft, [name]: next },
-              }));
-            }}
-          />
+      <div className={`${CAPS} mb-10`}>{t("agent.recentWork")}</div>
+      <div className={LIST}>
+        {work.map((row, i) => (
+          <div key={row.x} className={`flex gap-11 py-12 px-13 ${separator(i === 0)}`}>
+            <span className={`${MONO} text-10 text-ink-meta flex-[0_0_auto]`}>{row.t}</span>
+            <span className="text-12h text-ink-dim leading-body">{row.x}</span>
+          </div>
         ))}
+        {work.length === 0 ? (
+          <div className="py-12 px-13 text-12 text-ink-meta">{t("agent.noWork")}</div>
+        ) : null}
       </div>
-      <div style={{ ...CAPS, marginBottom: "7px" }}>base prompt</div>
-      <textarea
-        rows={5}
-        value={draft.prompt}
-        onChange={(e) => {
-          const prompt = e.target.value;
-          update((s) => ({
-            sheetDraft: s.sheetDraft === null ? null : { ...s.sheetDraft, prompt },
-          }));
+      <button
+        type="button"
+        onClick={() => {
+          set({
+            agentDlg: { mode: "edit", id: draft.id },
+            agentDraft: draftOf(draft),
+            sheet: null,
+            sheetDraft: null,
+            openSelect: null,
+          });
         }}
-        style={{
-          ...FIELD,
-          padding: "11px 12px",
-          fontSize: "12.5px",
-          resize: "none",
-          lineHeight: "1.55",
-          marginBottom: "16px",
-        }}
-      />
-      <div style={{ display: "flex", gap: "9px" }}>
-        <button
-          type="button"
-          onClick={() => {
-            patchCur({ team: floor.team.map((p, n) => (n === index ? { ...draft } : p)) });
-            set({ sheet: null, sheetDraft: null });
-            flash("Agent updated");
-          }}
-          style={PRIMARY}
-          className="hopm"
-        >
-          Save changes
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            patchCur({ team: floor.team.filter((_, n) => n !== index) });
-            set({ sheet: null, sheetDraft: null });
-            flash("Agent removed from the floor");
-          }}
-          style={{
-            padding: "11px 15px",
-            borderRadius: "11px",
-            border: "1px solid rgba(255,122,122,.3)",
-            background: "rgba(255,122,122,.1)",
-            color: "#FFB3B3",
-            fontSize: "12.5px",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-            transition: "all .2s",
-          }}
-          className="hopp"
-        >
-          Remove
-        </button>
-      </div>
+        className={`hover:-translate-y-2 hover:shadow-lift ${PRIMARY} w-full`}
+      >
+        {t("agent.configure")}
+      </button>
     </SheetShell>
   );
 }

@@ -15,7 +15,6 @@ import type {
 } from "@ho/protocol";
 import { create } from "zustand";
 
-export type Panel = "chat" | "board" | "team" | "usage" | "settings";
 export type Connection = "connecting" | "online" | "offline" | "unauthorized" | "rejected";
 
 /** What each connection state says to the viewer, as a dictionary key. */
@@ -70,28 +69,28 @@ export const sortedFloors = (projects: ReadonlyMap<ProjectId, Project>): Project
     (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
   );
 
-/** The floor's boss from the snapshot; undefined only mid-removal. */
-export const bossOnFloor = (agents: Snapshot["agents"], floorId: ProjectId): Agent | undefined =>
-  [...agents.values()].find((a) => a.projectId === floorId && a.role === "boss");
-
 type UiState = {
   connection: Connection;
   /** True once the stored events were replayed; before that the office does not know whether floors exist. */
   replayed: boolean;
+  /**
+   * When the office first failed to reach the daemon, and still has not. The reconnect loop flips between
+   * `offline` and `connecting` every couple of seconds, so a screen that reacts to `offline` alone would
+   * flash; this is what "gone for a while" is measured from.
+   */
+  offlineSince: number | null;
   snapshot: Snapshot;
   live: ReadonlyMap<SessionId, readonly LiveEvent[]>;
   lastError: string | null;
-  panel: Panel;
   selectedAgentId: AgentId | null;
   /** The floor (project) shown in the office and the side panels; null until the first project exists. */
   floorId: ProjectId | null;
   addProjectOpen: boolean;
-  /** The first-run checklist (Docker, images, token, smoke test). */
+  /** The first-run checklist (Docker, images, token). */
   setupOpen: boolean;
   setConnection: (connection: Connection) => void;
   setReplayed: (replayed: boolean) => void;
   setError: (message: string | null) => void;
-  selectPanel: (panel: Panel) => void;
   selectAgent: (agentId: AgentId | null) => void;
   selectFloor: (floorId: ProjectId | null) => void;
   setAddProjectOpen: (open: boolean) => void;
@@ -101,16 +100,24 @@ type UiState = {
 export const useUi = create<UiState>()((set) => ({
   connection: "connecting",
   replayed: false,
+  offlineSince: null,
   snapshot: takeSnapshot(null),
   live: new Map(),
   lastError: null,
-  panel: "chat",
   selectedAgentId: null,
   floorId: null,
   addProjectOpen: false,
   setupOpen: false,
   setConnection: (connection) => {
-    set({ connection });
+    set((state) => ({
+      connection,
+      offlineSince:
+        connection === "online"
+          ? null
+          : connection === "offline" && state.offlineSince === null
+            ? Date.now()
+            : state.offlineSince,
+    }));
   },
   setReplayed: (replayed) => {
     set({ replayed });
@@ -118,11 +125,8 @@ export const useUi = create<UiState>()((set) => ({
   setError: (lastError) => {
     set({ lastError });
   },
-  selectPanel: (panel) => {
-    set({ panel });
-  },
   selectAgent: (selectedAgentId) => {
-    set(selectedAgentId === null ? { selectedAgentId } : { selectedAgentId, panel: "team" });
+    set({ selectedAgentId });
   },
   selectFloor: (floorId) => {
     set({ floorId, selectedAgentId: null });

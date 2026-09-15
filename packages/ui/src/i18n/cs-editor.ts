@@ -19,6 +19,7 @@ export const csEditor: typeof enEditor = {
     helpPaint: "Tažením levým tlačítkem kreslíte, pravým mažete to, co tento nástroj kreslí.",
     helpPan: "Prostřední tlačítko nebo shift posouvá; kolečko přibližuje.",
     savedAs: "uloženo {{path}}",
+    internalOnly: "jen interní",
     title: "Editor kanceláře",
     office: "Kancelář",
     name: "Název",

@@ -1,0 +1,90 @@
+import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import type { Floor } from "./data.ts";
+import { requireClient } from "../rpc.ts";
+import { useDesign } from "./store.ts";
+
+const TRACK =
+  "flex-[0_0_38px] w-38 h-22 rounded-pill border-0 cursor-pointer p-3 flex transition-[background] duration-300";
+
+const KNOB = "w-16 h-16 rounded-half transition-transform duration-340 ease-spring-far";
+
+const ROW = "flex gap-11 items-start mb-14";
+
+/** A switch drawn the way the design draws one, with its consequence written beside it. */
+function Switch({
+  on,
+  title,
+  hint,
+  onFlip,
+}: {
+  on: boolean;
+  title: string;
+  hint: string;
+  onFlip: () => void;
+}): React.JSX.Element {
+  return (
+    <div className={ROW}>
+      <button
+        type="button"
+        aria-label={title}
+        aria-pressed={on}
+        onClick={onFlip}
+        className={`${TRACK} ${on ? "bg-accent" : "bg-border-strong"}`}
+      >
+        <span
+          className={`${KNOB} ${on ? "bg-accent-ink" : "bg-ink-idle"} ${on ? "translate-x-16" : "translate-x-0"}`}
+        />
+      </button>
+      <div>
+        <div className="text-13">{title}</div>
+        <div className="text-11h text-ink-meta leading-prose mt-4">{hint}</div>
+      </div>
+    </div>
+  );
+}
+
+/** The three things a floor decides for itself: how work leaves it, what feeds it, what it may start. */
+export function FloorSwitches({ floor }: { floor: Floor }): React.JSX.Element {
+  const { t } = useTranslation();
+  const flash = useDesign((s) => s.flash);
+  const update = useMutation({
+    mutationFn: (patch: {
+      publish?: { mode: "branch" | "pull-request" };
+      intake?: { enabled: boolean };
+      services?: { enabled: boolean };
+    }) => requireClient().projects.update({ id: floor.id, patch }),
+    onError: (error: Error) => {
+      flash(error.message);
+    },
+  });
+
+  return (
+    <>
+      <Switch
+        on={floor.pr}
+        title={t("project.pullRequests")}
+        hint={t("project.pullRequestsHint")}
+        onFlip={() => {
+          update.mutate({ publish: { mode: floor.pr ? "branch" : "pull-request" } });
+        }}
+      />
+      <Switch
+        on={floor.issues}
+        title={t("settings.intake")}
+        hint={t("settings.intakeHint")}
+        onFlip={() => {
+          update.mutate({ intake: { enabled: !floor.issues } });
+        }}
+      />
+      <Switch
+        on={floor.services}
+        title={t("settings.servicesLabel")}
+        hint={t("settings.servicesHint")}
+        onFlip={() => {
+          update.mutate({ services: { enabled: !floor.services } });
+        }}
+      />
+    </>
+  );
+}

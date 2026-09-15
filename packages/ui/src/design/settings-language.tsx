@@ -1,64 +1,36 @@
+import { useTranslation } from "react-i18next";
+import { LANGUAGES, setLanguage, type Language } from "../i18n/index.ts";
 import { pill } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
-const LANGS = ["English", "Čeština"] as const;
-
-/** Which language the office speaks to you in; the agents are briefed in English regardless. */
+/** Which language the office speaks to you in; agents are briefed in English regardless. */
 export function LanguageCard(): React.JSX.Element {
-  const lang = useDesign((s) => s.lang);
-  const set = useDesign((s) => s.set);
+  const { t, i18n } = useTranslation();
   const flash = useDesign((s) => s.flash);
   return (
-    <div
-      style={{
-        borderRadius: "14px",
-        background: "#101013",
-        border: "1px solid #232328",
-        overflow: "hidden",
-        marginBottom: "18px",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "11px",
-          padding: "13px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ flex: "1", minWidth: "120px" }}>
-          <div style={{ fontSize: "13px" }}>Language</div>
-          <div style={{ fontSize: "11px", color: "#A6A39C", marginTop: "4px", lineHeight: "1.5" }}>
-            Agents are always briefed in English.
+    <div className="rounded-14 bg-card border border-edge overflow-hidden mb-18">
+      <div className="flex items-center gap-11 p-13 flex-wrap">
+        <div className="flex-1 min-w-120">
+          <div className="text-13">{t("settings.language")}</div>
+          <div className="text-11 text-ink-meta mt-4 leading-body">
+            {t("settings.languageHint")}
           </div>
         </div>
-        <div style={{ display: "flex", gap: "5px", flex: "0 0 auto" }}>
-          {LANGS.map((name) => {
-            const tone = pill(lang === name);
+        <div className="flex gap-5 flex-[0_0_auto]">
+          {LANGUAGES.map((code: Language) => {
+            const tone = pill(i18n.language === code);
             return (
               <button
                 type="button"
-                key={name}
+                key={code}
                 onClick={() => {
-                  set({ lang: name });
-                  flash(
-                    name === "English" ? "Office language: English" : "Jazyk kanceláře: čeština",
-                  );
+                  void setLanguage(code).then(() => {
+                    flash(t("settings.languageSet"));
+                  });
                 }}
-                style={{
-                  padding: "6px 13px",
-                  borderRadius: "99px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  transition: "all .22s",
-                  border: `1px solid ${tone.bd}`,
-                  background: tone.bg,
-                  color: tone.fg,
-                }}
-                className="hop4"
+                className={`py-6 px-13 rounded-pill cursor-pointer text-12 transition-all duration-220 hover:-translate-y-1 ${tone}`}
               >
-                {name}
+                {t(`settings.lang.${code}`)}
               </button>
             );
           })}

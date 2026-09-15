@@ -14,7 +14,7 @@ const STORAGE_KEY = "ho.language";
 const isLanguage = (value: string | null): value is Language =>
   value !== null && LANGUAGES.some((language) => language === value);
 
-export const storedLanguage = (): Language => {
+const storedLanguage = (): Language => {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     return isLanguage(stored) ? stored : "en";

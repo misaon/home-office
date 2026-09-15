@@ -6,7 +6,7 @@ import { StoredEvent } from "./events.ts";
 import { IntakePollResult, IntakeStatus } from "./intake.ts";
 import { LayoutSaved, LayoutStore, OfficeLayout } from "./office-layout.ts";
 import { SecretKeyName } from "./providers.ts";
-import { AgentId, ProjectId, TaskId } from "./ids.ts";
+import { AgentId, ProjectId, SessionId, TaskId } from "./ids.ts";
 import { Doctor, LiveEvent, ResourceInventory } from "./runtime-events.ts";
 import {
   AgentCopyInput,
@@ -99,6 +99,11 @@ export const contract = {
     list: base.input(SessionListInput).output(z.array(Session)),
     /** Live, provider-agnostic runtime events of one or all sessions (not persisted). */
     stream: base.input(SessionStreamInput).output(eventIterator(LiveEvent)),
+    /**
+     * Cuts a running session off where it is; its task is blocked so nothing picks it up again by
+     * itself. `stopped` is false when this daemon was not the one running it.
+     */
+    stop: base.input(z.object({ id: SessionId })).output(z.object({ stopped: z.boolean() })),
   },
   usage: {
     summary: base.input(UsageSummaryInput).output(UsageSummary),

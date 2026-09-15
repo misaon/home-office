@@ -88,6 +88,47 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-15 — Owner question: why two answers, and why does the model not answer at all — A failed
+  triage said the same sentence twice: `settle` posted the runtime's own text as the boss's reply, then
+  filed it as the reason the task blocked, and the boss reads that reason out. The event log shows both
+  writes back to back (`chat.message_posted`, then `task.status_changed` to blocked with the same text,
+  then `chat.message_posted` again). The boss's line is the one that belongs in a chat, so the raw text
+  is no longer posted when he is about to read it out. The 401 itself is not the office's doing: the
+  sandbox receives exactly one credential (`CLAUDE_CODE_OAUTH_TOKEN`, trimmed by both the CLI and the
+  UI, with no host environment inherited), so Anthropic is rejecting the token. The checklist could
+  never have caught that — `doctor.secrets.anthropicOauthToken` is a presence check — and the step that
+  did try the token end to end was the smoke test, removed earlier the same day. The step now says what
+  it verifies rather than implying the token works.
+
+- 2026-09-15 — Owner task: seven things the office got wrong — A focus ring the browser drew inside the
+  border the office already draws (the drawing's global `:focus` reset had not survived the Tailwind
+  rewrite), the platform's light scrollbar on twelve of the thirteen surfaces that scroll (the same
+  rewrite made that rule opt-in and opted one in), a "Open full usage" button no click could reach, a
+  first-run step removed, the hire dialog cut to the roles this office hires here, dialogs that close
+  when the click lands beside them, and Lola at the reception given the pill every other character
+  wears. The unreachable button was two stacking contexts deep: `main` carried a z-index, and the
+  panel's entrance animation held `transform: none` as an identity matrix — both founding contexts that
+  capped the popover under the sheet meant to dismiss it. Both predate the rewrite. Verified in a
+  browser and held against the previous build over 28 states: only the four screens that were meant to
+  change did. An eighth followed: the task sheet drew "Move to done" and "Hand back" whatever state the
+  task was in, and `done` is reachable from `in_progress` and `review` alone — so on most tasks the
+  office answered the click with a rejection it had already decided. The sheet now draws the edges the
+  state machine actually has, and says why when it has none.
+
+- 2026-09-14 — Owner task: the whole design rewritten in Tailwind 4 — 594 inline style objects and 166
+  style constants across 71 files became utility classes, and `design.css` (427 lines of reset, keyframes
+  and thirty-six `!important` hover rules) was deleted. `packages/ui/src/design/app.css` is now the only
+  stylesheet: Tailwind, the fonts, four `@source` globs, one `@theme` holding the palette, type scale,
+  radii, shadows, easings and thirty animations, and three `@utility` blocks. Thirteen `style` attributes
+  remain and each sets only a custom property a utility reads back. Held to the pixel against the previous
+  build three ways over 28 states — every pixel of the viewport with animations disabled and the canvas
+  hidden, every painting property of every element including `::before`/`::after`/`::placeholder`, and a
+  scan for classes fighting over one property. That found five defects screenshots alone could not: a
+  field with no border colour, two transitions that could not animate Tailwind's `translate`/`rotate`
+  properties, a button whose lit state was always overridden, and a harness step that had never opened
+  the screen it claimed to test. Decisions and measurements in
+  [the task plan](plans/2026-09-14-tailwind-rewrite.md) and [docs/STACK.md](STACK.md).
+
 - 2026-09-13 — Owner task: redesign the whole UI, with animation, and make it obvious — The right rail
   had six tabs and the floor's people lived in two of them, one to watch and another to edit; it has
   five, and Team is one card per colleague with their state on the front and their model, effort and

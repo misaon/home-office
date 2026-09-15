@@ -1,5 +1,4 @@
 import {
-  activeSessions,
   type AgentRuntime,
   changeSessionState,
   createChannel,
@@ -26,7 +25,6 @@ import {
   type TaskId,
 } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
-import { LABELS } from "./labels.ts";
 import type { AttachmentStore } from "./attachments.ts";
 import type { Logger } from "./logger.ts";
 import type { McpGateway } from "./mcp.ts";
@@ -39,6 +37,7 @@ import {
   type SessionContext,
   sessionServicesOf,
 } from "./session-provision.ts";
+import { recoverSessions } from "./session-recover.ts";
 import { runPrompt } from "./session-run.ts";
 import { settle } from "./session-settle.ts";
 
@@ -60,9 +59,6 @@ export type SessionDeps = {
 
 type Subscriber = { sessionId: SessionId | null; push: (event: LiveEvent) => void };
 
-const RESTART_REASON =
-  "daemon restarted before the session finished; inspect the task branch and resume explicitly";
-
 /** Runs sessions end to end: sandbox, git-bridge, runtime, MCP tools, live fan-out, persisted outcomes. */
 export class SessionManager {
   readonly #deps: SessionDeps;
@@ -77,36 +73,14 @@ export class SessionManager {
 
   /**
    * After a restart: sessions the previous daemon left active are failed, their containers removed and
-   * their tasks blocked for explicit resumption. A Docker that does not answer only skips the removal —
-   * garbage collection prunes the labelled containers later — so the office still starts.
+   * their tasks blocked for explicit resumption.
    */
   async recover(): Promise<void> {
-    const { office, provider, log } = this.#deps;
-    const active = activeSessions(office.model);
-    if (active.length === 0) {
-      return;
-    }
-    const inventory = await provider
-      .inventory({ [LABELS.managed]: "true" })
-      .catch((error: unknown) => {
-        log.warn(
-          { err: errorMessage(error) },
-          "docker did not answer; abandoned containers are left to gc",
-        );
-        return null;
-      });
-    const abandoned = (inventory?.containers ?? []).filter(
-      (item) => item.kind === "session" || item.kind === "engine",
+    await recoverSessions(
+      this.#deps,
+      (id, reason) => this.#end(id, "failed", reason),
+      (taskId, reason) => this.#block(taskId, reason),
     );
-    for (const session of active) {
-      for (const container of abandoned.filter((item) => item.sessionId === session.id)) {
-        const handle = { id: container.name, name: container.name };
-        await provider.stop(handle, 2).catch(() => null);
-        await provider.remove(handle).catch(() => null);
-      }
-      await this.#end(session.id, "failed", RESTART_REASON);
-      await this.#block(session.taskId, RESTART_REASON);
-    }
   }
 
   /** Live runtime events for the UI and CLI. Not persisted. */
@@ -183,6 +157,22 @@ export class SessionManager {
       });
     this.#running.set(session.id, { controller, done });
     return session;
+  }
+
+  /**
+   * Cuts one running session off where it is. The abort travels the same path the wall-time budget
+   * takes: the run throws, its task is blocked for explicit resumption, and the sandbox is disposed.
+   * It does not wait for that to finish — tearing a sandbox down can take as long as it takes, and the
+   * caller only asked for the cut. A session that is not running here answers false: it already ended,
+   * or another daemon ran it.
+   */
+  stop(sessionId: SessionId): boolean {
+    const running = this.#running.get(sessionId);
+    if (running === undefined) {
+      return false;
+    }
+    running.controller.abort();
+    return true;
   }
 
   async stopAll(): Promise<void> {

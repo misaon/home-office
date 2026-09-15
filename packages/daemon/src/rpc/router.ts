@@ -194,6 +194,9 @@ export const router = base.router({
         yield live;
       }
     }),
+    stop: base.sessions.stop.handler(({ input, context }) => ({
+      stopped: context.sessions.stop(input.id),
+    })),
   },
   chat: {
     /** With `taskId` the human answers a colleague's question; with `projectId` the floor's boss triages it. */

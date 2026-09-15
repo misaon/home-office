@@ -1,95 +1,82 @@
+import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { BoardFilters } from "./board-filters.tsx";
+import type { Floor } from "./data.ts";
+import { requireClient } from "../rpc.ts";
 import { DISPLAY } from "./tokens.ts";
-import { countBy, useDesign, useFloor } from "./store.ts";
+import { useDesign } from "./store.ts";
 
-const SEGMENT: React.CSSProperties = { transition: "width .5s cubic-bezier(.2,.9,.3,1)" };
+const SEGMENT = "transition-[width] duration-500 ease-glide";
 
-const TOP: React.CSSProperties = {
-  display: "flex",
-  alignItems: "baseline",
-  justifyContent: "space-between",
-  gap: "10px",
-  marginBottom: "14px",
-};
+const TOP = "flex items-baseline justify-between gap-10 mb-14";
 
-const SHARE: React.CSSProperties = {
-  ...DISPLAY,
-  fontWeight: "700",
-  fontSize: "30px",
-  letterSpacing: "-.02em",
-  lineHeight: "1",
-  whiteSpace: "nowrap",
-};
+const SHARE = `${DISPLAY} font-bold text-30 tracking-display leading-flat whitespace-nowrap`;
 
-const BAR: React.CSSProperties = {
-  display: "flex",
-  height: "5px",
-  borderRadius: "99px",
-  overflow: "hidden",
-  gap: "2px",
-  marginBottom: "14px",
-};
+const BAR = "flex h-5 rounded-pill overflow-hidden gap-2 mb-14";
 
-const CLEAR: React.CSSProperties = {
-  padding: "6px 11px",
-  borderRadius: "9px",
-  border: "1px solid #2C2C32",
-  background: "transparent",
-  fontSize: "11.5px",
-  color: "#CFCCC6",
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-  flex: "0 0 auto",
-  transition: "all .2s",
-};
+const CLEAR =
+  "py-6 px-11 rounded-9 border border-border-strong bg-transparent text-11h text-ink-quiet cursor-pointer whitespace-nowrap flex-[0_0_auto] transition-all duration-200";
 
 /** How much of the floor's work is finished, and which lanes you want to look at. */
-export function BoardHeader(): React.JSX.Element {
-  const floor = useFloor();
-  const patchCur = useDesign((s) => s.patchCur);
+export function BoardHeader({ floor }: { floor: Floor }): React.JSX.Element {
+  const { t } = useTranslation();
   const flash = useDesign((s) => s.flash);
-
+  const confirm = useDesign((s) => s.confirm);
   const cards = floor.cards;
   const total = cards.length === 0 ? 1 : cards.length;
-  const share = (status: string): string =>
-    `${String(Math.round((countBy(cards, status) / total) * 100))}%`;
+  const done = cards.filter((c) => c.s === "done").length;
+  const share = (lane: string): string =>
+    `${String(Math.round((cards.filter((c) => c.s === lane).length / total) * 100))}%`;
+
+  const clear = useMutation({
+    mutationFn: () => requireClient().tasks.clear({ projectId: floor.id }),
+    onSuccess: (result) => {
+      flash(t("board.cleared", { count: result.removed }));
+    },
+    onError: (error: Error) => {
+      flash(error.message);
+    },
+  });
 
   return (
-    <div style={{ flex: "0 0 auto", padding: "16px 16px 14px", borderBottom: "1px solid #1B1B1F" }}>
-      <div style={TOP}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: "9px",
-            minWidth: "0",
-            flexWrap: "wrap",
-          }}
-        >
-          <span style={SHARE}>{share("done")}</span>
-          <span style={{ fontSize: "11.5px", color: "#ABA8A1" }}>
-            {`${String(countBy(cards, "done"))} of ${String(cards.length)} tasks finished`}
+    <div className="flex-[0_0_auto] pt-16 px-16 pb-14 border-b border-line">
+      <div className={TOP}>
+        <div className="flex items-baseline gap-9 min-w-0 flex-wrap">
+          <span className={SHARE}>{share("done")}</span>
+          <span className="text-11h text-ink-label">
+            {t("board.finished", { done, total: cards.length })}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            patchCur({ cards: cards.filter((x) => x.s !== "done") });
-            flash("Finished tasks cleared");
-          }}
-          style={CLEAR}
-          className="hop3"
-        >
-          Clear finished
-        </button>
+        {done === 0 ? null : (
+          <button
+            type="button"
+            disabled={clear.isPending}
+            onClick={() => {
+              confirm({
+                title: t("board.clearTitle"),
+                body: t("board.clearConfirm", { count: done }),
+                okLabel: t("board.clear"),
+                act: () => {
+                  clear.mutate();
+                },
+              });
+            }}
+            className={`hover:text-ink hover:border-border-hover hover:bg-raised ${CLEAR}`}
+          >
+            {t("board.clear")}
+          </button>
+        )}
       </div>
-      <div style={BAR}>
-        <div style={{ ...SEGMENT, background: "var(--a,#FFC531)", width: share("running") }} />
-        <div style={{ ...SEGMENT, background: "#FF9E9E", width: share("blocked") }} />
-        <div style={{ ...SEGMENT, background: "#5BD9A0", width: share("done") }} />
-        <div style={{ background: "#1F1F24", flex: "1" }} />
+      <div className={BAR}>
+        <div
+          className={`${SEGMENT} bg-accent w-(--share)`}
+          style={{ "--share": share("running") }}
+        />
+        <div className={`${SEGMENT} bg-bad w-(--share)`} style={{ "--share": share("blocked") }} />
+        <div className={`${SEGMENT} bg-good w-(--share)`} style={{ "--share": share("done") }} />
+        <div className="bg-slot flex-1" />
       </div>
-      <BoardFilters />
+      <BoardFilters floor={floor} />
     </div>
   );
 }

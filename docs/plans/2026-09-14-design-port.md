@@ -1,6 +1,7 @@
 # Porting the drawn office into React
 
-The owner had the office drawn and left it in the repository; it lives at `docs/design/Home Office.html`,
+The owner had the office drawn and left it in the repository, at `docs/design/Home Office.html`
+(deleted once the port was finished — see `2026-09-14-design-update.md`);
 where the formatter leaves it alone. They asked for it in our stack — clean, performant React — and for proof that the result is the same picture, pixel for
 pixel. This is what the file turned out to be, how it was ported, and how "the same" was measured.
 
@@ -96,16 +97,54 @@ The first compares the computed `animation` and `transition` of every element in
 forces `:hover` on each button in turn through `CSS.forcePseudoState` and diffs the page each time —
 101 hover states over five scenes.
 
-## What this is not
+## What happened next
 
-The port is the drawing, and the drawing runs on fixtures. It is reachable at `design.html`, beside the
-office's own `index.html`; nothing in the live app imports it and nothing in it talks to the daemon.
-Wiring these panels to real projects, agents, tasks and usage is the next piece of work, and the moment
-it starts, pixel-for-pixel against this file stops being the test — real content is not the fixture
-content. That is why the port and the verification landed first, and together.
+The owner did not want two offices, so the fixtures and the preview entry are gone and these components
+are now _the_ office: `index.html` renders them against the daemon. The measurements above therefore
+describe the port at the moment it was made, and they are no longer re-runnable — real content is not
+the fixture content, which is exactly why the verification landed before the wiring rather than after.
+
+What the wiring changed, and why:
+
+- **The stage draws the real office.** The mockup sketched a light floor with two drifting discs; the
+  product renders a pixel-art office in PixiJS. The sketch was a placeholder for it, so the frame, the
+  scan line and the camera bar are the design's and what they contain is the real canvas. The bar drives
+  the real camera through a handle `startOffice` now returns.
+- **The board grew a fourth lane.** The drawing has three; a task has nine states. `inbox` and `planned`
+  had nowhere to go, so they get a lane of their own, drawn in the same language as the other three.
+- **Three drawn things had nothing behind them and were dropped:** the attach menu's three sources
+  (there is one — a file), the "subscription window" meter (no provider tells the office a plan's
+  quota), and the four mock setup steps (the real checklist does Docker, images, token and smoke test).
+- **Three surfaces still wear the old skin:** the setup overlay, the add-project dialog and the internal
+  editor. They are real, working tools that the drawing either sketched or never drew, and restyling
+  them is the next piece of work.
 
 One rule was suppressed twice, in `board-card.tsx` and `team-row.tsx`: `jsx-a11y/prefer-tag-over-role`,
 where a row is drawn as a `div` with `role="button"`. The board's row carries its own delete button and
 a `<button>` may not contain another, so that row cannot be the tag the rule asks for; the team's row is
 kept the same element for consistency. Both take Enter and Space and carry a label. Recorded in
 `audit/SUPPRESSIONS.md`.
+
+## What the swap dropped
+
+Making the drawing the office lost capability the old panels had, because the drawing never showed it.
+Found by checking which dictionary keys nothing reads any more — 109 of 411 — since a key with no reader
+is a feature with no screen. Restored the same day: the tab labels (they were rendering hard-coded
+English), and the confirmations before deleting a task, clearing finished work, removing a floor and
+removing a colleague.
+
+Still missing, each with its dictionary entries kept so the gap stays visible:
+
+| Gone                     | Keys                                                                     | What it was                                                                       |
+| ------------------------ | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| Live session log         | `session.*` (12)                                                         | Team showed a running session's calls, permissions, context and result.           |
+| Answering a blocked task | `chat.question`, `chat.answerTo`, … (7)                                  | Chat listed open questions and answering one resumed the task.                    |
+| Intake configuration     | `settings.intake*` (20)                                                  | Labels, interval, dry run, ack label, comment, last poll — now one on/off switch. |
+| Services mode            | `settings.servicesRootless/Rootful` (3)                                  | Rootless or rootful per floor — now on/off.                                       |
+| Copying a colleague      | `agent.copy*`, `agent.pickFloor` (4)                                     | Copy a character onto another floor.                                              |
+| Pruning resources        | `resources.prune*`, `resources.images`, … (9)                            | The GC button and the images/volumes detail.                                      |
+| Board card detail        | `board.rounds`, `board.issue`, `board.pullRequest`, `board.reviewer` (4) | Review rounds, issue link, PR link and reviewer on a card.                        |
+| Usage detail             | `usage.turns`, `usage.retryAt`, `usage.limits`, … (10)                   | Turns, rate-limit retry time and the per-window figures.                          |
+
+None of this is a design decision — the drawing simply did not draw it, and the swap followed the
+drawing. Each needs designing in the drawing's language before it comes back.

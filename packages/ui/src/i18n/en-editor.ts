@@ -19,6 +19,7 @@ export const enEditor = {
       "Drag with the left button to paint, with the right button to erase what this tool paints.",
     helpPan: "The middle button or shift pans; the wheel zooms.",
     savedAs: "saved {{path}}",
+    internalOnly: "internal only",
     title: "Office editor",
     office: "Office",
     name: "Name",

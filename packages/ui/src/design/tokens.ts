@@ -1,46 +1,48 @@
-import type { Step } from "./data-setup.ts";
 import type { Priority } from "./data.ts";
 
-/** A filter pill, on or off. */
-export const pill = (on: boolean): { bd: string; bg: string; fg: string } => ({
-  bd: on ? "rgba(255,197,49,.45)" : "#26262C",
-  bg: on ? "rgba(255,197,49,.12)" : "#101013",
-  fg: on ? "#FFD666" : "#CFCCC6",
-});
+/**
+ * The few parts of the drawing that depend on state rather than place. Each returns the classes that
+ * state is painted in, so a component spends them exactly as it spends any other utility.
+ */
 
-/** A segmented-control slot, on or off. */
-export const seg = (on: boolean): { bg: string; fg: string } => ({
-  bg: on ? "rgba(255,197,49,.16)" : "transparent",
-  fg: on ? "#FFD666" : "#ABA8A1",
-});
+/** A filter pill, on or off. */
+export const pill = (on: boolean): string =>
+  on
+    ? "border border-accent-a45 bg-accent-a12 text-accent-soft"
+    : "border border-border bg-card text-ink-quiet";
 
 /** The colours a priority is written in. */
-export const priority = (p: Priority): { pBg: string; pFg: string } => ({
-  pBg: p === "high" ? "rgba(255,122,122,.15)" : p === "low" ? "#24242A" : "rgba(255,197,49,.14)",
-  pFg: p === "high" ? "#FFB3B3" : p === "low" ? "#BEBBB4" : "#FFD666",
-});
+export const priority = (p: Priority): string =>
+  p === "high"
+    ? "bg-bad-a15 text-bad-soft"
+    : p === "low"
+      ? "bg-chip text-ink-faint"
+      : "bg-accent-a14 text-accent-soft";
 
-/** Green when a setup step is settled, amber while it works, grey until it is asked. */
-export const stepColours = (
-  status: Step["status"],
-): { nBg: string; nFg: string; sBg: string; sFg: string } =>
-  status === "ready" || status === "stored"
-    ? { nBg: "rgba(91,217,160,.16)", nFg: "#8FE8C4", sBg: "rgba(91,217,160,.14)", sFg: "#8FE8C4" }
-    : status === "working"
-      ? { nBg: "rgba(255,197,49,.18)", nFg: "#FFD666", sBg: "rgba(255,197,49,.14)", sFg: "#FFD666" }
-      : { nBg: "#24242A", nFg: "#BEBBB4", sBg: "#24242A", sFg: "#BEBBB4" };
+/** The mark a priority puts in front of its name. */
+export const priorityInk = (p: Priority): string =>
+  p === "high" ? "text-bad-soft" : p === "low" ? "text-ink-faint" : "text-accent-soft";
+
+export const priorityDot = (p: Priority): string =>
+  p === "high" ? "bg-bad-soft" : p === "low" ? "bg-ink-faint" : "bg-accent-soft";
 
 /** A row that only draws a rule when something sits above it. */
-export const separator = (first: boolean): string => (first ? "transparent" : "#1E1E23");
+export const separator = (first: boolean): string =>
+  first ? "border-t border-transparent" : "border-t border-rule";
 
-export const MONO: React.CSSProperties = { fontFamily: "'JetBrains Mono',monospace" };
-export const DISPLAY: React.CSSProperties = { fontFamily: "'Space Grotesk',sans-serif" };
+export const MONO = "font-mono";
+export const DISPLAY = "font-display";
 
-/** The small upper-case caption the panels label their fields with. */
-export const CAPTION: React.CSSProperties = {
-  ...MONO,
-  fontSize: "10px",
-  letterSpacing: ".12em",
-  textTransform: "uppercase",
-  color: "#ABA8A1",
-};
+/**
+ * The office spends a handful of CSS custom properties as inline values — a width the layout
+ * measures, a share of a bar, a delay that staggers three dots — and reads each back from a Tailwind
+ * utility such as `w-(--sheet)`. React's own `CSSProperties` has no room for a name it does not know,
+ * so the room is made here once rather than asserted at each of the twelve places.
+ */
+declare module "react" {
+  // `interface` is not a choice: augmenting React's own interface is the only way to widen it.
+  // oxlint-disable-next-line typescript/consistent-type-definitions
+  interface CSSProperties {
+    [name: `--${string}`]: string | number | undefined;
+  }
+}

@@ -2,7 +2,8 @@ import { OfficeLayout } from "@ho/protocol";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Field, Section } from "../kit/controls.tsx";
+import { Button, Caption } from "../design/controls.tsx";
+import { Section } from "../design/section.tsx";
 import { layoutsQuery } from "../queries.ts";
 import { useOnline } from "../store.ts";
 
@@ -12,21 +13,24 @@ function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX
   const [problem, setProblem] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   return (
-    <Field id="ho-editor-file" label={t("editor.load")}>
+    <div>
+      <Caption>{t("editor.load")}</Caption>
       {/* A file input draws its own button and its own "no file chosen" in the system's language,
           neither of which the office can restyle, so the label is the button and the input is hidden. */}
-      <label className="flex items-center gap-3 text-2xs text-muted-foreground">
+      <label className="flex items-center gap-12 text-11h text-ink-meta">
         <span
           id="ho-editor-file"
-          className="shrink-0 cursor-pointer rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs text-foreground hover:border-input hover:bg-border/60"
+          className="hover:text-ink hover:border-border-hover hover:bg-raised flex-[0_0_auto] cursor-pointer rounded-9 border border-border-strong bg-menu py-7 px-12 text-12 text-ink-soft transition-all duration-200"
         >
           {t("editor.chooseFile")}
         </span>
-        <span className="min-w-0 truncate font-mono">{picked ?? t("editor.noFile")}</span>
+        <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono">
+          {picked ?? t("editor.noFile")}
+        </span>
         <input
           type="file"
           accept="application/json,.json"
-          className="hidden"
+          hidden
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file === undefined) {
@@ -45,8 +49,8 @@ function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX
           }}
         />
       </label>
-      {problem === null ? null : <span className="text-2xs text-destructive">{problem}</span>}
-    </Field>
+      {problem === null ? null : <span className="text-11h text-bad-soft">{problem}</span>}
+    </div>
   );
 }
 
@@ -71,25 +75,25 @@ export function SavedOffices({
   const available = store.data?.available ?? false;
   return (
     <Section title={t("editor.saved")}>
-      {available ? null : <p className="text-2xs text-warn">{t("editor.noRepo")}</p>}
-      <div className="space-y-1">
+      {available ? null : <p className="text-11h text-warn my-11h">{t("editor.noRepo")}</p>}
+      <div className="flex flex-col gap-4">
         {(store.data?.layouts ?? []).map((office) => (
           <button
             key={office.id}
             type="button"
-            className="block w-full rounded-md px-3 py-2 text-left hover:bg-border"
+            className="hover:border-accent-a40 hover:-translate-y-1 block w-full rounded-9 border border-border bg-card-lit py-9 px-12 text-left cursor-pointer transition-all duration-200"
             onClick={() => {
               load(office);
             }}
           >
             {office.name}{" "}
-            <span className="font-mono text-2xs text-muted-foreground">
+            <span className="font-mono text-11 text-ink-meta">
               {office.id} · {office.width}×{office.height}
             </span>
           </button>
         ))}
       </div>
-      <Button variant="primary" disabled={!available} onClick={save}>
+      <Button tone="primary" disabled={!available} onClick={save}>
         {t("editor.saveOffice")}
       </Button>
       <LoadFile load={load} />

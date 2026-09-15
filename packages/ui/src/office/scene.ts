@@ -1,6 +1,8 @@
-import { type AgentId, errorMessage } from "@ho/protocol";
+import { isSessionActive, type AgentId, errorMessage } from "@ho/protocol";
+import { t } from "i18next";
 import { type Actor, CELL_PX, type World } from "@ho/sim";
-import { Graphics } from "pixi.js";
+import { Container, Graphics } from "pixi.js";
+import { type Badge, makeBadge, updateBadge } from "./badge.ts";
 import { useUi } from "../store.ts";
 import { bridge } from "./bridge.ts";
 import { DOT, DOT_EDGE, DOT_SELECTED } from "./colours.ts";
@@ -15,7 +17,38 @@ const DOT_RADIUS = CELL_PX;
 /** How far the pointer may travel before a click counts as a drag instead of a selection. */
 const DRAG_SLOP_PX = 4;
 
-type DotView = { shape: Graphics; selected: boolean };
+type DotView = { root: Container; shape: Graphics; badge: Badge; selected: boolean };
+
+/** What Lola is doing, in the words the pill has room for. */
+function receptionWork(actor: Actor): { caption: string; busy: boolean } {
+  const carrying = actor.emotion?.kind === "envelope";
+  const doing = carrying
+    ? actor.activity === "handover"
+      ? t("stage.handingOver")
+      : t("stage.carrying")
+    : actor.activity === "receive" || actor.activity === "drop"
+      ? t("stage.atMail")
+      : t("stage.atReception");
+  return { caption: `${t("stage.receptionist")} · ${doing}`, busy: carrying };
+}
+
+/** What the pill under a character says, and whether the office draws them as working. */
+function captionOf(actor: Actor): { caption: string; busy: boolean } | null {
+  // Lola keeps the counter and is nobody's agent, so her pill comes from the floor rather than the
+  // read model — she is the only character on it the daemon has no record of.
+  if (actor.kind === "receptionist") {
+    return receptionWork(actor);
+  }
+  const { snapshot } = useUi.getState();
+  const agent = snapshot.agents.get(actor.id);
+  if (agent === undefined) {
+    return null;
+  }
+  const busy = [...snapshot.sessions.values()].some(
+    (session) => session.agentId === actor.id && isSessionActive(session.state),
+  );
+  return { caption: `${agent.name} · ${t(busy ? "team.working" : "team.idle")}`, busy };
+}
 
 const paint = (shape: Graphics, selected: boolean): void => {
   shape
@@ -108,35 +141,43 @@ class OfficeScene extends MapView {
         this.onSelect(actor.id);
       }
     });
-    this.world.addChild(shape);
-    const view: DotView = { shape, selected: false };
+    const badge = makeBadge();
+    const root = new Container();
+    root.addChild(badge.root, shape);
+    this.world.addChild(root);
+    const view: DotView = { root, shape, badge, selected: false };
     this.#dots.set(actor.id, view);
     return view;
   }
 
   /** Called every frame with the current world: one dot per visible character of the shown floor. */
-  update(world: World, selected: AgentId | null): void {
+  update(world: World, selected: AgentId | null, elapsedMs: number): void {
     const floorId = this.template?.id ?? null;
     for (const actor of world.actors.values()) {
       const view = this.#dots.get(actor.id);
       if (actor.floorId !== floorId || actor.hidden) {
         if (view !== undefined) {
-          view.shape.visible = false;
+          view.root.visible = false;
         }
         continue;
       }
       const dot = view ?? this.#ensureDot(actor);
-      dot.shape.visible = true;
-      dot.shape.position.set((actor.pos.x + 0.5) * CELL_PX, (actor.pos.y + 0.5) * CELL_PX);
+      dot.root.visible = true;
+      dot.root.position.set((actor.pos.x + 0.5) * CELL_PX, (actor.pos.y + 0.5) * CELL_PX);
       const isSelected = actor.id === selected;
       if (dot.selected !== isSelected) {
         dot.selected = isSelected;
         paint(dot.shape, isSelected);
       }
+      const said = captionOf(actor);
+      dot.badge.root.visible = said !== null;
+      if (said !== null) {
+        updateBadge(dot.badge, said.caption, said.busy, elapsedMs, this.camera.scale);
+      }
     }
     for (const [id, view] of this.#dots) {
       if (!world.actors.has(id)) {
-        view.shape.destroy();
+        view.root.destroy({ children: true });
         this.#dots.delete(id);
       }
     }
@@ -148,16 +189,42 @@ class OfficeScene extends MapView {
  * Pixi ticker (stopped while the document is hidden, where a still frame is drawn on every store change
  * instead), the visibility watch and the dev console handle.
  */
-export function startOffice(host: HTMLElement): () => void {
+/** One press of the camera bar's + or −. */
+const ZOOM_STEP = 1.3;
+
+/** What React can do to the office once it is running: the camera, and stopping it. */
+export type OfficeHandle = {
+  stop: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  fit: () => void;
+  /** Keeps the camera on one colleague until it is called with null. */
+  follow: (agentId: AgentId | null) => void;
+  following: () => AgentId | null;
+  /** How close the floor is, for the camera bar's read-out. */
+  percent: () => number;
+};
+
+export function startOffice(host: HTMLElement): OfficeHandle {
   const scene = new OfficeScene();
   let disposed = false;
+  let followed: AgentId | null = null;
   let unsubscribe: (() => void) | null = null;
+  // The ring under a working colleague runs on the office's own clock, not the document's.
+  let elapsedMs = 0;
   const drawFrame = (dtMs: number): void => {
     try {
       bridge.tick(dtMs);
+      elapsedMs += dtMs;
       const { floorId, selectedAgentId } = useUi.getState();
       scene.showFloor(floorId);
-      scene.update(bridge.world, selectedAgentId);
+      scene.update(bridge.world, selectedAgentId, elapsedMs);
+      if (followed !== null) {
+        const actor = bridge.world.actors.get(followed);
+        if (actor !== undefined && !actor.hidden) {
+          scene.centreOnWorld((actor.pos.x + 0.5) * CELL_PX, (actor.pos.y + 0.5) * CELL_PX);
+        }
+      }
     } catch (error) {
       useUi.getState().setError(errorMessage(error));
     }
@@ -203,11 +270,28 @@ export function startOffice(host: HTMLElement): () => void {
         useUi.getState().setError(errorMessage(error));
       }
     });
-  return () => {
-    disposed = true;
-    bridge.setWatching(false);
-    unsubscribe?.();
-    document.removeEventListener("visibilitychange", onVisibility);
-    scene.destroy();
+  return {
+    stop: () => {
+      disposed = true;
+      bridge.setWatching(false);
+      unsubscribe?.();
+      document.removeEventListener("visibilitychange", onVisibility);
+      scene.destroy();
+    },
+    zoomIn: () => {
+      scene.zoomView(ZOOM_STEP);
+    },
+    zoomOut: () => {
+      scene.zoomView(1 / ZOOM_STEP);
+    },
+    fit: () => {
+      followed = null;
+      scene.fitView();
+    },
+    follow: (agentId) => {
+      followed = agentId;
+    },
+    following: () => followed,
+    percent: () => scene.camera.percent,
   };
 }

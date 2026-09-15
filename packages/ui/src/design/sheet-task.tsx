@@ -1,127 +1,84 @@
+import { canTransition, isTerminal } from "@ho/core";
+import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import type { Card, Floor } from "./data.ts";
+import { requireClient } from "../rpc.ts";
 import { PRIMARY, SheetShell } from "./sheet-shell.tsx";
 import { MONO, priority } from "./tokens.ts";
-import { BOSS_FALLBACK, useDesign, useFloor } from "./store.ts";
-import type { Card } from "./data.ts";
+import { useDesign } from "./store.ts";
 
-const TAG: React.CSSProperties = {
-  ...MONO,
-  fontSize: "9.5px",
-  padding: "4px 9px",
-  borderRadius: "6px",
-};
+const TAG = `${MONO} text-9h py-4 px-9 rounded-6`;
 
-/** What happened to a task so far — three beats, the last one written by its state. */
-function logOf(task: Card, boss: string): { t: string; x: string }[] {
-  return [
-    { t: task.at, x: `${boss} picked the task up from mail.` },
-    { t: "+2m", x: `Sandbox started, branch task/${String(task.id)} created.` },
-    {
-      t: "+14m",
-      x:
-        task.s === "done"
-          ? "Tests green, branch pushed."
-          : task.s === "blocked"
-            ? "Waiting for an answer from you."
-            : "Editing files, 12 tool calls so far.",
-    },
-  ];
-}
-
-/** One task, opened up: what it is, what has happened, and the two ways it can leave this state. */
-export function TaskSheet({ task }: { task: Card }): React.JSX.Element {
-  const floor = useFloor();
+/**
+ * One task, opened up: what it is, who has it, and the ways it can actually leave this state. Only
+ * two of the state machine's edges are drawn here, and a task is rarely standing on both: `done` is
+ * reachable from `in_progress` and `review`, nothing else. Offering the other move anyway is how the
+ * sheet used to answer a click with an error the office had already ruled out.
+ */
+export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.JSX.Element {
+  const { t } = useTranslation();
   const set = useDesign((s) => s.set);
-  const patchCur = useDesign((s) => s.patchCur);
   const flash = useDesign((s) => s.flash);
-  const boss = floor.team[0] ?? BOSS_FALLBACK;
-  const { pBg, pFg } = priority(task.p);
-  const move = (s: Card["s"], note: string): void => {
-    const cards = [...floor.cards];
-    const at = cards.findIndex((x) => x.id === task.id);
-    if (at !== -1) {
-      cards[at] = { ...task, s };
-    }
-    patchCur({ cards });
-    set({ sheet: null });
-    flash(note);
-  };
+  const tone = priority(task.p);
+  const canFinish = canTransition(task.status, "done");
+  const canResume = canTransition(task.status, "in_progress");
+
+  const move = useMutation({
+    mutationFn: (status: "done" | "in_progress") =>
+      requireClient().tasks.transition({ id: task.id, to: status }),
+    onSuccess: () => {
+      set({ sheet: null });
+    },
+    onError: (error: Error) => {
+      flash(error.message);
+    },
+  });
 
   return (
-    <SheetShell
-      title={task.t}
-      titleStyle={{ fontSize: "14px", lineHeight: "1.4", textWrap: "pretty" }}
-    >
-      <div style={{ display: "flex", gap: "6px", marginBottom: "16px", flexWrap: "wrap" }}>
-        <span style={{ ...TAG, background: pBg, color: pFg }}>{task.p}</span>
-        <span style={{ ...TAG, background: "#24242A", color: "#BEBBB4" }}>{task.k}</span>
-        <span style={{ ...TAG, background: "#24242A", color: "#BEBBB4" }}>{task.s}</span>
+    <SheetShell title={task.t} titleClass="text-14 leading-card text-pretty">
+      <div className="flex gap-6 mb-16 flex-wrap">
+        <span className={`${TAG} ${tone}`}>{t(`priority.${task.p}`)}</span>
+        <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`taskKind.${task.k}`)}</span>
+        <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`status.${task.status}`)}</span>
       </div>
-      <div
-        style={{
-          ...MONO,
-          fontSize: "10px",
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          color: "#ABA8A1",
-          marginBottom: "10px",
-        }}
-      >
-        activity
+      <div className="p-12 rounded-12 bg-card-lit border border-border mb-18">
+        <div className={`${MONO} text-10 text-ink-meta`}>{floor.name}</div>
+        <div className="text-12h text-ink-dim leading-body mt-6">
+          {task.who === "" ? t("board.unassigned") : t("board.assignedTo", { name: task.who })}
+        </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "9px", marginBottom: "18px" }}>
-        {logOf(task, boss.name).map((line) => (
-          <div
-            key={line.t}
-            style={{
-              display: "flex",
-              gap: "11px",
-              padding: "12px",
-              borderRadius: "12px",
-              background: "#111114",
-              border: "1px solid #26262C",
-            }}
-          >
-            <span style={{ ...MONO, fontSize: "10px", color: "#A6A39C", flex: "0 0 auto" }}>
-              {line.t}
-            </span>
-            <span style={{ fontSize: "12.5px", color: "#E4E1DB", lineHeight: "1.5" }}>
-              {line.x}
-            </span>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: "9px" }}>
-        <button
-          type="button"
-          onClick={() => {
-            move("done", "Task moved to done");
-          }}
-          style={PRIMARY}
-          className="hopm"
-        >
-          Move to done
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            move("running", `Task handed back to ${boss.name}`);
-          }}
-          style={{
-            padding: "11px 15px",
-            borderRadius: "11px",
-            border: "1px solid #2C2C32",
-            background: "transparent",
-            color: "#CFCCC6",
-            fontSize: "12.5px",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-            transition: "all .2s",
-          }}
-          className="hop8"
-        >
-          Hand back
-        </button>
-      </div>
+      {canFinish || canResume ? (
+        <div className="flex gap-9">
+          {canFinish ? (
+            <button
+              type="button"
+              disabled={move.isPending}
+              onClick={() => {
+                move.mutate("done");
+              }}
+              className={`hover:-translate-y-2 hover:shadow-lift ${PRIMARY}`}
+            >
+              {t("board.moveToDone")}
+            </button>
+          ) : null}
+          {canResume ? (
+            <button
+              type="button"
+              disabled={move.isPending}
+              onClick={() => {
+                move.mutate("in_progress");
+              }}
+              className="hover:text-accent-soft hover:border-accent-a45 py-11 px-15 rounded-11 border border-border-strong bg-transparent text-ink-quiet text-12h cursor-pointer whitespace-nowrap transition-all duration-200"
+            >
+              {t("board.handBack")}
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <div className="text-12h text-ink-meta leading-body">
+          {t(isTerminal(task.status) ? "board.taskClosed" : "board.taskNotStarted")}
+        </div>
+      )}
     </SheetShell>
   );
 }

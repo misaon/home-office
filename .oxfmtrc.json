@@ -8,7 +8,6 @@
     "**/artifacts/**",
     "bun.lock",
     "**/.hutch/**",
-    "apps/desktop/resources/**",
-    "docs/design/**"
+    "apps/desktop/resources/**"
   ]
 }

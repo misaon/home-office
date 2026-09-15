@@ -1,81 +1,53 @@
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { FloorMenu } from "./floor-menu.tsx";
 import { MONO } from "./tokens.ts";
-import { useDesign, useFloor } from "./store.ts";
+import { useFloor, useFloors } from "./live.ts";
+import { useDesign } from "./store.ts";
 
 /** Which floor you are on, and the door to all the others. */
-export function HeaderFloor(): React.JSX.Element {
+export function HeaderFloor(): React.JSX.Element | null {
+  const { t } = useTranslation();
+  const floors = useFloors();
   const floor = useFloor();
-  const floorSel = useDesign((s) => s.floorSel);
   const floorOpen = useDesign((s) => s.floorOpen);
   const update = useDesign((s) => s.update);
   const button = useRef<HTMLButtonElement>(null);
+  if (floor === null) {
+    return null;
+  }
+  const index = floors.findIndex((f) => f.id === floor.id);
 
   return (
-    <div style={{ position: "relative", flex: "0 1 auto", minWidth: "0" }}>
+    <div className="relative flex-[0_1_auto] min-w-0">
       <button
         type="button"
         ref={button}
+        title={floor.name}
+        aria-label={t("project.floors")}
         onClick={() => {
           const left =
             button.current === null ? 18 : Math.round(button.current.getBoundingClientRect().left);
           update((s) => ({ floorOpen: !s.floorOpen, floorQuery: "", floorX: left }));
         }}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "9px",
-          padding: "7px 11px 7px 7px",
-          borderRadius: "11px",
-          border: "1px solid #2C2C32",
-          background: "#131316",
-          cursor: "pointer",
-          minWidth: "0",
-          maxWidth: "100%",
-          overflow: "hidden",
-          transition: "all .22s cubic-bezier(.2,.8,.3,1)",
-        }}
-        className="hop0"
+        className="hover:border-accent-a50 hover:bg-chip-hover hover:-translate-y-1 flex items-center gap-9 pt-7 pr-11 pb-7 pl-7 rounded-11 border border-border-strong bg-pop-alt cursor-pointer min-w-0 max-w-full overflow-hidden transition-all duration-220 ease-soft"
       >
         <span
-          style={{
-            flex: "0 0 auto",
-            width: "19px",
-            height: "19px",
-            display: "grid",
-            placeItems: "center",
-            borderRadius: "6px",
-            background: "var(--a,#FFC531)",
-            color: "#141006",
-            ...MONO,
-            fontSize: "10.5px",
-            fontWeight: "500",
-          }}
+          className={`flex-[0_0_auto] w-19 h-19 grid place-items-center rounded-6 bg-accent text-accent-ink-badge ${MONO} text-10h font-medium`}
         >
-          <span>{floorSel + 1}</span>
+          <span>{index + 1}</span>
         </span>
         <span
-          style={{
-            flex: "1 1 auto",
-            minWidth: "0",
-            ...MONO,
-            fontSize: "12px",
-            letterSpacing: "-.01em",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            textAlign: "left",
-          }}
+          className={`flex-[1_1_auto] min-w-0 ${MONO} text-12 tracking-tight whitespace-nowrap overflow-hidden text-ellipsis text-left`}
         >
           {floor.name}
         </span>
         <svg
-          style={{ flex: "0 0 auto" }}
+          className="flex-[0_0_auto] stroke-ink-meta"
           width="10"
           height="10"
           viewBox="0 0 12 12"
           fill="none"
-          stroke="#A6A39C"
           strokeWidth="1.4"
           strokeLinecap="round"
         >

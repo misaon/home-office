@@ -11,26 +11,26 @@ kept as history and is not evidence about the current tree.
 
 ## Implemented stack
 
-| Area                      | Dependency / version                          | Purpose                                                                                                                      |
-| ------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Runtime / package manager | Bun 1.4.2                                     | TypeScript execution, SQLite, HTTP/WS, compiled executables, isolated workspaces and catalogs                                |
-| Types                     | TypeScript 7.0.2                              | Native compiler; explicit strict options in `tsconfig.base.json`                                                             |
-| Lint                      | oxlint 1.82.0, oxlint-tsgolint 7.0.2001       | Type-aware, pedantic, React hooks and accessibility checks                                                                   |
-| Format / unused code      | oxfmt 0.67.0, Knip 6.35.0                     | Formatting and workspace-aware source/dependency coverage, including CSS                                                     |
-| Validation / RPC          | Zod 4.5.4, oRPC 1.15.0                        | Boundary validation and shared client/server contract                                                                        |
-| Persistence               | `bun:sqlite` (Bun 1.4.2)                      | Embedded event log; the schema is applied at open and versioned with `PRAGMA user_version`                                   |
-| Logging                   | Pino 10.3.1                                   | Structured NDJSON; the desktop app's file destination rotates at 8 MiB, keeping one previous file                            |
-| Single instance           | `fs.mkdir` plus a pid liveness check          | Own ~25 lines; replaced proper-lockfile, which had gone quiet (ADR 005)                                                      |
-| Desktop                   | Electrobun 2.0.1, Hutch 0.25.0                | Native shell with the daemon in its Bun main process                                                                         |
-| UI                        | React / React DOM 19.2.8                      | Panels compiled with Bun's React Compiler integration                                                                        |
-| Client state              | Zustand 5.0.15, TanStack Query 5.102.8        | Event projection and abortable cached RPC queries                                                                            |
-| Styling / build           | Tailwind CSS 4.3.3, bun-plugin-tailwind 0.1.2 | CSS and HTML-entry UI builds                                                                                                 |
-| Rendering                 | PixiJS 8.20.1                                 | Sprite batching, static floor textures and animated office rendering                                                         |
-| Pathfinding queue         | TinyQueue 3.0.0                               | Heap for the simulation's weighted A* search                                                                                 |
-| Agent protocols           | ACP SDK 1.4.0, MCP SDK 1.30.0                 | Provider sessions and scoped office tools                                                                                    |
-| Secrets                   | `Bun.secrets`, atomic file fallback           | Keychain / libsecret / Credential Manager, chosen by whether the host store answers; no secret ever in a subprocess argument |
-| Localisation              | i18next 26.4.2, react-i18next 17.0.13         | The office's own text in English and Czech, with typed keys; +93 KiB on the UI bundle (1018 → 1111 KiB)                      |
-| CLI                       | yoctocolors 2.2.0                             | CLI colour gated on a TTY                                                                                                    |
+| Area                      | Dependency / version                         | Purpose                                                                                                                      |
+| ------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Runtime / package manager | Bun 1.4.2                                    | TypeScript execution, SQLite, HTTP/WS, compiled executables, isolated workspaces and catalogs                                |
+| Types                     | TypeScript 7.0.2                             | Native compiler; explicit strict options in `tsconfig.base.json`                                                             |
+| Lint                      | oxlint 1.82.0, oxlint-tsgolint 7.0.2001      | Type-aware, pedantic, React hooks and accessibility checks                                                                   |
+| Format / unused code      | oxfmt 0.67.0, Knip 6.35.0                    | Formatting and workspace-aware source/dependency coverage, including CSS                                                     |
+| Validation / RPC          | Zod 4.5.4, oRPC 1.15.0                       | Boundary validation and shared client/server contract                                                                        |
+| Persistence               | `bun:sqlite` (Bun 1.4.2)                     | Embedded event log; the schema is applied at open and versioned with `PRAGMA user_version`                                   |
+| Logging                   | Pino 10.3.1                                  | Structured NDJSON; the desktop app's file destination rotates at 8 MiB, keeping one previous file                            |
+| Single instance           | `fs.mkdir` plus a pid liveness check         | Own ~25 lines; replaced proper-lockfile, which had gone quiet (ADR 005)                                                      |
+| Desktop                   | Electrobun 2.0.1, Hutch 0.25.0               | Native shell with the daemon in its Bun main process                                                                         |
+| UI                        | React / React DOM 19.2.8                     | Panels compiled with Bun's React Compiler integration                                                                        |
+| Client state              | Zustand 5.0.15, TanStack Query 5.102.8       | Event projection and abortable cached RPC queries                                                                            |
+| Styling                   | Tailwind CSS 4.3.3, `@tailwindcss/cli` 4.3.3 | The whole drawing as utilities; a CSS-first theme compiled by the CLI inside the Bun build                                   |
+| Rendering                 | PixiJS 8.20.1                                | Sprite batching, static floor textures and animated office rendering                                                         |
+| Pathfinding queue         | TinyQueue 3.0.0                              | Heap for the simulation's weighted A* search                                                                                 |
+| Agent protocols           | ACP SDK 1.4.0, MCP SDK 1.30.0                | Provider sessions and scoped office tools                                                                                    |
+| Secrets                   | `Bun.secrets`, atomic file fallback          | Keychain / libsecret / Credential Manager, chosen by whether the host store answers; no secret ever in a subprocess argument |
+| Localisation              | i18next 26.4.2, react-i18next 17.0.13        | The office's own text in English and Czech, with typed keys; +93 KiB on the UI bundle (1018 → 1111 KiB)                      |
+| CLI                       | yoctocolors 2.2.0                            | CLI colour gated on a TTY                                                                                                    |
 
 The native secret API is experimental; retain the explicit file
 backend as an operational fallback. Do not assume API compatibility with arbitrary Node tooling just
@@ -128,48 +128,33 @@ No tests were added in the September 2026 audits at the owner's request; a test 
 decision. Existing checks and verification spikes may be run. Code signing/notarization, new terminal UI,
 remote hosting and automatic merging are not implemented.
 
-## UI components: shadcn/ui, adopted 2026-09-14
+## UI components: shadcn/ui, adopted and removed 2026-09-14
 
-The office's controls are shadcn/ui, at the owner's instruction, rather than components written here.
-shadcn is not a dependency you install and import: its CLI copies component source into the repository,
-so `packages/ui/src/components/ui/*` is vendored third-party code that `shadcn add` can rewrite at any
-time. Everything that follows from that:
+The office's controls were shadcn/ui for a day. The owner then had the office drawn and asked for that
+drawing to _be_ the office, and the drawing is expressed in inline styles and thirty `:hover` rules —
+so every shadcn component was replaced by the thing the drawing shows, and the vendored tree went with
+them. `packages/ui/src/design/controls.tsx` holds what is left: the three button tones, a field, a
+caption and an error box, which are the only shapes the dialogs repeat.
 
-| Package                    | Version | Why                                                         |
-| -------------------------- | ------- | ----------------------------------------------------------- |
-| `radix-ui`                 | 1.6.7   | The primitives every vendored component is built on         |
-| `class-variance-authority` | 0.7.1   | How those components express their variants                 |
-| `cn`                       | 0.3.0   | The class merge helper they import                          |
-| `cmdk`                     | 1.1.1   | Behind `command`, which the floor picker uses               |
-| `lucide-react`             | 1.45.0  | The icon set shadcn's own examples use                      |
-| `shadcn`                   | 4.21.0  | Ships `shadcn/tailwind.css`, the base layer its CSS expects |
-| `tw-animate-css`           | 1.4.0   | The animation utilities that base layer references          |
+Removed with it: `radix-ui`, `class-variance-authority`, `cn`, `cmdk`, `shadcn`, `tw-animate-css`,
+`lucide-react`, `tailwindcss` and `bun-plugin-tailwind`, plus `packages/ui/src/styles.css` and
+`components.json`. The three concessions that vendored code needed are gone with the code that needed
+them: the fourteen lint rules turned off for `src/components/ui/**`, `exactOptionalPropertyTypes: false`
+on the UI program, and knip's ignore for that directory. The UI program is now as strict as the rest of
+the repository.
 
-Configuration lives in `packages/ui/components.json`: style `radix-nova` (Radix primitives, which are the
-mature base of the three the registry offers), icons from lucide, CSS variables on, and the alias `@/*`,
-which `packages/ui/tsconfig.json` resolves to `packages/ui/src/*` so the CLI's own import paths work
-unedited.
-
-Three concessions the vendored code needs, each scoped to its directory so nothing else loosens:
-
-- `.oxlintrc.json` turns off fourteen rules for `packages/ui/src/components/ui/*.tsx`. shadcn is written
-  against TypeScript's ordinary strictness, not this repository's; patching it would have to be redone
-  on every `shadcn add`.
-- `packages/ui/tsconfig.json` sets `exactOptionalPropertyTypes: false` for the UI program. It is the one
-  flag the vendored components trip, and a program cannot scope a compiler option to a subdirectory.
-- `knip.json` ignores that directory, because vendored components export their whole surface whether or
-  not this office calls for it.
-
-The office's palette is expressed in shadcn's own variables in `packages/ui/src/styles.css`: gold is
-`--primary`, hover stays neutral in `--accent`, and the office is dark only, so shadcn's dark values sit
-on `:root` rather than behind `.dark`.
+Overlays are real `<dialog>` elements — utilities take the UA chrome off and paint `::backdrop` through
+Tailwind's `backdrop:` variant — so the platform still provides the focus trap, Escape and the backdrop
+that shadcn's dialog used to. `tailwindcss` came back on the same day, for the whole design rather than
+for vendored components; that is the last section below.
 
 ## The drawn design: fonts vendored, 2026-09-14
 
-`packages/ui/src/design` is a port of the office the owner had drawn, kept at
-`docs/design/Home Office.html`. That file is a self-extracting bundle: a declarative template plus a small runtime,
-with the assets base64-gzipped in a manifest. The port reads it, it does not run it — nothing in
-`packages/ui` loads the bundle or its runtime.
+`packages/ui/src/design` is a port of the office the owner had drawn. The drawing arrived as a
+self-extracting HTML bundle — a declarative template plus a small runtime, with the assets
+base64-gzipped in a manifest — and was read, never run: nothing in `packages/ui` ever loaded it. The
+bundle is gone now that the design is in the app; what it was and what the two rounds of porting
+changed is recorded in `docs/plans/2026-09-14-design-port.md` and `docs/plans/2026-09-14-design-update.md`.
 
 The design is typeset in three Google fonts, so the three are vendored as woff2 next to the port rather
 than fetched at run time. A desktop app that reaches the network to draw its own chrome is a worse app,
@@ -187,11 +172,66 @@ are fewer files than weights because these are variable fonts: one file per subs
 of its family, exactly as the original stylesheet had it, and the file names carry the first weight that
 referenced them. The built stylesheet inlines all eleven, so the design makes no font request at all.
 
-The port has its own entry, `packages/ui/design.html` → `src/design/main.tsx`, and its own stylesheet.
-It does not import `src/styles.css`, Tailwind or shadcn: the drawing is expressed in inline styles and
-thirty `:hover` rules, and mixing a second reset into it would move pixels. The knobs the design was
-drawn with (`internalTools`, `accent`, `panelWidth`, `ambientGlow`, `stageTheme`) are readable from the
-query string, which is what lets a variant be held against the original.
+These components are the office: `packages/ui/index.html` renders them, and `packages/ui/src/design/live.ts`
+is the single place that says the daemon's domain in the drawing's narrower language — three lanes and a
+queue rather than nine task states, working-or-idle rather than five session states. The drawing was first
+expressed in inline styles and thirty-six `:hover` rules in `design.css`; it is now Tailwind utilities on
+the elements themselves, and that file is gone — see the section below.
+
+## Styling: Tailwind CSS 4, readopted 2026-09-14
+
+The drawing arrived as inline `style` objects and a hand-written `design.css`, and the owner asked for all
+of it to become Tailwind — no raw CSS anywhere, pixel-identical to what it replaced. `packages/ui/src/design/app.css`
+is now the whole stylesheet: `@import "tailwindcss"`, the fonts, four `@source` globs, and one `@theme`
+block that is the palette, the type scale, the radii, the shadows, the easings and the thirty animations
+the office is drawn with. 594 style objects and 166 style constants across 71 files became class strings;
+`design.css` (427 lines) was deleted. Thirteen `style` attributes survive, and each one carries only a
+CSS custom property that a utility reads back — `w-(--sheet)`, `translate-x-(--slide)`, `bg-(--glow)`.
+
+Four decisions the measurements forced, rather than taste:
+
+- **Alpha colours are named, not modified.** `accent/12` compiles to `color-mix(in oklab, …)`, which lands
+  up to one channel value away from the `rgba()` the drawing used — on 11 of the 29 alphas in the palette.
+  So `--color-accent-a12: rgba(255, 197, 49, .12)` is a token of its own.
+- **`--radius-half: 50%`.** Tailwind's `rounded-full` is `calc(infinity * 1px)`, which rasterises
+  differently from the `border-radius: 50%` the drawing used.
+- **`--default-transition-timing-function: ease`.** Tailwind's default is `cubic-bezier(.4, 0, .2, 1)`;
+  the drawing's bare `transition: … .2s` means `ease`.
+- **`@custom-variant hover (&:hover)`.** Tailwind wraps `hover:` in `@media (hover: hover)`, so on a touch
+  pointer the hover states would stop applying; the drawing's own rules had no such condition.
+
+Preflight is kept — it is the reset — but it removes user-agent defaults the drawing was measured against,
+and each one had to be put back explicitly: `line-height: 1.5` on `<html>`, the button and input padding,
+`<p>`'s block margins (72 px of lost height in the setup dialog alone), the checkbox margins, and
+`::placeholder`'s colour on eleven inputs.
+
+Two of the drawing's rules are global and stayed global, in `@layer base`: a form control that takes
+focus is not ringed by the browser on top of the border the office draws it, and every surface that
+scrolls gets the drawing's own 9 px bar. The first rewrite turned the scrollbar into an opt-in
+`@utility scroller` and reached one of the thirteen surfaces that scroll, which left the setup dialog
+wearing the platform's light bar; the focus rule was dropped altogether, so every input and button in
+the office showed Chrome's ring. Both were restored on 2026-09-15 with the drawing's own values.
+
+The CLI compiles `app.css` inside the Bun build: `scripts/ui-build.ts` registers an `onLoad` plugin for
+that one file, resolves `@tailwindcss/cli` through the package graph and spawns it, so the output that
+reaches the bundler is already the finished stylesheet. knip cannot see a binary that is spawned rather
+than imported, hence the one `ignoreDependencies` entry in `knip.json`.
+
+What the build contains is only what the office uses, measured on the production bundle:
+
+|                                               | Tailwind rewrite | Previous build  |
+| --------------------------------------------- | ---------------- | --------------- |
+| stylesheet, without the inlined fonts         | 63 021 B         | 5 891 B         |
+| stylesheet, total (fonts are 540 394 B of it) | 603 415 B        | 546 285 B       |
+| script                                        | 1 273 742 B      | 1 301 616 B     |
+| **both files**                                | **1 877 157 B**  | **1 847 901 B** |
+| distinct utility classes                      | 688              | 37              |
+| theme variables reaching `:root`              | 248              | 0               |
+| `@keyframes`                                  | 15               | 17              |
+
+The stylesheet grew by 57 130 bytes and the script shrank by 27 874, for 29 256 bytes — 1.6% — on the two
+files together. The two `@keyframes` that disappeared are `float1` and `float2`: `design.css` defined them
+and nothing used them.
 
 ## Primary references
 

@@ -1,47 +1,18 @@
-import { BOSS_FALLBACK, useDesign, useFloor } from "./store.ts";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { AgentId } from "@ho/protocol";
+import type { OfficeHandle } from "../office/scene.ts";
+import { bossOf, useFloor } from "./live.ts";
+import { useDesign } from "./store.ts";
 
-const BAR: React.CSSProperties = {
-  position: "absolute",
-  bottom: "38px",
-  left: "50%",
-  transform: "translateX(-50%)",
-  display: "flex",
-  alignItems: "center",
-  gap: "4px",
-  flexWrap: "nowrap",
-  padding: "6px",
-  borderRadius: "14px",
-  background: "rgba(12,12,14,.86)",
-  backdropFilter: "blur(18px)",
-  border: "1px solid rgba(255,255,255,.13)",
-  boxShadow: "0 20px 44px rgba(0,0,0,.5)",
-};
+const BAR =
+  "absolute bottom-38 left-1/2 -translate-x-1/2 flex items-center gap-4 flex-nowrap p-6 rounded-14 bg-camera-bar backdrop-blur-[18px] border border-glint-a13 shadow-camera";
 
-const ROUND: React.CSSProperties = {
-  width: "30px",
-  height: "30px",
-  display: "grid",
-  placeItems: "center",
-  border: "0",
-  borderRadius: "9px",
-  background: "transparent",
-  color: "#CFCCC6",
-  cursor: "pointer",
-  transition: "all .2s",
-};
+const ROUND =
+  "w-30 h-30 grid place-items-center border-0 rounded-9 py-1 px-6 bg-transparent text-ink-quiet cursor-pointer transition-all duration-200";
 
-const WIDE: React.CSSProperties = {
-  padding: "0 12px",
-  height: "30px",
-  border: "0",
-  borderRadius: "9px",
-  background: "transparent",
-  color: "#CFCCC6",
-  cursor: "pointer",
-  fontSize: "12px",
-  whiteSpace: "nowrap",
-  transition: "all .2s",
-};
+const WIDE =
+  "py-0 px-12 h-30 border-0 rounded-9 cursor-pointer text-12 whitespace-nowrap transition-all duration-200";
 
 /** A square icon button on the camera bar. */
 function Round({
@@ -54,7 +25,12 @@ function Round({
   onClick: () => void;
 }): React.JSX.Element {
   return (
-    <button type="button" aria-label={label} onClick={onClick} style={ROUND} className="hop5">
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className={`hover:bg-accent-a16 hover:text-accent-soft hover:scale-108 ${ROUND}`}
+    >
       <svg
         width="12"
         height="12"
@@ -70,98 +46,102 @@ function Round({
   );
 }
 
-/** The camera's own controls, floating over the floor: how close you are, and who you follow. */
-export function StageCamera({ internal }: { internal: boolean }): React.JSX.Element {
-  const floor = useFloor();
-  const zoom = useDesign((s) => s.zoom);
-  const followOn = useDesign((s) => s.followOn);
-  const set = useDesign((s) => s.set);
-  const update = useDesign((s) => s.update);
+/** The camera keeps this colleague in the middle of the floor until it is let go. */
+function FollowBoss({
+  id,
+  name,
+  office,
+}: {
+  id: AgentId;
+  name: string;
+  office: OfficeHandle | null;
+}): React.JSX.Element {
+  const { t } = useTranslation();
   const flash = useDesign((s) => s.flash);
-  const boss = floor.team[0] ?? BOSS_FALLBACK;
+  const [on, setOn] = useState(office?.following() === id);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        const next = !on;
+        setOn(next);
+        office?.follow(next ? id : null);
+        flash(next ? t("stage.following", { name }) : t("stage.released"));
+      }}
+      className={`${WIDE} ${on ? "bg-accent-a16" : "bg-transparent"} ${on ? "text-accent-soft" : "text-ink-quiet"}`}
+    >
+      {t("stage.follow", { name })}
+    </button>
+  );
+}
+
+/** The camera's own controls, floating over the floor: how close you are, and who you follow. */
+export function StageCamera({
+  internal,
+  office,
+}: {
+  internal: boolean;
+  office: OfficeHandle | null;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const floor = useFloor();
+  const set = useDesign((s) => s.set);
+  const [zoom, setZoom] = useState(100);
+  const boss = floor === null ? undefined : bossOf(floor);
+
+  // The camera also moves under the pointer and the wheel, so the read-out follows it rather than
+  // only our own clicks.
+  useEffect(() => {
+    if (office === null) {
+      return undefined;
+    }
+    const timer = setInterval(() => {
+      setZoom(office.percent());
+    }, 200);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [office]);
 
   return (
-    <div style={BAR}>
+    <div className={BAR}>
       <Round
-        label="Zoom out"
+        label={t("stage.zoomOut")}
         plus={false}
         onClick={() => {
-          update((s) => ({ zoom: Math.max(50, s.zoom - 10) }));
+          office?.zoomOut();
         }}
       />
-      <div
-        style={{
-          minWidth: "52px",
-          textAlign: "center",
-          fontFamily: "'JetBrains Mono',monospace",
-          fontSize: "11.5px",
-          color: "#F2EFE8",
-        }}
-      >
+      <div className="min-w-52 text-center font-mono text-11h text-ink-warm">
         <span>{zoom}</span>%
       </div>
       <Round
-        label="Zoom in"
+        label={t("stage.zoomIn")}
         plus
         onClick={() => {
-          update((s) => ({ zoom: Math.min(200, s.zoom + 10) }));
+          office?.zoomIn();
         }}
       />
-      <div
-        style={{
-          width: "1px",
-          height: "18px",
-          background: "rgba(255,255,255,.13)",
-          margin: "0 4px",
-        }}
-      />
+      <div className="w-1 h-18 bg-glint-a13 my-0 mx-4" />
       <button
         type="button"
         onClick={() => {
-          set({ zoom: 100 });
+          office?.fit();
         }}
-        style={WIDE}
-        className="hop6"
+        className={`hover:bg-accent-a16 hover:text-accent-soft ${WIDE} bg-transparent text-ink-quiet`}
       >
-        Fit
+        {t("stage.fit")}
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          set({ followOn: !followOn });
-          flash(followOn ? "Camera released" : `Camera follows ${boss.name}`);
-        }}
-        style={{
-          ...WIDE,
-          background: followOn ? "rgba(255,197,49,.16)" : "transparent",
-          color: followOn ? "#FFD666" : "#CFCCC6",
-        }}
-      >
-        {`Follow ${boss.name}`}
-      </button>
+      {boss === undefined ? null : <FollowBoss id={boss.id} name={boss.name} office={office} />}
       {internal ? (
         <button
           type="button"
           onClick={() => {
             set({ editor: true });
           }}
-          style={{
-            padding: "0 14px",
-            height: "30px",
-            border: "0",
-            borderRadius: "9px",
-            background: "var(--a,#FFC531)",
-            color: "#150F02",
-            cursor: "pointer",
-            fontSize: "12px",
-            fontWeight: "600",
-            whiteSpace: "nowrap",
-            flex: "0 0 auto",
-            transition: "all .2s",
-          }}
-          className="hop7"
+          className="hover:-translate-y-1 hover:shadow-lift-sm-plus py-0 px-14 h-30 border-0 rounded-9 bg-accent text-accent-ink cursor-pointer text-12 font-semibold whitespace-nowrap flex-[0_0_auto] transition-all duration-200"
         >
-          Edit floor
+          {t("stage.editFloor")}
         </button>
       ) : null}
     </div>

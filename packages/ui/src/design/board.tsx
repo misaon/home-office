@@ -1,72 +1,53 @@
+import { useTranslation } from "react-i18next";
 import { BoardCard } from "./board-card.tsx";
 import { BoardHeader } from "./board-header.tsx";
+import type { Floor, Lane } from "./data.ts";
 import { MONO } from "./tokens.ts";
-import { useDesign, useFloor } from "./store.ts";
+import { useDesign } from "./store.ts";
 
 const LANES = [
-  ["running", "in progress", "var(--a,#FFC531)"],
-  ["blocked", "blocked", "#FF9E9E"],
-  ["done", "done", "#5BD9A0"],
-] as const;
+  ["queued", "board.inbox", "bg-ink-lane"],
+  ["running", "board.inProgress", "bg-accent"],
+  ["blocked", "board.blocked", "bg-bad"],
+  ["done", "board.done", "bg-good"],
+] as const satisfies readonly [Lane, string, string][];
 
-const RULE: React.CSSProperties = {
-  ...MONO,
-  fontSize: "10px",
-  letterSpacing: ".16em",
-  textTransform: "uppercase",
-  color: "#ABA8A1",
-};
+const RULE = `${MONO} text-10 tracking-caps-wider uppercase text-ink-label`;
 
-const CARD: React.CSSProperties = {
-  borderRadius: "14px",
-  background: "#101013",
-  border: "1px solid #232328",
-  overflow: "hidden",
-};
+const CARD = "rounded-14 bg-card border border-edge overflow-hidden";
 
-/** What the floor is carrying: a share finished, three lanes, and one card per task. */
-export function Board(): React.JSX.Element {
-  const floor = useFloor();
+/** What the floor is carrying: a share finished, four lanes, and one card per task. */
+export function Board({ floor }: { floor: Floor }): React.JSX.Element {
+  const { t } = useTranslation();
   const boardFilter = useDesign((s) => s.boardFilter);
-  const cards = floor.cards;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "0",
-        flex: "1",
-        animation: "slideLeft .42s cubic-bezier(.2,.8,.3,1) both",
-      }}
-    >
-      <BoardHeader />
-      <div style={{ flex: "1", minHeight: "0", overflowY: "auto", padding: "16px" }}>
+    <div className="flex flex-col min-h-0 flex-1 animate-slide-420">
+      <BoardHeader floor={floor} />
+      <div className="flex-1 min-h-0 overflow-y-auto p-16">
         {LANES.filter(([key]) => boardFilter === "all" || boardFilter === key).map(
-          ([key, name, dot]) => {
-            const items = cards.filter((x) => x.s === key);
+          ([key, label, dot]) => {
+            const items = floor.cards.filter((x) => x.s === key);
             return (
-              <div key={key} style={{ marginBottom: "18px" }}>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "8px", margin: "0 2px 9px" }}
-                >
-                  <span
-                    style={{ width: "6px", height: "6px", borderRadius: "50%", background: dot }}
-                  />
-                  <span style={RULE}>{name}</span>
-                  <span style={{ flex: "1", height: "1px", background: "#1F1F24" }} />
-                  <span style={{ ...MONO, fontSize: "10.5px", color: "#A6A39C" }}>
-                    {items.length}
-                  </span>
+              <div key={key} className="mb-18">
+                <div className="flex items-center gap-8 mt-0 mx-2 mb-9">
+                  <span className={`w-6 h-6 rounded-half ${dot}`} />
+                  <span className={RULE}>{t(label)}</span>
+                  <span className="flex-1 h-1 bg-slot" />
+                  <span className={`${MONO} text-10h text-ink-meta`}>{items.length}</span>
                 </div>
-                <div style={CARD}>
+                <div className={CARD}>
                   {items.map((card, i) => (
-                    <BoardCard key={card.id} card={card} first={i === 0} stripe={dot} />
+                    <BoardCard
+                      key={card.id}
+                      floor={floor}
+                      card={card}
+                      first={i === 0}
+                      stripe={dot}
+                    />
                   ))}
                   {items.length === 0 ? (
-                    <div style={{ padding: "16px 13px", fontSize: "12px", color: "#A6A39C" }}>
-                      Nothing in this lane.
-                    </div>
+                    <div className="py-16 px-13 text-12 text-ink-meta">{t("board.emptyLane")}</div>
                   ) : null}
                 </div>
               </div>

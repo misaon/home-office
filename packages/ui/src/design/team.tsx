@@ -1,68 +1,43 @@
-import type { Member } from "./data.ts";
+import { useTranslation } from "react-i18next";
+import type { Floor, Member } from "./data.ts";
+import { newDraft } from "./agent-dialog.tsx";
 import { TeamHeader } from "./team-header.tsx";
-import { TeamNew } from "./team-new.tsx";
 import { TeamRow } from "./team-row.tsx";
-import { useDesign, useFloor } from "./store.ts";
+import { useDesign } from "./store.ts";
 
-const LIST: React.CSSProperties = {
-  borderRadius: "14px",
-  background: "#101013",
-  border: "1px solid #232328",
-  overflow: "hidden",
-  marginBottom: "12px",
-};
+const LIST = "rounded-14 bg-card border border-edge overflow-hidden mb-12";
 
-const HIRE: React.CSSProperties = {
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "8px",
-  padding: "11px",
-  borderRadius: "12px",
-  border: "1px dashed rgba(255,197,49,.4)",
-  background: "rgba(255,197,49,.07)",
-  color: "#FFD666",
-  fontSize: "12.5px",
-  fontWeight: "500",
-  cursor: "pointer",
-  marginBottom: "14px",
-  transition: "all .22s",
-};
+const HIRE =
+  "w-full flex items-center justify-center gap-8 p-11 rounded-12 border border-dashed border-accent-a40 bg-accent-a07 text-accent-soft text-12h font-medium cursor-pointer mb-14 transition-all duration-220";
 
 /** Who is on this floor, what each of them is doing, and the door to hiring another. */
-export function Team(): React.JSX.Element {
-  const floor = useFloor();
+export function Team({ floor }: { floor: Floor }): React.JSX.Element {
+  const { t } = useTranslation();
   const teamFilter = useDesign((s) => s.teamFilter);
-  const addAgent = useDesign((s) => s.addAgent);
   const set = useDesign((s) => s.set);
-  const update = useDesign((s) => s.update);
 
   const team = floor.team;
   const rows = team.filter((p) => teamFilter === "all" || p.status === teamFilter);
-  const toggleAdd = (): void => {
-    update((s) => ({ addAgent: !s.addAgent, openSelect: null }));
+  const hire = (): void => {
+    set({
+      agentDlg: { mode: "new" },
+      agentDraft: newDraft(team.some((p) => p.role === "boss")),
+      openSelect: null,
+    });
   };
   const open = (person: Member): void => {
     set({
-      sheet: { type: "agent", idx: team.indexOf(person) },
+      sheet: { type: "agent", id: person.id },
       sheetDraft: { ...person },
       openSelect: null,
     });
   };
 
   return (
-    <div
-      style={{
-        flex: "1",
-        minHeight: "0",
-        overflowY: "auto",
-        animation: "slideLeft .42s cubic-bezier(.2,.8,.3,1) both",
-      }}
-    >
-      <TeamHeader onToggleAdd={toggleAdd} />
-      <div style={{ padding: "0 16px 16px" }}>
-        <div style={LIST}>
+    <div className="flex-1 min-h-0 overflow-y-auto animate-slide-420">
+      <TeamHeader floor={floor} onHire={hire} />
+      <div className="pt-0 px-16 pb-16">
+        <div className={LIST}>
           {rows.map((person, n) => (
             <TeamRow
               key={person.name}
@@ -74,12 +49,14 @@ export function Team(): React.JSX.Element {
             />
           ))}
           {rows.length === 0 ? (
-            <div style={{ padding: "16px 13px", fontSize: "12px", color: "#A6A39C" }}>
-              Nobody here yet — hire the floor&apos;s boss first.
-            </div>
+            <div className="py-16 px-13 text-12 text-ink-meta">{t("team.empty")}</div>
           ) : null}
         </div>
-        <button type="button" onClick={toggleAdd} style={HIRE} className="hopj">
+        <button
+          type="button"
+          onClick={hire}
+          className={`hover:bg-accent-a14 hover:border-accent-a65 ${HIRE}`}
+        >
           <svg
             width="12"
             height="12"
@@ -91,9 +68,8 @@ export function Team(): React.JSX.Element {
             <line x1="6" y1="2" x2="6" y2="10" />
             <line x1="2" y1="6" x2="10" y2="6" />
           </svg>
-          <span>{addAgent ? "Close the form" : "Hire someone new"}</span>
+          <span>{t("team.hire")}</span>
         </button>
-        {addAgent ? <TeamNew /> : null}
       </div>
     </div>
   );

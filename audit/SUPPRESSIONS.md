@@ -20,12 +20,26 @@ that is only masking a rule we do not want is not listed here — the rule gets 
 | --- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 7   | `packages/ui/src/i18n/index.ts:47` | `oxlint-disable-next-line typescript/consistent-type-definitions` | i18next's typed keys are reached by augmenting its own `CustomTypeOptions` **interface**; a `type` cannot merge into an interface, so the rule cannot be met here |
 
+## Removed 2026-09-14
+
+Entries 8 and 9 below, and the three scoped concessions shadcn/ui needed (fourteen lint rules off for
+`packages/ui/src/components/ui/**`, `exactOptionalPropertyTypes: false` for the UI program, and knip's
+ignore of that directory) are gone: the vendored components were replaced by the drawn design and
+deleted, so nothing needs them. The UI program is as strict as every other program again.
+
 ## Added 2026-09-14
 
 | #   | Where                                      | Suppression                                              | Assessment                                                                                                                                                                                                            |
 | --- | ------------------------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 8   | `packages/ui/src/design/board-card.tsx:75` | `oxlint-disable-next-line jsx-a11y/prefer-tag-over-role` | The task row carries its own delete button, and a `<button>` may not contain another button, so the row cannot be the tag the rule asks for. It is a `div` with `role="button"`, a label, `tabIndex` and Enter/Space. |
 | 9   | `packages/ui/src/design/team-row.tsx:72`   | `oxlint-disable-next-line jsx-a11y/prefer-tag-over-role` | The colleague row is kept the same element as the board's rows for consistency; same role, label, `tabIndex` and keyboard handling.                                                                                   |
+
+| 10 | `packages/ui/src/design/tokens.ts` | `oxlint-disable-next-line typescript/consistent-type-definitions` | The office sets CSS custom properties inline and reads them back from utilities such as `w-(--sheet)`. React's `CSSProperties` has no room for a name it does not know; widening it means merging into React's own **interface**, which a `type` cannot do — the same situation as #7. It replaces twelve `as React.CSSProperties` assertions. |
+
+`knip.json` also gained one `ignoreDependencies` entry, `@tailwindcss/cli` for `packages/ui`: the UI build
+spawns that binary (`scripts/ui-build.ts` resolves it through the package graph and runs it), and knip
+only sees dependencies that are imported. The reference is real and would throw at build time if the
+package were missing.
 
 There are **no** `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck` or non-null assertions anywhere in
 the tracked source. Verified:

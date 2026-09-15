@@ -1,55 +1,19 @@
-import { CAPTION } from "./tokens.ts";
+import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
-const TRIGGER: React.CSSProperties = {
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "8px",
-  padding: "9px 11px",
-  borderRadius: "10px",
-  background: "#0A0A0C",
-  fontSize: "12.5px",
-  cursor: "pointer",
-  textAlign: "left",
-  transition: "all .2s",
-};
+/** The caption every field in a dialog is labelled with. */
+const LABEL = `${MONO} text-9h tracking-caps-wider uppercase text-ink-label mb-8`;
 
-const LIST: React.CSSProperties = {
-  position: "absolute",
-  top: "100%",
-  left: "0",
-  right: "0",
-  marginTop: "6px",
-  padding: "5px",
-  borderRadius: "11px",
-  background: "#17171C",
-  border: "1px solid #2C2C32",
-  boxShadow: "0 20px 44px rgba(0,0,0,.66)",
-  zIndex: 45,
-  animation: "riseIn .24s cubic-bezier(.2,.9,.3,1.05) both",
-};
+const TRIGGER =
+  "w-full flex items-center justify-between gap-8 py-12 px-13 rounded-12 bg-card cursor-pointer text-left transition-all duration-200";
 
-const OPTION: React.CSSProperties = {
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-  padding: "8px 9px",
-  borderRadius: "8px",
-  border: "0",
-  cursor: "pointer",
-  textAlign: "left",
-  fontSize: "12.5px",
-  transition: "all .18s",
-};
+const LIST =
+  "absolute top-full left-0 right-0 mt-6 p-5 rounded-11 bg-menu border border-border-strong shadow-pop z-45 animate-rise-240";
 
-const ELLIPSIS: React.CSSProperties = {
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
+const OPTION =
+  "w-full flex items-center gap-8 py-8 px-9 rounded-8 border-0 cursor-pointer text-left transition-all duration-180";
+
+const ELLIPSIS = "overflow-hidden text-ellipsis whitespace-nowrap";
 
 /**
  * The design's own dropdown: a button that opens a list under itself. One open select at a time,
@@ -58,14 +22,22 @@ const ELLIPSIS: React.CSSProperties = {
 export function SelectField({
   scope,
   name,
+  label,
   options,
   value,
+  mono = false,
+  muted = false,
   onPick,
 }: {
   scope: string;
   name: string;
+  label: string;
   options: readonly string[];
   value: string;
+  /** Branches and paths are written in the office's monospace, names and models are not. */
+  mono?: boolean;
+  /** A value that is a placeholder rather than a choice. */
+  muted?: boolean;
   onPick: (next: string) => void;
 }): React.JSX.Element {
   const openSelect = useDesign((s) => s.openSelect);
@@ -75,8 +47,8 @@ export function SelectField({
   const open = openSelect === id;
 
   return (
-    <div style={{ position: "relative" }}>
-      <div style={{ ...CAPTION, marginBottom: "7px" }}>{name === "signin" ? "sign-in" : name}</div>
+    <div className="relative">
+      <div className={LABEL}>{label}</div>
       <button
         type="button"
         onClick={() => {
@@ -86,21 +58,15 @@ export function SelectField({
             usageOpen: false,
           }));
         }}
-        style={{ ...TRIGGER, border: `1px solid ${open ? "rgba(255,197,49,.5)" : "#2C2C32"}` }}
-        className="hopk"
+        className={`${TRIGGER} border hover:border-accent-a45 ${mono ? `${MONO} text-12` : "text-12h"} ${open ? "border-accent-a50" : "border-border-strong"}`}
       >
-        <span style={ELLIPSIS}>{value}</span>
+        <span className={`${ELLIPSIS} ${muted ? "text-ink-ghost" : ""}`}>{value}</span>
         <svg
-          style={{
-            flex: "0 0 auto",
-            transition: "transform .25s",
-            transform: `rotate(${open ? "180deg" : "0deg"})`,
-          }}
+          className={`flex-[0_0_auto] transition-transform duration-250 ${open ? "rotate-180" : "rotate-0"} stroke-ink-meta`}
           width="9"
           height="9"
           viewBox="0 0 12 12"
           fill="none"
-          stroke="#A6A39C"
           strokeWidth="1.5"
           strokeLinecap="round"
         >
@@ -108,7 +74,7 @@ export function SelectField({
         </svg>
       </button>
       {open ? (
-        <div style={LIST}>
+        <div className={LIST}>
           {options.map((option) => (
             <button
               type="button"
@@ -117,23 +83,12 @@ export function SelectField({
                 onPick(option);
                 set({ openSelect: null });
               }}
-              style={{
-                ...OPTION,
-                background: option === value ? "rgba(255,197,49,.12)" : "transparent",
-                color: option === value ? "#FFD666" : "#E9E7E2",
-              }}
-              className="hopl"
+              className={`${OPTION} hover:bg-accent-a13 hover:text-accent-soft ${mono ? `${MONO} text-12` : "text-12h"} ${option === value ? "bg-accent-a12 text-accent-soft" : "bg-transparent text-ink-soft"}`}
             >
               <span
-                style={{
-                  width: "5px",
-                  height: "5px",
-                  borderRadius: "50%",
-                  flex: "0 0 auto",
-                  background: option === value ? "var(--a,#FFC531)" : "#3A3A41",
-                }}
+                className={`w-5 h-5 rounded-half flex-[0_0_auto] ${option === value ? "bg-accent" : "bg-dot-idle"}`}
               />
-              <span style={ELLIPSIS}>{option}</span>
+              <span className={ELLIPSIS}>{option}</span>
             </button>
           ))}
         </div>

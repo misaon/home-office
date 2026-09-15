@@ -201,7 +201,12 @@ export function createDockerProvider(options: {
         const v = await api.json(Version, "GET", "/version");
         return { ok: true, version: v.Version, apiVersion: v.ApiVersion, os: v.Os, arch: v.Arch };
       } catch (error) {
-        return { ok: false, message: errorMessage(error) };
+        // Names the socket it tried: this message is what the office's fault screen shows and what the
+        // owner pastes when asking why no engine was found.
+        return {
+          ok: false,
+          message: `cannot reach the Docker engine at ${options.socket}\n${errorMessage(error)}`,
+        };
       }
     },
     imageHash: (ref) => imageHash(api, ref),

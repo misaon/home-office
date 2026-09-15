@@ -24,11 +24,6 @@ export const secretsStatusQuery = queryOptions({
   queryFn: ({ signal }) => requireClient().secrets.status(undefined, { signal }),
 });
 
-export const intakeStatusQuery = queryOptions({
-  queryKey: ["intake-status"],
-  queryFn: ({ signal }) => requireClient().intake.status(undefined, { signal }),
-});
-
 export const resourcesQuery = queryOptions({
   queryKey: ["resources"],
   queryFn: ({ signal }) => requireClient().resources.inventory(undefined, { signal }),
