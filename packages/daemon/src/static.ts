@@ -2,15 +2,16 @@ import { realpath, stat } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 
 /**
- * `font-src` is spelled out because the office's three typefaces are inlined into the bundle's
- * stylesheet as `data:` URLs: without it they fall through to `default-src 'self'`, every `@font-face`
- * is blocked, and the whole UI silently renders in the system fallback.
+ * The office's three typefaces are served as files beside the bundle, so `font-src 'self'` covers them
+ * and no `data:` source is needed. They were inlined as `data:` URLs until the build learned to lift
+ * the `@font-face` rules out of the bundle; if that ever regresses, every face silently falls back to
+ * the system font rather than failing loudly.
  */
 const HEADERS = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
   "content-security-policy":
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
 };
 
 /**
@@ -20,7 +21,7 @@ const HEADERS = {
  */
 const IMMUTABLE = "public, max-age=31536000, immutable";
 const NEVER = "no-store";
-const HASHED = /-[a-z\d]{6,}\.(?:js|css)$/u;
+const HASHED = /-[a-z\d]{6,}\.(?:js|css|woff2)$/u;
 
 const headers = (cache: string): Record<string, string> => ({
   ...HEADERS,
