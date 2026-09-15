@@ -1,8 +1,17 @@
+import { effortMark, genderMark, providerMark } from "./agent-marks.tsx";
 import { defaultChoice } from "@ho/core";
-import { AuthKind, EffortLevel, Gender, PROVIDERS, ProviderId } from "@ho/protocol";
+import {
+  AuthKind,
+  BASE_PROMPT_MAX,
+  EffortLevel,
+  Gender,
+  PROVIDERS,
+  ProviderId,
+} from "@ho/protocol";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CAP, INPUT } from "./dialog-sheet.tsx";
+import { MONO } from "./tokens.ts";
 import { GENDER_KEY } from "../i18n/labels.ts";
 import { SelectField } from "./select-field.tsx";
 import type { AgentDraft } from "./store.ts";
@@ -66,6 +75,10 @@ export function AgentDialogFields({
         label={t("agent.provider")}
         options={ProviderId.options.map((id) => PROVIDERS[id].name)}
         value={catalogue.name}
+        markOf={(option) => {
+          const id = ProviderId.options.find((p) => PROVIDERS[p].name === option);
+          return id === undefined ? null : providerMark(id);
+        }}
         onPick={(next) => {
           pickProvider(ProviderId.options.find((id) => PROVIDERS[id].name === next) ?? next);
         }}
@@ -99,6 +112,10 @@ export function AgentDialogFields({
           label={t("agent.effort")}
           options={catalogue.effortLevels}
           value={EffortLevel.parse(draft.effort)}
+          markOf={(option) => {
+            const level = EffortLevel.safeParse(option);
+            return level.success ? effortMark(level.data) : null;
+          }}
           onPick={(next) => {
             patch({ effort: next });
           }}
@@ -116,6 +133,10 @@ export function AgentDialogFields({
         label={t("agent.gender")}
         options={Gender.options.map((g) => t(GENDER_KEY[g]))}
         value={t(GENDER_KEY[draft.gender])}
+        markOf={(option) => {
+          const picked = Gender.options.find((g) => t(GENDER_KEY[g]) === option);
+          return picked === undefined ? null : genderMark(picked);
+        }}
         onPick={(next) => {
           const picked = Gender.options.find((g) => t(GENDER_KEY[g]) === next);
           if (picked !== undefined) {
@@ -146,12 +167,18 @@ export function AgentPrompt({
       <textarea
         rows={6}
         value={value}
+        maxLength={BASE_PROMPT_MAX}
         onChange={(e) => {
           onChange(e.target.value);
         }}
         placeholder={t("agent.promptPlaceholder")}
         className={`${INPUT} resize-none leading-text placeholder:text-ink-ghost`}
       />
+      <div
+        className={`${MONO} text-10h mt-6 text-right ${value.length >= BASE_PROMPT_MAX ? "text-warn" : "text-ink-meta"}`}
+      >
+        {t("agent.promptCount", { used: value.length, max: BASE_PROMPT_MAX })}
+      </div>
     </>
   );
 }

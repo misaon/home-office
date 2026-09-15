@@ -1,4 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog";
+import { ROLE_MARKS } from "./agent-roles.tsx";
 import { useTranslation } from "react-i18next";
 import type { AgentDraft } from "./store.ts";
 import { DISPLAY, MONO } from "./tokens.ts";
@@ -29,7 +30,11 @@ export function AgentDialogHead({
       <div
         className={`${AVATAR} ${boss ? "bg-gold" : "bg-edge-lit"} ${boss ? "text-accent-ink-deep" : "text-ink-mute"}`}
       >
-        <span>{(draft.name === "" ? "?" : draft.name).charAt(0).toUpperCase()}</span>
+        {draft.name === "" ? (
+          <span className="grid place-items-center scale-[1.6]">{ROLE_MARKS[draft.role]}</span>
+        ) : (
+          <span>{draft.name.charAt(0).toUpperCase()}</span>
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-9 flex-wrap">

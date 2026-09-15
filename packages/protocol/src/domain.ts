@@ -187,6 +187,14 @@ export const Project = z.object({
 });
 export type Project = z.infer<typeof Project>;
 
+/**
+ * How long a colleague's own briefing may be. Anthropic caps the instructions that shape a persona at
+ * 1 500 characters for a profile and 3 000 for an organisation, and allows about 8 000 in a project
+ * (support.anthropic.com and the Claude custom-instructions guide, read 2026-09-15). This sits between
+ * them: long enough for habits and constraints, short enough that it does not crowd out the task.
+ */
+export const BASE_PROMPT_MAX = 4000;
+
 export const Agent = z.object({
   id: AgentId,
   name: z.string().min(1).max(60),
@@ -197,7 +205,7 @@ export const Agent = z.object({
   auth: AuthKind.default("subscription"),
   model: z.string().min(1),
   effort: EffortLevel,
-  basePrompt: z.string().max(4000).default(""),
+  basePrompt: z.string().max(BASE_PROMPT_MAX).default(""),
   skillPack: z.string().min(1).default("none"),
   budgets: Budgets,
   /** The floor this agent works on; every floor has exactly one boss and any number of staff. */

@@ -11,11 +11,11 @@ const POPUP =
   "min-w-(--anchor-width) max-h-(--available-height) overflow-y-auto p-5 rounded-11 bg-menu border border-border-strong shadow-pop origin-(--transform-origin) transition-[opacity,translate] duration-240 ease-out data-starting-style:opacity-0 data-starting-style:-translate-y-6 data-ending-style:opacity-0";
 
 const OPTION =
-  "w-full grid grid-cols-[5px_1fr] items-center gap-8 py-8 px-9 rounded-8 cursor-pointer text-left transition-all duration-180 text-ink-soft data-highlighted:bg-accent-a13 data-highlighted:text-accent-soft data-selected:bg-accent-a12 data-selected:text-accent-soft";
+  "w-full grid grid-cols-[14px_1fr] items-center gap-8 py-8 px-9 rounded-8 cursor-pointer text-left transition-all duration-180 text-ink-soft data-highlighted:bg-accent-a13 data-highlighted:text-accent-soft data-selected:bg-accent-a12 data-selected:text-accent-soft";
 
 const ELLIPSIS = "overflow-hidden text-ellipsis whitespace-nowrap";
 
-const DOT = "w-5 h-5 rounded-half flex-[0_0_auto] bg-dot-idle group-data-selected:bg-accent";
+const DOT = "w-5 h-5 rounded-half justify-self-center bg-dot-idle group-data-selected:bg-accent";
 
 /**
  * The design's own dropdown, over Base UI's Select: the library owns the open state, the keyboard,
@@ -28,11 +28,14 @@ export function SelectField({
   value,
   mono = false,
   muted = false,
+  markOf,
   onPick,
 }: {
   label: string;
   options: readonly string[];
   value: string;
+  /** What to draw in front of an option, where the choice reads faster as a shape than as a word. */
+  markOf?: (option: string) => React.ReactNode;
   /** Branches and paths are written in the office's monospace, names and models are not. */
   mono?: boolean;
   /** A value that is a placeholder rather than a choice. */
@@ -53,7 +56,10 @@ export function SelectField({
       >
         <Select.Label className={LABEL}>{label}</Select.Label>
         <Select.Trigger className={`${TRIGGER} ${type}`}>
-          <Select.Value className={`${ELLIPSIS} ${muted ? "text-ink-ghost" : ""}`} />
+          <span className="flex-1 min-w-0 flex items-center gap-8">
+            {markOf?.(value)}
+            <Select.Value className={`${ELLIPSIS} ${muted ? "text-ink-ghost" : ""}`} />
+          </span>
           <Select.Icon
             className="flex-[0_0_auto] transition-transform duration-250 data-popup-open:rotate-180"
             render={
@@ -82,7 +88,7 @@ export function SelectField({
               <Select.List aria-label={label}>
                 {options.map((option) => (
                   <Select.Item key={option} value={option} className={`group ${OPTION} ${type}`}>
-                    <span className={DOT} />
+                    {markOf === undefined ? <span className={DOT} /> : markOf(option)}
                     <Select.ItemText className={ELLIPSIS}>{option}</Select.ItemText>
                   </Select.Item>
                 ))}

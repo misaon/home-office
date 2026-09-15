@@ -20,6 +20,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-i18next": "catalog:",
+    "simple-icons": "catalog:",
     "zustand": "catalog:"
   },
   "devDependencies": {

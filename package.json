@@ -34,6 +34,7 @@
       "react": "19.3.0",
       "react-dom": "19.3.0",
       "react-i18next": "17.0.14",
+      "simple-icons": "16.31.0",
       "tailwindcss": "4.3.3",
       "tinyqueue": "3.0.0",
       "typescript": "7.0.2",

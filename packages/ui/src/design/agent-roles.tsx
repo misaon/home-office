@@ -10,7 +10,7 @@ import { PickCard } from "./pick-card.tsx";
  * rather than letting the dialog say they are something else.
  */
 
-const MARKS: Record<AgentRole, React.JSX.Element> = {
+export const ROLE_MARKS: Record<AgentRole, React.JSX.Element> = {
   boss: (
     <svg
       width="15"
@@ -105,7 +105,7 @@ export function RoleCards({
         <PickCard
           key={role}
           value={role}
-          mark={MARKS[role]}
+          mark={ROLE_MARKS[role]}
           title={t(`agent.role_${role}`)}
           hint={t(`agent.roleDesc_${role}`)}
           gap="gap-9"
