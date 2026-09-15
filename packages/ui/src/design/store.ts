@@ -22,25 +22,17 @@ export type AgentDraft = {
   prompt: string;
 };
 /**
- * What the office is *showing*, as opposed to what it *is*: which panel is open, which popover, what is
- * half-typed. Everything with a fact behind it lives in the daemon and arrives through `../store.ts`.
+ * What the office is *showing*, as opposed to what it *is*: which panel is open, what is half-typed.
+ * Which menu is up is no longer here: Base UI owns each popup's own open state. Everything with a fact behind it lives in the daemon and arrives through `../store.ts`.
  */
 export type Design = {
   tab: Tab;
-  floorOpen: boolean;
   floorQuery: string;
-  floorX: number;
   editor: boolean;
   draft: string;
   toast: string | null;
   query: string;
   searchOpen: boolean;
-  /**
-   * The one menu the office has open, if any: `"usage"`, or a select's own `scope:name`. They are
-   * mutually exclusive — one scrim dismisses whichever it is — so they are one field rather than an
-   * invariant maintained by hand at every place that opens one.
-   */
-  popover: string | null;
   attachment: Attachment | null;
   lightbox: Attachment | null;
   sheet: Sheet;
@@ -67,15 +59,12 @@ let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 const INITIAL = {
   tab: "Chat",
-  floorOpen: false,
   floorQuery: "",
-  floorX: 190,
   editor: false,
   draft: "",
   toast: null,
   query: "",
   searchOpen: false,
-  popover: null,
   attachment: null,
   lightbox: null,
   sheet: null,

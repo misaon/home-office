@@ -35,8 +35,6 @@ export function App(): React.JSX.Element {
   // Until the log has been replayed the office does not yet know whether it has floors; showing the
   // empty office in that gap would flash the wrong screen at every reload.
   const empty = useUi((s) => s.replayed && s.snapshot.projects.size === 0);
-  const popover = useDesign((s) => s.popover);
-  const floorOpen = useDesign((s) => s.floorOpen);
   const lightbox = useDesign((s) => s.lightbox);
   const editor = useDesign((s) => s.editor);
   const ask = useDesign((s) => s.ask);
@@ -52,32 +50,13 @@ export function App(): React.JSX.Element {
       </div>
       <Header internal={DEV} hasFloors={hasFloors} />
       {empty ? <EmptyOffice /> : null}
-      {/* The drawing gave `main` a z-index, which founds a stacking context and caps every popover
-          inside the panel below the sheet that dismisses them; tree order alone already puts it above
-          the glows behind it. */}
+      {/* The drawing gave `main` a z-index, which founds a stacking context; tree order alone already
+          puts it above the glows behind it, and every popup is portalled out of it now. */}
       {hasFloors ? (
         <main className="flex-1 flex min-h-0 relative">
           <Stage internal={DEV} />
           <Panel />
         </main>
-      ) : null}
-      {floorOpen ? (
-        <div
-          role="presentation"
-          onClick={() => {
-            set({ floorOpen: false });
-          }}
-          className="fixed inset-0 z-35"
-        />
-      ) : null}
-      {popover !== null ? (
-        <div
-          role="presentation"
-          onClick={() => {
-            set({ popover: null });
-          }}
-          className="fixed inset-0 z-28"
-        />
       ) : null}
       {DEV && (editor || editorFromUrl) ? (
         <EditorOverlay

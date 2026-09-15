@@ -23,14 +23,12 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
     set({
       agentDlg: { mode: "new" },
       agentDraft: newDraft(team.some((p) => p.role === "boss")),
-      popover: null,
     });
   };
   const open = (person: Member): void => {
     set({
       sheet: { type: "agent", id: person.id },
       sheetDraft: { ...person },
-      popover: null,
     });
   };
 

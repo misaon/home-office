@@ -144,7 +144,7 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
 
   const editing = dlg?.mode === "edit" ? floor.team.find((p) => p.id === dlg.id) : undefined;
   const close = (): void => {
-    set({ agentDlg: null, agentDraft: null, popover: null });
+    set({ agentDlg: null, agentDraft: null });
   };
   const done = (message: string): void => {
     close();
@@ -193,7 +193,6 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
       return;
     }
     patch({ role });
-    set({ popover: null });
   };
 
   return (

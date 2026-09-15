@@ -36,7 +36,7 @@ export function HeaderTabs(): React.JSX.Element {
           key={name}
           title={t(hint)}
           onClick={() => {
-            set({ tab: name, sheet: null, popover: null });
+            set({ tab: name, sheet: null });
           }}
           className={`hover:-translate-y-1 flex-1 border-0 bg-transparent cursor-pointer text-12h font-medium py-1 px-6 whitespace-nowrap transition-[color,transform] duration-250 relative z-2 ${tab === name ? "text-accent-soft" : "text-ink-label"}`}
         >

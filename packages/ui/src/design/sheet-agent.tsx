@@ -41,7 +41,6 @@ export function AgentSheet({ draft }: { draft: Member }): React.JSX.Element {
             agentDraft: draftOf(draft),
             sheet: null,
             sheetDraft: null,
-            popover: null,
           });
         }}
         className={`hover:-translate-y-2 hover:shadow-lift ${PRIMARY} w-full`}

@@ -28,7 +28,7 @@ export function SheetShell({
           aria-label="Back"
           type="button"
           onClick={() => {
-            set({ sheet: null, sheetDraft: null, popover: null });
+            set({ sheet: null, sheetDraft: null });
           }}
           className="hover:text-accent-soft hover:border-accent-a45 w-30 h-30 flex-[0_0_30px] grid place-items-center border border-border-strong rounded-9 py-1 px-6 bg-transparent text-ink-quiet cursor-pointer transition-all duration-200"
         >
