@@ -12,6 +12,8 @@ export * from "./ids.ts";
 export * from "./model/queries.ts";
 export * from "./model/read-model.ts";
 export * from "./model/reduce.ts";
+export * from "./office-file.ts";
+export * from "./office-file-apply.ts";
 export type * from "./ports.ts";
 export * from "./providers.ts";
 export * from "./result.ts";

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
 import { ChevronRight } from "lucide-react";
+import { FloorConfigFile } from "./settings-floor-config.tsx";
 import { FloorSwitches } from "./settings-floor-switches.tsx";
 import { useUi } from "../store.ts";
 import { MONO, separator } from "./tokens.ts";
@@ -75,6 +76,7 @@ export function SettingsFloor({
           <div className="pt-0 px-13 pb-14">
             <div className={PATH}>{floor.path}</div>
             <FloorSwitches floor={floor} />
+            <FloorConfigFile floor={floor} />
             <div className="h-1 bg-slot my-14 mx-0" />
             <button
               type="button"

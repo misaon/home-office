@@ -312,6 +312,32 @@ Tailwind CLI, so a stylesheet that does not compile fails the build — CSS synt
 quality is not. Covering the 878 lines of CSS would need a second tool (Biome or stylelint); the owner
 chose to keep oxlint alone on 2026-09-15, so this is a known, deliberate gap.
 
+## Per-project configuration: no new dependency, 2026-09-15
+
+A floor's own `.ho/config.json` needed a schema, a JSON Schema for editors, a way to read a file out of
+a repository and a way to read one out of a mirror. Everything was already pinned:
+
+- **Schema and validation** — Zod 4.6.5, the same schema the daemon parses with. `OfficeFile.toJSONSchema({
+target: "draft-2020-12", io: "input" })` generates `schema/office.schema.json`
+  ([zod.dev/json-schema](https://zod.dev/json-schema), read 2026-09-15). The schema's own method rather
+  than the free `z.toJSONSchema`: the root compiler program resolves a different hoisted copy of zod
+  than `@ho/protocol` does, and two zod instances' types do not meet.
+- **Reading a mirrored repository** — `git show <defaultBranch>:.ho/config.json` through the existing
+  bounded `exec`, not a new git library; simple-git is already there for inspection and stays there.
+- **Watching a checkout** — `node:fs.watch`, non-recursive, debounced at one second. A recursive watch
+  over a checkout would mean following `node_modules` around, so `.ho` is watched where it exists and
+  the repository root only until one appears.
+- **The two-file overlay** — `.ho/config.json` plus a gitignored `.ho/config.local.json`, the same
+  arrangement Claude Code uses for `.claude/settings.json` and `.claude/settings.local.json`
+  ([Claude Code settings docs](https://code.claude.com/docs/en/settings), read 2026-09-15).
+
+The declined alternative is recorded in
+[the plan](plans/2026-09-15-per-project-config.md): applying only from the default branch with a host
+clamp and an approval step on every change of the file's fingerprint, the shape
+[VS Code Workspace Trust](https://code.visualstudio.com/docs/editing/workspaces/workspace-trust) uses
+(read 2026-09-15). The owner chose the file winning outright; the accepted risk is written down in
+[ARCHITECTURE](ARCHITECTURE.md#the-accepted-risk).
+
 ## Primary references
 
 - [Bun install](https://bun.com/docs/pm/cli/install), [isolated workspaces](https://bun.com/docs/pm/isolated-installs), [secrets](https://bun.com/docs/runtime/secrets).
