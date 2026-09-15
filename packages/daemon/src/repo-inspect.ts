@@ -1,17 +1,32 @@
 import {
   REPO_BRANCH_LIMIT,
+  errorMessage,
   type RepoInspection,
   type RepoInspectInput,
   type RepoSource,
 } from "@ho/protocol";
 import { stat } from "node:fs/promises";
 import { basename } from "node:path";
-import { exec, type Exec } from "./host-exec.ts";
+import { simpleGit, type SimpleGit } from "simple-git";
 
 const GIT_TIMEOUT_MS = 15_000;
 
-const git = (args: readonly string[]): Promise<Exec> =>
-  exec(["git", ...args], { timeoutMs: GIT_TIMEOUT_MS });
+/** One git, bounded, either inside a checkout or with no working directory at all for `ls-remote`. */
+const gitIn = (baseDir?: string): SimpleGit =>
+  simpleGit({
+    ...(baseDir === undefined ? {} : { baseDir }),
+    timeout: { block: GIT_TIMEOUT_MS },
+  });
+
+/** simple-git throws where the old exit-code check returned a code; this inspection never throws. */
+const tried = async (run: () => Promise<string>): Promise<string | null> => {
+  try {
+    const out = await run();
+    return out.trim();
+  } catch {
+    return null;
+  }
+};
 
 const nameFromUrl = (url: string): string => {
   const last = url.replace(/\/+$/u, "").split(/[/:]/u).at(-1) ?? "project";
@@ -29,12 +44,15 @@ const ordered = (defaultBranch: string, names: readonly string[]): string[] => {
 
 /** `origin/HEAD` when the checkout tracks a remote, else the current branch, else `main`. */
 async function localDefaultBranch(path: string): Promise<string> {
-  const remote = await git(["-C", path, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"]);
-  if (remote.code === 0 && remote.stdout !== "") {
-    return remote.stdout.replace(/^origin\//u, "");
+  const git = gitIn(path);
+  const remote = await tried(() =>
+    git.raw(["symbolic-ref", "--short", "refs/remotes/origin/HEAD"]),
+  );
+  if (remote !== null && remote !== "") {
+    return remote.replace(/^origin\//u, "");
   }
-  const head = await git(["-C", path, "symbolic-ref", "--short", "HEAD"]);
-  return head.code === 0 && head.stdout !== "" ? head.stdout : "main";
+  const head = await tried(() => git.raw(["symbolic-ref", "--short", "HEAD"]));
+  return head === null || head === "" ? "main" : head;
 }
 
 async function inspectLocal(path: string): Promise<RepoInspection> {
@@ -46,44 +64,49 @@ async function inspectLocal(path: string): Promise<RepoInspection> {
   } catch {
     return { ok: false, message: `${path} does not exist` };
   }
-  const top = await git(["-C", path, "rev-parse", "--show-toplevel"]);
-  if (top.code !== 0 || top.stdout === "") {
+  let top: string;
+  try {
+    const found = await gitIn(path).revparse(["--show-toplevel"]);
+    top = found.trim();
+  } catch (error) {
     return {
       ok: false,
-      message: `${path} is not inside a git repository (${top.stderr || "git failed"})`,
+      message: `${path} is not inside a git repository (${errorMessage(error)})`,
     };
   }
-  const repo: RepoSource = { kind: "local", path: top.stdout };
-  const defaultBranch = await localDefaultBranch(top.stdout);
-  const refs = await git([
-    "-C",
-    top.stdout,
-    "for-each-ref",
-    "--format=%(refname:short)",
-    "refs/heads",
-    "refs/remotes/origin",
-  ]);
+  if (top === "") {
+    return { ok: false, message: `${path} is not inside a git repository (git failed)` };
+  }
+  const repo: RepoSource = { kind: "local", path: top };
+  const defaultBranch = await localDefaultBranch(top);
+  const refs = await tried(() =>
+    gitIn(top).raw([
+      "for-each-ref",
+      "--format=%(refname:short)",
+      "refs/heads",
+      "refs/remotes/origin",
+    ]),
+  );
   return {
     ok: true,
-    name: basename(top.stdout),
+    name: basename(top),
     defaultBranch,
-    branches: ordered(defaultBranch, refs.code === 0 ? refs.stdout.split("\n") : []),
+    branches: ordered(defaultBranch, refs === null ? [] : refs.split("\n")),
     repo,
   };
 }
 
 /** One `ls-remote` reports both the symbolic HEAD and every head, so the branch list costs no extra round trip. */
 async function inspectRemote(url: string): Promise<RepoInspection> {
-  const probe = await git(["ls-remote", "--symref", url, "HEAD", "refs/heads/*"]);
-  if (probe.code !== 0) {
-    return {
-      ok: false,
-      message: `cannot reach ${url} (${probe.stderr || "git ls-remote failed"})`,
-    };
+  let probe: string;
+  try {
+    probe = await gitIn().listRemote(["--symref", url, "HEAD", "refs/heads/*"]);
+  } catch (error) {
+    return { ok: false, message: `cannot reach ${url} (${errorMessage(error)})` };
   }
-  const head = /^ref: refs\/heads\/(?<branch>\S+)\tHEAD$/mu.exec(probe.stdout)?.groups;
+  const head = /^ref: refs\/heads\/(?<branch>\S+)\tHEAD$/mu.exec(probe)?.groups;
   const defaultBranch = head?.["branch"] ?? "main";
-  const heads = [...probe.stdout.matchAll(/^\S+\trefs\/heads\/(?<branch>.+)$/gmu)].map(
+  const heads = [...probe.matchAll(/^\S+\trefs\/heads\/(?<branch>.+)$/gmu)].map(
     (line) => line.groups?.["branch"] ?? "",
   );
   return {

@@ -19,6 +19,7 @@
     "@modelcontextprotocol/sdk": "catalog:",
     "@orpc/server": "catalog:",
     "pino": "catalog:",
+    "simple-git": "catalog:",
     "zod": "catalog:"
   }
 }
