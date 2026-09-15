@@ -84,6 +84,28 @@
         }
       }
     },
+    "verify": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "default": "",
+          "type": "string",
+          "maxLength": 500
+        },
+        "timeoutSeconds": {
+          "default": 900,
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 3600
+        },
+        "maxAttempts": {
+          "default": 2,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    },
     "budgets": {
       "type": "object",
       "properties": {

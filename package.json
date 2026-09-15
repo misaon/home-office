@@ -44,7 +44,7 @@
   },
   "type": "module",
   "scripts": {
-    "check": "bun run typecheck && bun run lint && bun run fmt:check && bun run knip && bun run schema:check && bun run ui:build",
+    "check": "bun run typecheck && bun run lint && bun run fmt:check && bun run knip && bun run schema:check && bun run skills:check && bun run ui:build",
     "typecheck": "bun run scripts/typecheck.ts",
     "lint": "oxlint --deny-warnings",
     "fmt": "oxfmt",
@@ -52,6 +52,7 @@
     "knip": "knip",
     "schema": "bun run scripts/office-schema.ts",
     "schema:check": "bun run scripts/office-schema.ts --check",
+    "skills:check": "bun run scripts/skills-check.ts",
     "setup": "git config core.hooksPath .githooks",
     "ui:build": "bun run scripts/ui-build.ts",
     "ui:watch": "bun run scripts/ui-build.ts --watch",

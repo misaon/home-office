@@ -101,6 +101,7 @@ function cardOf(task: Task, snapshot: Snapshot): Card {
     t: task.title,
     p: task.priority,
     k: task.kind === "triage" ? "triage" : "code",
+    criteria: task.spec?.acceptanceCriteria ?? [],
     who: task.assigneeId === undefined ? "" : (snapshot.agents.get(task.assigneeId)?.name ?? ""),
     s: laneOf(task.status),
     status: task.status,
@@ -132,6 +133,7 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
     pr: project.publish.mode === "pull-request",
     issues: project.intake.enabled,
     services: project.services.enabled,
+    verify: project.verify.command,
     team: [...snapshot.agents.values()]
       .filter((a) => a.projectId === project.id)
       .toSorted((a, b) =>
