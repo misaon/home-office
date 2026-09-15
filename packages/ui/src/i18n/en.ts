@@ -33,6 +33,7 @@ export const en = {
   },
   app: {
     connecting: "Connecting to the daemon…",
+    officeFailed: "The office could not be drawn: {{message}}",
     connected: "Connected",
     offline: "Daemon offline — retrying…",
     noToken: "This page carries no daemon token. Run `ho ui` to open the office with it.",

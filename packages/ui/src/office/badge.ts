@@ -1,5 +1,7 @@
-import { CELL_PX } from "@ho/sim";
+import { type Actor, CELL_PX } from "@ho/sim";
+import { t as translate } from "i18next";
 import { Container, Graphics, Text } from "pixi.js";
+import { activeSessionOf, useUi } from "../store.ts";
 
 /**
  * What the drawing puts under a character: a name and a status on a dark pill, and — while they are
@@ -95,4 +97,33 @@ export function updateBadge(
     badge.ring.scale.set(RING_FROM + (RING_TO - RING_FROM) * eased);
     badge.ring.alpha = 0.6 * (1 - eased);
   }
+}
+
+/** What Lola is doing, in the words the pill has room for. */
+function receptionWork(actor: Actor): { caption: string; busy: boolean } {
+  const carrying = actor.emotion?.kind === "envelope";
+  const doing = carrying
+    ? actor.activity === "handover"
+      ? translate("stage.handingOver")
+      : translate("stage.carrying")
+    : actor.activity === "receive" || actor.activity === "drop"
+      ? translate("stage.atMail")
+      : translate("stage.atReception");
+  return { caption: `${translate("stage.receptionist")} · ${doing}`, busy: carrying };
+}
+
+/** What the pill under a character says, and whether the office draws them as working. */
+export function captionOf(actor: Actor): { caption: string; busy: boolean } | null {
+  // Lola keeps the counter and is nobody's agent, so her pill comes from the floor rather than the
+  // read model — she is the only character on it the daemon has no record of.
+  if (actor.kind === "receptionist") {
+    return receptionWork(actor);
+  }
+  const { snapshot } = useUi.getState();
+  const agent = snapshot.agents.get(actor.id);
+  if (agent === undefined) {
+    return null;
+  }
+  const busy = activeSessionOf(snapshot, actor.id) !== undefined;
+  return { caption: `${agent.name} · ${translate(busy ? "team.working" : "team.idle")}`, busy };
 }

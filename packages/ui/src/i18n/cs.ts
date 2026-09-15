@@ -33,6 +33,7 @@ export const cs: typeof en = {
     settingsHint: "Jazyk, přihlašovací údaje a napojení podlaží",
   },
   app: {
+    officeFailed: "Kancelář se nepodařilo vykreslit: {{message}}",
     connecting: "Připojuji se k daemonovi…",
     connected: "Připojeno",
     offline: "Daemon je offline — zkouším znovu…",
