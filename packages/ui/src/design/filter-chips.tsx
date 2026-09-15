@@ -1,3 +1,5 @@
+import { Toggle } from "@base-ui/react/toggle";
+import { ToggleGroup } from "@base-ui/react/toggle-group";
 import type { ParseKeys } from "i18next";
 import { useTranslation } from "react-i18next";
 import { MONO, pill } from "./tokens.ts";
@@ -30,21 +32,27 @@ export function FilterChips<K extends string>({
 }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <div className="flex gap-6 flex-wrap">
+    <ToggleGroup
+      value={[value]}
+      onValueChange={(next) => {
+        const picked = next.at(-1);
+        if (picked !== undefined) {
+          onPick(picked);
+        }
+      }}
+      className="flex gap-6 flex-wrap"
+    >
       {chips.map(({ key, label, dot, count }) => (
-        <button
-          type="button"
+        <Toggle
           key={key}
-          onClick={() => {
-            onPick(key);
-          }}
+          value={key}
           className={`${CHIP} ${pill(value === key)} hover:-translate-y-1`}
         >
           {dot === null ? null : <span className={`w-6 h-6 rounded-half ${dot}`} />}
           <span>{t(label)}</span>
           <span className={`${MONO} text-10h opacity-75`}>{count}</span>
-        </button>
+        </Toggle>
       ))}
-    </div>
+    </ToggleGroup>
   );
 }

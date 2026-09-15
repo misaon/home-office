@@ -1,4 +1,5 @@
 import type { AgentRole } from "@ho/protocol";
+import { RadioGroup } from "@base-ui/react/radio-group";
 import { useTranslation } from "react-i18next";
 import { PickCard } from "./pick-card.tsx";
 
@@ -92,20 +93,23 @@ export function RoleCards({
   const { t } = useTranslation();
   const cards = offered(value, bossTaken);
   return (
-    <div className={`grid gap-10 mb-18 ${cards.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+    <RadioGroup
+      value={value}
+      onValueChange={(next) => {
+        onPick(next);
+      }}
+      className={`grid gap-10 mb-18 ${cards.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+    >
       {cards.map((role) => (
         <PickCard
           key={role}
+          value={role}
           mark={MARKS[role]}
           title={t(`agent.role_${role}`)}
           hint={t(`agent.roleDesc_${role}`)}
-          on={role === value}
           gap="gap-9"
-          onPick={() => {
-            onPick(role);
-          }}
         />
       ))}
-    </div>
+    </RadioGroup>
   );
 }

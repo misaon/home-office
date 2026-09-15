@@ -42,8 +42,6 @@ export type Design = {
   agentDraft: AgentDraft | null;
   boardFilter: Lane | "all";
   teamFilter: "all" | "working" | "idle";
-  credOpen: string | null;
-  floorRowOpen: string | null;
   /** What the office is about to do that cannot be undone, and how it says so. */
   ask: Ask | null;
   usageView: "Tokens" | "Resources";
@@ -73,8 +71,6 @@ const INITIAL = {
   agentDraft: null,
   boardFilter: "all",
   teamFilter: "all",
-  credOpen: null,
-  floorRowOpen: null,
   ask: null,
   usageView: "Tokens",
   win: "24 h",

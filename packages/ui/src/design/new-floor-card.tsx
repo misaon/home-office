@@ -36,24 +36,15 @@ const MARKS: Record<Source, React.JSX.Element> = {
   ),
 };
 
-export function SourceCard({
-  kind,
-  on,
-  onPick,
-}: {
-  kind: Source;
-  on: boolean;
-  onPick: () => void;
-}): React.JSX.Element {
+export function SourceCard({ kind }: { kind: Source }): React.JSX.Element {
   const { t } = useTranslation();
   return (
     <PickCard
+      value={kind}
       mark={MARKS[kind]}
       title={t(kind === "local" ? "project.sourceLocal" : "project.sourceGit")}
       hint={t(kind === "local" ? "project.sourceLocalHint" : "project.sourceGitHint")}
-      on={on}
       gap="gap-10"
-      onPick={onPick}
     />
   );
 }

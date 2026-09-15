@@ -1,3 +1,4 @@
+import { Switch as BaseSwitch } from "@base-ui/react/switch";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
@@ -25,17 +26,16 @@ function Switch({
 }): React.JSX.Element {
   return (
     <div className={ROW}>
-      <button
-        type="button"
+      <BaseSwitch.Root
+        checked={on}
+        onCheckedChange={onFlip}
         aria-label={title}
-        aria-pressed={on}
-        onClick={onFlip}
-        className={`${TRACK} ${on ? "bg-accent" : "bg-border-strong"}`}
+        className={`${TRACK} bg-border-strong data-checked:bg-accent`}
       >
-        <span
-          className={`${KNOB} ${on ? "bg-accent-ink" : "bg-ink-idle"} ${on ? "translate-x-16" : "translate-x-0"}`}
+        <BaseSwitch.Thumb
+          className={`${KNOB} bg-ink-idle translate-x-0 data-checked:bg-accent-ink data-checked:translate-x-16`}
         />
-      </button>
+      </BaseSwitch.Root>
       <div>
         <div className="text-13">{title}</div>
         <div className="text-11h text-ink-meta leading-prose mt-4">{hint}</div>
