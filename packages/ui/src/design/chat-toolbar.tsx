@@ -26,8 +26,8 @@ export function ChatToolbar({
   onAttach: (file: File) => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
-  const usageOpen = useDesign((s) => s.usageOpen);
-  const update = useDesign((s) => s.update);
+  const usageOpen = useDesign((s) => s.popover === "usage");
+  const set = useDesign((s) => s.set);
   const file = useRef<HTMLInputElement>(null);
   const fill = useContextFill(floor.id);
 
@@ -61,7 +61,7 @@ export function ChatToolbar({
         <button
           type="button"
           onClick={() => {
-            update((s) => ({ usageOpen: !s.usageOpen, attachOpen: false, openSelect: null }));
+            set((s) => ({ popover: s.popover === "usage" ? null : "usage" }));
           }}
           title={t("usage.chipTitle")}
           className={`hover:text-accent-soft hover:border-accent-a45 ${METER} ${usageOpen ? "bg-accent-a14" : "bg-transparent"} ${usageOpen ? "text-accent-soft" : "text-ink-quiet"}`}

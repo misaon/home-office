@@ -109,7 +109,7 @@ export function UsageMenu({ floorId }: { floorId: ProjectId }): React.JSX.Elemen
       <button
         type="button"
         onClick={() => {
-          set({ usageOpen: false, tab: "Usage" });
+          set({ popover: null, tab: "Usage" });
         }}
         className="hover:bg-accent-a16 w-full p-9 rounded-10 border border-accent-a35 bg-accent-a09 text-accent-soft text-12 font-medium cursor-pointer transition-all duration-200"
       >

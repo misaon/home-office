@@ -35,9 +35,7 @@ export function App(): React.JSX.Element {
   // Until the log has been replayed the office does not yet know whether it has floors; showing the
   // empty office in that gap would flash the wrong screen at every reload.
   const empty = useUi((s) => s.replayed && s.snapshot.projects.size === 0);
-  const attachOpen = useDesign((s) => s.attachOpen);
-  const usageOpen = useDesign((s) => s.usageOpen);
-  const openSelect = useDesign((s) => s.openSelect);
+  const popover = useDesign((s) => s.popover);
   const floorOpen = useDesign((s) => s.floorOpen);
   const lightbox = useDesign((s) => s.lightbox);
   const editor = useDesign((s) => s.editor);
@@ -72,11 +70,11 @@ export function App(): React.JSX.Element {
           className="fixed inset-0 z-35"
         />
       ) : null}
-      {attachOpen || usageOpen || openSelect !== null ? (
+      {popover !== null ? (
         <div
           role="presentation"
           onClick={() => {
-            set({ attachOpen: false, usageOpen: false, openSelect: null });
+            set({ popover: null });
           }}
           className="fixed inset-0 z-28"
         />

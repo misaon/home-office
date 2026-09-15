@@ -139,12 +139,12 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
   const dlg = useDesign((s) => s.agentDlg);
   const draft = useDesign((s) => s.agentDraft);
   const set = useDesign((s) => s.set);
-  const update = useDesign((s) => s.update);
+
   const flash = useDesign((s) => s.flash);
 
   const editing = dlg?.mode === "edit" ? floor.team.find((p) => p.id === dlg.id) : undefined;
   const close = (): void => {
-    set({ agentDlg: null, agentDraft: null, openSelect: null });
+    set({ agentDlg: null, agentDraft: null, popover: null });
   };
   const done = (message: string): void => {
     close();
@@ -185,7 +185,7 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
   const working = editing?.status === "working";
   const boss = floor.team.find((p) => p.role === "boss" && p.id !== editing?.id);
   const patch = (next: Partial<AgentDraft>): void => {
-    update((s) => ({ agentDraft: s.agentDraft === null ? null : { ...s.agentDraft, ...next } }));
+    set((s) => ({ agentDraft: s.agentDraft === null ? null : { ...s.agentDraft, ...next } }));
   };
   const pickRole = (role: AgentRole): void => {
     if (role !== "boss" && editing?.role === "boss") {
@@ -193,7 +193,7 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
       return;
     }
     patch({ role });
-    set({ openSelect: null });
+    set({ popover: null });
   };
 
   return (

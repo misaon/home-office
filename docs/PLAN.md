@@ -88,6 +88,24 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-15 — Owner task: a second, more thorough round of simplification — The first round looked for
+  repeated text; this one looked for state the office keeps and never reads, and work it redoes every
+  render. Four fields were dead: `openIntake` and `openServices` had no reference anywhere,
+  `attachOpen` was cleared in four places and **never set to true**, and `lastError` was written twice
+  by `office/scene.ts` and read by nobody — which meant an office whose canvas failed looked exactly
+  like an office with nothing on the floor. That one is now a toast, said once however many frames
+  throw (measured: 59 throwing frames, one message). `attachOpen`/`usageOpen`/`openSelect` were three
+  fields holding one fact with the invariant maintained by hand in four places, and are one `popover`;
+  `set` and `update` wrapped the identical zustand call, so `update` is gone. `useFloor()` dressed every
+  floor — team, cards and messages — to return one, on every store change, for eight components; it
+  dresses one. Three copies of "is this colleague in a session" became `activeSessionOf`, the two floor
+  orderings became one, and `retention.idleStopMinutes` — a configuration knob with a default that no
+  code read — is out of `DaemonConfig` by the owner's decision. Deliberately not done: removing the
+  write-only `Session.sandboxId` and `MailItem.receivedAt` (they are the event log's record, not code
+  nobody calls) and giving the UI snapshot the read model's indexes (more machinery than it removes).
+  All 28 shot states byte-identical to the previous build. Plan, measurements and the two things the
+  survey itself got wrong: [the task plan](plans/2026-09-15-second-simplification-round.md).
+
 - 2026-09-15 — Owner task: simplify and modernise the whole monorepo — Measured first: over the 278
   TypeScript files the repository owns there is no `any`, seven commented type assertions, no
   `forwardRef`/`useMemo`/`useCallback`, `Promise.withResolvers` at all seven sites and

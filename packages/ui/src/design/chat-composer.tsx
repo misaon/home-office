@@ -46,7 +46,7 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
       text: text === "" ? t("chat.lookAtThis") : text,
       attachments: attachment === null ? [] : [attachment],
     });
-    set({ draft: "", attachment: null, attachOpen: false, query: "" });
+    set({ draft: "", attachment: null, query: "" });
   };
 
   const attach = (chosen: File): void => {
@@ -54,7 +54,6 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
   };
 
   const attachNow = async (chosen: File): Promise<void> => {
-    set({ attachOpen: false });
     const refusal = rejects(chosen);
     if (refusal !== null) {
       flash(t("chat.attachRejected", { name: refusal }));

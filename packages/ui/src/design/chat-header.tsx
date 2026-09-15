@@ -28,7 +28,6 @@ export function ChatHeader({
   const query = useDesign((s) => s.query);
   const searchOpen = useDesign((s) => s.searchOpen);
   const set = useDesign((s) => s.set);
-  const update = useDesign((s) => s.update);
 
   return (
     <div className={BAR}>
@@ -64,7 +63,7 @@ export function ChatHeader({
         type="button"
         aria-label={t("chat.search")}
         onClick={() => {
-          update((s) => ({ searchOpen: !s.searchOpen, query: "" }));
+          set((s) => ({ searchOpen: !s.searchOpen, query: "" }));
         }}
         className={`hover:text-accent-soft hover:border-accent-a45 w-30 h-30 flex-[0_0_30px] grid place-items-center border border-border-strong rounded-9 py-1 px-6 bg-transparent ${searchOpen ? "text-accent-soft" : "text-ink-quiet"} cursor-pointer transition-all duration-200`}
       >

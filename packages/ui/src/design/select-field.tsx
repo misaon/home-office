@@ -40,11 +40,9 @@ export function SelectField({
   muted?: boolean;
   onPick: (next: string) => void;
 }): React.JSX.Element {
-  const openSelect = useDesign((s) => s.openSelect);
   const set = useDesign((s) => s.set);
-  const update = useDesign((s) => s.update);
   const id = `${scope}:${name}`;
-  const open = openSelect === id;
+  const open = useDesign((s) => s.popover === id);
 
   return (
     <div className="relative">
@@ -52,11 +50,7 @@ export function SelectField({
       <button
         type="button"
         onClick={() => {
-          update((s) => ({
-            openSelect: s.openSelect === id ? null : id,
-            attachOpen: false,
-            usageOpen: false,
-          }));
+          set((s) => ({ popover: s.popover === id ? null : id }));
         }}
         className={`${TRIGGER} border hover:border-accent-a45 ${mono ? `${MONO} text-12` : "text-12h"} ${open ? "border-accent-a50" : "border-border-strong"}`}
       >
@@ -81,7 +75,7 @@ export function SelectField({
               key={option}
               onClick={() => {
                 onPick(option);
-                set({ openSelect: null });
+                set({ popover: null });
               }}
               className={`${OPTION} hover:bg-accent-a13 hover:text-accent-soft ${mono ? `${MONO} text-12` : "text-12h"} ${option === value ? "bg-accent-a12 text-accent-soft" : "bg-transparent text-ink-soft"}`}
             >

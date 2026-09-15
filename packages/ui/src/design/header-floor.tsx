@@ -11,7 +11,7 @@ export function HeaderFloor(): React.JSX.Element | null {
   const floors = useFloors();
   const floor = useFloor();
   const floorOpen = useDesign((s) => s.floorOpen);
-  const update = useDesign((s) => s.update);
+  const set = useDesign((s) => s.set);
   const button = useRef<HTMLButtonElement>(null);
   if (floor === null) {
     return null;
@@ -28,7 +28,7 @@ export function HeaderFloor(): React.JSX.Element | null {
         onClick={() => {
           const left =
             button.current === null ? 18 : Math.round(button.current.getBoundingClientRect().left);
-          update((s) => ({ floorOpen: !s.floorOpen, floorQuery: "", floorX: left }));
+          set((s) => ({ floorOpen: !s.floorOpen, floorQuery: "", floorX: left }));
         }}
         className="hover:border-accent-a50 hover:bg-chip-hover hover:-translate-y-1 flex items-center gap-9 pt-7 pr-11 pb-7 pl-7 rounded-11 border border-border-strong bg-pop-alt cursor-pointer min-w-0 max-w-full overflow-hidden transition-all duration-220 ease-soft"
       >

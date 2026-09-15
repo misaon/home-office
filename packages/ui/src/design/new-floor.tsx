@@ -77,7 +77,7 @@ export function NewFloor(): React.JSX.Element | null {
   const close = (): void => {
     setOpen(false);
     setDraft(EMPTY);
-    set({ openSelect: null });
+    set({ popover: null });
   };
   const create = useMutation({
     mutationFn: (input: Parameters<Client["projects"]["create"]>[0]) =>
