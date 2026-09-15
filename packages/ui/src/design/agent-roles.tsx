@@ -94,6 +94,7 @@ export function RoleCards({
   const cards = offered(value, bossTaken);
   return (
     <RadioGroup
+      aria-label={t("agent.whoTheyAre")}
       value={value}
       onValueChange={(next) => {
         onPick(next);

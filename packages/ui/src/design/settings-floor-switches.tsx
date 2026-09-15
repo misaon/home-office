@@ -10,7 +10,7 @@ const TRACK =
 
 const KNOB = "w-16 h-16 rounded-half transition-transform duration-340 ease-spring-far";
 
-const ROW = "flex gap-11 items-start mb-14";
+const ROW = "flex flex-col gap-4 mb-14";
 
 /** A switch drawn the way the design draws one, with its consequence written beside it. */
 function Switch({
@@ -26,20 +26,21 @@ function Switch({
 }): React.JSX.Element {
   return (
     <div className={ROW}>
-      <BaseSwitch.Root
-        checked={on}
-        onCheckedChange={onFlip}
-        aria-label={title}
-        className={`${TRACK} bg-border-strong data-checked:bg-accent`}
-      >
-        <BaseSwitch.Thumb
-          className={`${KNOB} bg-ink-idle translate-x-0 data-checked:bg-accent-ink data-checked:translate-x-16`}
-        />
-      </BaseSwitch.Root>
-      <div>
-        <div className="text-13">{title}</div>
-        <div className="text-11h text-ink-meta leading-prose mt-4">{hint}</div>
-      </div>
+      {/* An enclosing `<label>` is the pattern Base UI documents for naming a switch; the hint stays
+          outside it so the accessible name is the title alone. */}
+      <label className="flex gap-11 items-start cursor-pointer">
+        <BaseSwitch.Root
+          checked={on}
+          onCheckedChange={onFlip}
+          className={`${TRACK} bg-border-strong data-checked:bg-accent`}
+        >
+          <BaseSwitch.Thumb
+            className={`${KNOB} bg-ink-idle translate-x-0 data-checked:bg-accent-ink data-checked:translate-x-16`}
+          />
+        </BaseSwitch.Root>
+        <span className="text-13">{title}</span>
+      </label>
+      <div className="text-11h text-ink-meta leading-prose mt-4 -ml-11">{hint}</div>
     </div>
   );
 }

@@ -68,6 +68,7 @@ export const en = {
     neutral: "neutral",
   },
   board: {
+    filters: "Filter the board by status",
     remove: "Remove",
     removeConfirm: "Take this task off the board?",
     clearTitle: "Clear finished work",
@@ -218,6 +219,7 @@ export const en = {
     forgotten: "{{name}} forgotten",
   },
   team: {
+    filters: "Filter the team by status",
     intro: "Everyone on this floor. Open a card to see what they are doing, or configure them.",
     onFloor: "On floor {{floor}}",
     working: "working",

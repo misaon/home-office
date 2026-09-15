@@ -1,3 +1,4 @@
+import { Toggle } from "@base-ui/react/toggle";
 import { DISPLAY, MONO } from "./tokens.ts";
 import { useTranslation } from "react-i18next";
 import type { Floor, Member } from "./data.ts";
@@ -59,13 +60,13 @@ export function ChatHeader({
           </div>
         </div>
       )}
-      <button
-        type="button"
+      <Toggle
         aria-label={t("chat.search")}
-        onClick={() => {
-          set((s) => ({ searchOpen: !s.searchOpen, query: "" }));
+        pressed={searchOpen}
+        onPressedChange={(next) => {
+          set({ searchOpen: next, query: "" });
         }}
-        className={`hover:text-accent-soft hover:border-accent-a45 w-30 h-30 flex-[0_0_30px] grid place-items-center border border-border-strong rounded-9 py-1 px-6 bg-transparent ${searchOpen ? "text-accent-soft" : "text-ink-quiet"} cursor-pointer transition-all duration-200`}
+        className="hover:text-accent-soft hover:border-accent-a45 w-30 h-30 flex-[0_0_30px] grid place-items-center border border-border-strong rounded-9 py-1 px-6 bg-transparent text-ink-quiet data-pressed:text-accent-soft cursor-pointer transition-all duration-200"
       >
         <svg
           width="13"
@@ -78,7 +79,7 @@ export function ChatHeader({
           <circle cx="6" cy="6" r="4.2" />
           <line x1="9.2" y1="9.2" x2="12.4" y2="12.4" strokeLinecap="round" />
         </svg>
-      </button>
+      </Toggle>
     </div>
   );
 }

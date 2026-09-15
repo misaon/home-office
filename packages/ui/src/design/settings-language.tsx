@@ -1,3 +1,5 @@
+import { Toggle } from "@base-ui/react/toggle";
+import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { useTranslation } from "react-i18next";
 import { LANGUAGES, setLanguage, type Language } from "../i18n/index.ts";
 import { pill } from "./tokens.ts";
@@ -16,25 +18,29 @@ export function LanguageCard(): React.JSX.Element {
             {t("settings.languageHint")}
           </div>
         </div>
-        <div className="flex gap-5 flex-[0_0_auto]">
-          {LANGUAGES.map((code: Language) => {
-            const tone = pill(i18n.language === code);
-            return (
-              <button
-                type="button"
-                key={code}
-                onClick={() => {
-                  void setLanguage(code).then(() => {
-                    flash(t("settings.languageSet"));
-                  });
-                }}
-                className={`py-6 px-13 rounded-pill cursor-pointer text-12 transition-all duration-220 hover:-translate-y-1 ${tone}`}
-              >
-                {t(`settings.lang.${code}`)}
-              </button>
-            );
-          })}
-        </div>
+        <ToggleGroup
+          aria-label={t("settings.language")}
+          value={[i18n.language]}
+          onValueChange={(next) => {
+            const picked = LANGUAGES.find((code: Language) => code === next.at(-1));
+            if (picked !== undefined) {
+              void setLanguage(picked).then(() => {
+                flash(t("settings.languageSet"));
+              });
+            }
+          }}
+          className="flex gap-5 flex-[0_0_auto]"
+        >
+          {LANGUAGES.map((code: Language) => (
+            <Toggle
+              key={code}
+              value={code}
+              className={`py-6 px-13 rounded-pill cursor-pointer text-12 transition-all duration-220 hover:-translate-y-1 ${pill(i18n.language === code)}`}
+            >
+              {t(`settings.lang.${code}`)}
+            </Toggle>
+          ))}
+        </ToggleGroup>
       </div>
     </div>
   );

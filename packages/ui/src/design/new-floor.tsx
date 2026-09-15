@@ -1,3 +1,4 @@
+import { Dialog } from "@base-ui/react/dialog";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -120,13 +121,12 @@ export function NewFloor(): React.JSX.Element | null {
               ? t("project.repoIsAll")
               : t("project.changeLater", { number: floors + 1 })}
           </span>
-          <button
-            type="button"
+          <Dialog.Close
             onClick={close}
             className={`hover:text-ink hover:border-border-hover hover:bg-raised ${CANCEL}`}
           >
             {t("common.cancel")}
-          </button>
+          </Dialog.Close>
           <button
             type="button"
             disabled={create.isPending}

@@ -32,7 +32,7 @@ export function FloorMenu({ onPicked }: { onPicked: () => void }): React.JSX.Ele
   return (
     <Popover.Portal>
       <Popover.Positioner className="z-70 outline-none" sideOffset={10} align="start">
-        <Popover.Popup className={PANEL}>
+        <Popover.Popup aria-label={t("project.floors")} className={PANEL}>
           <div className={SEARCH}>
             <svg
               className="stroke-ink-meta"

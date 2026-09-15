@@ -1,3 +1,4 @@
+import { Dialog } from "@base-ui/react/dialog";
 import { defaultChoice } from "@ho/core";
 import { EffortLevel, ProviderId, type AgentRole } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
@@ -83,13 +84,12 @@ function AgentDialogFoot({
           ? t("agent.nameFirst")
           : `${draft.provider} · ${draft.model} / ${draft.effort}`}
       </span>
-      <button
-        type="button"
+      <Dialog.Close
         onClick={onCancel}
         className={`hover:text-ink hover:border-border-hover hover:bg-raised ${CANCEL}`}
       >
         {t("common.cancel")}
-      </button>
+      </Dialog.Close>
       <button
         type="button"
         disabled={name === "" || busy}

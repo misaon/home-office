@@ -119,7 +119,7 @@ vulnerabilities in their locked npm trees. That is not a comprehensive OS-image 
 - Use focused libraries for maintained commodity logic where one exists and is alive: TinyQueue for the
   priority queue and TanStack Query for repeated request state. On 2026-09-15 the owner extended that
   rule deliberately: **Base UI is the single core for every office component that has a primitive** —
-  fifteen of the twenty did, and Tabs, Toast, the layout files and the office chrome did not, which the
+  sixteen of the twenty did, plus six the first inventory missed, and Toast, the layout files and the office chrome did not, which the
   [adoption plan](plans/2026-09-15-library-adoption.md) names one by one. It costs ~266 kB minified and
   it buys the keyboard, the ARIA and the placement the office was writing by hand, plus five fields of
   popover state and two invisible scrims that no longer exist. commander and simple-git came with it,

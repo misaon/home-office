@@ -165,6 +165,7 @@ export function FloorSource({
     <>
       <div className={`${CAP} text-9h mb-10`}>{t("project.whereCode")}</div>
       <RadioGroup
+        aria-label={t("project.whereCode")}
         value={draft.kind}
         onValueChange={(next) => {
           setDraft({ ...draft, kind: next === "git" ? "git" : "local", branch: "" });

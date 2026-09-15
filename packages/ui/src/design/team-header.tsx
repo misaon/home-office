@@ -55,6 +55,7 @@ export function TeamHeader({
         </button>
       </div>
       <FilterChips
+        label={t("team.filters")}
         chips={chips}
         value={teamFilter}
         onPick={(key) => {

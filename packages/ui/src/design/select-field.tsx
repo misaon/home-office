@@ -79,7 +79,7 @@ export function SelectField({
             alignItemWithTrigger={false}
           >
             <Select.Popup className={POPUP}>
-              <Select.List>
+              <Select.List aria-label={label}>
                 {options.map((option) => (
                   <Select.Item key={option} value={option} className={`group ${OPTION} ${type}`}>
                     <span className={DOT} />

@@ -1,3 +1,4 @@
+import { Dialog } from "@base-ui/react/dialog";
 import { useTranslation } from "react-i18next";
 import type { AgentDraft } from "./store.ts";
 import { DISPLAY, MONO } from "./tokens.ts";
@@ -32,9 +33,12 @@ export function AgentDialogHead({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-9 flex-wrap">
-          <span className={`${DISPLAY} font-bold text-21 tracking-tighter leading-title`}>
+          <Dialog.Title
+            className={`${DISPLAY} font-bold text-21 tracking-tighter leading-title`}
+            render={<span />}
+          >
             {isEdit ? (draft.name === "" ? t("agent.one") : draft.name) : t("agent.newTitle")}
-          </span>
+          </Dialog.Title>
           {isEdit ? (
             <span
               className={`${PILL} ${working ? "bg-accent-a10" : "bg-pill"} border ${working ? "border-accent-a30" : "border-border-strong"}`}
@@ -46,7 +50,9 @@ export function AgentDialogHead({
             </span>
           ) : null}
         </div>
-        <div className="text-12h text-ink-label mt-7 leading-prose text-pretty">{sub}</div>
+        <Dialog.Description className="text-12h text-ink-label mt-7 leading-prose text-pretty">
+          {sub}
+        </Dialog.Description>
       </div>
     </>
   );

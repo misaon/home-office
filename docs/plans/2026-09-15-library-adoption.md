@@ -56,32 +56,33 @@ rather than a reason to stop, but it is the price and it should be visible.
 
 ## The mapping: every component, and what it becomes
 
-| Ours                          | Lines | Base UI            | Verdict                                                                                                                                                        |
-| ----------------------------- | ----: | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dialog-sheet.tsx` (`Modal`)  |   131 | Dialog             | adopt — **and this is the risky one, see below**                                                                                                               |
-| `confirm.tsx`                 |   134 | AlertDialog        | adopt                                                                                                                                                          |
-| `lightbox.tsx`                |    64 | Dialog             | adopt                                                                                                                                                          |
-| `sheet-shell.tsx`             |    57 | Dialog             | adopt                                                                                                                                                          |
-| `select-field.tsx`            |    92 | Select             | adopt — the defect above                                                                                                                                       |
-| `chat-usage-menu.tsx`         |   120 | Menu               | adopt                                                                                                                                                          |
-| `floor-menu.tsx`              |    88 | Menu               | adopt                                                                                                                                                          |
-| `settings-floor-switches.tsx` |    90 | Switch             | adopt                                                                                                                                                          |
-| `pick-card.tsx`               |    59 | Radio + RadioGroup | adopt                                                                                                                                                          |
-| `agent-roles.tsx`             |   111 | Radio + RadioGroup | adopt                                                                                                                                                          |
-| `segmented.tsx`               |    31 | ToggleGroup        | adopt                                                                                                                                                          |
-| `filter-chips.tsx`            |    50 | ToggleGroup        | adopt                                                                                                                                                          |
-| `floor-row.tsx`               |    97 | Collapsible        | adopt                                                                                                                                                          |
-| `settings-cred-row.tsx`       |    57 | Collapsible        | adopt                                                                                                                                                          |
-| `setup-token-field.tsx`       |    94 | Field              | adopt                                                                                                                                                          |
-| `header-tabs.tsx`             |    48 | Tabs               | **no** — the five panels are not tab panels; `app.tsx` switches on a zustand `tab` field, and Tabs.Root wants to own that state and render Tabs.Panel children |
-| `toast.tsx`                   |    15 | Toast              | **no** — 15 lines against a Provider, a Viewport and a Root; Base UI's Toast alone is 96 kB                                                                    |
-| `controls.tsx`                |    55 | —                  | **no** — office chrome, no counterpart                                                                                                                         |
-| `panel.tsx`, `section.tsx`    |    56 | —                  | **no** — pure layout                                                                                                                                           |
-| `icons.tsx`                   |    69 | —                  | replaced by lucide-react instead                                                                                                                               |
+| Ours                          | Lines | Base UI            | Verdict                                                                                     |
+| ----------------------------- | ----: | ------------------ | ------------------------------------------------------------------------------------------- |
+| `dialog-sheet.tsx` (`Modal`)  |   131 | Dialog             | adopt — **and this is the risky one, see below**                                            |
+| `confirm.tsx`                 |   134 | AlertDialog        | adopt                                                                                       |
+| `lightbox.tsx`                |    64 | Dialog             | adopt                                                                                       |
+| `sheet-shell.tsx`             |    57 | Dialog             | adopt                                                                                       |
+| `select-field.tsx`            |    92 | Select             | adopt — the defect above                                                                    |
+| `chat-usage-menu.tsx`         |   120 | Menu               | adopt                                                                                       |
+| `floor-menu.tsx`              |    88 | Menu               | adopt                                                                                       |
+| `settings-floor-switches.tsx` |    90 | Switch             | adopt                                                                                       |
+| `pick-card.tsx`               |    59 | Radio + RadioGroup | adopt                                                                                       |
+| `agent-roles.tsx`             |   111 | Radio + RadioGroup | adopt                                                                                       |
+| `segmented.tsx`               |    31 | ToggleGroup        | adopt                                                                                       |
+| `filter-chips.tsx`            |    50 | ToggleGroup        | adopt                                                                                       |
+| `floor-row.tsx`               |    97 | Collapsible        | adopt                                                                                       |
+| `settings-cred-row.tsx`       |    57 | Collapsible        | adopt                                                                                       |
+| `setup-token-field.tsx`       |    94 | Field              | adopt                                                                                       |
+| `header-tabs.tsx`             |    48 | Tabs               | adopt — **this row said "no" and was wrong**, see the audit below                           |
+| `toast.tsx`                   |    15 | Toast              | **no** — 15 lines against a Provider, a Viewport and a Root; Base UI's Toast alone is 96 kB |
+| `controls.tsx`                |    55 | —                  | **no** — office chrome, no counterpart                                                      |
+| `panel.tsx`, `section.tsx`    |    56 | —                  | **no** — pure layout                                                                        |
+| `icons.tsx`                   |    69 | —                  | replaced by lucide-react instead                                                            |
 
-**15 of 20 adopt.** The five that do not are named with the reason rather than quietly skipped: "Base UI
-everywhere it has a primitive" is the instruction, and Tabs, Toast, layout and office chrome are where it
-does not have one that fits.
+**16 of 20 adopt**, and the inventory itself turned out to be incomplete — see the audit below. The four
+that do not are named with the reason rather than quietly skipped: "Base UI everywhere it has a
+primitive" is the instruction, and Toast, layout and office chrome are where it does not have one that
+fits.
 
 Beyond the files, the migration removes shared state: Base UI owns each popup's open flag and its
 outside-click, so the design store's `popover` field, the scrim in `app.tsx:73` and the **eight** places
@@ -230,3 +231,62 @@ Both times a measurement looked alarming it was the instrument first. The 97 % f
 launch token. And the earlier claim in this document that the select's list is clipped by its scroll
 container was withdrawn before any code was written, because the browser said it has 168 px of headroom.
 Check what the port is serving, and check what the query is selecting, before believing either.
+
+## The audit the owner asked for, 2026-09-15
+
+"Check that every component really is wired to Base UI, and to its documentation's best practices." The
+check was run against the browser's accessibility tree rather than against the source, because that is
+what a screen reader actually gets. It found six things.
+
+### Four controls had no accessible name
+
+Base UI's docs are explicit: Select says _"prefer `<Select.Label>`, or provide an `aria-label`"_; Switch,
+Radio and Checkbox each say _"form controls must have an accessible name"_; the ToggleGroup example
+carries `aria-label="Text alignment"`; every Popover example renders a `Popover.Title`. Read from
+`Accessibility.getFullAXTree`:
+
+| Control                           | Name before | Name after                                  |
+| --------------------------------- | ----------- | ------------------------------------------- |
+| `ToggleGroup` — board, team chips | «empty»     | "Filter the board by status"                |
+| `RadioGroup` — roles, sources     | «empty»     | "who they are" / "where does the code live" |
+| `Popover` — floor menu            | «empty»     | "Floors (projects)"                         |
+| `Select` listbox                  | «empty»     | the field's own label                       |
+
+The rest were already named, and the tree says so: `combobox` "PROVIDER"/"MODEL"/"EFFORT"/"SIGN-IN"/
+"GENDER" from `Select.Label`, `switch` "Open a pull request", `dialog` "New agent"/"New floor",
+`checkbox` "Bea worker · sonnet/high".
+
+### Three deviations from the documented anatomy
+
+- The dialogs were labelled by `aria-label` on the popup rather than by `Dialog.Title`, which the docs
+  list as part of the anatomy. The agent dialog's visible heading and subtitle are now `Dialog.Title` and
+  `Dialog.Description`; `Confirm` already used the AlertDialog equivalents. The dialogs with no visible
+  heading (Setup, the lightbox, the editor) keep `aria-label`, the documented fallback.
+- The Cancel buttons closed their dialogs through a callback. `Dialog.Close` is how Base UI spells that,
+  and the docs ask for _"a clear, targetable control to click to close"_.
+- The switches were named with `aria-label`; the docs' first example is _"an enclosing `<label>` is the
+  simplest labeling pattern"_, so they have one now, with the hint outside it so the name is the title.
+
+### The inventory had missed six components
+
+| Component                   | Now         | What it was                                                                                                                                                                                                 |
+| --------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `header-tabs.tsx`           | Tabs        | the plan claimed Tabs wanted to own the state and render Panels. It does not: the Root takes `value`/`onValueChange`. Measured after: `role="tablist"`, five `role="tab"`, ArrowRight and Home moving focus |
+| `settings-language.tsx`     | ToggleGroup | one-of-many, drawn as pills                                                                                                                                                                                 |
+| `editor/palette.tsx`        | ToggleGroup | one-of-many, with `aria-pressed` written by hand                                                                                                                                                            |
+| `fault-body.tsx` (the log)  | Collapsible | a disclosure with a chevron and a boolean                                                                                                                                                                   |
+| `chat-header.tsx` (search)  | Toggle      | a pressed state written as a ternary; `aria-pressed` true/false measured after                                                                                                                              |
+| `stage-camera.tsx` (follow) | Toggle      | the same                                                                                                                                                                                                    |
+
+### What is deliberately not on Base UI
+
+**28 files are.** What is left: plain action buttons (open a sheet, hire, remove, copy, save, reload,
+zoom, fit), plain text inputs and textareas, and layout. Nothing left holds toggle, selection, open or
+disclosure state — that was the test, and grepping for `aria-pressed`, a boolean `useState` or an
+`=== value` comparison outside the Base UI files now returns nothing.
+
+`toast.tsx` stays at 15 lines rather than becoming a Provider, a Viewport and a Root whose namespace
+alone measures 96 kB. `setup-token-field.tsx` and `settings-cred-form.tsx` stay plain: Base UI's Field
+earns its place by wiring a label, a description and validation to a control, and these have their
+captions drawn by a parent and no validation beyond a failed mutation. Base UI's `Button` exists, but
+over `<button type="button">` it adds only the handling for rendering a non-button element.

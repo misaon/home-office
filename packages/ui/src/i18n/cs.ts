@@ -69,6 +69,7 @@ export const cs: typeof en = {
     neutral: "neutrální",
   },
   board: {
+    filters: "Filtrovat nástěnku podle stavu",
     remove: "Odebrat",
     removeConfirm: "Sundat tento úkol z tabule?",
     clearTitle: "Uklidit hotovou práci",
@@ -218,6 +219,7 @@ export const cs: typeof en = {
     forgotten: "{{name}} zapomenuto",
   },
   team: {
+    filters: "Filtrovat tým podle stavu",
     intro: "Všichni na tomto podlaží. Kliknutím na kartu uvidíte, co dělají, nebo je nastavíte.",
     onFloor: "Na podlaží {{floor}}",
     working: "pracuje",

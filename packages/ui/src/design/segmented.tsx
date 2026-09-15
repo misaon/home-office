@@ -7,16 +7,20 @@ import { ToggleGroup } from "@base-ui/react/toggle-group";
  * the one that is already on, which this row does not want, so an empty answer keeps what was there.
  */
 export function Segmented<T extends string>({
+  label,
   value,
   options,
   onChange,
 }: {
+  /** What the row of choices is for; a toggle group carries its own name (Base UI's own example does). */
+  label: string;
   value: T;
   options: readonly { value: T; label: string }[];
   onChange: (next: T) => void;
 }): React.JSX.Element {
   return (
     <ToggleGroup
+      aria-label={label}
       value={[value]}
       onValueChange={(next) => {
         const picked = next.at(-1);

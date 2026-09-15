@@ -22,10 +22,13 @@ export type Chip<K extends string> = {
 };
 
 export function FilterChips<K extends string>({
+  label: groupLabel,
   chips,
   value,
   onPick,
 }: {
+  /** What the row narrows; a toggle group carries its own name. */
+  label: string;
   chips: readonly Chip<K>[];
   value: K;
   onPick: (key: K) => void;
@@ -33,6 +36,7 @@ export function FilterChips<K extends string>({
   const { t } = useTranslation();
   return (
     <ToggleGroup
+      aria-label={groupLabel}
       value={[value]}
       onValueChange={(next) => {
         const picked = next.at(-1);

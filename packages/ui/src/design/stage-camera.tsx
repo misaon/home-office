@@ -1,3 +1,4 @@
+import { Toggle } from "@base-ui/react/toggle";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentId } from "@ho/protocol";
@@ -60,18 +61,17 @@ function FollowBoss({
   const flash = useDesign((s) => s.flash);
   const [on, setOn] = useState(office?.following() === id);
   return (
-    <button
-      type="button"
-      onClick={() => {
-        const next = !on;
+    <Toggle
+      pressed={on}
+      onPressedChange={(next) => {
         setOn(next);
         office?.follow(next ? id : null);
         flash(next ? t("stage.following", { name }) : t("stage.released"));
       }}
-      className={`${WIDE} ${on ? "bg-accent-a16" : "bg-transparent"} ${on ? "text-accent-soft" : "text-ink-quiet"}`}
+      className={`${WIDE} bg-transparent text-ink-quiet data-pressed:bg-accent-a16 data-pressed:text-accent-soft`}
     >
       {t("stage.follow", { name })}
-    </button>
+    </Toggle>
   );
 }
 

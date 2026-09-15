@@ -84,7 +84,7 @@ export function UsageMenu({
     <Popover.Portal>
       <Popover.Positioner className="z-40 outline-none" sideOffset={10} side="top" align="end">
         <Popover.Popup className={POPOVER}>
-          <div className={`${CAPS} mb-12`}>{t("usage.chipTitle")}</div>
+          <Popover.Title className={`${CAPS} mb-12`}>{t("usage.chipTitle")}</Popover.Title>
           {fill === null ? (
             <div className="text-11h text-ink-meta mb-13">{t("usage.noRunning")}</div>
           ) : (
