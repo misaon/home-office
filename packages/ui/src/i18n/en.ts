@@ -93,6 +93,8 @@ export const en = {
     finished: "{{done}} of {{total}} tasks finished",
     handBack: "Hand back",
     moveToDone: "Move to done",
+    taskClosed: "This one is closed; nothing moves from here.",
+    taskNotStarted: "It can be finished once somebody is working on it.",
     unassigned: "unassigned",
     removeTitle: "Delete this task?",
     removeAction: "Delete task",

@@ -94,6 +94,8 @@ export const cs: typeof en = {
     finished: "Hotovo {{done}} z {{total}} úkolů",
     handBack: "Vrátit zpět",
     moveToDone: "Označit za hotové",
+    taskClosed: "Tenhle je uzavřený, dál se nikam neposune.",
+    taskNotStarted: "Dokončit se dá, až na něm někdo začne pracovat.",
     unassigned: "nepřiřazeno",
     removeTitle: "Smazat tento úkol?",
     removeAction: "Smazat úkol",

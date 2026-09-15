@@ -98,7 +98,10 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
   panel's entrance animation held `transform: none` as an identity matrix — both founding contexts that
   capped the popover under the sheet meant to dismiss it. Both predate the rewrite. Verified in a
   browser and held against the previous build over 28 states: only the four screens that were meant to
-  change did.
+  change did. An eighth followed: the task sheet drew "Move to done" and "Hand back" whatever state the
+  task was in, and `done` is reachable from `in_progress` and `review` alone — so on most tasks the
+  office answered the click with a rejection it had already decided. The sheet now draws the edges the
+  state machine actually has, and says why when it has none.
 
 - 2026-09-14 — Owner task: the whole design rewritten in Tailwind 4 — 594 inline style objects and 166
   style constants across 71 files became utility classes, and `design.css` (427 lines of reset, keyframes

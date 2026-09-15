@@ -1,3 +1,4 @@
+import { canTransition, isTerminal } from "@ho/core";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { Card, Floor } from "./data.ts";
@@ -8,12 +9,19 @@ import { useDesign } from "./store.ts";
 
 const TAG = `${MONO} text-9h py-4 px-9 rounded-6`;
 
-/** One task, opened up: what it is, who has it, and the two ways it can leave this state. */
+/**
+ * One task, opened up: what it is, who has it, and the ways it can actually leave this state. Only
+ * two of the state machine's edges are drawn here, and a task is rarely standing on both: `done` is
+ * reachable from `in_progress` and `review`, nothing else. Offering the other move anyway is how the
+ * sheet used to answer a click with an error the office had already ruled out.
+ */
 export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);
   const flash = useDesign((s) => s.flash);
   const tone = priority(task.p);
+  const canFinish = canTransition(task.status, "done");
+  const canResume = canTransition(task.status, "in_progress");
 
   const move = useMutation({
     mutationFn: (status: "done" | "in_progress") =>
@@ -39,28 +47,38 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
           {task.who === "" ? t("board.unassigned") : t("board.assignedTo", { name: task.who })}
         </div>
       </div>
-      <div className="flex gap-9">
-        <button
-          type="button"
-          disabled={move.isPending}
-          onClick={() => {
-            move.mutate("done");
-          }}
-          className={`hover:-translate-y-2 hover:shadow-lift ${PRIMARY}`}
-        >
-          {t("board.moveToDone")}
-        </button>
-        <button
-          type="button"
-          disabled={move.isPending}
-          onClick={() => {
-            move.mutate("in_progress");
-          }}
-          className="hover:text-accent-soft hover:border-accent-a45 py-11 px-15 rounded-11 border border-border-strong bg-transparent text-ink-quiet text-12h cursor-pointer whitespace-nowrap transition-all duration-200"
-        >
-          {t("board.handBack")}
-        </button>
-      </div>
+      {canFinish || canResume ? (
+        <div className="flex gap-9">
+          {canFinish ? (
+            <button
+              type="button"
+              disabled={move.isPending}
+              onClick={() => {
+                move.mutate("done");
+              }}
+              className={`hover:-translate-y-2 hover:shadow-lift ${PRIMARY}`}
+            >
+              {t("board.moveToDone")}
+            </button>
+          ) : null}
+          {canResume ? (
+            <button
+              type="button"
+              disabled={move.isPending}
+              onClick={() => {
+                move.mutate("in_progress");
+              }}
+              className="hover:text-accent-soft hover:border-accent-a45 py-11 px-15 rounded-11 border border-border-strong bg-transparent text-ink-quiet text-12h cursor-pointer whitespace-nowrap transition-all duration-200"
+            >
+              {t("board.handBack")}
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <div className="text-12h text-ink-meta leading-body">
+          {t(isTerminal(task.status) ? "board.taskClosed" : "board.taskNotStarted")}
+        </div>
+      )}
     </SheetShell>
   );
 }
