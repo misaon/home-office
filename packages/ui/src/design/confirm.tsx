@@ -16,9 +16,14 @@ const SHEET =
 
 const FOOT = "flex items-center justify-end gap-9 py-14 px-24 border-t border-line bg-foot";
 
-/** Carried over verbatim from before this dialog shared the office's modal; phase 3 settles it. */
-const BACKDROP =
-  "backdrop:bg-scrim-a74 backdrop:backdrop-blur-[10px] backdrop:animate-fade-280 backdrop:bg-scrim-a78 backdrop:backdrop-blur-[12px] backdrop:animate-fade-240";
+/**
+ * This dialog dims a shade further and settles a little sooner than the office's other sheets, because
+ * it is asking rather than showing. It used to say so twice over: the element carried both these three
+ * classes and the shared three, and Tailwind settles such a conflict by which rule it emits last, not
+ * by the order written — so two of the three that won were this dialog's own and the timing was the
+ * other dialogs', at 280 ms. These are the three it was written with.
+ */
+const BACKDROP = "backdrop:bg-scrim-a78 backdrop:backdrop-blur-[12px] backdrop:animate-fade-240";
 
 /** How bad this is, as one mark: a warning triangle, or a circle that only wants to be sure. */
 function AskMark({ danger }: { danger: boolean }): React.JSX.Element {
