@@ -38,7 +38,7 @@ export const en = {
     noToken: "This page carries no daemon token. Run `ho ui` to open the office with it.",
     addProject: "Add a project (a new floor)",
     editor: "Internal office editor (development builds only)",
-    setupSummary: "Docker, images, token, smoke test",
+    setupSummary: "Docker, images, token",
     setup: "Setup",
     emptyTitle: "Your office is empty",
     emptyBody:

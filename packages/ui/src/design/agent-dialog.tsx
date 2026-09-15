@@ -188,10 +188,6 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
     update((s) => ({ agentDraft: s.agentDraft === null ? null : { ...s.agentDraft, ...next } }));
   };
   const pickRole = (role: AgentRole): void => {
-    if (role === "boss" && boss !== undefined) {
-      flash(t("agent.bossTaken", { name: boss.name }));
-      return;
-    }
     if (role !== "boss" && editing?.role === "boss") {
       flash(t("agent.bossStays"));
       return;
@@ -239,7 +235,7 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
         <AgentDoing working={working} doing={editing.doing} since={editing.since} />
       ) : null}
       <div className={`${CAP} text-9h mb-10`}>{t("agent.whoTheyAre")}</div>
-      <RoleCards value={draft.role} bossName={boss?.name ?? null} onPick={pickRole} />
+      <RoleCards value={draft.role} bossTaken={boss !== undefined} onPick={pickRole} />
       <AgentDialogFields draft={draft} patch={patch} />
       <AgentPrompt
         value={draft.prompt}

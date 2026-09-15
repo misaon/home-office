@@ -6,7 +6,18 @@ import { useEffect, useRef } from "react";
  * brings the focus trap, Escape and the backdrop.
  */
 
-const CENTRE = "h-full flex items-center justify-center p-32";
+/** The room around the sheet. A `<dialog>` this size covers the viewport, so its own `::backdrop` is
+ *  never what the pointer lands on: this element is, and a click that stops here is a click outside. */
+export const CENTRE = "h-full flex items-center justify-center p-32";
+
+/** Closes when the click landed on the room and not on the sheet standing in it. */
+export const outside =
+  (close: () => void) =>
+  (event: React.MouseEvent<HTMLElement>): void => {
+    if (event.target === event.currentTarget) {
+      close();
+    }
+  };
 
 const GLOW =
   "absolute -top-90 -left-40 w-280 h-280 rounded-half bg-[radial-gradient(circle,var(--color-accent-a12),transparent_68%)] pointer-events-none";
@@ -68,9 +79,9 @@ export function DialogSheet({
         onClose();
       }}
     >
-      <div className={CENTRE}>
+      <div role="presentation" className={CENTRE} onClick={outside(onClose)}>
         <div
-          className="w-(--sheet) max-h-full overflow-y-auto scroller rounded-20 bg-dialog border border-border-sheet shadow-dialog animate-pop-440"
+          className="w-(--sheet) max-h-full overflow-y-auto rounded-20 bg-dialog border border-border-sheet shadow-dialog animate-pop-440"
           style={{ "--sheet": width }}
         >
           <div className="relative pt-24 px-26 pb-20 overflow-hidden">

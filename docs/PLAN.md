@@ -88,6 +88,18 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-15 — Owner task: seven things the office got wrong — A focus ring the browser drew inside the
+  border the office already draws (the drawing's global `:focus` reset had not survived the Tailwind
+  rewrite), the platform's light scrollbar on twelve of the thirteen surfaces that scroll (the same
+  rewrite made that rule opt-in and opted one in), a "Open full usage" button no click could reach, a
+  first-run step removed, the hire dialog cut to the roles this office hires here, dialogs that close
+  when the click lands beside them, and Lola at the reception given the pill every other character
+  wears. The unreachable button was two stacking contexts deep: `main` carried a z-index, and the
+  panel's entrance animation held `transform: none` as an identity matrix — both founding contexts that
+  capped the popover under the sheet meant to dismiss it. Both predate the rewrite. Verified in a
+  browser and held against the previous build over 28 states: only the four screens that were meant to
+  change did.
+
 - 2026-09-14 — Owner task: the whole design rewritten in Tailwind 4 — 594 inline style objects and 166
   style constants across 71 files became utility classes, and `design.css` (427 lines of reset, keyframes
   and thirty-six `!important` hover rules) was deleted. `packages/ui/src/design/app.css` is now the only

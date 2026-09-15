@@ -54,8 +54,11 @@ export function App(): React.JSX.Element {
       </div>
       <Header internal={DEV} hasFloors={hasFloors} />
       {empty ? <EmptyOffice /> : null}
+      {/* The drawing gave `main` a z-index, which founds a stacking context and caps every popover
+          inside the panel below the sheet that dismisses them; tree order alone already puts it above
+          the glows behind it. */}
       {hasFloors ? (
-        <main className="flex-1 flex min-h-0 relative z-10">
+        <main className="flex-1 flex min-h-0 relative">
           <Stage internal={DEV} />
           <Panel />
         </main>

@@ -39,7 +39,7 @@ export const cs: typeof en = {
     noToken: "Tato stránka nemá token daemona. Otevřete kancelář příkazem `ho ui`.",
     addProject: "Přidat projekt (nové podlaží)",
     editor: "Interní editor kanceláře (jen vývojové buildy)",
-    setupSummary: "Docker, image, token, kouřová zkouška",
+    setupSummary: "Docker, image, token",
     setup: "Průvodce",
     emptyTitle: "Kancelář je prázdná",
     emptyBody:

@@ -154,7 +154,7 @@ export function AgentPrompt({
         <span className="text-11 text-ink-meta">{t("agent.basePromptHint")}</span>
       </div>
       <textarea
-        rows={4}
+        rows={6}
         value={value}
         onChange={(e) => {
           onChange(e.target.value);

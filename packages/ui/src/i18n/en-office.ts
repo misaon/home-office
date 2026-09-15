@@ -29,6 +29,11 @@ export const enOffice = {
     zoomIn: "Zoom in",
     zoomOut: "Zoom out",
     editFloor: "Edit floor",
+    receptionist: "Lola",
+    atReception: "at the reception",
+    atMail: "at the mail counter",
+    carrying: "carrying a message to the boss",
+    handingOver: "handing it over",
   },
   usage: {
     contextLabel: "Context window",

@@ -315,8 +315,11 @@
   --animate-lift-400: lift 0.4s var(--ease-soft) both;
   --animate-lift-450: lift 0.45s var(--ease-soft) both;
 
-  --animate-slide-360: slide 0.36s var(--ease-soft) both;
-  --animate-slide-420: slide 0.42s var(--ease-soft) both;
+  /* `backwards` rather than `both`: the panel ends this slide exactly where it stands anyway, and a
+   * held `transform: none` still resolves to an identity matrix, which founds a stacking context and
+   * traps the popovers inside the panel under the sheet that dismisses them. */
+  --animate-slide-360: slide 0.36s var(--ease-soft) backwards;
+  --animate-slide-420: slide 0.42s var(--ease-soft) backwards;
 
   --animate-drawer: drawer 0.42s var(--ease-glide) both;
   --animate-drop-340: drop 0.34s var(--ease-pop-far) both;
@@ -493,31 +496,6 @@
 }
 
 /*
- * The office's own scrollbars. There is no utility for a scrollbar, so this is one: every pane that
- * scrolls wears `scroller`, which is stricter than the global rule it replaces and says on the element
- * itself that it is a scrolling surface.
- */
-@utility scroller {
-  &::-webkit-scrollbar {
-    width: 9px;
-    height: 9px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--color-glint-a13);
-    border-radius: 99px;
-    border: 2px solid transparent;
-    background-clip: content-box;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: var(--color-accent-a40);
-    background-clip: content-box;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-}
-
-/*
  * Three paints the office repeats, each drawn from the palette rather than written out again where it
  * is worn: the gold an avatar is made of, the dotted ground the floor sits on, and the delay a
  * staggered entrance reads from the element that sets it.
@@ -533,4 +511,39 @@
 
 @utility wait {
   animation-delay: var(--wait);
+}
+
+/*
+ * What the drawing reset that Tailwind's preflight does not, kept global because that is how it was
+ * drawn: a control the office paints its own focus for is not also ringed by the browser, and every
+ * surface that scrolls gets the office's thin bar rather than the platform's.
+ */
+@layer base {
+  input:focus,
+  textarea:focus,
+  select:focus,
+  button:focus {
+    outline: none;
+  }
+
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-glint-a13);
+    border-radius: var(--radius-pill);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent-a40);
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }

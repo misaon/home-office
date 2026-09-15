@@ -69,10 +69,6 @@ export const sortedFloors = (projects: ReadonlyMap<ProjectId, Project>): Project
     (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
   );
 
-/** The floor's boss from the snapshot; undefined only mid-removal. */
-export const bossOnFloor = (agents: Snapshot["agents"], floorId: ProjectId): Agent | undefined =>
-  [...agents.values()].find((a) => a.projectId === floorId && a.role === "boss");
-
 type UiState = {
   connection: Connection;
   /** True once the stored events were replayed; before that the office does not know whether floors exist. */
@@ -90,7 +86,7 @@ type UiState = {
   /** The floor (project) shown in the office and the side panels; null until the first project exists. */
   floorId: ProjectId | null;
   addProjectOpen: boolean;
-  /** The first-run checklist (Docker, images, token, smoke test). */
+  /** The first-run checklist (Docker, images, token). */
   setupOpen: boolean;
   setConnection: (connection: Connection) => void;
   setReplayed: (replayed: boolean) => void;

@@ -205,6 +205,13 @@ and each one had to be put back explicitly: `line-height: 1.5` on `<html>`, the 
 `<p>`'s block margins (72 px of lost height in the setup dialog alone), the checkbox margins, and
 `::placeholder`'s colour on eleven inputs.
 
+Two of the drawing's rules are global and stayed global, in `@layer base`: a form control that takes
+focus is not ringed by the browser on top of the border the office draws it, and every surface that
+scrolls gets the drawing's own 9 px bar. The first rewrite turned the scrollbar into an opt-in
+`@utility scroller` and reached one of the thirteen surfaces that scroll, which left the setup dialog
+wearing the platform's light bar; the focus rule was dropped altogether, so every input and button in
+the office showed Chrome's ring. Both were restored on 2026-09-15 with the drawing's own values.
+
 The CLI compiles `app.css` inside the Bun build: `scripts/ui-build.ts` registers an `onLoad` plugin for
 that one file, resolves `@tailwindcss/cli` through the package graph and spawns it, so the output that
 reaches the bundler is already the finished stylesheet. knip cannot see a binary that is spawned rather

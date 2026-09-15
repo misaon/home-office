@@ -68,8 +68,6 @@ export const csStaff: typeof enStaff = {
     basePromptHint: "jak pracuje, ne na čem pracuje",
     editSub: "Změny se projeví, až si agent příště vezme úkol na podlaží {{floor}}.",
     newSub: "Nová posila na podlaží {{floor}}. Šéf deleguje, pracanti berou jeden úkol po druhém.",
-    roleTaken: "teď {{name}}",
-    bossTaken: "{{name}} už je šéfem tohoto podlaží.",
     bossStays: "Šéf podlaží zůstává šéfem.",
     role_boss: "Šéf",
     role_worker: "Pracant",

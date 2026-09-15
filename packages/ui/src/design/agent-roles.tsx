@@ -1,11 +1,11 @@
-import { AgentRole } from "@ho/protocol";
+import type { AgentRole } from "@ho/protocol";
 import { useTranslation } from "react-i18next";
-import { MONO } from "./tokens.ts";
 
 /**
- * Who this colleague is, as four cards. The drawing has two — the boss and the worker it was drawn
- * against — and the office has four roles; the two extra cards are the same card, and their marks are
- * drawn in the same hand: one stroke weight, one corner radius, one 16-unit box.
+ * Who this colleague is. The office hires two of its four roles here — the boss, while the floor has
+ * none, and the worker — which is what the drawing shows. A reviewer or a clerk still exists (the CLI
+ * hires them, and a review needs one), so if this colleague is already one, their card is shown too
+ * rather than letting the dialog say they are something else.
  */
 
 const MARKS: Record<AgentRole, React.JSX.Element> = {
@@ -75,19 +75,13 @@ const CARD =
 
 const TICK = "absolute top-12 right-12 w-16 h-16 rounded-half bg-accent grid place-items-center";
 
-const TAKEN = `${MONO} text-9 py-2 px-6 rounded-5 bg-edge-lit text-ink-faint whitespace-nowrap`;
-
 function RoleCard({
   role,
   on,
-  taken,
-  takenBy,
   onPick,
 }: {
   role: AgentRole;
   on: boolean;
-  taken: boolean;
-  takenBy: string;
   onPick: () => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
@@ -95,7 +89,7 @@ function RoleCard({
     <button
       type="button"
       onClick={onPick}
-      className={`hover:-translate-y-2 hover:border-accent-a50 ${CARD} border ${on ? "border-accent-a45" : "border-border"} ${on ? "bg-accent-a07" : "bg-card"} ${taken && !on ? "opacity-72" : "opacity-100"}`}
+      className={`hover:-translate-y-2 hover:border-accent-a50 ${CARD} border ${on ? "border-accent-a45" : "border-border"} ${on ? "bg-accent-a07" : "bg-card"}`}
     >
       <span
         className={`w-30 h-30 rounded-10 grid place-items-center ${on ? "bg-accent-a16" : "bg-tile"} ${on ? "text-accent-soft" : "text-ink-faint"}`}
@@ -103,11 +97,10 @@ function RoleCard({
         {MARKS[role]}
       </span>
       <span className="block">
-        <span className="flex items-center gap-7 flex-wrap">
-          <span className={`text-13 font-semibold ${on ? "text-accent-soft" : "text-ink-warm"}`}>
-            {t(`agent.role_${role}`)}
-          </span>
-          {taken ? <span className={TAKEN}>{t("agent.roleTaken", { name: takenBy })}</span> : null}
+        <span
+          className={`block text-13 font-semibold ${on ? "text-accent-soft" : "text-ink-warm"}`}
+        >
+          {t(`agent.role_${role}`)}
         </span>
         <span className="block text-11h text-ink-meta mt-4 leading-body">
           {t(`agent.roleDesc_${role}`)}
@@ -133,26 +126,32 @@ function RoleCard({
   );
 }
 
-/** The four cards, with the floor's current boss named on the one that is already taken. */
+/** The boss only while the chair is free, the worker always, and this colleague's own role if it is
+ *  neither of those. */
+const offered = (value: AgentRole, bossTaken: boolean): AgentRole[] => {
+  const cards: AgentRole[] = bossTaken ? ["worker"] : ["boss", "worker"];
+  return cards.includes(value) ? cards : [...cards, value];
+};
+
+/** The cards this floor can hire, one row of them. */
 export function RoleCards({
   value,
-  bossName,
+  bossTaken,
   onPick,
 }: {
   value: AgentRole;
-  /** The boss of this floor, when it is somebody other than the agent being edited. */
-  bossName: string | null;
+  /** Whether this floor already has a boss other than the colleague being edited. */
+  bossTaken: boolean;
   onPick: (role: AgentRole) => void;
 }): React.JSX.Element {
+  const cards = offered(value, bossTaken);
   return (
-    <div className="grid grid-cols-2 gap-10 mb-18">
-      {AgentRole.options.map((role) => (
+    <div className={`grid gap-10 mb-18 ${cards.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+      {cards.map((role) => (
         <RoleCard
           key={role}
           role={role}
           on={role === value}
-          taken={role === "boss" && bossName !== null}
-          takenBy={bossName ?? ""}
           onPick={() => {
             onPick(role);
           }}

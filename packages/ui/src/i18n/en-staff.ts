@@ -66,8 +66,6 @@ export const enStaff = {
     basePromptHint: "how they work, not what they work on",
     editSub: "Changes apply the next time this agent picks up a task on {{floor}}.",
     newSub: "A new hire on {{floor}}. The boss delegates, workers take one task at a time.",
-    roleTaken: "now {{name}}",
-    bossTaken: "{{name}} is already the boss of this floor.",
     bossStays: "The floor's boss keeps the boss role.",
     role_boss: "Boss",
     role_worker: "Worker",

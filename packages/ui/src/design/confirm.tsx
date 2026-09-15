@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { DISPLAY } from "./tokens.ts";
+import { CENTRE, outside } from "./dialog-sheet.tsx";
 
 export type Ask = {
   title: string;
@@ -10,8 +11,6 @@ export type Ask = {
   danger?: boolean;
   act: () => void;
 };
-
-const CENTRE = "h-full flex items-center justify-center p-32";
 
 const SHEET =
   "w-[min(440px,100%)] rounded-18 bg-dialog border border-border-sheet shadow-sheet animate-pop-400";
@@ -127,7 +126,7 @@ export function Confirm({
         onClose();
       }}
     >
-      <div className={CENTRE}>
+      <div role="presentation" className={CENTRE} onClick={outside(onClose)}>
         <div className={SHEET}>
           <div className="flex gap-14 pt-22 px-24 pb-18">
             <AskMark danger={danger} />

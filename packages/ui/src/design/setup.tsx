@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 import { doctorQuery } from "../queries.ts";
 import { setupNeeded, setupReady } from "../setup/status.ts";
 import { DockerStep, ImagesStep, TokenStep } from "../setup/steps-environment.tsx";
-import { SmokeStep } from "../setup/steps-office.tsx";
 import { useOnline, useUi } from "../store.ts";
 import { DISPLAY } from "./tokens.ts";
+import { CENTRE, outside } from "./dialog-sheet.tsx";
 
 const DISMISSED_KEY = "ho.setup.dismissed";
 
@@ -41,8 +41,6 @@ export function useSetupAutoOpen(): void {
   }, [online, doctor, setSetupOpen]);
 }
 
-const CENTRE = "h-full flex items-center justify-center p-32";
-
 /** The checklist's own two header buttons, a size smaller than the ones the steps carry. */
 const QUIET =
   "py-8 px-13 rounded-10 border border-border-strong bg-transparent text-12 text-ink-quiet cursor-pointer whitespace-nowrap transition-all duration-200";
@@ -52,12 +50,11 @@ const SHEET =
 
 const HEAD = "pt-24 px-26 pb-20 border-b border-line flex items-start gap-16 flex-wrap";
 
-/** The four things a working office needs, each one able to say how it is doing. */
+/** The three things a working office needs, each one able to say how it is doing. */
 export function Setup(): React.JSX.Element {
   const { t } = useTranslation();
   const open = useUi((s) => s.setupOpen);
   const setSetupOpen = useUi((s) => s.setSetupOpen);
-  const floorId = useUi((s) => s.floorId);
   const online = useOnline();
   const query = useQuery({ ...doctorQuery, enabled: open && online });
   const doctor = query.data ?? null;
@@ -93,7 +90,7 @@ export function Setup(): React.JSX.Element {
         close();
       }}
     >
-      <div className={CENTRE}>
+      <div role="presentation" className={CENTRE} onClick={outside(close)}>
         <div className={SHEET}>
           <div className={HEAD}>
             <div className="flex-1 min-w-200">
@@ -124,7 +121,6 @@ export function Setup(): React.JSX.Element {
             <DockerStep doctor={doctor} refresh={refresh} />
             <ImagesStep doctor={doctor} refresh={refresh} />
             <TokenStep doctor={doctor} />
-            <SmokeStep key={floorId} ready={ready} />
           </div>
         </div>
       </div>
