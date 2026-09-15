@@ -55,7 +55,7 @@
     "ui:watch": "bun run scripts/ui-build.ts --watch",
     "desktop:prepare": "bun run scripts/desktop-prepare.ts",
     "desktop:dev": "bun run desktop:prepare && bun run scripts/devkit.ts dev",
-    "desktop:build": "bun run desktop:prepare && bun run scripts/devkit.ts build",
+    "desktop:build": "bun run desktop:prepare && bun run scripts/devkit.ts build && bun run scripts/desktop-sign.ts",
     "devkit": "bun run scripts/devkit.ts",
     "spike:task-engine": "bun run spikes/task-engine/src/run.ts",
     "spike:acp-mock": "bun run spikes/s6-acp-mock/src/run.ts",
