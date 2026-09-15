@@ -132,6 +132,7 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
     pr: project.publish.mode === "pull-request",
     issues: project.intake.enabled,
     services: project.services.enabled,
+    verify: project.verify.command,
     team: [...snapshot.agents.values()]
       .filter((a) => a.projectId === project.id)
       .toSorted((a, b) =>

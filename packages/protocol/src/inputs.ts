@@ -13,6 +13,7 @@ import {
   TaskPriority,
   TaskStatus,
   Usage,
+  VerifyPolicy,
 } from "./domain.ts";
 import { AgentId, ProjectId, SessionId, TaskId } from "./ids.ts";
 
@@ -25,6 +26,7 @@ const ProjectFields = Project.pick({
   publish: true,
   intake: true,
   services: true,
+  verify: true,
 });
 /**
  * A new floor. The daemon creates its boss (Andrew) in the same command; `importAgentIds` copies characters
@@ -76,6 +78,7 @@ const ProjectPatch = z
     publish: PublishPolicy,
     intake: IntakePolicy,
     services: ServicesPolicy,
+    verify: VerifyPolicy,
   })
   .partial();
 export const ProjectUpdateInput = z.object({ id: ProjectId, patch: ProjectPatch });

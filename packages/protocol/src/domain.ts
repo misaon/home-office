@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Attachments } from "./attachments.ts";
 import { AgentId, ChatMessageId, MailItemId, ProjectId, SessionId, TaskId } from "./ids.ts";
-import { IntakePolicy, PublishPolicy, ServicesPolicy } from "./policies.ts";
+import { IntakePolicy, PublishPolicy, ServicesPolicy, VerifyPolicy } from "./policies.ts";
 
 /** The per-project policies live in their own module; this one keeps them part of the domain surface. */
 export * from "./policies.ts";
@@ -182,6 +182,7 @@ export const Project = z.object({
   publish: PublishPolicy.prefault({}),
   intake: IntakePolicy.prefault({}),
   services: ServicesPolicy.prefault({}),
+  verify: VerifyPolicy.prefault({}),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });

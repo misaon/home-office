@@ -43,6 +43,16 @@ const common = (agent: Agent, project: Project): string[] => [
   "Keep tool output small: prefer targeted reads and greps over dumping files. Never print secrets.",
 ];
 
+/**
+ * The floor's own checks, named in the prompt so finishing has a definition the agent can act on rather
+ * than judge. MAST attributes 23.5 % of multi-agent failures to verification, premature termination
+ * among them (arXiv 2503.13657, read 2026-09-15).
+ */
+const verifyGuide = (project: Project): string =>
+  project.verify.command === ""
+    ? ""
+    : `Done means \`${project.verify.command}\` passes. Run it yourself before you report; the office runs it again on your commits and sends the work back to you with the output if it fails.`;
+
 const WORK_PROTOCOL = [
   "Protocol: when the work is committed, call the MCP tool ho_report (status review or blocked, summary under 1500 characters) and stop.",
   "If you are truly stuck on a decision only the human can make, commit what you have and call ho_ask_human, then stop; you will be resumed with the answer.",
@@ -68,6 +78,7 @@ const workPrompt = (f: SessionFacts): string[] => [
   browserGuide(f.browser),
   servicesGuide(f.services),
   `Task: ${f.task.title}`,
+  verifyGuide(f.project),
   filesGuide(f.files),
   ...WORK_PROTOCOL,
 ];
@@ -77,6 +88,9 @@ const reviewPrompt = (f: SessionFacts): string[] => [
   browserGuide(f.browser),
   servicesGuide(f.services),
   `Start with \`git -C ${REPO_IN_VOLUME} diff ${f.project.defaultBranch}...HEAD --stat\` and then the full diff; read surrounding code only where needed.`,
+  verifyGuide(f.project) === ""
+    ? ""
+    : `The office already ran \`${f.project.verify.command}\` on this branch and it passed; review what the checks cannot see.`,
   "Check correctness, safety, adherence to the task brief and the repository's conventions; do not modify files.",
   `Task under review: ${f.task.title}`,
   "Protocol: call the MCP tool ho_review exactly once with verdict approve or request_changes and numbered findings (file:line), then stop.",

@@ -156,6 +156,7 @@ export const projectCommand: Command = {
         pr: "on|off",
         draft: "on|off",
         intake: "on|off",
+        verify: "<command>",
         labels: "a,b",
         interval: "<seconds>",
         "dry-run": "on|off",
@@ -167,6 +168,10 @@ export const projectCommand: Command = {
           id: current.id,
           patch: compact({
             defaultBranch: str(parsed, "branch"),
+            verify:
+              str(parsed, "verify") === undefined
+                ? undefined
+                : { ...current.verify, command: str(parsed, "verify") ?? "" },
             publish: publishFrom(
               onOff(str(parsed, "pr")),
               onOff(str(parsed, "draft")),
@@ -185,7 +190,7 @@ export const projectCommand: Command = {
         });
         return output(
           [
-            `floor ${colour.bold(updated.name)}: branch ${updated.defaultBranch}, delivery ${updated.publish.mode}, intake ${updated.intake.enabled ? "on" : "off"}`,
+            `floor ${colour.bold(updated.name)}: branch ${updated.defaultBranch}, delivery ${updated.publish.mode}, intake ${updated.intake.enabled ? "on" : "off"}, checks ${updated.verify.command === "" ? "off" : updated.verify.command}`,
           ],
           updated,
         );

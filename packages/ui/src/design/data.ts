@@ -68,6 +68,8 @@ export type Floor = {
   pr: boolean;
   issues: boolean;
   services: boolean;
+  /** The floor's own checks, as its `.ho/config.json` states them; empty means no gate. */
+  verify: string;
   team: Member[];
   cards: Card[];
   messages: Message[];

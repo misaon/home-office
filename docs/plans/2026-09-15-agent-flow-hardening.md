@@ -38,11 +38,11 @@ finding that all 18 frontier models tested degrade as input length grows, with t
 annotated 1 600+ traces across seven frameworks (inter-annotator κ = 0.88) and produced 14 failure
 modes in three groups:
 
-| Group | Share | Worst modes |
-| --- | --- | --- |
-| System design | 44.2 % | step repetition 15.7 %, unaware of termination conditions 12.4 %, disobey task specification 11.8 % |
-| Inter-agent misalignment | 32.3 % | reasoning–action mismatch 13.2 %, task derailment 7.4 %, fail to ask for clarification 6.8 % |
-| Task verification | 23.5 % | incorrect verification 9.1 %, no or incomplete verification 8.2 %, premature termination 6.2 % |
+| Group                    | Share  | Worst modes                                                                                         |
+| ------------------------ | ------ | --------------------------------------------------------------------------------------------------- |
+| System design            | 44.2 % | step repetition 15.7 %, unaware of termination conditions 12.4 %, disobey task specification 11.8 % |
+| Inter-agent misalignment | 32.3 % | reasoning–action mismatch 13.2 %, task derailment 7.4 %, fail to ask for clarification 6.8 %        |
+| Task verification        | 23.5 % | incorrect verification 9.1 %, no or incomplete verification 8.2 %, premature termination 6.2 %      |
 
 The intervention study is the reason this plan changes mechanisms rather than wording: refined prompts
 and adjusted topologies moved success by only **+9.4 % to +15.6 %**, and the authors concluded that
@@ -150,18 +150,18 @@ containment, not detection.
 
 ## What Home Office does today
 
-| Concern | Today | Where |
-| --- | --- | --- |
-| Turn budget | `maxTurnsPerTask` default 60, passed as `--max-turns` | `packages/daemon/src/session-run.ts` |
-| Turn exhaustion | Detected as `error_max_turns` → `{kind:"error",code:"max_turns"}` | `packages/runtime-claude-code/src/stream-json.ts` |
-| State between sessions | Task notes in the event log; the opening message lists notes since the last session | `packages/daemon/src/prompts.ts` |
-| Verification | `ho_report` takes a free-text summary and is believed | `packages/daemon/src/mcp-tools.ts` |
-| Review | Optional; `findings` is free text up to 4 000 chars; `maxReviewRounds` default 2 | `packages/protocol/src/mcp.ts`, `packages/core/src/commands/review.ts` |
-| Brief | One free-text blob up to 8 000 chars | `packages/protocol/src/mcp.ts` |
-| Skills | `--plugin-dir` for Claude Code only; the ACP runtime reports `plugins: []` | `packages/runtime-claude-code/src/command.ts`, `packages/runtime-acp/src/prompt.ts` |
-| MCP transport | One server per request, `enableJsonResponse`, bearer token per session | `packages/daemon/src/mcp.ts` |
-| Task volume | `/work` persists across sessions; `/work/repo` is the checkout | `packages/daemon/src/git-bridge.ts` |
-| Observability | Domain events + a live runtime stream; no traces, no evals | — |
+| Concern                | Today                                                                               | Where                                                                               |
+| ---------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Turn budget            | `maxTurnsPerTask` default 60, passed as `--max-turns`                               | `packages/daemon/src/session-run.ts`                                                |
+| Turn exhaustion        | Detected as `error_max_turns` → `{kind:"error",code:"max_turns"}`                   | `packages/runtime-claude-code/src/stream-json.ts`                                   |
+| State between sessions | Task notes in the event log; the opening message lists notes since the last session | `packages/daemon/src/prompts.ts`                                                    |
+| Verification           | `ho_report` takes a free-text summary and is believed                               | `packages/daemon/src/mcp-tools.ts`                                                  |
+| Review                 | Optional; `findings` is free text up to 4 000 chars; `maxReviewRounds` default 2    | `packages/protocol/src/mcp.ts`, `packages/core/src/commands/review.ts`              |
+| Brief                  | One free-text blob up to 8 000 chars                                                | `packages/protocol/src/mcp.ts`                                                      |
+| Skills                 | `--plugin-dir` for Claude Code only; the ACP runtime reports `plugins: []`          | `packages/runtime-claude-code/src/command.ts`, `packages/runtime-acp/src/prompt.ts` |
+| MCP transport          | One server per request, `enableJsonResponse`, bearer token per session              | `packages/daemon/src/mcp.ts`                                                        |
+| Task volume            | `/work` persists across sessions; `/work/repo` is the checkout                      | `packages/daemon/src/git-bridge.ts`                                                 |
+| Observability          | Domain events + a live runtime stream; no traces, no evals                          | —                                                                                   |
 
 Two things are already right and should not be "fixed": the MCP gateway is effectively stateless, which
 is where the 2026-07-28 spec went; and tools are namespaced `ho_*`, which is what the tool-design
@@ -203,6 +203,20 @@ execution path. This is the single most important invariant of the phase.
 
 Done when: a task whose checks fail cannot reach `done`, the failing output is visible on the task, and
 a floor with no `verify` behaves exactly as it does today.
+
+**Verified 2026-09-15**, `recordVerificationFailure` driven against an in-memory model with
+`maxAttempts: 2`, output as printed:
+
+```
+attempt 1: status=assigned notes=1 lastNoteStartsWithMarker=true
+attempt 2: status=blocked notes=2 lastNoteStartsWithMarker=true
+exported verify: {"command":"bun run check","timeoutSeconds":900,"maxAttempts":2}
+round-trips through the schema: true
+```
+
+Not verified: the container run itself. `runVerify` builds a one-shot sandbox spec from the agent image
+and typechecks, but proving it end to end needs Docker, a built agent image and a provider token, so it
+is exercised the first time a real floor sets `verify`.
 
 ### Phase 2 — structured briefs
 

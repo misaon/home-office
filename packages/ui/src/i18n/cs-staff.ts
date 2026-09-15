@@ -52,6 +52,8 @@ export const csStaff: typeof enStaff = {
     configNone: "Tenhle repozitář žádný .ho/config.json nemá.",
     configNothing: "Není co měnit.",
     configWrote: "Zapsáno do {{path}}",
+    verifyNone: "Žádné kontroly — práce se publikuje jen na slovo agenta.",
+    verifyCommand: "Kontroly před publikací: {{command}}",
     pullRequests: "Otevírat pull request",
     pullRequestsHint:
       "Zapnuto: hotová práce přijde jako pull request. Vypnuto: branch se jen pushne a nic dalšího se neděje.",
