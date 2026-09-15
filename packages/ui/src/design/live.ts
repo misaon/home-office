@@ -1,6 +1,5 @@
 import { chatOf } from "@ho/core";
 import {
-  isSessionActive,
   type Agent,
   type AgentId,
   type ProjectId,
@@ -11,7 +10,7 @@ import {
   type TaskStatus,
 } from "@ho/protocol";
 import { useEffect, useState } from "react";
-import { useUi, type Snapshot } from "../store.ts";
+import { activeSessionOf, sortedFloors, useUi, type Snapshot } from "../store.ts";
 
 /**
  * A clock that ticks rather than being read mid-render: how long ago a session started has to keep
@@ -50,19 +49,22 @@ const laneOf = (status: TaskStatus): Lane =>
 
 const pad = (v: number): string => String(v).padStart(2, "0");
 
-const clock = (iso: string): string => {
+/** The wall clock, to the minute where the board writes it and to the second where the chat does. */
+const clock = (iso: string, seconds = false): string => {
   const at = new Date(iso);
-  return `${pad(at.getHours())}:${pad(at.getMinutes())}`;
+  const parts = seconds
+    ? [at.getHours(), at.getMinutes(), at.getSeconds()]
+    : [at.getHours(), at.getMinutes()];
+  return parts.map((v) => pad(v)).join(":");
 };
 
-const stamp = (iso: string): string => {
-  const at = new Date(iso);
-  return `${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}`;
-};
+/** How long ago, in whole minutes and never negative; both ways of writing an age start here. */
+const minutesSince = (iso: string, now: number): number =>
+  Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000));
 
 /** "41 minutes", the way the drawing writes an age. */
 const since = (iso: string, now: number): string => {
-  const minutes = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000));
+  const minutes = minutesSince(iso, now);
   if (minutes < 60) {
     return `${String(minutes)} min`;
   }
@@ -74,9 +76,7 @@ const repoPath = (project: Project): string =>
   project.repo.kind === "local" ? project.repo.path : project.repo.url;
 
 function memberOf(agent: Agent, snapshot: Snapshot, now: number): Member {
-  const session = [...snapshot.sessions.values()].find(
-    (s) => s.agentId === agent.id && isSessionActive(s.state),
-  );
+  const session = activeSessionOf(snapshot, agent.id);
   const task = session === undefined ? undefined : snapshot.tasks.get(session.taskId);
   return {
     id: agent.id,
@@ -117,9 +117,9 @@ function messageOf(message: ChatMessage, snapshot: Snapshot): Message {
     id: message.id,
     mine,
     ...(who === undefined ? {} : { who }),
-    time: stamp(message.at),
+    time: clock(message.at, true),
     text: message.text,
-    ...(first === undefined ? {} : { img: first.name, attachment: first }),
+    ...(first === undefined ? {} : { attachment: first }),
   };
 }
 
@@ -148,7 +148,7 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
 
 /** "now", "-18m", "-2h": how the drawing writes the age of something that already happened. */
 const ago = (iso: string, now: number): string => {
-  const minutes = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000));
+  const minutes = minutesSince(iso, now);
   if (minutes < 1) {
     return "now";
   }
@@ -170,9 +170,7 @@ export function useBossSession(
   if (boss === undefined) {
     return null;
   }
-  const session = [...snapshot.sessions.values()].find(
-    (s) => s.agentId === boss.id && isSessionActive(s.state),
-  );
+  const session = activeSessionOf(snapshot, boss.id);
   if (session === undefined) {
     return null;
   }
@@ -198,16 +196,20 @@ export function useAgentWork(agentId: AgentId): { t: string; x: string }[] {
 export function useFloors(): Floor[] {
   const snapshot = useUi((s) => s.snapshot);
   const now = useNow();
-  return [...snapshot.projects.values()]
-    .toSorted((a, b) => a.createdAt.localeCompare(b.createdAt))
-    .map((project) => floorOf(project, snapshot, now));
+  return sortedFloors(snapshot.projects).map((project) => floorOf(project, snapshot, now));
 }
 
-/** The floor every panel is talking about; null until the office has its first project. */
+/**
+ * The floor every panel is talking about; null until the office has its first project. Eight components
+ * ask for it, so it dresses that one project rather than dressing every floor and picking one out.
+ */
 export function useFloor(): Floor | null {
-  const floors = useFloors();
+  const snapshot = useUi((s) => s.snapshot);
   const floorId = useUi((s) => s.floorId);
-  return floors.find((f) => f.id === floorId) ?? floors[0] ?? null;
+  const now = useNow();
+  const chosen = floorId === null ? undefined : snapshot.projects.get(floorId);
+  const project = chosen ?? sortedFloors(snapshot.projects)[0];
+  return project === undefined ? null : floorOf(project, snapshot, now);
 }
 
 /** The floor's boss, who is the one the human talks to. */
