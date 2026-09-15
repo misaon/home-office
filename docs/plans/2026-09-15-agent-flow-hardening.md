@@ -261,6 +261,30 @@ against the published spec (`name` matching the directory, ≤ 64 chars; `descri
 Done when: an OpenCode or Codex session can list and read the same skills a Claude Code session gets,
 and a malformed `SKILL.md` fails the repository's own check.
 
+**Verified 2026-09-15**, `SkillLibrary` driven against the shipped packs:
+
+```
+boss: agentic-engineering, context-budget, search-first
+worker: bun-runtime, coding-standards, error-handling, git-workflow, verification-loop
+reviewer: coding-standards, security-review, verification-loop
+none: (none)
+worker index size: 459 chars
+worker all bodies: 5889 chars
+escape "../../../etc/passwd" -> no file "../../../etc/passwd" in skill "bun-runtime"
+escape "/etc/passwd" -> no file "/etc/passwd" in skill "bun-runtime"
+escape "references/../../SKILL.md" -> no file "references/../../SKILL.md" in skill "bun-runtime"
+escape "notadir/x.md" -> no file "notadir/x.md" in skill "bun-runtime"
+unknown skill -> no skill "nope" in this session
+```
+
+So the index a session pays for at discovery is **459 characters against 5 889** of full bodies for the
+worker pack — measured in characters, not tokens, because nothing here tokenised them. `bun run
+skills:check` validated all eleven shipped skills against the published format.
+
+Not verified: a real OpenCode or Codex session calling the tools, which needs those providers'
+credentials. The tools are provider-agnostic MCP, and the runtimes are MCP clients, but that is an
+argument rather than a measurement.
+
 ### Phase 4 — horizon and the progress artifact
 
 - The agent writes `/work/state/progress.md` and `/work/state/plan.json` — outside `/work/repo`, so they

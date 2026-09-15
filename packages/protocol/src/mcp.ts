@@ -103,3 +103,18 @@ export const HoReplyInput = z.object({
     ),
 });
 export type HoReplyInput = z.infer<typeof HoReplyInput>;
+
+/** A skill is addressed by its own name, which the Agent Skills format keeps equal to its directory. */
+export const HoGetSkillInput = z.object({
+  name: z.string().min(1).max(64).describe("Skill name exactly as ho_list_skills reported it"),
+});
+export type HoGetSkillInput = z.infer<typeof HoGetSkillInput>;
+
+export const HoGetSkillFileInput = HoGetSkillInput.extend({
+  path: z
+    .string()
+    .min(1)
+    .max(200)
+    .describe("Bundled file path as ho_get_skill listed it, e.g. references/REFERENCE.md"),
+});
+export type HoGetSkillFileInput = z.infer<typeof HoGetSkillFileInput>;

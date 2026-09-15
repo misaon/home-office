@@ -37,10 +37,20 @@ const filesGuide = (files: readonly Attachment[]): string =>
     ? ""
     : `Files from the human, read-only in ${CHAT_INBOX_DIR}: ${files.map((f) => f.name).join(", ")}.`;
 
+/**
+ * Claude Code loads the packs itself through `--plugin-dir`, so naming the tools there would offer two
+ * routes to one thing. Every other provider only has the tools, and has to be told they exist.
+ */
+const skillsGuide = (agent: Agent): string =>
+  agent.provider === "claude-code" || agent.skillPack === "none"
+    ? ""
+    : "Skills: call ho_list_skills once at the start for the short index of what you know, then ho_get_skill for the one that matches the work, and ho_get_skill_file only where that skill sends you. Do not read them all.";
+
 const common = (agent: Agent, project: Project): string[] => [
   `You are ${agent.name}, ${agent.role === "boss" ? "the boss of" : `a ${agent.role} on`} the floor "${project.name}" at Home Office (one floor per project; this floor's repository is "${project.name}").`,
   agent.basePrompt.trim(),
   "Keep tool output small: prefer targeted reads and greps over dumping files. Never print secrets.",
+  skillsGuide(agent),
 ];
 
 /**
