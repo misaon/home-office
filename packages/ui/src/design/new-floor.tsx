@@ -1,5 +1,4 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { hintFor, typedIn, useRepoInspection, type RepoDraft } from "./add-project-inspect.ts";
@@ -10,7 +9,7 @@ import { FloorSource } from "./new-floor-source.tsx";
 import { type Client, requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
 import { DISPLAY } from "./tokens.ts";
-import { useDesign } from "./store.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
 
 const EMPTY: RepoDraft = {
   kind: "local",
@@ -79,7 +78,7 @@ export function NewFloor(): React.JSX.Element | null {
     setOpen(false);
     setDraft(EMPTY);
   };
-  const create = useMutation({
+  const create = useOfficeMutation({
     mutationFn: (input: Parameters<Client["projects"]["create"]>[0]) =>
       requireClient().projects.create(input),
     onSuccess: (project) => {
@@ -87,9 +86,6 @@ export function NewFloor(): React.JSX.Element | null {
       close();
       set({ tab: "Team" });
       flash(t("project.created", { name: project.name }));
-    },
-    onError: (error: Error) => {
-      flash(error.message);
     },
   });
 

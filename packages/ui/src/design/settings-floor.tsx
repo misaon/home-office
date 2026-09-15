@@ -1,5 +1,4 @@
 import { Accordion } from "@base-ui/react/accordion";
-import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
@@ -7,7 +6,7 @@ import { ChevronRight } from "lucide-react";
 import { FloorSwitches } from "./settings-floor-switches.tsx";
 import { useUi } from "../store.ts";
 import { MONO, separator } from "./tokens.ts";
-import { useDesign } from "./store.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
 
 const HEAD =
   "w-full flex items-center gap-10 p-13 border-0 bg-transparent cursor-pointer text-left transition-[background] duration-200";
@@ -37,13 +36,10 @@ export function SettingsFloor({
   const confirm = useDesign((s) => s.confirm);
   const openTasks = floor.cards.filter((x) => x.s !== "done").length;
 
-  const remove = useMutation({
+  const remove = useOfficeMutation({
     mutationFn: () => requireClient().projects.remove({ id: floor.id }),
     onSuccess: () => {
       flash(t("project.removed", { name: floor.name }));
-    },
-    onError: (error: Error) => {
-      flash(error.message);
     },
   });
 
