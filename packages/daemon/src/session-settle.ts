@@ -141,7 +141,15 @@ export async function settle(
       return;
     }
     case "triage": {
-      if (outcome.report.trim() !== "" && !mcp.replied(provisioned.mcpToken)) {
+      // A triage task that blocks is announced by the boss, and without a filed report the reason he
+      // reads out is this very text — so posting it here as well says the same sentence twice. That is
+      // what a failed prompt looks like: the runtime's error is both the "report" and the reason.
+      const bossWillReadItOut = blocked && filed === null;
+      if (
+        !bossWillReadItOut &&
+        outcome.report.trim() !== "" &&
+        !mcp.replied(provisioned.mcpToken)
+      ) {
         await office
           .execute(actor, (m, c) =>
             postAgentMessage(m, ctx.agent.id, outcome.report, ctx.task.id, c),

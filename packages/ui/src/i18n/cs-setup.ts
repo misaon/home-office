@@ -18,7 +18,7 @@ export const csSetup: typeof enSetup = {
     imagesStale: "neaktuální: {{refs}}",
     tokenIntro:
       "Zaměstnanci se přihlašují vaším předplatným Claude. V terminálu spusťte <code>claude setup-token</code>, dokončete přihlášení v prohlížeči a vložte vypsaný token. Uloží se do úložiště přihlašovacích údajů tohoto stroje (Keychain, libsecret nebo Credential Manager) a předá se jedině procesu <code>claude</code> v sandboxu.",
-    tokenStored: "uloženo v nastaveném úložišti tajemství",
+    tokenStored: "uloženo v nastaveném úložišti; jestli pořád platí, se pozná až při prvním sezení",
     tokenMissing: "token předplatného Claude ještě není",
     title: "Nastavte si kancelář",
     recheck: "Zkontrolovat znovu",

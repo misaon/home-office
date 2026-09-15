@@ -88,6 +88,18 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-15 — Owner question: why two answers, and why does the model not answer at all — A failed
+  triage said the same sentence twice: `settle` posted the runtime's own text as the boss's reply, then
+  filed it as the reason the task blocked, and the boss reads that reason out. The event log shows both
+  writes back to back (`chat.message_posted`, then `task.status_changed` to blocked with the same text,
+  then `chat.message_posted` again). The boss's line is the one that belongs in a chat, so the raw text
+  is no longer posted when he is about to read it out. The 401 itself is not the office's doing: the
+  sandbox receives exactly one credential (`CLAUDE_CODE_OAUTH_TOKEN`, trimmed by both the CLI and the
+  UI, with no host environment inherited), so Anthropic is rejecting the token. The checklist could
+  never have caught that — `doctor.secrets.anthropicOauthToken` is a presence check — and the step that
+  did try the token end to end was the smoke test, removed earlier the same day. The step now says what
+  it verifies rather than implying the token works.
+
 - 2026-09-15 — Owner task: seven things the office got wrong — A focus ring the browser drew inside the
   border the office already draws (the drawing's global `:focus` reset had not survived the Tailwind
   rewrite), the platform's light scrollbar on twelve of the thirteen surfaces that scroll (the same

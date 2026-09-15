@@ -16,7 +16,8 @@ export const enSetup = {
     imagesStale: "out of date: {{refs}}",
     tokenIntro:
       "Agents sign in with your Claude subscription. In a terminal run <code>claude setup-token</code>, finish the browser login it opens and paste the token it prints. It is stored in this machine’s credential store (Keychain, libsecret or Credential Manager) and only ever handed to the <code>claude</code> process inside a sandbox.",
-    tokenStored: "stored in the configured secret store",
+    tokenStored:
+      "stored in the configured secret store; the first session tells whether it still works",
     tokenMissing: "no Claude subscription token yet",
     title: "Set up your office",
     recheck: "Re-check",
