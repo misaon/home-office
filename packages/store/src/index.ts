@@ -154,7 +154,7 @@ export async function openEventStore(
       return Promise.resolve(stored);
     },
     // oxlint-disable-next-line typescript/require-await -- bun:sqlite is synchronous; the port is async for remote backends
-    read: async function* (afterSeq = -1) {
+    async *read(afterSeq = -1) {
       let cursor = afterSeq;
       for (;;) {
         const rows = after.all(cursor, BATCH);

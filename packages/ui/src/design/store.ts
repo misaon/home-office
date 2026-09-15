@@ -111,4 +111,4 @@ export const useDesign = create<Design>((set) => ({
 }));
 
 /** Thin spaces between thousands, the way the design writes every number. */
-export const fmt = (n: number): string => String(n).replaceAll(/\B(?=(\d{3})+(?!\d))/gu, " ");
+export const fmt = (n: number): string => String(n).replaceAll(/\B(?=(?:\d{3})+(?!\d))/gu, " ");

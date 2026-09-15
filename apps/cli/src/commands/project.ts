@@ -100,9 +100,8 @@ export const projectCommand: Command = {
     inspect: {
       strings: { path: "<dir>", url: "<git-url>" },
       run: async (parsed, client) => {
-        const seen = await (
-          await client()
-        ).projects.inspect({
+        const rpc = await client();
+        const seen = await rpc.projects.inspect({
           repo: repoFrom(str(parsed, "path"), str(parsed, "url")),
         });
         return output(
@@ -128,7 +127,10 @@ export const projectCommand: Command = {
           DEFAULT_PUBLISH,
         );
         const importAgentIds = await Promise.all(
-          list(parsed, "import").map(async (ref) => (await findAgent(rpc, ref)).id),
+          list(parsed, "import").map(async (ref) => {
+            const agent = await findAgent(rpc, ref);
+            return agent.id;
+          }),
         );
         const created = await rpc.projects.create({
           name: parsed.positionals[0] ?? inspection.name,

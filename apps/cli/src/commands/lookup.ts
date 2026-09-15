@@ -30,10 +30,12 @@ export const pick = <T extends { id: string; name?: string }>(
 };
 
 /** Floors in creation order: the first project is floor 1. */
-export const sortedProjects = async (client: HoClient): Promise<Project[]> =>
-  (await client.projects.list()).toSorted(
+export const sortedProjects = async (client: HoClient): Promise<Project[]> => {
+  const projects = await client.projects.list();
+  return projects.toSorted(
     (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
   );
+};
 
 /** A floor by name, id, id prefix or floor number (1 is the first project). */
 export const findProject = async (client: HoClient, ref: string): Promise<Project> => {
@@ -47,12 +49,19 @@ export const findProject = async (client: HoClient, ref: string): Promise<Projec
 export const projectIdOf = async (
   client: HoClient,
   ref: string | undefined,
-): Promise<ProjectId | undefined> =>
-  ref === undefined ? undefined : (await findProject(client, ref)).id;
+): Promise<ProjectId | undefined> => {
+  if (ref === undefined) {
+    return undefined;
+  }
+  const project = await findProject(client, ref);
+  return project.id;
+};
 
 /** Floor names by id, for lists that show where something lives. */
-export const projectNames = async (client: HoClient): Promise<Map<ProjectId, string>> =>
-  new Map((await client.projects.list()).map((p) => [p.id, p.name]));
+export const projectNames = async (client: HoClient): Promise<Map<ProjectId, string>> => {
+  const projects = await client.projects.list();
+  return new Map(projects.map((p) => [p.id, p.name]));
+};
 
 /** An agent by name or id, on one floor when given (names repeat across floors: every floor has an Andrew). */
 export const findAgent = async (

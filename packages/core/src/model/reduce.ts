@@ -222,7 +222,7 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
     }
     case "agent.created":
     case "agent.updated": {
-      const agent = event.payload.agent;
+      const { agent } = event.payload;
       model.agents.set(agent.id, agent);
       indexInto(model.agentsByProject, agent.projectId, agent.id);
       break;
@@ -251,13 +251,13 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
       break;
     }
     case "chat.message_posted": {
-      const message = event.payload.message;
+      const { message } = event.payload;
       const floor = model.chat.get(message.projectId) ?? [];
       model.chat.set(message.projectId, [...floor, message].slice(-CHAT_TAIL));
       break;
     }
     case "mail.received": {
-      const mail = event.payload.mail;
+      const { mail } = event.payload;
       model.mail.set(mail.id, mail);
       model.mailBySource.set(
         mailSourceKey(mail.projectId, mail.connector, mail.externalId),

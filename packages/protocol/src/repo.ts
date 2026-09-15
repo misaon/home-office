@@ -1,21 +1,21 @@
 import type { RepoSource } from "./domain.ts";
 
-const SCP_LIKE = /^([^\s/@:]+)@([^\s/@:]+):(?!\/)(\S+)$/u;
+const SCP_LIKE = /^(?<user>[^\s/@:]+)@(?<host>[^\s/@:]+):(?!\/)(?<path>\S+)$/u;
 
 /** Git's scp-style shorthand — what GitHub's "SSH" button copies — is not a URL; `ssh://` is. */
 export const repoUrl = (source: string): string => {
   const trimmed = source.trim();
-  const scp = SCP_LIKE.exec(trimmed);
-  return scp === null ? trimmed : `ssh://${scp[1]}@${scp[2]}/${scp[3]}`;
+  const scp = SCP_LIKE.exec(trimmed)?.groups;
+  return scp === undefined ? trimmed : `ssh://${scp["user"]}@${scp["host"]}/${scp["path"]}`;
 };
 
 /** `owner/name` of a GitHub repository URL (HTTPS or ssh://), or null for any other remote. */
 export const githubRepoFromUrl = (value: string): string | null => {
-  const match =
-    /^(?:https:\/\/github\.com\/|ssh:\/\/(?:git@)?github\.com(?::22)?\/)([a-z0-9-]+)\/([a-z0-9_.-]+?)(?:\.git)?\/?$/iu.exec(
+  const repo =
+    /^(?:https:\/\/github\.com\/|ssh:\/\/(?:git@)?github\.com(?::22)?\/)(?<owner>[a-z0-9-]+)\/(?<name>[a-z0-9_.-]+?)(?:\.git)?\/?$/iu.exec(
       value,
-    );
-  return match?.[1] === undefined || match[2] === undefined ? null : `${match[1]}/${match[2]}`;
+    )?.groups;
+  return repo === undefined ? null : `${repo["owner"]}/${repo["name"]}`;
 };
 
 export const REPO_URL_FORMS = "https://host/org/repo, ssh://git@host/org/repo or git@host:org/repo";

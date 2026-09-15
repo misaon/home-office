@@ -69,7 +69,7 @@ export class Envelopes {
    * with them — can never arrive, so the daemon hears about them instead of waiting out its timeout.
    */
   sweep(walking: (taskId: TaskId) => number): void {
-    for (const [taskId, count] of Array.from(this.#walking)) {
+    for (const [taskId, count] of new Map(this.#walking)) {
       for (let i = walking(taskId); i < count; i += 1) {
         this.arrived(taskId);
         this.report(taskId);

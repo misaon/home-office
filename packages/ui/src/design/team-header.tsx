@@ -29,7 +29,7 @@ export function TeamHeader({
   const { t } = useTranslation();
   const teamFilter = useDesign((s) => s.teamFilter);
   const set = useDesign((s) => s.set);
-  const team = floor.team;
+  const { team } = floor;
   const chips: Chip<Key>[] = FILTERS.map(([key, label, dot]) => ({
     key,
     label,

@@ -43,6 +43,9 @@ declare module "react" {
   // `interface` is not a choice: augmenting React's own interface is the only way to widen it.
   // oxlint-disable-next-line typescript/consistent-type-definitions
   interface CSSProperties {
+    // Nor is the index signature: a `Record` would replace the name rather than widen it, which is
+    // what `--fix` did once and what took every real CSS property out of the build with it.
+    // oxlint-disable-next-line typescript/consistent-indexed-object-style
     [name: `--${string}`]: string | number | undefined;
   }
 }

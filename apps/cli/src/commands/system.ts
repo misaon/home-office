@@ -79,7 +79,8 @@ export const healthCommand: Command = {
   name: "health",
   summary: "is a daemon up, which version, and for how long",
   run: async (_parsed, client) => {
-    const report = await (await client()).system.health();
+    const rpc = await client();
+    const report = await rpc.system.health();
     return output(
       [
         `${colour.ok(`daemon ${report.version}`)} up ${String(Math.round(report.uptimeMs / 1000))} s since ${report.startedAt}`,
@@ -93,7 +94,8 @@ export const doctorCommand: Command = {
   name: "doctor",
   summary: "docker, images, secrets, sessions and disk in one report",
   run: async (_parsed, client) => {
-    const report = await (await client()).system.doctor();
+    const rpc = await client();
+    const report = await rpc.system.doctor();
     const unhealthy =
       !report.provider.ok || report.images.some((image) => !image.present || !image.upToDate);
     if (unhealthy) {
@@ -129,7 +131,8 @@ export const imageCommand: Command = {
       run: async (parsed, client) => {
         const json = parsed.flags["json"] === true;
         const lines: string[] = [];
-        for await (const { line: text } of await (await client()).system.buildImages()) {
+        const rpc = await client();
+        for await (const { line: text } of await rpc.system.buildImages()) {
           lines.push(text);
           if (!json) {
             line(text);
@@ -145,7 +148,8 @@ export const gcCommand: Command = {
   name: "gc",
   summary: "remove stopped sandboxes, expired volumes and dangling images",
   run: async (_parsed, client) => {
-    const report = await (await client()).system.gc();
+    const rpc = await client();
+    const report = await rpc.system.gc();
     return output(
       [
         `removed ${String(report.containers.length)} containers, ${String(report.volumes.length)} volumes, ${String(report.images.length)} images`,
@@ -160,7 +164,8 @@ export const resourcesCommand: Command = {
   name: "resources",
   summary: "containers and volumes the office owns, with sizes",
   run: async (_parsed, client) => {
-    const inv = await (await client()).resources.inventory();
+    const rpc = await client();
+    const inv = await rpc.resources.inventory();
     return output(
       [
         `containers=${String(inv.snapshot.containers)} volumes=${String(inv.snapshot.volumes)} (${formatBytes(inv.snapshot.volumesBytes)}) images=${formatBytes(inv.snapshot.imagesBytes)}`,

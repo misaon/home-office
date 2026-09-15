@@ -12,7 +12,7 @@ const ROOTFUL_ENGINE_IMAGE =
 
 export const DaemonConfig = z.object({
   host: z.enum(["127.0.0.1", "::1", "localhost"]).default("127.0.0.1"),
-  port: z.int().min(0).max(65535).default(47800),
+  port: z.int().min(0).max(65_535).default(47_800),
   logLevel: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
   scheduler: z
     .object({

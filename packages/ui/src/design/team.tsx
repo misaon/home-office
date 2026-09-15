@@ -17,7 +17,7 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
   const teamFilter = useDesign((s) => s.teamFilter);
   const set = useDesign((s) => s.set);
 
-  const team = floor.team;
+  const { team } = floor;
   const rows = team.filter((p) => teamFilter === "all" || p.status === teamFilter);
   const hire = (): void => {
     set({

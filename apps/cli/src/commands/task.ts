@@ -47,10 +47,12 @@ export const taskCommand: Command = {
       required: ["project", "title"],
       run: async (parsed, client) => {
         const rpc = await client();
-        const projectId = (await findProject(rpc, required(parsed, "project"))).id;
+        const project = await findProject(rpc, required(parsed, "project"));
+        const projectId = project.id;
         const assigneeRef = str(parsed, "assignee");
-        const assigneeId =
-          assigneeRef === undefined ? undefined : (await findAgent(rpc, assigneeRef, projectId)).id;
+        const assignee =
+          assigneeRef === undefined ? undefined : await findAgent(rpc, assigneeRef, projectId);
+        const assigneeId = assignee?.id;
         const created = await rpc.tasks.create({
           projectId,
           title: required(parsed, "title"),
@@ -71,7 +73,8 @@ export const taskCommand: Command = {
     show: {
       positionals: ["<task-id>"],
       run: async (parsed, client) => {
-        print(await (await client()).tasks.get({ id: taskId(parsed.positionals[0]) }));
+        const rpc = await client();
+        print(await rpc.tasks.get({ id: taskId(parsed.positionals[0]) }));
         return undefined;
       },
     },
@@ -81,8 +84,9 @@ export const taskCommand: Command = {
         const rpc = await client();
         const [idRef, agentRef = ""] = parsed.positionals;
         const current = await rpc.tasks.get({ id: taskId(idRef) });
-        const agentId =
-          agentRef === "none" ? null : (await findAgent(rpc, agentRef, current.projectId)).id;
+        const agent =
+          agentRef === "none" ? null : await findAgent(rpc, agentRef, current.projectId);
+        const agentId = agent === null ? null : agent.id;
         const assigned = await rpc.tasks.assign({ id: current.id, agentId });
         return output(
           [
@@ -100,9 +104,8 @@ export const taskCommand: Command = {
       run: async (parsed, client) => {
         const [idRef, status] = parsed.positionals;
         const reason = str(parsed, "reason");
-        const moved = await (
-          await client()
-        ).tasks.transition({
+        const rpc = await client();
+        const moved = await rpc.tasks.transition({
           id: taskId(idRef),
           to: TaskStatus.parse(status),
           ...compact({ reason }),

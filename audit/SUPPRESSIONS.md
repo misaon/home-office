@@ -47,6 +47,28 @@ package were missing.
 | --- | -------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 11  | `packages/ui/src/design/app.css` | `@source not inline("backdrop-blur-[10px] animate-fade-280")` | Not a lint suppression but a build one, recorded here for the same reason. The modal's backdrop class list makes Tailwind's scanner emit these two utilities bare as well as `backdrop:`-prefixed, and no element in the office wears the bare forms: 642 bytes nothing selects. Narrow on purpose — the lightbox and the camera bar do write `backdrop-blur-[14px]`, `[18px]` and `animate-fade-260` bare, and those keep their rules. With the line the stylesheet is rule-for-rule identical to the build before the consolidation. |
 
+## Added 2026-09-15 (the strict-lint pass)
+
+Turning on `style` and `nursery` took the enforced rule count from 385 to 554 and produced 10 135
+findings. Eighty-one were fixed in the code; thirty-four rules are off, each for a reason, and the full
+table with counts is in [the plan](../docs/plans/2026-09-15-strict-linting.md). Two of the thirty-four
+are not judgement calls and must not be turned back on:
+
+| #   | Where            | Suppression                   | Assessment                                                                                                                                                                                   |
+| --- | ---------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 12  | `.oxlintrc.json` | `unicorn/number-literal-case` | **Deadlocks with oxfmt**, which runs in the same `bun run check`: oxlint's fixer writes `0xECEAE4`, oxfmt writes `0xeceae4`. Measured both directions on `packages/ui/src/office/colours.ts` |
+| 13  | `.oxlintrc.json` | `unicorn/no-nested-ternary`   | **Deadlocks with oxfmt** the same way: the fixer adds parentheses, oxfmt removes them. Measured on `packages/ui/src/design/tokens.ts`                                                        |
+
+One new inline suppression, and it exists because an auto-fix destroyed the build:
+
+| #   | Where                                 | Suppression                                  | Assessment                                                                                                                                                                                                                                                                                                     |
+| --- | ------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 14  | `packages/ui/src/design/tokens.ts:48` | `typescript/consistent-indexed-object-style` | `oxlint --fix` rewrote the React `CSSProperties` augmentation from an `interface` with an index signature into `type CSSProperties = Record<…>`, which replaces React's own type instead of widening it — every real CSS property left the build with it. Sits beside suppression #10 on the same declaration. |
+
+Two rules were **configured rather than disabled**, which is not a suppression and is recorded here so
+nobody mistakes it for one: `eslint/new-cap` takes `properties: false` (`errors.NOT_FOUND(…)` is a call
+into oRPC's error table, not a constructor) and `unicorn/prefer-ternary` takes `only-single-line`.
+
 There are **no** `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck` or non-null assertions anywhere in
 the tracked source. Verified:
 

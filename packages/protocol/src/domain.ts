@@ -212,7 +212,7 @@ export const Task = z.object({
   projectId: ProjectId,
   kind: TaskKind.default("work"),
   title: z.string().min(1).max(200),
-  brief: z.string().max(20000),
+  brief: z.string().max(20_000),
   status: TaskStatus,
   assigneeId: AgentId.optional(),
   reviewerId: AgentId.optional(),
@@ -231,7 +231,7 @@ export const ChatMessage = z.object({
   id: ChatMessageId,
   projectId: ProjectId,
   author: Author,
-  text: z.string().min(1).max(20000),
+  text: z.string().min(1).max(20_000),
   /** Files the office keeps beside the log; the message carries only their descriptors. */
   attachments: Attachments,
   taskId: TaskId.optional(),

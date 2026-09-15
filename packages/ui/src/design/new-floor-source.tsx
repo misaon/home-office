@@ -55,7 +55,7 @@ function LocalField({
             value={draft.path}
             placeholder="/Users/you/projects/app"
             onChange={(e) => {
-              const value = e.target.value;
+              const { value } = e.target;
               setDraft(
                 repoSourceOf(value).kind === "git"
                   ? { ...draft, kind: "git", url: value, path: "", branch: "" }

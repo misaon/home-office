@@ -15,7 +15,7 @@ const ROW = "flex items-center justify-between gap-9";
 /** The last thing a running session said about how full its context window is. */
 const contextOf = (events: readonly LiveEvent[] | undefined): number | null => {
   const last = events?.findLast((l) => l.event.kind === "context");
-  return last === undefined || last.event.kind !== "context" || last.event.windowTokens === 0
+  return last?.event.kind !== "context" || last.event.windowTokens === 0
     ? null
     : last.event.usedTokens / last.event.windowTokens;
 };

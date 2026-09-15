@@ -48,7 +48,7 @@ export class MailFlow {
 
   /** A new item: the postman rides up to the floor, or the boss gets it right away without viewers. */
   onMail(mail: MailItem, watching: boolean): void {
-    const taskId = mail.taskId;
+    const { taskId } = mail;
     if (taskId === undefined) {
       return;
     }
@@ -101,7 +101,7 @@ export class MailFlow {
 
   #finish(pending: PendingMail): void {
     const index = this.#pending.indexOf(pending);
-    if (index >= 0) {
+    if (index !== -1) {
       this.#pending.splice(index, 1);
     }
     this.#delivered(pending.taskId);

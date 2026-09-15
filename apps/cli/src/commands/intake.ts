@@ -28,7 +28,8 @@ export const intakeCommand: Command = {
     status: {
       run: async (_parsed, client) => {
         const rpc = await client();
-        const projects = new Map((await rpc.projects.list()).map((p) => [p.id, p]));
+        const listed = await rpc.projects.list();
+        const projects = new Map(listed.map((p) => [p.id, p]));
         const status = await rpc.intake.status();
         return output(
           status.map((s) => {

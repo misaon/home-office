@@ -2,7 +2,7 @@ import type { SecretStore } from "@ho/core";
 import { errorMessage, type SecretKeyName } from "@ho/protocol";
 import { join } from "node:path";
 import { createFileSecretStore } from "./file.ts";
-import { createOsSecretStore, SecretStoreTimeout } from "./os-credential-store.ts";
+import { createOsSecretStore, SecretStoreTimeoutError } from "./os-credential-store.ts";
 
 export type SecretStoreKind = "auto" | "os" | "file";
 
@@ -28,7 +28,7 @@ const withFileFallback = (
       chosen = os;
       return value;
     } catch (error) {
-      if (error instanceof SecretStoreTimeout) {
+      if (error instanceof SecretStoreTimeoutError) {
         throw error;
       }
       chosen = file;

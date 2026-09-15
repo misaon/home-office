@@ -133,7 +133,7 @@ export class Bridge {
   #onStatus(event: Extract<StoredEvent, { type: "task.status_changed" }>): void {
     const task = model.tasks.get(event.payload.taskId);
     const { from, to, reason } = event.payload;
-    if (task === undefined || task.kind !== "work") {
+    if (task?.kind !== "work") {
       return;
     }
     const boss = bossOf(model, task.projectId);

@@ -19,7 +19,8 @@
     "suspicious": "error",
     "pedantic": "error",
     "perf": "error",
-    "style": "off"
+    "style": "error",
+    "nursery": "error"
   },
   "rules": {
     "eslint/no-console": "error",
@@ -104,7 +105,48 @@
     "import/no-self-import": "error",
     "node/no-process-env": "off",
     "node/no-sync": "off",
-    "node/no-top-level-await": "off"
+    "node/no-top-level-await": "off",
+    "eslint/one-var": "off",
+    "eslint/no-magic-numbers": "off",
+    "eslint/id-length": "off",
+    "eslint/sort-keys": "off",
+    "eslint/sort-imports": "off",
+    "eslint/no-ternary": "off",
+    "eslint/func-style": "off",
+    "eslint/no-undef": "off",
+    "eslint/max-statements": "off",
+    "eslint/max-params": "off",
+    "eslint/capitalized-comments": "off",
+    "eslint/no-continue": "off",
+    "eslint/init-declarations": "off",
+    "eslint/func-names": "off",
+    "import/no-named-export": "off",
+    "import/group-exports": "off",
+    "import/exports-last": "off",
+    "import/prefer-default-export": "off",
+    "import/no-nodejs-modules": "off",
+    "import/consistent-type-specifier-style": "off",
+    "unicorn/no-null": "off",
+    "unicorn/max-nested-calls": "off",
+    "unicorn/prefer-global-this": "off",
+    "react/jsx-max-depth": "off",
+    "react/jsx-props-no-spreading": "off",
+    "promise/avoid-new": "off",
+    "unicorn/numeric-separators-style": "off",
+    "promise/prefer-await-to-then": "off",
+    "promise/prefer-await-to-callbacks": "off",
+    "eslint/no-nested-ternary": "off",
+    "react/hook-use-state": "off",
+    "react/function-component-definition": "off",
+    "unicorn/number-literal-case": "off",
+    "unicorn/no-nested-ternary": "off",
+    "eslint/new-cap": [
+      "error",
+      {
+        "properties": false
+      }
+    ],
+    "unicorn/prefer-ternary": ["error", "only-single-line"]
   },
   "ignorePatterns": [
     "**/node_modules/**",

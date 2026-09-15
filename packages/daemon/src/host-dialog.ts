@@ -34,7 +34,8 @@ const osascript = (choose: string, args: readonly string[]): Promise<Exec> =>
 
 const isDirectory = async (path: string): Promise<boolean> => {
   try {
-    return (await stat(path)).isDirectory();
+    const found = await stat(path);
+    return found.isDirectory();
   } catch {
     return false;
   }

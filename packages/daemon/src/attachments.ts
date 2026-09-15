@@ -79,7 +79,7 @@ export class AttachmentStore {
       const dot = attachment.name.lastIndexOf(".");
       const stem = dot === -1 ? attachment.name : attachment.name.slice(0, dot);
       const extension = dot === -1 ? "" : attachment.name.slice(dot);
-      let name = attachment.name;
+      let { name } = attachment;
       for (let n = 2; used.has(name); n += 1) {
         name = `${stem}-${String(n)}${extension}`;
       }

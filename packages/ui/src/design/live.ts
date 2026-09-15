@@ -11,6 +11,7 @@ import {
 } from "@ho/protocol";
 import { useEffect, useState } from "react";
 import { activeSessionOf, sortedFloors, useUi, type Snapshot } from "../store.ts";
+import type { Card, Floor, Lane, Member, Message } from "./data.ts";
 
 /**
  * A clock that ticks rather than being read mid-render: how long ago a session started has to keep
@@ -28,7 +29,6 @@ function useNow(): number {
   }, []);
   return now;
 }
-import type { Card, Floor, Lane, Member, Message } from "./data.ts";
 
 /**
  * The office as the drawing expects it. The design was made against a simpler picture than the domain
@@ -112,7 +112,7 @@ function messageOf(message: ChatMessage, snapshot: Snapshot): Message {
   const mine = message.author.kind === "human";
   const who =
     message.author.kind === "agent" ? snapshot.agents.get(message.author.agentId)?.name : undefined;
-  const first = message.attachments[0];
+  const [first] = message.attachments;
   return {
     id: message.id,
     mine,

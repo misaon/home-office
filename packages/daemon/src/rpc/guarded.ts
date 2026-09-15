@@ -1,6 +1,6 @@
 import { contract, errorMessage, RPC_ERROR_CODE } from "@ho/protocol";
 import { implement, ORPCError } from "@orpc/server";
-import { DomainFailure } from "../domain-failure.ts";
+import { DomainFailureError } from "../domain-failure.ts";
 import type { RpcContext } from "./context.ts";
 
 /** Translates a rejected office command into the typed RPC error the contract declares for its code. */
@@ -10,7 +10,7 @@ export const guarded = implement(contract)
     try {
       return await next();
     } catch (error) {
-      if (error instanceof DomainFailure) {
+      if (error instanceof DomainFailureError) {
         const { code, ...data } = error.error;
         throw new ORPCError(RPC_ERROR_CODE[code], { message: error.message, data });
       }

@@ -59,7 +59,7 @@ export function createChannel<T>(signal?: Cancellation, options: ChannelOptions 
     get closed() {
       return closed;
     },
-    iterate: async function* () {
+    async *iterate() {
       if (iterating) {
         throw new Error("a channel supports only one consumer");
       }

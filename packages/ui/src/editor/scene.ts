@@ -9,7 +9,7 @@ import { drawLabels } from "./labels.ts";
 import { compileDraft } from "./office-file.ts";
 
 const HOVER = 0x2b3140;
-const ARROW = 0x394152;
+const ARROW = 0x39_41_52;
 const LABEL = { fontFamily: "monospace", fontSize: 11, fill: 0x1f2430 } as const;
 const PREVIEW_ADD = 0x4c8bf5;
 const PREVIEW_ERASE = 0xe0525f;

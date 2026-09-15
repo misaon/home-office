@@ -90,7 +90,7 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
           e.preventDefault();
           depth.current = 0;
           setDragging(false);
-          const dropped = e.dataTransfer.files[0];
+          const [dropped] = e.dataTransfer.files;
           if (dropped !== undefined) {
             attach(dropped);
           }

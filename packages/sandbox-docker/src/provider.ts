@@ -66,12 +66,10 @@ async function runToCompletion(
   try {
     await startContainer(api, id);
     const path = `/containers/${encodeURIComponent(id)}`;
-    const { StatusCode } = Wait.parse(
-      await (await api.raw("POST", `${path}/wait`, undefined, controller.signal)).json(),
-    );
-    const logs = demux(
-      new Uint8Array(await (await api.raw("GET", `${path}/logs?stdout=1&stderr=1`)).arrayBuffer()),
-    );
+    const waited = await api.raw("POST", `${path}/wait`, undefined, controller.signal);
+    const { StatusCode } = Wait.parse(await waited.json());
+    const written = await api.raw("GET", `${path}/logs?stdout=1&stderr=1`);
+    const logs = demux(new Uint8Array(await written.arrayBuffer()));
     return { exitCode: StatusCode, ...logs };
   } finally {
     clearTimeout(timer);
@@ -113,9 +111,12 @@ async function prune(api: DockerApi, scope: PruneScope): Promise<PruneReport> {
     }
   }
   if (scope.kinds.includes("volumes")) {
-    const volumes =
-      (await api.json(VolumeList, "GET", `/volumes?filters=${labelFilter(scope.labels)}`))
-        .Volumes ?? [];
+    const listed = await api.json(
+      VolumeList,
+      "GET",
+      `/volumes?filters=${labelFilter(scope.labels)}`,
+    );
+    const volumes = listed.Volumes ?? [];
     for (const v of volumes) {
       const createdAt = v.CreatedAt === undefined ? 0 : new Date(v.CreatedAt).getTime();
       if (createdAt <= cutoff && (await removeVolumeIfFree(api, v.Name))) {
@@ -210,9 +211,15 @@ export function createDockerProvider(options: {
       }
     },
     imageHash: (ref) => imageHash(api, ref),
-    ensureImage: async (spec, onLine = () => undefined, signal) => {
+    ensureImage: async (spec, onLine, signal) => {
       if ((await imageHash(api, spec.ref)) !== spec.contentHash) {
-        await buildImage(spec, options.platform, options.socket, onLine, signal);
+        await buildImage(
+          spec,
+          options.platform,
+          options.socket,
+          onLine ?? (() => undefined),
+          signal,
+        );
       }
     },
     ensureNetwork: async (name, labels) => {

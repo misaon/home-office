@@ -39,7 +39,8 @@ async function localDefaultBranch(path: string): Promise<string> {
 
 async function inspectLocal(path: string): Promise<RepoInspection> {
   try {
-    if (!(await stat(path)).isDirectory()) {
+    const found = await stat(path);
+    if (!found.isDirectory()) {
       return { ok: false, message: `${path} is not a directory` };
     }
   } catch {
@@ -80,10 +81,10 @@ async function inspectRemote(url: string): Promise<RepoInspection> {
       message: `cannot reach ${url} (${probe.stderr || "git ls-remote failed"})`,
     };
   }
-  const match = /^ref: refs\/heads\/(\S+)\tHEAD$/mu.exec(probe.stdout);
-  const defaultBranch = match?.[1] ?? "main";
-  const heads = [...probe.stdout.matchAll(/^\S+\trefs\/heads\/(.+)$/gmu)].map(
-    ([, name]) => name ?? "",
+  const head = /^ref: refs\/heads\/(?<branch>\S+)\tHEAD$/mu.exec(probe.stdout)?.groups;
+  const defaultBranch = head?.["branch"] ?? "main";
+  const heads = [...probe.stdout.matchAll(/^\S+\trefs\/heads\/(?<branch>.+)$/gmu)].map(
+    (line) => line.groups?.["branch"] ?? "",
   );
   return {
     ok: true,

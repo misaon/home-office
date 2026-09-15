@@ -46,7 +46,7 @@ const parseFrame = (raw: string | Buffer | Uint8Array): FromRunner | null => {
 
 const CONNECT_TIMEOUT_MS = 30_000;
 const SPAWN_TIMEOUT_MS = 15_000;
-const TERMINATE_STEP_MS = 5_000;
+const TERMINATE_STEP_MS = 5000;
 const STDERR_TAIL_CHARS = 600;
 
 /**

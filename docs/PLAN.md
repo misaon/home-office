@@ -88,6 +88,25 @@ because first paint measures 73 ms with every sprite loaded and 47 furniture key
 
 ## Audit log
 
+- 2026-09-15 — Owner task: find the most modern linter, deploy it at its strictest, fix everything —
+  Three candidates were measured against this repository rather than read about. **Rslint 0.9.2** (Go on
+  typescript-go, the newest and at 806 ms the fastest) **panics reproducibly** on this codebase and
+  covers 197 of the 385 rules it enforced, so replacing oxlint with it would have dropped 188 — every
+  React rule including `rules-of-hooks`, `strict-boolean-expressions`, `switch-exhaustiveness-check`,
+  `import/no-cycle`, all 21 `oxc` correctness rules — and made the linting _less_ strict, not more.
+  **Biome 2.5.13** has no coherent "strictest" setting: `preset: "all"` turns on Qwik, Solid and React
+  rules at once. So oxlint stayed, at 1.83.0, with `style` and `nursery` added and `restriction` left
+  off (it bans `async`/`await`, optional chaining and rest/spread). **385 → 554 enforced rules**;
+  10 135 findings became 81 after exclusions and all 81 were fixed in the code — named capture groups,
+  `(await f()).x` given names, `DomainFailure` → `DomainFailureError`, an import that sat mid-file since
+  the drawing port. Thirty-four rules are off with a reason each, two of them because they **deadlock
+  with oxfmt** in the same pipeline (measured both directions). `oxlint --fix` broke the build once, by
+  rewriting the React `CSSProperties` augmentation into a `Record` that replaces the type instead of
+  widening it. **Known gap: oxlint has no CSS rules** — the Tailwind compile in `bun run check` gates
+  CSS syntax, nothing gates CSS lint quality, and closing that needs a second tool the owner chose not
+  to add. 27 of 28 shot states byte-identical, the 28th proven to be Docker's disk figures drifting.
+  [The task plan](plans/2026-09-15-strict-linting.md).
+
 - 2026-09-15 — Owner task: a second, more thorough round of simplification — The first round looked for
   repeated text; this one looked for state the office keeps and never reads, and work it redoes every
   render. Four fields were dead: `openIntake` and `openServices` had no reference anywhere,

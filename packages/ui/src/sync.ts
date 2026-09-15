@@ -24,7 +24,8 @@ const nextLaunchUrl = (): Promise<void> =>
 /** A browser cannot read the status of a failed websocket handshake, so the daemon is asked separately. */
 const daemonAnswers = async (): Promise<boolean> => {
   try {
-    return (await fetch("/health", { cache: "no-store" })).ok;
+    const answered = await fetch("/health", { cache: "no-store" });
+    return answered.ok;
   } catch {
     return false;
   }

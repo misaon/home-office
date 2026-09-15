@@ -4,7 +4,7 @@ import { errorMessage } from "@ho/protocol";
 import type { AcpPreset } from "./presets.ts";
 
 /** JSON-RPC application error the ACP spec assigns to "authentication required". */
-const AUTH_REQUIRED = -32000;
+const AUTH_REQUIRED = -32_000;
 const NEGOTIATION_TIMEOUT_MS = 30_000;
 
 export type Negotiated = {
@@ -84,7 +84,7 @@ export async function negotiate(
       (code) => `${preset.name} exited (code ${String(code)}) before answering`,
       NEGOTIATION_TIMEOUT_MS,
     );
-  const agent = conn.agent;
+  const { agent } = conn;
   const init = await request(
     agent.request("initialize", {
       protocolVersion: PROTOCOL_VERSION,

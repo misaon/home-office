@@ -15,7 +15,7 @@ kept as history and is not evidence about the current tree.
 | ------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Runtime / package manager | Bun 1.4.2                                    | TypeScript execution, SQLite, HTTP/WS, compiled executables, isolated workspaces and catalogs                                |
 | Types                     | TypeScript 7.0.2                             | Native compiler; explicit strict options in `tsconfig.base.json`                                                             |
-| Lint                      | oxlint 1.82.0, oxlint-tsgolint 7.0.2001      | Type-aware, pedantic, React hooks and accessibility checks                                                                   |
+| Lint                      | oxlint 1.83.0, oxlint-tsgolint 7.0.2001      | Type-aware; every category except `restriction`; 554 rules, React hooks and accessibility included                           |
 | Format / unused code      | oxfmt 0.67.0, Knip 6.35.0                    | Formatting and workspace-aware source/dependency coverage, including CSS                                                     |
 | Validation / RPC          | Zod 4.5.4, oRPC 1.15.0                       | Boundary validation and shared client/server contract                                                                        |
 | Persistence               | `bun:sqlite` (Bun 1.4.2)                     | Embedded event log; the schema is applied at open and versioned with `PRAGMA user_version`                                   |
@@ -264,6 +264,40 @@ each), and `design/icons.tsx`, `design/section.tsx` and `design/segmented.tsx` (
 interpolates a module constant into a template literal inside a component, so not one is affected
 today — but three of them are one edit away from it. A plain `bun build --minify` on a non-React
 fixture does **not** reproduce the drop.
+
+## Linting: oxlint kept and turned up, 2026-09-15
+
+The owner asked for the most modern linter available, set as strictly as it goes. Three candidates were
+measured against this repository on 2026-09-15, and the measurement is what decided it — the record is in
+[the task plan](plans/2026-09-15-strict-linting.md).
+
+**Rslint 0.9.2** (Rspack/Rstack, Go on typescript-go) is the newest of them and the fastest — 283 files,
+154 rules, 806 ms — but it **panics reproducibly** on this codebase (`Unhandled case in Node.Text:
+*ast.ComputedPropertyName`, in its `no-deprecated` rule), and it covers 197 of the 385 rules this
+repository enforced. Adopting it would have dropped 188, among them every React rule including
+`rules-of-hooks`, `strict-boolean-expressions`, `explicit-function-return-type`,
+`switch-exhaustiveness-check`, `import/no-cycle` and all 21 `oxc` correctness rules. Replacing oxlint
+with it would have made the linting less strict, not more.
+
+**Biome 2.5.13** has no coherent "strictest" setting: `preset: "all"` turns on rules for Qwik, Solid and
+React at once — `noReactSpecificProps` fired 554 times on legitimate React — and 2 945 of its 6 780
+diagnostics came from a generated, git-ignored bundle.
+
+So oxlint stays, at 1.83.0, with `style` and `nursery` added to the categories. `restriction` stays off:
+its stated job is to prevent the use of language features, and here it bans `async`/`await`, optional
+chaining and rest/spread. Enabled rules went from **385 to 554**; 81 findings were fixed in the code and
+34 rules turned off, each with its reason in the plan and in
+[audit/SUPPRESSIONS.md](../audit/SUPPRESSIONS.md).
+
+Two of those 34 are worth knowing before anyone turns them back on, because they are not opinions:
+`unicorn/number-literal-case` and `unicorn/no-nested-ternary` **deadlock with `oxfmt`**, which runs in the
+same `bun run check` — oxlint's fixer writes `0xECEAE4` and parentheses, oxfmt writes them back. Measured
+both directions.
+
+**oxlint has no CSS rules.** `bun run check` compiles `packages/ui/src/design/app.css` through the
+Tailwind CLI, so a stylesheet that does not compile fails the build — CSS syntax is gated, CSS lint
+quality is not. Covering the 878 lines of CSS would need a second tool (Biome or stylelint); the owner
+chose to keep oxlint alone on 2026-09-15, so this is a known, deliberate gap.
 
 ## Primary references
 
