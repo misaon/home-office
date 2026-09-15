@@ -25,6 +25,7 @@ kept as history and is not evidence about the current tree.
 | UI                        | React / React DOM 19.3.0                     | Panels compiled with Bun's React Compiler integration                                                                             |
 | UI primitives             | Base UI 1.8.0 (`@base-ui/react`)             | Dialog, AlertDialog, Select, Popover, Switch, Radio, ToggleGroup, Accordion — open state, keyboard and ARIA                       |
 | Icons                     | lucide-react 1.46.0                          | The three marks the office draws more than once                                                                                   |
+| Brand marks               | simple-icons 16.31.0 (CC0-1.0)               | The providers' own logos in the agent dialog; three of four — simple-icons carries no OpenAI, so Codex takes a caret              |
 | Client state              | Zustand 5.0.15, TanStack Query 5.102.8       | Event projection and abortable cached RPC queries                                                                                 |
 | Styling                   | Tailwind CSS 4.3.3, `@tailwindcss/cli` 4.3.3 | The whole drawing as utilities; a CSS-first theme compiled by the CLI inside the Bun build                                        |
 | Rendering                 | PixiJS 8.20.1                                | Sprite batching, static floor textures and animated office rendering                                                              |
