@@ -58,6 +58,7 @@
     "desktop:build": "bun run desktop:prepare && bun run scripts/devkit.ts build && bun run scripts/desktop-sign.ts",
     "devkit": "bun run scripts/devkit.ts",
     "spike:task-engine": "bun run spikes/task-engine/src/run.ts",
+    "bench": "bun run spikes/bench/src/run.ts",
     "spike:acp-mock": "bun run spikes/s6-acp-mock/src/run.ts",
     "cli:build": "bun build --compile --minify apps/cli/src/main.ts --outfile apps/cli/dist/ho"
   },

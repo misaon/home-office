@@ -169,6 +169,15 @@
         "tailwindcss": "catalog:",
       },
     },
+    "spikes/bench": {
+      "name": "@ho/spike-bench",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ho/core": "workspace:*",
+        "@ho/protocol": "workspace:*",
+        "@ho/sim": "workspace:*",
+      },
+    },
     "spikes/s6-acp-mock": {
       "name": "@ho/spike-s6-acp-mock",
       "version": "0.0.0",
@@ -272,6 +281,8 @@
     "@ho/secrets": ["@ho/secrets@workspace:packages/secrets"],
 
     "@ho/sim": ["@ho/sim@workspace:packages/sim"],
+
+    "@ho/spike-bench": ["@ho/spike-bench@workspace:spikes/bench"],
 
     "@ho/spike-s6-acp-mock": ["@ho/spike-s6-acp-mock@workspace:spikes/s6-acp-mock"],
 
