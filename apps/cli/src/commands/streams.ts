@@ -1,5 +1,5 @@
 import { compact, type StoredEvent, type Usage } from "@ho/protocol";
-import { int, str } from "../args.ts";
+import { int, str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
 import { line } from "../output.ts";
 

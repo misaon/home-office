@@ -1,5 +1,5 @@
 import { compact } from "@ho/protocol";
-import { str } from "../args.ts";
+import { str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
 import { projectIdOf, projectNames } from "./lookup.ts";
 

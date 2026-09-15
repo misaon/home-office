@@ -7,7 +7,7 @@ import {
   repoUrl,
 } from "@ho/protocol";
 import { resolve } from "node:path";
-import { int, list, onOff, str } from "../args.ts";
+import { int, list, onOff, str } from "../flags.ts";
 import type { HoClient } from "../client.ts";
 import { type Command, output } from "../cli.ts";
 import { colour } from "../output.ts";

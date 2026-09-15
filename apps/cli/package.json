@@ -12,6 +12,7 @@
     "@ho/protocol": "workspace:*",
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
+    "commander": "catalog:",
     "zod": "catalog:"
   }
 }

@@ -1,6 +1,6 @@
 import { compact, TaskId, TaskPriority, TaskStatus } from "@ho/protocol";
 import { z } from "zod";
-import { required, str } from "../args.ts";
+import { required, str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
 import { colour, print } from "../output.ts";
 import { findAgent, findProject, projectIdOf } from "./lookup.ts";

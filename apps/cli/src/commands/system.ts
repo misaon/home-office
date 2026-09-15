@@ -1,6 +1,6 @@
 import { officeUrl, startDaemon } from "@ho/daemon";
 import { formatBytes } from "@ho/protocol";
-import { bool } from "../args.ts";
+import { bool } from "../flags.ts";
 import { requireDaemon } from "../client.ts";
 import { type Command, output } from "../cli.ts";
 import { colour, line } from "../output.ts";
