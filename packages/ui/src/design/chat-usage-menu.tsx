@@ -82,7 +82,7 @@ export function UsageMenu({
 
   return (
     <Popover.Portal>
-      <Popover.Positioner className="z-40 outline-none" sideOffset={10} side="top" align="end">
+      <Popover.Positioner className="z-70 outline-none" sideOffset={10} side="top" align="end">
         <Popover.Popup className={POPOVER}>
           <Popover.Title className={`${CAPS} mb-12`}>{t("usage.chipTitle")}</Popover.Title>
           {fill === null ? (

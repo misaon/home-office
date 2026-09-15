@@ -46,7 +46,7 @@ const QUIET =
   "py-8 px-13 rounded-10 border border-border-strong bg-transparent text-12 text-ink-quiet cursor-pointer whitespace-nowrap transition-all duration-200";
 
 const SHEET =
-  "w-[min(680px,100%)] max-h-full overflow-y-auto rounded-22 bg-dialog border border-border-sheet shadow-setup animate-pop-460";
+  "w-[min(680px,100vw-64px)] max-h-[calc(100vh-64px)] overflow-y-auto rounded-22 bg-dialog border border-border-sheet shadow-setup animate-pop-460";
 
 const HEAD = "pt-24 px-26 pb-20 border-b border-line flex items-start gap-16 flex-wrap";
 

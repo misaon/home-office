@@ -11,7 +11,7 @@ import { Dialog } from "@base-ui/react/dialog";
  * z-index could reach it; Base UI portals to the body instead, so the office's own scale applies and
  * the room has to be told it stands above the header, which is `z-40`.
  */
-const CENTRE = "fixed inset-0 z-60 p-32";
+const CENTRE = "fixed inset-0 z-60 flex items-center justify-center p-32";
 
 /** What the office is seen through while a dialog is up. */
 export const BACKDROP =
@@ -47,10 +47,7 @@ export function Modal({
       <Dialog.Portal>
         <Dialog.Backdrop className={backdrop} />
         <Dialog.Viewport className={CENTRE}>
-          <Dialog.Popup
-            aria-label={label}
-            className="w-full h-full flex items-center justify-center outline-none"
-          >
+          <Dialog.Popup aria-label={label} className="max-w-full max-h-full outline-none">
             {children}
           </Dialog.Popup>
         </Dialog.Viewport>

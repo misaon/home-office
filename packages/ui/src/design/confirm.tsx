@@ -12,7 +12,7 @@ export type Ask = {
 };
 
 const SHEET =
-  "w-[min(440px,100%)] rounded-18 bg-dialog border border-border-sheet shadow-sheet animate-pop-400";
+  "w-[min(440px,100vw-64px)] rounded-18 bg-dialog border border-border-sheet shadow-sheet animate-pop-400";
 
 const FOOT = "flex items-center justify-end gap-9 py-14 px-24 border-t border-line bg-foot";
 
@@ -120,24 +120,22 @@ export function Confirm({
     >
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className={BACKDROP} />
-        <AlertDialog.Viewport className="fixed inset-0 z-60 p-32">
-          <AlertDialog.Popup className="w-full h-full flex items-center justify-center outline-none">
-            <div className={SHEET}>
-              <div className="flex gap-14 pt-22 px-24 pb-18">
-                <AskMark danger={danger} />
-                <div className="flex-1 min-w-0">
-                  <AlertDialog.Title
-                    className={`${DISPLAY} font-bold text-17 tracking-tight leading-heading text-pretty`}
-                  >
-                    {ask?.title ?? ""}
-                  </AlertDialog.Title>
-                  <AlertDialog.Description className="text-12h text-ink-label mt-8 leading-prose text-pretty">
-                    {ask?.body ?? ""}
-                  </AlertDialog.Description>
-                </div>
+        <AlertDialog.Viewport className="fixed inset-0 z-60 flex items-center justify-center p-32">
+          <AlertDialog.Popup className={`max-w-full outline-none ${SHEET}`}>
+            <div className="flex gap-14 pt-22 px-24 pb-18">
+              <AskMark danger={danger} />
+              <div className="flex-1 min-w-0">
+                <AlertDialog.Title
+                  className={`${DISPLAY} font-bold text-17 tracking-tight leading-heading text-pretty`}
+                >
+                  {ask?.title ?? ""}
+                </AlertDialog.Title>
+                <AlertDialog.Description className="text-12h text-ink-label mt-8 leading-prose text-pretty">
+                  {ask?.body ?? ""}
+                </AlertDialog.Description>
               </div>
-              <AskFoot ask={ask} danger={danger} onClose={onClose} />
             </div>
+            <AskFoot ask={ask} danger={danger} onClose={onClose} />
           </AlertDialog.Popup>
         </AlertDialog.Viewport>
       </AlertDialog.Portal>

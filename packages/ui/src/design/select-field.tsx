@@ -74,7 +74,7 @@ export function SelectField({
         </Select.Trigger>
         <Select.Portal>
           <Select.Positioner
-            className="z-45 outline-none"
+            className="z-80 outline-none"
             sideOffset={6}
             alignItemWithTrigger={false}
           >
