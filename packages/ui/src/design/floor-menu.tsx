@@ -69,7 +69,7 @@ export function FloorMenu({ onPicked }: { onPicked: () => void }): React.JSX.Ele
               />
             ))}
             {rows.length === 0 ? (
-              <div className="py-12 px-10 text-12 text-ink-meta">No floor matches that.</div>
+              <div className="py-12 px-10 text-12 text-ink-meta">{t("project.noMatch")}</div>
             ) : null}
           </div>
           <div className="h-1 bg-border my-6 mx-4" />

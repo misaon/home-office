@@ -85,7 +85,7 @@ export function SelectField({
             alignItemWithTrigger={false}
           >
             <Select.Popup className={POPUP}>
-              <Select.List aria-label={label}>
+              <Select.List aria-label={label} className="flex flex-col gap-2">
                 {options.map((option) => (
                   <Select.Item key={option} value={option} className={`group ${OPTION} ${type}`}>
                     {markOf === undefined ? <span className={DOT} /> : markOf(option)}

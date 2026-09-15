@@ -521,6 +521,22 @@
 }
 
 /*
+ * A disabled control does not answer the pointer. The office writes its lifts and glows as `hover:`
+ * utilities — `hover:shadow-lift-lg` is an accent-coloured shadow — and Tailwind applies them whether
+ * or not the button can be pressed, so a greyed-out "Hire agent" still lit up gold underneath.
+ *
+ * This is deliberately **outside** `@layer`: layer order beats specificity, and the utilities live in a
+ * later layer than `base`, so a rule written there would lose to them however specific it was.
+ */
+button:disabled:hover,
+[disabled]:hover,
+[data-disabled]:hover {
+  transform: none;
+  box-shadow: none;
+  background-color: revert-layer;
+}
+
+/*
  * What the drawing reset that Tailwind's preflight does not, kept global because that is how it was
  * drawn: a control the office paints its own focus for is not also ringed by the browser, and every
  * surface that scrolls gets the office's thin bar rather than the platform's.
