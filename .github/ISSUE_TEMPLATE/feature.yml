@@ -1,0 +1,33 @@
+name: Feature or change
+description: Something Home Office should do that it does not.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Large changes are easier to agree on before they are written. If you are planning to send the
+        pull request yourself, say so — it changes what this issue is for.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is awkward today. Describe the situation, not the solution you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like instead
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What else you considered
+      description: Including doing nothing, and why that is worse.
+  - type: checkboxes
+    id: offer
+    attributes:
+      label: Would you like to build it?
+      options:
+        - label: I would like to send the pull request myself
