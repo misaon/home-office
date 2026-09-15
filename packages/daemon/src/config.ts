@@ -22,7 +22,6 @@ export const DaemonConfig = z.object({
   retention: z
     .object({
       taskVolumeHours: z.int().positive().default(24),
-      idleStopMinutes: z.int().positive().default(10),
     })
     .prefault({}),
   docker: z
