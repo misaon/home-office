@@ -94,6 +94,7 @@ export const en = {
     emptyLane: "Nothing in this lane.",
     finished: "{{done}} of {{total}} tasks finished",
     handBack: "Hand back",
+    criteria: "Acceptance criteria",
     moveToDone: "Move to done",
     taskClosed: "This one is closed; nothing moves from here.",
     taskNotStarted: "It can be finished once somebody is working on it.",

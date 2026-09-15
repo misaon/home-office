@@ -49,6 +49,8 @@ export type Card = {
   s: Lane;
   /** The state the lane was folded from, for anything that needs the whole truth. */
   status: TaskStatus;
+  /** The acceptance criteria the boss delegated with; empty for a task a human typed. */
+  criteria: readonly string[];
   at: string;
 };
 

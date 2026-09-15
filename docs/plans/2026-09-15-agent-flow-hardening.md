@@ -240,6 +240,11 @@ change together.
 Done when: the boss cannot delegate without at least one acceptance criterion, the criteria show as a
 checklist on the task, and old tasks still render.
 
+**Verified 2026-09-15**, `delegateTask` driven against an in-memory model. The rendered brief came back
+as goal, then `Acceptance criteria:`, `Constraints:`, `Out of scope:` and `Context:` as bullet sections;
+`task.spec` kept the same four fields as data; and `HoDelegateInput.safeParse` with an empty
+`acceptanceCriteria` was rejected. A task a human typed keeps `spec: undefined` and renders as before.
+
 ### Phase 3 — skills over MCP
 
 Three tools on the office's own MCP server, mirroring the disk layout:

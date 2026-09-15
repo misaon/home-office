@@ -101,6 +101,7 @@ function cardOf(task: Task, snapshot: Snapshot): Card {
     t: task.title,
     p: task.priority,
     k: task.kind === "triage" ? "triage" : "code",
+    criteria: task.spec?.acceptanceCriteria ?? [],
     who: task.assigneeId === undefined ? "" : (snapshot.agents.get(task.assigneeId)?.name ?? ""),
     s: laneOf(task.status),
     status: task.status,

@@ -79,6 +79,7 @@ const assignable = (
 export const newTask = (
   ctx: CommandContext,
   fields: Pick<Task, "projectId" | "kind" | "title" | "brief" | "source"> & {
+    spec?: Task["spec"] | undefined;
     assigneeId?: Task["assigneeId"] | undefined;
     priority?: Task["priority"] | undefined;
     notes?: Task["notes"] | undefined;
@@ -89,6 +90,7 @@ export const newTask = (
   kind: fields.kind,
   title: fields.title,
   brief: fields.brief,
+  ...compact({ spec: fields.spec }),
   status: fields.assigneeId === undefined ? "inbox" : "assigned",
   ...compact({ assigneeId: fields.assigneeId }),
   reviewRounds: 0,

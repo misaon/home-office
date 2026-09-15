@@ -53,6 +53,19 @@ const verifyGuide = (project: Project): string =>
     ? ""
     : `Done means \`${project.verify.command}\` passes. Run it yourself before you report; the office runs it again on your commits and sends the work back to you with the output if it fails.`;
 
+/**
+ * What a delegation has to say. Acceptance criteria are the contract the reviewer checks, so a vague one
+ * costs a round trip; the worker never sees this text, only the brief it produces.
+ */
+const DELEGATE_FIELDS =
+  'Each call needs a goal in one sentence and acceptance criteria that can be checked independently — write them as "When <condition>, the system shall <behaviour>" and keep them to what this one task delivers. Add constraints for what must not change, outOfScope for nearby work you are deliberately leaving out, and context only for what the repository does not already say. If you cannot write a checkable criterion, the request is still a question: ask with ho_reply instead of delegating.';
+
+/** The criteria the task is measured against, restated so they are not buried in the opening message. */
+const criteriaGuide = (task: Task): string =>
+  task.spec === undefined
+    ? ""
+    : `You are done when every one of these holds:\n${task.spec.acceptanceCriteria.map((c, i) => `${String(i + 1)}. ${c}`).join("\n")}`;
+
 const WORK_PROTOCOL = [
   "Protocol: when the work is committed, call the MCP tool ho_report (status review or blocked, summary under 1500 characters) and stop.",
   "If you are truly stuck on a decision only the human can make, commit what you have and call ho_ask_human, then stop; you will be resumed with the answer.",
@@ -78,6 +91,7 @@ const workPrompt = (f: SessionFacts): string[] => [
   browserGuide(f.browser),
   servicesGuide(f.services),
   `Task: ${f.task.title}`,
+  criteriaGuide(f.task),
   verifyGuide(f.project),
   filesGuide(f.files),
   ...WORK_PROTOCOL,
@@ -112,8 +126,8 @@ const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
     `You run this floor. The human writes to you in the floor's chat; you turn requests into well-specified tasks for your team. The repository is checked out at ${REPO_IN_VOLUME} (branch ${f.project.defaultBranch}, ${String(open)} open task(s)) for planning only: read what you need to write precise briefs, do not modify or commit anything here — work happens in separate sessions.`,
     `Team on this floor:\n${roster.join("\n") || "- nobody yet: you do the work yourself"}`,
     staff.length === 0
-      ? "Protocol: for actionable requests call ho_delegate once per independent piece of work with a clear title and a brief (goal, acceptance criteria, constraints) and assignee set to your own name; you will get a separate work session in the repository for each. Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to do. Finish with ho_report (status done, one-line summary) and stop."
-      : "Protocol: for actionable requests call ho_delegate once per independent piece of work (clear title, brief with goal, acceptance criteria and constraints, assignee = the colleague who fits best; use your own name only when nobody fits). Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to delegate. Use ho_list_agents when unsure. Finish with ho_report (status done, one-line summary) and stop.",
+      ? `Protocol: for actionable requests call ho_delegate once per independent piece of work, with assignee set to your own name; you will get a separate work session in the repository for each. ${DELEGATE_FIELDS} Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to do. Finish with ho_report (status done, one-line summary) and stop.`
+      : `Protocol: for actionable requests call ho_delegate once per independent piece of work, assignee = the colleague who fits best (your own name only when nobody fits). ${DELEGATE_FIELDS} Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to delegate. Use ho_list_agents when unsure. Finish with ho_report (status done, one-line summary) and stop.`,
     filesGuide(f.files),
     `Files: to send the human an image or a document, write it into ${CHAT_OUTBOX_DIR} and name the file in ho_reply's \`files\`. Screenshots the browser tools take land in ${BROWSER_OUTPUT_DIR}; copy the one you mean across. Accepted: png, jpg, gif, webp, pdf, txt, md, json, csv, up to 10 MB each.`,
     "Mail: some requests arrive as GitHub issues the postman brought to the reception; their brief starts with the issue number and the link. Quote the issue link in the brief. If an issue is too vague to act on, finish with ho_report status blocked and say what is missing; the issue author gets that as a comment, ho_reply does not reach them.",
