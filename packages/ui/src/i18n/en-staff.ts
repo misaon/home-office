@@ -42,6 +42,14 @@ export const enStaff = {
     nameHint: "taken from the repository",
     importAgents: "Import characters from other floors",
     floors: "Floors (projects)",
+    configTitle: "Configuration in the repository",
+    configHint:
+      "This floor can be described by `.ho/config.json` in its own repository: its name, branch, policies and who works here. The office applies it when the daemon starts and whenever the file changes.",
+    configSync: "Apply .ho/config.json",
+    configExport: "Write .ho/config.json",
+    configNone: "This repository carries no .ho/config.json.",
+    configNothing: "Nothing to change.",
+    configWrote: "Wrote {{path}}",
     pullRequests: "Open a pull request",
     pullRequestsHint:
       "On: finished work arrives as a pull request. Off: the branch is pushed and nothing else happens.",

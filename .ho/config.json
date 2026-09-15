@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/misaon/home-office/main/schema/office.schema.json",
+  "version": 1,
+  "name": "Home Office",
+  "defaultBranch": "main",
+  "publish": { "mode": "pull-request", "draft": true },
+  "intake": { "enabled": false },
+  "services": { "enabled": false, "mode": "rootless" },
+  "budgets": { "maxTurnsPerTask": 60, "maxConcurrentSessions": 1, "maxWallMinutes": 60 }
+}
