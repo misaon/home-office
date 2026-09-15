@@ -35,9 +35,12 @@ export type Design = {
   toast: string | null;
   query: string;
   searchOpen: boolean;
-  attachOpen: boolean;
-  usageOpen: boolean;
-  openSelect: string | null;
+  /**
+   * The one menu the office has open, if any: `"usage"`, or a select's own `scope:name`. They are
+   * mutually exclusive — one scrim dismisses whichever it is — so they are one field rather than an
+   * invariant maintained by hand at every place that opens one.
+   */
+  popover: string | null;
   attachment: Attachment | null;
   lightbox: Attachment | null;
   sheet: Sheet;
@@ -49,16 +52,14 @@ export type Design = {
   teamFilter: "all" | "working" | "idle";
   credOpen: string | null;
   floorRowOpen: string | null;
-  openIntake: string | null;
-  openServices: string | null;
   /** What the office is about to do that cannot be undone, and how it says so. */
   ask: Ask | null;
   usageView: "Tokens" | "Resources";
   win: Window;
 
-  set: (patch: Partial<Design>) => void;
+  /** A patch, or what to make of the state it lands on. */
+  set: (patch: Partial<Design> | ((state: Design) => Partial<Design>)) => void;
   confirm: (ask: Ask) => void;
-  update: (fn: (state: Design) => Partial<Design>) => void;
   flash: (message: string) => void;
 };
 
@@ -74,9 +75,7 @@ const INITIAL = {
   toast: null,
   query: "",
   searchOpen: false,
-  attachOpen: false,
-  usageOpen: false,
-  openSelect: null,
+  popover: null,
   attachment: null,
   lightbox: null,
   sheet: null,
@@ -87,8 +86,6 @@ const INITIAL = {
   teamFilter: "all",
   credOpen: null,
   floorRowOpen: null,
-  openIntake: null,
-  openServices: null,
   ask: null,
   usageView: "Tokens",
   win: "24 h",
@@ -102,9 +99,6 @@ export const useDesign = create<Design>((set) => ({
   /** The office never deletes without asking; this is the asking. */
   confirm: (ask) => {
     set({ ask });
-  },
-  update: (fn) => {
-    set(fn);
   },
   /** What just happened, said once and then gone. */
   flash: (message) => {
