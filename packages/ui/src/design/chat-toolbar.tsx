@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { UsageMenu, useContextFill } from "./chat-usage-menu.tsx";
 import type { Floor } from "./data.ts";
-import { Plus } from "./icons.tsx";
+import { Plus } from "lucide-react";
 import { MONO } from "./tokens.ts";
 
 const SQUARE =

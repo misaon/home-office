@@ -2,7 +2,7 @@ import type { ParseKeys } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type Check, CheckRow } from "./fault-check.tsx";
-import { Chevron } from "./icons.tsx";
+import { ChevronRight } from "lucide-react";
 import {
   BODY,
   CARD,
@@ -140,7 +140,7 @@ export function FaultBody({
           }}
           className={`hover:text-accent-soft ${TOGGLE}`}
         >
-          <Chevron
+          <ChevronRight
             size={9}
             strokeWidth={1.6}
             className={`transition-transform duration-300 ${logOpen ? "rotate-90" : "rotate-0"}`}

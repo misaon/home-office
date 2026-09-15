@@ -23,6 +23,7 @@
       "electrobun": "2.0.1",
       "i18next": "26.4.2",
       "knip": "6.35.1",
+      "lucide-react": "1.46.0",
       "oxfmt": "0.68.0",
       "oxlint": "1.83.0",
       "oxlint-tsgolint": "7.0.2001",

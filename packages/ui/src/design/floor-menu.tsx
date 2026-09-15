@@ -1,7 +1,7 @@
 import { Popover } from "@base-ui/react/popover";
 import { useTranslation } from "react-i18next";
 import { FloorRow } from "./floor-row.tsx";
-import { Plus } from "./icons.tsx";
+import { Plus } from "lucide-react";
 import { useFloors } from "./live.ts";
 import { useUi } from "../store.ts";
 import { useDesign } from "./store.ts";

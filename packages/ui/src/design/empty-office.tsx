@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Plus } from "./icons.tsx";
+import { Plus } from "lucide-react";
 import { DISPLAY, MONO } from "./tokens.ts";
 import { useUi } from "../store.ts";
 

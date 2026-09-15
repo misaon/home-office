@@ -15,6 +15,7 @@
     "@orpc/contract": "catalog:",
     "@tanstack/react-query": "catalog:",
     "i18next": "catalog:",
+    "lucide-react": "catalog:",
     "pixi.js": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

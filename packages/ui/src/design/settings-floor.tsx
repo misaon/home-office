@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
-import { Chevron } from "./icons.tsx";
+import { ChevronRight } from "lucide-react";
 import { FloorSwitches } from "./settings-floor-switches.tsx";
 import { useUi } from "../store.ts";
 import { MONO, separator } from "./tokens.ts";
@@ -64,7 +64,7 @@ export function SettingsFloor({
                 {t("project.summaryTasks", { agents: floor.team.length, open: openTasks })}
               </span>
             </span>
-            <Chevron
+            <ChevronRight
               size={9}
               strokeWidth={1.5}
               className="flex-[0_0_auto] stroke-ink-meta transition-transform duration-300 rotate-0 data-panel-open:rotate-90"

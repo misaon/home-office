@@ -1,5 +1,5 @@
 import { Radio } from "@base-ui/react/radio";
-import { Tick } from "./icons.tsx";
+import { Check } from "lucide-react";
 
 /**
  * The card the office picks one of something with: a lit tile holding the mark, a name, a line of
@@ -44,7 +44,7 @@ export function PickCard({
         <span className="block text-11h text-ink-meta mt-4 leading-body">{hint}</span>
       </span>
       <Radio.Indicator className={TICK}>
-        <Tick />
+        <Check size={9} strokeWidth={2.2} className="stroke-accent-ink" />
       </Radio.Indicator>
     </Radio.Root>
   );

@@ -2,7 +2,7 @@ import { Accordion } from "@base-ui/react/accordion";
 import type { SecretKeyName } from "@ho/protocol";
 import { useTranslation } from "react-i18next";
 import { CredForm, NAMED } from "./settings-cred-form.tsx";
-import { Chevron } from "./icons.tsx";
+import { ChevronRight } from "lucide-react";
 import { MONO, separator } from "./tokens.ts";
 
 const HEAD =
@@ -36,7 +36,7 @@ export function CredRow({
             >
               {stored ? t("tokens.stored") : t("tokens.missing")}
             </span>
-            <Chevron
+            <ChevronRight
               size={9}
               strokeWidth={1.5}
               className="flex-[0_0_auto] transition-transform duration-300 rotate-0 data-panel-open:rotate-90 stroke-ink-meta"

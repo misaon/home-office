@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { Floor, Member } from "./data.ts";
 import { newDraft } from "./agent-dialog.tsx";
-import { Plus } from "./icons.tsx";
+import { Plus } from "lucide-react";
 import { TeamHeader } from "./team-header.tsx";
 import { TeamRow } from "./team-row.tsx";
 import { useDesign } from "./store.ts";
