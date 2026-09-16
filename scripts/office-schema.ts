@@ -1,4 +1,7 @@
-import { OFFICE_DIR, OFFICE_FILE, OfficeFile } from "@ho/protocol";
+// A relative import, not the package specifier: the root program declares no workspace dependency, so
+// `@ho/protocol` does not resolve from `scripts/` in a clean isolated install. CI caught that; the
+// local tree resolved it only because an earlier install had left the package hoisted.
+import { OFFICE_DIR, OFFICE_FILE, OfficeFile } from "../packages/protocol/src/office-file.ts";
 import { resolve } from "node:path";
 
 /**
