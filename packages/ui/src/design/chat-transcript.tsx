@@ -11,6 +11,8 @@ const DOT = "w-5 h-5 rounded-half bg-accent";
 
 const ROW = "flex items-center gap-7 min-w-0";
 
+const STEPS = "flex flex-col-reverse gap-6 max-h-150 overflow-y-auto";
+
 const TOOL = `${MONO} text-10h text-accent-quote flex-[0_0_auto]`;
 
 const DETAIL = `${MONO} text-10h text-ink-label flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap`;
@@ -48,9 +50,11 @@ export function ChatTranscript({ activity }: { activity: Activity }): React.JSX.
         ))}
         <span className="ml-3">{t("chat.thinking", { name: activity.name })}</span>
       </div>
-      {activity.steps.map((step) => (
-        <StepRow key={step.id} step={step} />
-      ))}
+      <div className={STEPS}>
+        {activity.steps.toReversed().map((step) => (
+          <StepRow key={step.id} step={step} />
+        ))}
+      </div>
       {activity.text === "" ? null : <div className={TEXT}>{activity.text}</div>}
     </div>
   );

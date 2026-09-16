@@ -88,12 +88,13 @@ export function startBossVoice(
     if (boss === undefined || task.source.byAgentId !== boss.id) {
       return;
     }
+    if (task.assigneeId === boss.id) {
+      return;
+    }
     const text =
       task.assigneeId === undefined
         ? `${quote(task)} waits in the inbox for an assignee.`
-        : task.assigneeId === boss.id
-          ? `I will take care of ${quote(task)} myself.`
-          : `I have handed ${quote(task)} to ${nameOf(office.model, task.assigneeId)}.`;
+        : `I have handed ${quote(task)} to ${nameOf(office.model, task.assigneeId)}.`;
     await say(boss, text, task.id);
   };
   const onStatus = async (

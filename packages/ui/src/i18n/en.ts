@@ -115,7 +115,7 @@ export const en = {
     thinking: "is thinking…",
     attach: "Attach a file",
     attachRejected: "the office does not take {{names}}",
-    imageOpen: "Open {{name}}",
+    open: "open",
     imageFit: "Fit",
     imageZoomIn: "Zoom in",
     imageZoomOut: "Zoom out",

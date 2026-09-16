@@ -115,7 +115,7 @@ export const cs: typeof en = {
     thinking: "přemýšlí…",
     attach: "Přiložit soubor",
     attachRejected: "kancelář nebere {{names}}",
-    imageOpen: "Otevřít {{name}}",
+    open: "otevřít",
     imageFit: "Na celou",
     imageZoomIn: "Přiblížit",
     imageZoomOut: "Oddálit",

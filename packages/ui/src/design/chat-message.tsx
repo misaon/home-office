@@ -9,12 +9,47 @@ import { RichText } from "./markdown.tsx";
 const FRAME =
   "block w-full mt-10 h-118 rounded-10 cursor-pointer overflow-hidden p-0 border border-accent-a30 bg-sunk transition-all duration-220";
 
+const FILE =
+  "flex items-center gap-8 w-full mt-10 py-8 px-10 rounded-10 cursor-pointer border border-accent-a30 bg-sunk text-left transition-all duration-220";
+
 function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);
   const image = isImageType(attachment.mime);
   const url = useAttachmentUrl(attachment, image);
 
+  if (!image) {
+    return (
+      <button
+        type="button"
+        title={attachment.name}
+        onClick={() => {
+          set({ lightbox: attachment });
+        }}
+        className={`hover:border-accent-a70 ${FILE}`}
+      >
+        <svg
+          className="flex-[0_0_auto] stroke-accent-quote"
+          width="13"
+          height="13"
+          viewBox="0 0 14 14"
+          fill="none"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M8 1.5H3.6v11h6.8V4z" />
+          <path d="M8 1.5V4h2.4" />
+        </svg>
+        <span
+          className={`flex-1 min-w-0 ${MONO} text-10h text-accent-quote overflow-hidden text-ellipsis whitespace-nowrap`}
+        >
+          {attachment.name}
+        </span>
+        <span className={`${MONO} text-9h text-ink-label flex-[0_0_auto]`}>{t("chat.open")}</span>
+      </button>
+    );
+  }
   return (
     <button
       type="button"
@@ -25,9 +60,7 @@ function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX.Elemen
       className={`hover:border-accent-a70 hover:scale-101 ${FRAME}`}
     >
       {url === null ? (
-        <span className={`${MONO} text-10 text-accent-quote`}>
-          {image ? t("common.checking") : `${attachment.name} · ${t("chat.imageOpen")}`}
-        </span>
+        <span className={`${MONO} text-10 text-accent-quote`}>{t("common.checking")}</span>
       ) : (
         <img src={url} alt={attachment.name} className="w-full h-full object-cover block" />
       )}

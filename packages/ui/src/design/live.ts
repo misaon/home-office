@@ -204,7 +204,7 @@ export type Step = { id: string; tool: string; detail: string; ok: boolean | nul
 
 export type Activity = { id: AgentId; name: string; steps: Step[]; text: string };
 
-const STEP_TAIL = 4;
+const STEP_TAIL = 40;
 const TEXT_TAIL = 240;
 const DETAIL_MAX = 60;
 
