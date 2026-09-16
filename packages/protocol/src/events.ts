@@ -69,6 +69,7 @@ export const DomainEvent = z.discriminatedUnion("type", [
   }),
 
   event("chat.message_posted", { message: ChatMessage }),
+  event("chat.cleared", { projectId: ProjectId }),
 
   event("mail.received", { mail: MailItem }),
   event("mail.acknowledged", { mailId: MailItemId, ack: MailAck }),

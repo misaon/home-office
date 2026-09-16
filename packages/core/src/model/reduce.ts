@@ -183,6 +183,7 @@ const TOUCHES: Readonly<Record<StoredEvent["type"], Collection | null>> = {
   "task.removed": "tasks",
   "handoff.requested": null,
   "chat.message_posted": "chat",
+  "chat.cleared": "chat",
   "mail.received": "mail",
   "mail.acknowledged": "mail",
   "session.started": "sessions",
@@ -241,6 +242,10 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
     }
     case "handoff.requested": {
       break;
+    }
+    case "chat.cleared": {
+      model.chat.set(event.payload.projectId, []);
+      return;
     }
     case "chat.message_posted": {
       const { message } = event.payload;

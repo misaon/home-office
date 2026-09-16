@@ -2,7 +2,8 @@ import { Toggle } from "@base-ui/react/toggle";
 import { DISPLAY, MONO } from "./tokens.ts";
 import { useTranslation } from "react-i18next";
 import type { Floor, Member } from "./data.ts";
-import { useDesign } from "./store.ts";
+import { requireClient } from "../rpc.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
 
 const BAR = "flex-[0_0_auto] flex items-center gap-11 py-14 px-16 border-b border-line";
 
@@ -28,6 +29,14 @@ export function ChatHeader({
   const query = useDesign((s) => s.query);
   const searchOpen = useDesign((s) => s.searchOpen);
   const set = useDesign((s) => s.set);
+  const confirm = useDesign((s) => s.confirm);
+  const flash = useDesign((s) => s.flash);
+  const clear = useOfficeMutation({
+    mutationFn: () => requireClient().chat.clear({ projectId: floor.id }),
+    onSuccess: (result) => {
+      flash(t("chat.cleared", { count: result.removed }));
+    },
+  });
 
   return (
     <div className={BAR}>
@@ -58,6 +67,37 @@ export function ChatHeader({
               : `${boss.role} · ${boss.model.toLowerCase()} / ${boss.effort} · ${floor.name}`}
           </div>
         </div>
+      )}
+      {floor.messages.length === 0 ? null : (
+        <button
+          type="button"
+          aria-label={t("chat.clear")}
+          title={t("chat.clear")}
+          disabled={clear.isPending}
+          onClick={() => {
+            confirm({
+              title: t("chat.clearTitle"),
+              body: t("chat.clearConfirm", { count: floor.messages.length }),
+              okLabel: t("chat.clear"),
+              act: () => {
+                clear.mutate();
+              },
+            });
+          }}
+          className="hover:text-accent-soft hover:border-accent-a45 w-30 h-30 flex-[0_0_30px] grid place-items-center border border-border-strong rounded-9 bg-transparent text-ink-quiet cursor-pointer transition-all duration-200 disabled:opacity-50"
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          >
+            <path d="M2.4 3.8h9.2M5.6 3.8V2.6h2.8v1.2M3.6 3.8l.6 7.6h5.6l.6-7.6" />
+          </svg>
+        </button>
       )}
       <Toggle
         aria-label={t("chat.search")}

@@ -1,5 +1,6 @@
 import {
   answerQuestion,
+  clearChat,
   copyAgent,
   createAgent,
   createChannel,
@@ -213,6 +214,11 @@ export const router = base.router({
             triageMessage(m, input.projectId, input.text, input.attachments, ctx),
           ),
     ),
+    clear: base.chat.clear.handler(async ({ input, context }) => ({
+      removed: await context.office.execute(HUMAN_ACTOR, (m, ctx) =>
+        clearChat(m, input.projectId, ctx),
+      ),
+    })),
   },
   mail: {
     list: base.mail.list.handler(({ input, context }) =>

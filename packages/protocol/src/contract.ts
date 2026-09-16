@@ -89,6 +89,9 @@ export const contract = {
     send: base
       .input(ChatSendInput)
       .output(z.object({ message: ChatMessage, task: Task.nullable() })),
+    clear: base
+      .input(z.object({ projectId: ProjectId }))
+      .output(z.object({ removed: z.int().nonnegative() })),
   },
   sessions: {
     list: base.input(SessionListInput).output(z.array(Session)),

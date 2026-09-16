@@ -138,3 +138,18 @@ export function postAgentMessage(
     return ok({ events: [chatEvent(ctx, message)], read: () => message });
   });
 }
+
+export function clearChat(
+  model: ReadModel,
+  projectId: ProjectId,
+  ctx: CommandContext,
+): CommandResult<number> {
+  return withProject(model, projectId, () => {
+    const removed = (model.chat.get(projectId) ?? []).length;
+    return ok({
+      events:
+        removed === 0 ? [] : [{ type: "chat.cleared", actor: ctx.actor, payload: { projectId } }],
+      read: () => removed,
+    });
+  });
+}
