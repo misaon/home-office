@@ -5,83 +5,14 @@ import {
   recordVerificationFailure,
   transitionTask,
 } from "@ho/core";
-import { githubRepoFromUrl, type Project, SYSTEM_ACTOR, type Task } from "@ho/protocol";
+import { SYSTEM_ACTOR, type Task } from "@ho/protocol";
 import { pushFromVolume } from "./git-bridge.ts";
-import { mustExec } from "./host-exec.ts";
 import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
+import { openPullRequest } from "./publish.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import type { Outcome } from "./session-run.ts";
 import type { SessionDeps } from "./sessions.ts";
 import { runVerify } from "./verify.ts";
-
-const GH_TIMEOUT_MS = 120_000;
-
-const gh = (args: readonly string[], cwd: string | undefined, what: string): Promise<string> =>
-  mustExec(["gh", ...args], { cwd, timeoutMs: GH_TIMEOUT_MS }, `gh ${what}`);
-
-async function openPullRequest(
-  project: Project,
-  task: Task,
-  branch: string,
-  report: string,
-): Promise<string | null> {
-  if (project.publish.mode !== "pull-request") {
-    return null;
-  }
-  let cwd: string | undefined;
-  const target: string[] = [];
-  if (project.repo.kind === "local") {
-    await pushLocalBranch(project.repo.path, branch);
-    cwd = project.repo.path;
-  } else {
-    const repo = githubRepoFromUrl(project.repo.url);
-    if (repo === null) {
-      throw new Error("pull requests need a GitHub URL");
-    }
-    target.push("--repo", repo);
-  }
-  const existing = await gh(
-    [
-      "pr",
-      "list",
-      ...target,
-      "--head",
-      branch,
-      "--base",
-      project.defaultBranch,
-      "--state",
-      "open",
-      "--json",
-      "url",
-      "--jq",
-      ".[0].url // empty",
-    ],
-    cwd,
-    "pr list",
-  );
-  if (existing !== "") {
-    return existing;
-  }
-  const created = await gh(
-    [
-      "pr",
-      "create",
-      "--head",
-      branch,
-      "--base",
-      project.defaultBranch,
-      "--title",
-      task.title,
-      "--body",
-      report === "" ? task.brief : report,
-      ...(project.publish.draft ? ["--draft"] : []),
-      ...target,
-    ],
-    cwd,
-    "pr create",
-  );
-  return created.split("\n").findLast((line) => line.startsWith("https://")) ?? null;
-}
 
 async function verified(
   deps: SessionDeps,
@@ -131,6 +62,12 @@ async function publish(
   );
   if (ctx.project.repo.kind === "git") {
     await pushMirrorBranch(home, ctx.project, provisioned.branch);
+  }
+  if (ctx.project.publish.mode !== "pull-request") {
+    return null;
+  }
+  if (ctx.project.repo.kind === "local") {
+    await pushLocalBranch(ctx.project.repo.path, provisioned.branch);
   }
   return openPullRequest(ctx.project, ctx.task, provisioned.branch, report);
 }
