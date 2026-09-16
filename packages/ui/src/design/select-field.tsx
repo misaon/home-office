@@ -4,13 +4,13 @@ import { MONO } from "./tokens.ts";
 const LABEL = `${MONO} text-9h tracking-caps-wider uppercase text-ink-label mb-8`;
 
 const TRIGGER =
-  "w-full flex items-center justify-between gap-8 py-12 px-13 rounded-12 bg-card cursor-pointer text-left transition-all duration-200 border border-border-strong hover:border-accent-a45 data-popup-open:border-accent-a50";
+  "w-full flex items-center justify-between gap-8 py-16 px-13 rounded-12 bg-card cursor-pointer text-left transition-all duration-200 border border-border-strong hover:border-accent-a45 data-popup-open:border-accent-a50";
 
 const POPUP =
   "min-w-(--anchor-width) max-h-(--available-height) overflow-y-auto p-5 rounded-11 bg-menu border border-border-strong shadow-pop origin-(--transform-origin) transition-[opacity,translate] duration-240 ease-out data-starting-style:opacity-0 data-starting-style:-translate-y-6 data-ending-style:opacity-0";
 
 const OPTION =
-  "w-full grid grid-cols-[14px_1fr] items-center gap-8 py-8 px-9 rounded-8 cursor-pointer text-left transition-all duration-180 text-ink-soft data-highlighted:bg-accent-a13 data-highlighted:text-accent-soft data-selected:bg-accent-a12 data-selected:text-accent-soft";
+  "w-full grid grid-cols-[14px_1fr] items-center gap-8 py-11 px-10 rounded-8 cursor-pointer text-left transition-all duration-180 text-ink-soft data-highlighted:bg-accent-a13 data-highlighted:text-accent-soft data-selected:bg-accent-a12 data-selected:text-accent-soft";
 
 const ELLIPSIS = "overflow-hidden text-ellipsis whitespace-nowrap";
 

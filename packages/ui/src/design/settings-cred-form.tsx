@@ -15,7 +15,7 @@ export const NAMED: Record<SecretKeyName, "claude" | "anthropic" | "openai" | "g
     "github-token": "github",
   };
 
-const FIELD = `flex-1 min-w-120 py-9 px-11 rounded-10 border border-border-strong bg-well ${MONO} text-11h`;
+const FIELD = `flex-1 min-w-120 py-12 px-11 rounded-10 border border-border-strong bg-well ${MONO} text-11h`;
 
 const ACTION =
   "py-9 px-14 rounded-10 border-0 bg-accent text-accent-ink text-12 font-semibold cursor-pointer whitespace-nowrap flex-[0_0_auto] transition-all duration-200";
