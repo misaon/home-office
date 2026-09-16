@@ -21,6 +21,9 @@ const workPublish = (mode: PublishPolicy["mode"]): string =>
     ? "Publishing: commit on the task branch and finish with ho_report. The office pushes that branch and opens the pull request for you once the checks pass — there is no ho_publish in this session and you do not need one."
     : "Publishing: commit on the task branch and finish with ho_report. The office pushes the branch; this floor does not open pull requests, so do not promise one.";
 
+const REPO_RULES =
+  "House rules: this repository's own CLAUDE.md, .claude/skills and .claude/rules are loaded for you — follow them over your habits. AGENTS.md is not loaded automatically; if the repository has one, read it before you start and treat it the same way.";
+
 const HOST_TOOLS =
   "Publishing: there is no `gh` in this sandbox and the only remote is a local path, so never try to open a pull request from the shell. Call ho_publish and the office pushes and opens it for you.";
 
@@ -98,7 +101,9 @@ const workPrompt = (f: SessionFacts): string[] => [
   "Commit your changes with clear Conventional Commit messages.",
   browserGuide(f.browser),
   previewGuide(f.preview),
+  REPO_RULES,
   workPublish(f.project.publish.mode),
+  REPO_RULES,
   servicesGuide(f.services),
   `Task: ${f.task.title}`,
   criteriaGuide(f.task),
@@ -111,6 +116,7 @@ const reviewPrompt = (f: SessionFacts): string[] => [
   `You are reviewing branch ${f.branch} of the repository at ${REPO_IN_VOLUME} (base branch: ${f.project.defaultBranch}).`,
   browserGuide(f.browser),
   previewGuide(f.preview),
+  REPO_RULES,
   HOST_TOOLS,
   servicesGuide(f.services),
   `Start with \`git -C ${REPO_IN_VOLUME} diff ${f.project.defaultBranch}...HEAD --stat\` and then the full diff; read surrounding code only where needed.`,

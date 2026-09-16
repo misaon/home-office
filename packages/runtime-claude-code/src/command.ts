@@ -34,7 +34,7 @@ export function claudeArgv(spec: RuntimeSessionSpec, claudeSessionId: string): s
     "--permission-mode",
     "bypassPermissions",
     "--setting-sources",
-    "user",
+    "user,project",
     "--settings",
     JSON.stringify(CLAUDE_SETTINGS),
     "--strict-mcp-config",
