@@ -40,7 +40,7 @@ import {
 import { recoverSessions } from "./session-recover.ts";
 import { runPrompt } from "./session-run.ts";
 import { settle } from "./session-settle.ts";
-import { traceOf } from "./session-trace.ts";
+import { gapOf, traceOf } from "./session-trace.ts";
 
 export type SessionDeps = {
   office: Office;
@@ -214,6 +214,13 @@ export class SessionManager {
 
   async #onEvent(ctx: SessionContext, event: RuntimeEvent): Promise<void> {
     this.#emit(ctx.session.id, event);
+    const gap = gapOf(event);
+    if (gap !== null) {
+      this.#deps.log.warn(
+        { sessionId: ctx.session.id, taskId: ctx.task.id, agent: ctx.agent.name, ...gap },
+        "the sandbox lacks a tool the agent reached for",
+      );
+    }
     const trace = traceOf(event);
     if (trace !== null) {
       this.#deps.log.debug(

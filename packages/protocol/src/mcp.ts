@@ -12,9 +12,9 @@ export const HoReportInput = z.object({
   summary: z
     .string()
     .min(1)
-    .max(1500)
+    .max(6000)
     .describe(
-      "What changed, how you verified it, open questions. Plain text, under 1500 characters.",
+      "What changed, how you verified it, open questions. Plain text; keep it under a page.",
     ),
 });
 export type HoReportInput = z.infer<typeof HoReportInput>;

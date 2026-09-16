@@ -15,6 +15,9 @@ import { REPO_IN_VOLUME } from "./git-bridge.ts";
 
 export type Services = { kind: "off" } | { kind: "ready" } | { kind: "failed"; message: string };
 
+const HOST_TOOLS =
+  "Publishing: there is no `gh` in this sandbox and the only remote is a local path, so never try to open a pull request from the shell. Call ho_publish and the office pushes and opens it for you.";
+
 const previewGuide = (preview: { enabled: boolean; port: number }): string =>
   preview.enabled
     ? `Preview: a server you start on 0.0.0.0:${String(preview.port)} inside the sandbox is reachable from the human's own browser at http://127.0.0.1:${String(preview.port)}. Bind it to 0.0.0.0, not 127.0.0.1, or only you will see it. That port is the only one that leaves the sandbox; name it when you tell the human where to look.`
@@ -89,6 +92,7 @@ const workPrompt = (f: SessionFacts): string[] => [
   "Commit your changes with clear Conventional Commit messages.",
   browserGuide(f.browser),
   previewGuide(f.preview),
+  HOST_TOOLS,
   servicesGuide(f.services),
   `Task: ${f.task.title}`,
   criteriaGuide(f.task),
@@ -101,6 +105,7 @@ const reviewPrompt = (f: SessionFacts): string[] => [
   `You are reviewing branch ${f.branch} of the repository at ${REPO_IN_VOLUME} (base branch: ${f.project.defaultBranch}).`,
   browserGuide(f.browser),
   previewGuide(f.preview),
+  HOST_TOOLS,
   servicesGuide(f.services),
   `Start with \`git -C ${REPO_IN_VOLUME} diff ${f.project.defaultBranch}...HEAD --stat\` and then the full diff; read surrounding code only where needed.`,
   verifyGuide(f.project) === ""

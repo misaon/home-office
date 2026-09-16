@@ -10,6 +10,26 @@ const shorten = (value: unknown): string => {
   return text.length <= TRACE_MAX ? text : `${text.slice(0, TRACE_MAX)}…`;
 };
 
+const MISSING = [
+  /(?<tool>[\w./-]+): (?:command )?not found/iu,
+  /command not found: (?<tool>[\w./-]+)/iu,
+  /(?<tool>[\w./-]+): unrecognized option/iu,
+  /unknown (?:command|option) ["']?(?<tool>[\w./-]+)/iu,
+];
+
+export const gapOf = (event: RuntimeEvent): { tool: string; detail: string } | null => {
+  if (event.kind !== "tool_result" || event.ok) {
+    return null;
+  }
+  for (const pattern of MISSING) {
+    const found = pattern.exec(event.summary);
+    if (found !== null) {
+      return { tool: found.groups?.["tool"] ?? "", detail: found[0].slice(0, 200) };
+    }
+  }
+  return null;
+};
+
 export const traceOf = (event: RuntimeEvent): Record<string, unknown> | null => {
   switch (event.kind) {
     case "text_delta": {
