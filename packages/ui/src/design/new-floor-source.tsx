@@ -41,8 +41,8 @@ function LocalField({
         <div className={`${FIELD_ROW} border ${border}`}>
           <svg
             className="flex-[0_0_auto] stroke-ink-ghost"
-            width="13"
-            height="13"
+            width="15"
+            height="15"
             viewBox="0 0 16 16"
             fill="none"
             strokeWidth="1.5"
@@ -95,8 +95,8 @@ function GitField({
       <div className={`${FIELD_ROW} border ${border}`}>
         <svg
           className="flex-[0_0_auto] stroke-ink-ghost"
-          width="13"
-          height="13"
+          width="15"
+          height="15"
           viewBox="0 0 16 16"
           fill="none"
           strokeWidth="1.5"

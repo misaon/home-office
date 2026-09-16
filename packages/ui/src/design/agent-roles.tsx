@@ -7,8 +7,8 @@ import { PickCard } from "./pick-card.tsx";
 export const ROLE_MARKS: Record<AgentRole, React.JSX.Element> = {
   boss: (
     <svg
-      width="15"
-      height="15"
+      width="17"
+      height="17"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
@@ -21,8 +21,8 @@ export const ROLE_MARKS: Record<AgentRole, React.JSX.Element> = {
   ),
   worker: (
     <svg
-      width="15"
-      height="15"
+      width="17"
+      height="17"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
@@ -35,8 +35,8 @@ export const ROLE_MARKS: Record<AgentRole, React.JSX.Element> = {
   ),
   reviewer: (
     <svg
-      width="15"
-      height="15"
+      width="17"
+      height="17"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
@@ -51,8 +51,8 @@ export const ROLE_MARKS: Record<AgentRole, React.JSX.Element> = {
   ),
   clerk: (
     <svg
-      width="15"
-      height="15"
+      width="17"
+      height="17"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
