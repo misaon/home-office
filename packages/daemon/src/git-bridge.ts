@@ -1,11 +1,34 @@
 import type { SandboxProvider, SandboxSpec } from "@ho/core";
 import type { TaskId } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
+import { exec } from "./host-exec.ts";
 import { LABELS } from "./labels.ts";
 
 export const REPO_IN_VOLUME = "/work/repo";
 
 export const branchFor = (taskId: TaskId): string => `ho/task-${taskId}`;
+
+export type GitIdentity = { name: string; email: string };
+
+let resolvedHostIdentity: Promise<GitIdentity | null> | null = null;
+
+const readGitConfig = async (key: string): Promise<string> => {
+  const result = await exec(["git", "config", "--get", key], { timeoutMs: 5000 });
+  return result.stdout.trim();
+};
+
+const readHostIdentity = async (): Promise<GitIdentity | null> => {
+  const [name, email] = await Promise.all([
+    readGitConfig("user.name"),
+    readGitConfig("user.email"),
+  ]);
+  return name === "" || email === "" ? null : { name, email };
+};
+
+export const hostGitIdentity = (): Promise<GitIdentity | null> => {
+  resolvedHostIdentity ??= readHostIdentity().catch(() => null);
+  return resolvedHostIdentity;
+};
 
 type Source = { path: string; mode: "ro" | "rw" } | null;
 
