@@ -194,6 +194,7 @@ export const Task = z.object({
   status: TaskStatus,
   assigneeId: AgentId.optional(),
   reviewerId: AgentId.optional(),
+  publish: PublishPolicy.shape.mode.optional(),
   reviewRounds: z.int().nonnegative().default(0),
   notes: z.array(TaskNote).default([]),
   source: TaskSource,

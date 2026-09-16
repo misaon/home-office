@@ -63,7 +63,7 @@ async function publish(
   if (ctx.project.repo.kind === "git") {
     await pushMirrorBranch(home, ctx.project, provisioned.branch);
   }
-  if (ctx.project.publish.mode !== "pull-request") {
+  if ((ctx.task.publish ?? ctx.project.publish.mode) !== "pull-request") {
     return null;
   }
   if (ctx.project.repo.kind === "local") {
