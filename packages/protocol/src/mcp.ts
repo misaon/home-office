@@ -87,6 +87,11 @@ export const HoTaskStatusInput = z.object({
 });
 export type HoTaskStatusInput = z.infer<typeof HoTaskStatusInput>;
 
+export const HoPublishInput = z.object({
+  taskId: TaskId.describe("The finished task whose branch should be published"),
+});
+export type HoPublishInput = z.infer<typeof HoPublishInput>;
+
 export const HoReplyInput = z.object({
   text: z.string().min(1).max(4000).describe("Message to the human in the office chat"),
   files: z

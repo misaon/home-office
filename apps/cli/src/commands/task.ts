@@ -78,6 +78,21 @@ export const taskCommand: Command = {
         return undefined;
       },
     },
+    publish: {
+      positionals: ["<task-id>"],
+      run: async (parsed, client) => {
+        const rpc = await client();
+        const published = await rpc.tasks.publish({ id: taskId(parsed.positionals[0]) });
+        return output(
+          [
+            `pushed ${published.branch} to origin`,
+            published.prUrl ??
+              "no pull request — the repository has no GitHub origin, or gh could not open one",
+          ],
+          published,
+        );
+      },
+    },
     assign: {
       positionals: ["<task-id>", "<agent|none>"],
       run: async (parsed, client) => {
