@@ -1,12 +1,16 @@
 import { compact } from "@ho/protocol";
+import { daemonLog } from "./logger.ts";
 
 export type Exec = { code: number; stdout: string; stderr: string };
+
+const TAIL = 400;
 
 type ExecOptions = { cwd?: string | undefined; timeoutMs: number; env?: Record<string, string> };
 
 const redact = (text: string): string => text.replaceAll(/\/\/[^\s/@]+@/gu, "//***@");
 
 export async function exec(argv: readonly string[], options: ExecOptions): Promise<Exec> {
+  const started = Bun.nanoseconds();
   const proc = Bun.spawn([...argv], {
     stdout: "pipe",
     stderr: "pipe",
@@ -19,7 +23,19 @@ export async function exec(argv: readonly string[], options: ExecOptions): Promi
     new Response(proc.stderr).text(),
     proc.exited,
   ]);
-  return { code, stdout: stdout.trim(), stderr: redact(stderr.trim()) };
+  const result = { code, stdout: stdout.trim(), stderr: redact(stderr.trim()) };
+  daemonLog()?.debug(
+    {
+      argv: argv.map((part) => redact(part)),
+      ...compact({ cwd: options.cwd }),
+      code,
+      ms: Math.round((Bun.nanoseconds() - started) / 1e6),
+      stdout: result.stdout.slice(0, TAIL),
+      stderr: result.stderr.slice(0, TAIL),
+    },
+    "host command",
+  );
+  return result;
 }
 
 export async function mustExec(

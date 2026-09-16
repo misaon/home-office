@@ -40,6 +40,7 @@ import {
 import { recoverSessions } from "./session-recover.ts";
 import { runPrompt } from "./session-run.ts";
 import { settle } from "./session-settle.ts";
+import { traceOf } from "./session-trace.ts";
 
 export type SessionDeps = {
   office: Office;
@@ -213,6 +214,13 @@ export class SessionManager {
 
   async #onEvent(ctx: SessionContext, event: RuntimeEvent): Promise<void> {
     this.#emit(ctx.session.id, event);
+    const trace = traceOf(event);
+    if (trace !== null) {
+      this.#deps.log.debug(
+        { sessionId: ctx.session.id, taskId: ctx.task.id, agent: ctx.agent.name, ...trace },
+        `agent ${event.kind}`,
+      );
+    }
     const { office } = this.#deps;
     if (event.kind === "usage") {
       await office.execute(SYSTEM_ACTOR, (m, c) =>

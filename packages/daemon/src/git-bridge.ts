@@ -3,6 +3,7 @@ import type { TaskId } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
 import { exec } from "./host-exec.ts";
 import { LABELS } from "./labels.ts";
+import { daemonLog } from "./logger.ts";
 
 export const REPO_IN_VOLUME = "/work/repo";
 
@@ -61,8 +62,24 @@ const run = async (
   provider: SandboxProvider,
   spec: SandboxSpec,
 ): Promise<{ ok: boolean; message: string }> => {
+  const started = Bun.nanoseconds();
   const result = await provider.run(spec);
-  return { ok: result.exitCode === 0, message: result.stderr.trim() || result.stdout.trim() };
+  const outcome = {
+    ok: result.exitCode === 0,
+    message: result.stderr.trim() || result.stdout.trim(),
+  };
+  daemonLog()?.debug(
+    {
+      bridge: spec.name,
+      cmd: spec.cmd,
+      volume: spec.volumes[0]?.name,
+      code: result.exitCode,
+      ms: Math.round((Bun.nanoseconds() - started) / 1e6),
+      message: outcome.message.slice(0, 400),
+    },
+    "git bridge",
+  );
+  return outcome;
 };
 
 const runOrThrow = async (

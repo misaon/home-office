@@ -18,6 +18,40 @@ import type { Logger } from "./logger.ts";
 
 const DB_FILE = "ho.db";
 
+const SUBJECT_KEYS = new Set([
+  "taskId",
+  "sessionId",
+  "projectId",
+  "agentId",
+  "threadId",
+  "to",
+  "reason",
+]);
+
+const SUBJECT_MAX = 200;
+
+const idOf = (value: unknown): unknown => {
+  if (typeof value !== "object" || value === null || !("id" in value)) {
+    return undefined;
+  }
+  return value.id;
+};
+
+const subjectOf = (event: StoredEvent): Record<string, unknown> => {
+  const subject: Record<string, unknown> = {};
+  for (const [name, value] of Object.entries(event.payload)) {
+    const nested = idOf(value);
+    if (nested !== undefined) {
+      subject[name] = nested;
+      continue;
+    }
+    if (SUBJECT_KEYS.has(name)) {
+      subject[name] = typeof value === "string" ? value.slice(0, SUBJECT_MAX) : value;
+    }
+  }
+  return subject;
+};
+
 export class Office {
   readonly model: ReadModel = createReadModel();
   readonly ids: IdFactory;
@@ -55,7 +89,12 @@ export class Office {
     for (const event of stored) {
       applyEvent(this.model, event);
     }
-    this.#log.debug({ types: stored.map((e) => e.type) }, "events appended");
+    for (const event of stored) {
+      this.#log.debug(
+        { seq: event.seq, actor: event.actor.kind, ...subjectOf(event) },
+        `event ${event.type}`,
+      );
+    }
     return result.value.read(this.model);
   }
 }
