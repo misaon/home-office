@@ -2,6 +2,7 @@ import { bossOf, postAgentMessage } from "@ho/core";
 import {
   type Agent,
   errorMessage,
+  isQuestionReason,
   type StoredEvent,
   SYSTEM_ACTOR,
   type Task,
@@ -13,7 +14,6 @@ import type { OfficeGate } from "./office-gate.ts";
 import { describeOutcome } from "./outcome.ts";
 
 const REPORT_MAX = 600;
-const QUESTION_PREFIX = "question:";
 
 type Model = Office["model"];
 
@@ -52,7 +52,7 @@ function statusLine(
     return `${quote(task)} is done.${outcome === "" ? "" : `\n${outcome}`}`;
   }
   if (to === "blocked") {
-    return reason?.startsWith(QUESTION_PREFIX) === true
+    return isQuestionReason(reason)
       ? null
       : `${quote(task)} is blocked${reason === undefined ? "" : `: ${reason}`}.`;
   }
@@ -66,7 +66,7 @@ const walksBack = (boss: Agent, task: Task, to: TaskStatus, reason: string | und
   task.kind === "work" &&
   task.assigneeId !== undefined &&
   task.assigneeId !== boss.id &&
-  (to === "done" || (to === "blocked" && reason?.startsWith(QUESTION_PREFIX) !== true));
+  (to === "done" || (to === "blocked" && !isQuestionReason(reason)));
 
 export function startBossVoice(
   office: Office,

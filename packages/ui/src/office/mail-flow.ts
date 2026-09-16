@@ -53,21 +53,21 @@ export class MailFlow {
     this.#pending.push({ mailId: mail.id, taskId, floorId: mail.projectId });
   }
 
-  onSimEvent(event: SimEvent): boolean {
+  onSimEvent(event: SimEvent): void {
     if (event.kind === "mail_dropped") {
       this.#onDropped(event.ref);
-      return true;
+      return;
     }
-    if (event.kind === "delivered") {
-      const pending = this.#pending.find((p) => p.mailId === event.ref);
-      if (pending === undefined) {
-        return false;
-      }
-      receive(this.#world, event.to, event.by);
-      this.#finish(pending);
-      return true;
+    if (event.kind !== "delivered" || event.ref.kind !== "mail") {
+      return;
     }
-    return false;
+    const { id } = event.ref;
+    const pending = this.#pending.find((p) => p.mailId === id);
+    if (pending === undefined) {
+      return;
+    }
+    receive(this.#world, event.to, event.by);
+    this.#finish(pending);
   }
 
   #onDropped(mailId: string): void {
