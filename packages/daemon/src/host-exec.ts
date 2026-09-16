@@ -5,7 +5,12 @@ export type Exec = { code: number; stdout: string; stderr: string };
 
 const TAIL = 400;
 
-type ExecOptions = { cwd?: string | undefined; timeoutMs: number; env?: Record<string, string> };
+type ExecOptions = {
+  cwd?: string | undefined;
+  timeoutMs: number;
+  env?: Record<string, string>;
+  secret?: boolean;
+};
 
 const redact = (text: string): string => text.replaceAll(/\/\/[^\s/@]+@/gu, "//***@");
 
@@ -30,8 +35,8 @@ export async function exec(argv: readonly string[], options: ExecOptions): Promi
       ...compact({ cwd: options.cwd }),
       code,
       ms: Math.round((Bun.nanoseconds() - started) / 1e6),
-      stdout: result.stdout.slice(0, TAIL),
-      stderr: result.stderr.slice(0, TAIL),
+      stdout: options.secret === true ? "<withheld>" : result.stdout.slice(0, TAIL),
+      stderr: options.secret === true ? "<withheld>" : result.stderr.slice(0, TAIL),
     },
     "host command",
   );
