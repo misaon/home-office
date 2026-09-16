@@ -151,6 +151,18 @@ export async function settle(
   const filed = mcp.report(provisioned.mcpToken);
   const summary = filed?.summary ?? (outcome.report.trim() === "" ? "(no report)" : outcome.report);
   const blocked = outcome.failure !== null || filed?.status === "blocked";
+  deps.log.debug(
+    {
+      sessionId: ctx.session.id,
+      taskId: ctx.task.id,
+      mode: ctx.session.mode,
+      status: current.status,
+      blocked,
+      filed: filed?.status ?? null,
+      failure: outcome.failure,
+    },
+    "settling the session",
+  );
   switch (ctx.session.mode) {
     case "review": {
       if (current.status === "review" && current.reviewerId === ctx.agent.id) {

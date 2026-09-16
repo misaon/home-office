@@ -9,10 +9,13 @@ const ROOTLESS_ENGINE_IMAGE =
 const ROOTFUL_ENGINE_IMAGE =
   "docker:29.8.0-dind@sha256:c9da39e30475d7bf353436738239d02fb1c2a52a1c968322beccb6ec239707d8";
 
+export const LogLevel = z.enum(["trace", "debug", "info", "warn", "error"]);
+export type LogLevel = z.infer<typeof LogLevel>;
+
 export const DaemonConfig = z.object({
   host: z.enum(["127.0.0.1", "::1", "localhost"]).default("127.0.0.1"),
   port: z.int().min(0).max(65_535).default(47_800),
-  logLevel: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
+  logLevel: LogLevel.default("info"),
   scheduler: z
     .object({
       maxConcurrentSessions: z.int().positive().default(2),

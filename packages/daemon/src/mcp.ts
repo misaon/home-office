@@ -67,6 +67,15 @@ export class McpGateway {
         tool.name,
         { description: tool.description, inputSchema: tool.shape },
         async (input: unknown): Promise<ToolResult> => {
+          this.#log.debug(
+            {
+              sessionId: entry.ctx.sessionId,
+              taskId: entry.ctx.taskId,
+              tool: tool.name,
+              fields: typeof input === "object" && input !== null ? Object.keys(input) : [],
+            },
+            "mcp tool called",
+          );
           try {
             return text(await tool.handle(input, this.#office, entry, actor));
           } catch (error) {

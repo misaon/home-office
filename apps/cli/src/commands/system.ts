@@ -1,6 +1,6 @@
-import { officeUrl, startDaemon } from "@ho/daemon";
-import { formatBytes } from "@ho/protocol";
-import { bool } from "../flags.ts";
+import { LogLevel, officeUrl, startDaemon } from "@ho/daemon";
+import { compact, formatBytes } from "@ho/protocol";
+import { bool, str } from "../flags.ts";
 import { requireDaemon } from "../client.ts";
 import { type Command, output } from "../cli.ts";
 import { colour, line } from "../output.ts";
@@ -9,10 +9,19 @@ export const daemonCommand: Command = {
   name: "daemon",
   summary: "run the daemon in the foreground (--ui also says where the office is served)",
   booleans: ["ui"],
+  strings: { "log-level": "trace|debug|info|warn|error", "log-file": "<path>" },
   run: async (parsed) => {
-    const handle = await startDaemon();
+    const level = str(parsed, "log-level");
+    const logFile = str(parsed, "log-file");
+    const handle = await startDaemon(
+      compact({
+        overrides: level === undefined ? undefined : { logLevel: LogLevel.parse(level) },
+        logFile,
+      }),
+    );
     const { host, port, version } = handle.info;
     line(`daemon ${version} listening on ${host}:${String(port)} (pid ${String(process.pid)})`);
+    line(`logs: ${logFile ?? "stdout"} at level ${handle.config.logLevel}`);
     if (bool(parsed, "ui")) {
       line(
         handle.config.ui.dir === null
