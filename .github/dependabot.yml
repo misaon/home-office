@@ -1,9 +1,19 @@
 version: 2
+
+# Every ecosystem waits before adopting a freshly published version. The attack this defends against is a
+# maintainer account compromised for the few hours between a malicious release and its withdrawal, which no
+# amount of pinning helps with once Dependabot has already opened the bump. `github-actions` and `docker` do
+# not resolve SemVer, so they only take a flat delay.
 updates:
   - package-ecosystem: bun
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
     groups:
       bun-dependencies:
         patterns: ["*"]
@@ -11,6 +21,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns: ["*"]
@@ -18,6 +30,8 @@ updates:
     directories: ["/images/agent", "/images/git-bridge"]
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
   - package-ecosystem: npm
     directories:
       - /images/agent/mcp
@@ -26,6 +40,11 @@ updates:
       - /images/agent/providers/codex
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
     groups:
       sandbox-dependencies:
         patterns: ["*"]
