@@ -104,6 +104,50 @@ Startup takes a single-instance lock on the state directory: an atomic `mkdir` o
 voice) and pending session work settle before the socket layer and the store close. Restart reconciles interrupted sessions with managed containers and blocks affected tasks for
 explicit resumption. An unavailable Docker service prevents recovery of previously active sessions.
 
+## Floor configuration in the repository
+
+Three layers hold configuration, and only the middle one is in a repository. The **machine** layer —
+bind address, port, Docker socket and network, image tags, cgroup limits, secret-store kind — stays in
+`~/.config/home-office/config.json` (`DaemonConfig`) because it differs per host. The **floor intent**
+layer — name, default branch, publish/intake/services policy, budgets, and who works on the floor — is
+what a repository can state for itself in `.ho/config.json`, validated by `OfficeFile` in
+`packages/protocol/src/office-file.ts` and published as `schema/office.schema.json`, which
+`bun run schema` regenerates from that Zod schema and `bun run check` verifies. **Secrets** are in
+neither: an agent record has only `provider` and `auth`, and `secretKeysFor` derives the credential-store
+key from them, so the file names no value and no key.
+
+The file is an input that produces events, never a second store. `applyOfficeFile` in
+`packages/core/src/office-file-apply.ts` is pure: it takes the read model, the parsed file and the
+project, and returns `project.updated`, `agent.created`, `agent.updated` and `agent.removed` with
+`actor: system`. Colleagues are matched by name, case-insensitively — the floor's own uniqueness rule —
+except the boss, who is matched by role, so the file renames the one boss a floor is guaranteed rather
+than replacing them. An absent field changes nothing; an absent `agents` leaves the staff alone, while
+an empty `agents` array asks for a floor with nobody but the boss. What cannot be done is reported, not
+forced: a colleague mid-session or holding open tasks stays, and so does a name another floor already
+uses. `officeFileFrom` writes the reverse direction, and an exported file applies back with no events.
+
+A local checkout is read from its working tree, so editing the file applies within a second
+(`OfficeConfigSync` debounces a watch on `.ho`); a checkout parked on a feature branch therefore applies
+that branch's file. A mirrored git repository is fetched and read from its **default branch** only — a
+task branch is never read, so a running task cannot raise its own budget halfway through itself.
+`.ho/config.local.json`, gitignored, layers over the committed file for one machine, matching colleagues
+into it by name. Applying happens when the daemon starts, when a floor is created, when the watched file
+changes, and on `ho project sync [--dry-run]` or the button in the floor's settings.
+
+### The accepted risk
+
+The owner decided, 2026-09-15, that the file wins with no approval step, that it covers the whole floor,
+and that agent sessions may write into `.ho/` freely. This is recorded because it was chosen knowingly.
+`.ho/config.json` can carry `services.mode: "rootful"` — the widest boundary the application opens —
+along with `budgets`, which spends money, and `basePrompt`, which is injected into every agent on the
+floor; a pull request editing it therefore proposes a privilege change, and an agent can propose one for
+itself in its own branch. Two properties limit the blast radius without the declined approval step, both
+consequences of decisions taken for other reasons: a mirrored repository is read only from its default
+branch, so an agent's edit takes effect only once a human merges it, and every apply is in the event log
+with `ho project sync --dry-run` printing the diff beforehand. The one host clamp is unchanged:
+`DaemonConfig.services.enabled = false` disables the private container engine for every project
+regardless of what a project's own file says.
+
 ## Work and repository flow
 
 1. A local project uses an existing checkout. A remote project uses a host bare repository under

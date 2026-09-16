@@ -19,6 +19,8 @@ export type RpcContext = {
   provider: SandboxProvider;
   secrets: SecretStore;
   config: DaemonConfig;
+  /** The daemon's state directory; `.ho` sync reads mirrors from under it. */
+  home: string;
   resources: Resources;
   version: string;
   startedAt: string;

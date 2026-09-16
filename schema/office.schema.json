@@ -1,0 +1,204 @@
+{
+  "title": "Home Office floor (.ho/config.json)",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "defaultBranch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "publish": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "default": "branch",
+          "type": "string",
+          "enum": ["branch", "pull-request"]
+        },
+        "draft": {
+          "default": true,
+          "type": "boolean"
+        }
+      }
+    },
+    "intake": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "type": "boolean"
+        },
+        "intervalSeconds": {
+          "default": 120,
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 3600
+        },
+        "labels": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          }
+        },
+        "dryRun": {
+          "default": false,
+          "type": "boolean"
+        },
+        "ackLabel": {
+          "default": "home-office",
+          "type": "string",
+          "maxLength": 50
+        },
+        "comment": {
+          "default": true,
+          "type": "boolean"
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "type": "boolean"
+        },
+        "mode": {
+          "default": "rootless",
+          "type": "string",
+          "enum": ["rootless", "rootful"]
+        }
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "properties": {
+        "maxTurnsPerTask": {
+          "default": 60,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxConcurrentSessions": {
+          "default": 1,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxWallMinutes": {
+          "default": 60,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxReviewRounds": {
+          "default": 2,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxUsdPerTask": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "agents": {
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "role": {
+            "type": "string",
+            "enum": ["boss", "worker", "reviewer", "clerk"]
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["female", "male", "neutral"]
+          },
+          "provider": {
+            "type": "string",
+            "enum": ["claude-code", "opencode", "gemini-cli", "codex"]
+          },
+          "auth": {
+            "type": "string",
+            "enum": ["subscription", "api-key", "none"]
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1
+          },
+          "effort": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "xhigh", "max"]
+          },
+          "skillPack": {
+            "type": "string",
+            "minLength": 1
+          },
+          "basePrompt": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "budgets": {
+            "type": "object",
+            "properties": {
+              "maxTurnsPerTask": {
+                "default": 60,
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "maxConcurrentSessions": {
+                "default": 1,
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "maxWallMinutes": {
+                "default": 60,
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "maxReviewRounds": {
+                "default": 2,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "maxUsdPerTask": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            }
+          }
+        },
+        "required": ["name", "role", "provider"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["version"],
+  "additionalProperties": false
+}
