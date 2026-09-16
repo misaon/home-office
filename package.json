@@ -44,7 +44,7 @@
   },
   "type": "module",
   "scripts": {
-    "check": "bun run typecheck && bun run lint && bun run fmt:check && bun run knip && bun run schema:check && bun run skills:check && bun run ui:build",
+    "check": "bun run typecheck && bun run lint && bun run fmt:check && bun run knip && bun run arch:check && bun run schema:check && bun run skills:check && bun run ui:build",
     "typecheck": "bun run scripts/typecheck.ts",
     "lint": "oxlint --deny-warnings",
     "fmt": "oxfmt",
