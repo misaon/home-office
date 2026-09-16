@@ -42,6 +42,23 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
           {task.who === "" ? t("board.unassigned") : t("board.assignedTo", { name: task.who })}
         </div>
       </div>
+      {task.criteria.length === 0 ? null : (
+        <div className="p-12 rounded-12 bg-card-lit border border-border mb-18">
+          <div className={`${MONO} text-10 tracking-caps uppercase text-ink-label mb-7`}>
+            {t("board.criteria")}
+          </div>
+          <ol className="list-none m-0 p-0">
+            {task.criteria.map((criterion, index) => (
+              <li key={criterion} className="text-12h text-ink-dim leading-body flex gap-8 mt-6">
+                <span className={`${MONO} text-10 text-ink-meta flex-[0_0_auto]`}>
+                  {index + 1}.
+                </span>
+                <span>{criterion}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
       {canFinish || canResume ? (
         <div className="flex gap-9">
           {canFinish ? (

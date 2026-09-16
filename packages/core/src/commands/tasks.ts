@@ -5,6 +5,7 @@ import {
   type DomainError,
   type NewEvent,
   notFound,
+  NOTE_MAX,
   type ProjectId,
   type Task,
   type TaskArtifacts,
@@ -13,6 +14,7 @@ import {
   type TaskId,
   type TaskStatus,
   type TaskTransitionInput,
+  VERIFY_NOTE_PREFIX,
 } from "@ho/protocol";
 import { activeSessionOfTask, tasksOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
@@ -24,7 +26,7 @@ import {
   ok,
   type Result,
 } from "../result.ts";
-import { statusChange, withProject, withTask } from "./shared.ts";
+import { note, noteEvent, statusChange, withProject, withTask } from "./shared.ts";
 
 /**
  * The task state machine. Terminal states have no outgoing edges.
@@ -77,6 +79,7 @@ const assignable = (
 export const newTask = (
   ctx: CommandContext,
   fields: Pick<Task, "projectId" | "kind" | "title" | "brief" | "source"> & {
+    spec?: Task["spec"] | undefined;
     assigneeId?: Task["assigneeId"] | undefined;
     priority?: Task["priority"] | undefined;
     notes?: Task["notes"] | undefined;
@@ -87,6 +90,7 @@ export const newTask = (
   kind: fields.kind,
   title: fields.title,
   brief: fields.brief,
+  ...compact({ spec: fields.spec }),
   status: fields.assigneeId === undefined ? "inbox" : "assigned",
   ...compact({ assigneeId: fields.assigneeId }),
   reviewRounds: 0,
@@ -238,6 +242,48 @@ export function removeTask(
     return ok({
       events: [{ type: "task.removed", actor: ctx.actor, payload: { taskId } }],
       read: () => taskId,
+    });
+  });
+}
+
+/** How many times this task's checks have already come back failing. */
+const verifyAttempts = (task: Task): number =>
+  task.notes.filter((n) => n.author.kind === "system" && n.text.startsWith(VERIFY_NOTE_PREFIX))
+    .length;
+
+/**
+ * Failing checks do not publish. The output goes back to the task's author as a note and the task
+ * returns to them; once the floor's attempts are spent it blocks for the human instead of looping.
+ */
+export function recordVerificationFailure(
+  model: ReadModel,
+  taskId: TaskId,
+  detail: { command: string; output: string; maxAttempts: number },
+  ctx: CommandContext,
+): CommandResult<Task> {
+  return withTask(model, taskId, (task) => {
+    const spent = verifyAttempts(task) + 1 >= detail.maxAttempts;
+    const to: TaskStatus = spent || task.assigneeId === undefined ? "blocked" : "assigned";
+    if (!canTransition(task.status, to)) {
+      return err({ code: "invalid_transition", from: task.status, to });
+    }
+    const text = `${VERIFY_NOTE_PREFIX} \`${detail.command}\`\n\n${detail.output}`.slice(
+      0,
+      NOTE_MAX,
+    );
+    return ok({
+      events: [
+        noteEvent(ctx, task, note(ctx, "review", text)),
+        statusChange(
+          ctx,
+          task,
+          to,
+          spent
+            ? `checks still failing after ${String(detail.maxAttempts)} attempt(s)`
+            : "checks failed",
+        ),
+      ],
+      read: readTask(task.id),
     });
   });
 }

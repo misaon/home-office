@@ -17,8 +17,11 @@ Expected domain errors use the existing `Result` contract; adapter failures can 
 ## Structure and state
 
 Keep domain decisions and simulation pure. I/O belongs to adapters behind the existing core ports.
-Persist state changes as events; projections are rebuilt from the event log. Serialized command
-execution belongs to the daemon's Office, not ad hoc locks scattered among callers.
+Persist state changes as events; projections are rebuilt from the event log. A repository's own
+`.ho/config.json` is an input that produces those events, not a second store to reconcile: parsing and
+reading it are the daemon's, the diff is a pure function in core, and what it cannot do is reported
+rather than forced. Serialized command execution belongs to the daemon's Office, not ad hoc locks
+scattered among callers.
 
 Prefer focused modules and maintained small dependencies over generic utility layers. Shared helpers
 belong with the behavior they implement; there is no required `core/src/shared` directory. Lifecycle

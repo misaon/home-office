@@ -4,6 +4,7 @@ import { Agent, ChatMessage, IsoDateTime, MailItem, Project, Session, Task } fro
 import { RPC_ERRORS } from "./errors.ts";
 import { StoredEvent } from "./events.ts";
 import { IntakePollResult, IntakeStatus } from "./intake.ts";
+import { OfficeFileExport, OfficeFileSync } from "./office-file.ts";
 import { LayoutSaved, LayoutStore, OfficeLayout } from "./office-layout.ts";
 import { SecretKeyName } from "./providers.ts";
 import { AgentId, ProjectId, SessionId, TaskId } from "./ids.ts";
@@ -61,6 +62,17 @@ export const contract = {
     create: base.input(ProjectCreateInput).output(Project),
     update: base.input(ProjectUpdateInput).output(Project),
     remove: base.input(z.object({ id: ProjectId })).output(z.object({ id: ProjectId })),
+    /**
+     * Applies the floor's own `.ho/config.json`, read from the working tree of a local checkout or
+     * from the default branch of a mirrored git repository — never from a task branch, so a task
+     * cannot raise its own budget halfway through its run. `dryRun` reports the diff and appends
+     * nothing.
+     */
+    sync: base
+      .input(z.object({ id: ProjectId, dryRun: z.boolean().default(false) }))
+      .output(OfficeFileSync),
+    /** Writes the floor as it stands into `.ho/config.json`; the repository must be a local checkout. */
+    export: base.input(z.object({ id: ProjectId })).output(OfficeFileExport),
   },
   /**
    * The internal office editor's store: offices drawn by hand, kept as JSON in the repository. A daemon

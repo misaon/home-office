@@ -18,6 +18,7 @@ import { ensureImages, imageStatus, neededVariants } from "../images.ts";
 import { MANAGED } from "../labels.ts";
 import { listLayouts, saveLayout } from "../layouts.ts";
 import { buildsImages } from "../paths.ts";
+import { exportProject, syncProject } from "../office-config.ts";
 import { inspectRepo } from "../repo-inspect.ts";
 import { usageSummary } from "../usage.ts";
 import { guarded } from "./guarded.ts";
@@ -151,6 +152,12 @@ export const router = base.router({
     remove: base.projects.remove.handler(async ({ input, context }) => ({
       id: await context.office.execute(HUMAN_ACTOR, (m, ctx) => removeProject(m, input.id, ctx)),
     })),
+    sync: base.projects.sync.handler(({ input, context }) =>
+      syncProject(context.office, context.home, input.id, input.dryRun),
+    ),
+    export: base.projects.export.handler(({ input, context }) =>
+      exportProject(context.office, input.id),
+    ),
   },
   layouts: {
     list: base.layouts.list.handler(({ context }) =>

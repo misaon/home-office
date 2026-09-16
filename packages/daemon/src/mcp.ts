@@ -4,6 +4,7 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import type { Logger } from "./logger.ts";
 import { type Entry, type McpSessionContext, text, TOOLS, type ToolResult } from "./mcp-tools.ts";
 import type { Office } from "./office.ts";
+import type { SkillLibrary } from "./skills.ts";
 import { bearerToken, mintToken } from "./token.ts";
 import { VERSION } from "./version.ts";
 
@@ -11,9 +12,11 @@ export class McpGateway {
   readonly #entries = new Map<string, Entry>();
   readonly #office: Office;
   readonly #log: Logger;
+  readonly #skills: SkillLibrary;
 
-  constructor(office: Office, log: Logger) {
+  constructor(office: Office, skills: SkillLibrary, log: Logger) {
     this.#office = office;
+    this.#skills = skills;
     this.#log = log;
   }
 
@@ -21,7 +24,7 @@ export class McpGateway {
 
   register(ctx: McpSessionContext): string {
     const token = mintToken();
-    this.#entries.set(token, { ctx, replied: false, report: null });
+    this.#entries.set(token, { ctx, replied: false, report: null, skills: this.#skills });
     return token;
   }
 

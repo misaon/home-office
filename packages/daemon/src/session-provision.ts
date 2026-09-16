@@ -153,6 +153,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
       agentId: ctx.agent.id,
       projectId: ctx.project.id,
       mode: ctx.session.mode,
+      skillPack: ctx.agent.skillPack,
       attachments: deps.attachments,
     });
     stack.defer(() => {

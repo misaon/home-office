@@ -8,9 +8,16 @@ metadata:
 
 # Agentic engineering
 
-Turn the human request into a clear brief with acceptance criteria, repository scope and constraints.
-Use the actual floor roster to assign work through `ho_delegate`; do not invent agents or invoke a
-researcher tool that the active harness does not expose.
+Turn the human request into a delegation the worker can finish without guessing. `ho_delegate` takes the
+parts separately: a one-sentence `goal`, `acceptanceCriteria` that can each be checked on their own,
+`constraints` for what must keep working, `outOfScope` for nearby work you are leaving out, and
+`context` only for what the repository does not already say. Use the actual floor roster; do not invent
+agents or invoke a researcher tool that the active harness does not expose.
+
+Write each criterion as "When <condition>, the system shall <behaviour>". The reviewer checks exactly
+these, so a criterion that names no observable outcome buys a round trip instead of saving one. If you
+cannot write one, the request is still a question — answer with `ho_reply` rather than delegating a
+guess.
 
 Split independently useful work only when it can be verified and delivered independently. Keep shared
 invariants and tightly coupled changes together. Explain necessary sequencing and ownership in briefs.
