@@ -21,7 +21,7 @@ export const cs: typeof en = {
     label: "Panely",
     chat: "Chat",
     chatHint: "Mluvte se šéfem tohoto podlaží",
-    board: "Tabule",
+    board: "Board",
     boardHint: "Práce na tomto podlaží podle stavu",
     team: "Tým",
     teamHint: "Kdo je na podlaží a co zrovna dělá",
@@ -42,7 +42,7 @@ export const cs: typeof en = {
     setup: "Průvodce",
     emptyTitle: "Kancelář je prázdná",
     emptyBody:
-      "Z každého projektu se stane podlaží s vlastním šéfem, vlastní nástěnkou a vlastními sandboxy. Přidejte první a kancelář se rozjede.",
+      "Z každého projektu se stane podlaží s vlastním šéfem, vlastním boardem a vlastními sandboxy. Přidejte první a kancelář se rozjede.",
     editorButton: "Editor",
     rejected:
       "Daemon odmítl token této stránky — vytváří nový při každém spuštění. Spusťte znovu `ho ui`.",
@@ -53,7 +53,7 @@ export const cs: typeof en = {
     emptyStep2Title: "Najměte šéfa",
     emptyStep2Body: "Jeden agent na podlaží třídí a deleguje.",
     emptyStep3Title: "Zadejte práci",
-    emptyStep3Body: "Mluvte s podlažím v Chatu a sledujte tabuli.",
+    emptyStep3Body: "Mluvte s podlažím v Chatu a sledujte board.",
   },
   roles: {
     boss: "šéf",
@@ -67,15 +67,15 @@ export const cs: typeof en = {
     neutral: "neutrální",
   },
   board: {
-    filters: "Filtrovat nástěnku podle stavu",
+    filters: "Filtrovat board podle stavu",
     remove: "Odebrat",
-    removeConfirm: "Sundat tento úkol z tabule?",
+    removeConfirm: "Sundat tento úkol z boardu?",
     clearTitle: "Uklidit hotovou práci",
     clear: "Uklidit hotové",
-    clearConfirm_one: "Sundat z tabule {{count}} hotový úkol? V logu zůstane.",
-    clearConfirm_few: "Sundat z tabule {{count}} hotové úkoly? V logu zůstanou.",
-    clearConfirm_many: "Sundat z tabule {{count}} hotových úkolů? V logu zůstanou.",
-    clearConfirm_other: "Sundat z tabule {{count}} hotových úkolů? V logu zůstanou.",
+    clearConfirm_one: "Sundat z boardu {{count}} hotový úkol? V logu zůstane.",
+    clearConfirm_few: "Sundat z boardu {{count}} hotové úkoly? V logu zůstanou.",
+    clearConfirm_many: "Sundat z boardu {{count}} hotových úkolů? V logu zůstanou.",
+    clearConfirm_other: "Sundat z boardu {{count}} hotových úkolů? V logu zůstanou.",
     cleared: "sundáno {{count}}",
     rounds: "kol {{count}}",
     issue: "issue #{{id}}",
@@ -100,14 +100,14 @@ export const cs: typeof en = {
     unassigned: "nepřiřazeno",
     removeTitle: "Smazat tento úkol?",
     removeAction: "Smazat úkol",
-    removeRunning: "„{{title}}“ zmizí z tabule a {{name}} na něm okamžitě přestane pracovat.",
+    removeRunning: "„{{title}}“ zmizí z boardu a {{name}} na něm okamžitě přestane pracovat.",
   },
   chat: {
     dropHere: "Pusťte soubor a připojí se",
     stop: "Zastavit",
     stopTitle: "Zastavit {{name}} uprostřed úkolu?",
     stopBody:
-      "Běh se utne tam, kde je. Už zapsané soubory i větev zůstanou, jak jsou, takže úkol lze později předat zpátky.",
+      "Běh se utne tam, kde je. Už zapsané soubory i branch zůstanou, jak jsou, takže úkol lze později předat zpátky.",
     stopOk: "Zastavit {{name}}",
     stopCancel: "Nechat běžet",
     stopped: "{{name}} zastaven",
@@ -195,10 +195,10 @@ export const cs: typeof en = {
     lang: { en: "English", cs: "Čeština" },
   },
   tokens: {
-    storedNote: "Uloženo v nastaveném úložišti tajemství.",
+    storedNote: "Uloženo v nastaveném secret store.",
     replaceAction: "Nahradit",
     claudeHint:
-      "V terminálu spusťte `claude setup-token` a vložte výsledek. Uloží se do nastaveného úložiště tajemství.",
+      "V terminálu spusťte `claude setup-token` a vložte výsledek. Uloží se do nastaveného secret store.",
     anthropicHint:
       "Pro zaměstnance na Claude Code s auth api-key (platba za použití, volitelný USD rozpočet na Claude session) a pro OpenCode s modely anthropic/….",
     githubHint:
@@ -255,7 +255,7 @@ export const cs: typeof en = {
     tokenPrimary: "Zkusit znovu",
     checkData: "Data kanceláře",
     checkSocket: "Docker socket",
-    checkImages: "Obrazy agentů",
+    checkImages: "Images agentů",
     checkOnDisk: "Patra a úkoly na disku",
     checkStream: "Proud událostí",
     checkDaemon: "Daemon",
