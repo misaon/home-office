@@ -1,3 +1,4 @@
+import { enTokens } from "./en-tokens.ts";
 import { enEditor } from "./en-editor.ts";
 import { enOffice } from "./en-office.ts";
 import { enStaff } from "./en-staff.ts";
@@ -216,29 +217,6 @@ export const en = {
     languageSet: "Office language changed",
     lang: { en: "English", cs: "Čeština" },
   },
-  tokens: {
-    storedNote: "Stored in the configured secret store.",
-    replaceAction: "Replace",
-    claudeHint:
-      "Run `claude setup-token` in a terminal and paste the result. Stored in the configured secret store.",
-    anthropicHint:
-      "For Claude Code agents set to api-key auth (pay per use, optional USD budget per Claude session) and for OpenCode with anthropic/… models.",
-    githubHint:
-      "Reserved for future use. GitHub intake and pull requests currently use your host gh login.",
-    stored: "stored",
-    missing: "missing",
-    paste: "paste token",
-    replace: "paste a new token to replace it",
-    forget: "Forget",
-    claude: "Claude subscription token",
-    anthropic: "Anthropic API key",
-    openai: "OpenAI API key",
-    openaiHint: "Codex agents and OpenCode with openai/… models.",
-    gemini: "Gemini API key",
-    geminiHint: "Gemini CLI agents and OpenCode with google/… models (Google AI Studio key).",
-    github: "GitHub token",
-    forgotten: "{{name}} forgotten",
-  },
   team: {
     filters: "Filter the team by status",
     intro: "Everyone on this floor. Open a card to see what they are doing, or configure them.",
@@ -294,5 +272,6 @@ export const en = {
   ...enStaff,
   ...enOffice,
   ...enSetup,
+  ...enTokens,
   ...enEditor,
 };

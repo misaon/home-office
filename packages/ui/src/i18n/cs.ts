@@ -1,3 +1,4 @@
+import { csTokens } from "./cs-tokens.ts";
 import { csEditor } from "./cs-editor.ts";
 import { csOffice } from "./cs-office.ts";
 import { csStaff } from "./cs-staff.ts";
@@ -216,29 +217,6 @@ export const cs: typeof en = {
     languageSet: "Jazyk kanceláře změněn",
     lang: { en: "English", cs: "Čeština" },
   },
-  tokens: {
-    storedNote: "Uloženo v nastaveném secret store.",
-    replaceAction: "Nahradit",
-    claudeHint:
-      "V terminálu spusťte `claude setup-token` a vložte výsledek. Uloží se do nastaveného secret store.",
-    anthropicHint:
-      "Pro zaměstnance na Claude Code s auth api-key (platba za použití, volitelný USD rozpočet na Claude session) a pro OpenCode s modely anthropic/….",
-    githubHint:
-      "Rezervováno do budoucna. GitHub intake a pull requesty dnes používají vaše přihlášení v host `gh`.",
-    stored: "uloženo",
-    missing: "chybí",
-    paste: "vložte token",
-    replace: "vložte nový token, který ho nahradí",
-    forget: "Zapomenout",
-    claude: "Token předplatného Claude",
-    anthropic: "Anthropic API klíč",
-    openai: "OpenAI API klíč",
-    openaiHint: "Zaměstnanci na Codexu a OpenCode s modely openai/….",
-    gemini: "Gemini API klíč",
-    geminiHint: "Zaměstnanci na Gemini CLI a OpenCode s modely google/… (klíč z Google AI Studio).",
-    github: "GitHub token",
-    forgotten: "{{name}} zapomenuto",
-  },
   team: {
     filters: "Filtrovat tým podle stavu",
     intro: "Všichni na tomto podlaží. Kliknutím na kartu uvidíte, co dělají, nebo je nastavíte.",
@@ -294,5 +272,6 @@ export const cs: typeof en = {
   ...csStaff,
   ...csOffice,
   ...csSetup,
+  ...csTokens,
   ...csEditor,
 };

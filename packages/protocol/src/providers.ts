@@ -139,6 +139,16 @@ export function secretKeysFor(
   return key === undefined ? [] : [key];
 }
 
+export type SecretSource = { kind: "command"; value: string } | { kind: "url"; value: string };
+
+export const SECRET_SOURCE: Readonly<Record<SecretKeyName, SecretSource>> = {
+  "anthropic-oauth-token": { kind: "command", value: "claude setup-token" },
+  "anthropic-api-key": { kind: "url", value: "https://console.anthropic.com/settings/keys" },
+  "openai-api-key": { kind: "url", value: "https://platform.openai.com/api-keys" },
+  "gemini-api-key": { kind: "url", value: "https://aistudio.google.com/api-keys" },
+  "github-token": { kind: "command", value: "gh auth token" },
+};
+
 export const SECRET_ENV: Readonly<Record<SecretKeyName, string | null>> = {
   "anthropic-oauth-token": "CLAUDE_CODE_OAUTH_TOKEN",
   "anthropic-api-key": "ANTHROPIC_API_KEY",
