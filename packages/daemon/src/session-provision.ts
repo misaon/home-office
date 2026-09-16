@@ -135,8 +135,11 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
   const { provider, config, gateway, mcp, home, log } = deps;
   ctx.signal.throwIfAborted();
   const volume = `ho-task-${ctx.task.id.slice(-12)}`;
-  const conversation = ctx.session.threadId ?? ctx.task.id;
-  const stateVolume = `ho-chat-${conversation.slice(-12)}-state-${ctx.agent.id.slice(-8)}`;
+  const thread = ctx.session.mode === "triage" ? ctx.session.threadId : undefined;
+  const stateVolume =
+    thread === undefined
+      ? `${volume}-state-${ctx.agent.id.slice(-8)}`
+      : `ho-chat-${thread.slice(-12)}-state-${ctx.agent.id.slice(-8)}`;
   const branch = ctx.task.artifacts.branch ?? branchFor(ctx.task.id);
   const labels = {
     [LABELS.managed]: "true",
