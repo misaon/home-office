@@ -37,9 +37,9 @@ let child: Child | undefined;
 
 async function relayExit(proc: Child, output: Promise<unknown>): Promise<void> {
   const code = await proc.exited;
+  child = undefined;
   await output;
   send({ type: "exit", code });
-  child = undefined;
 }
 
 function spawnChild(

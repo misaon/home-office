@@ -115,7 +115,10 @@ export const resumableThreadSession = (
   sessionsOfAgent(model, agentId)
     .filter(
       (s) =>
-        s.threadId === threadId && !isSessionActive(s.state) && s.runtimeSessionId !== undefined,
+        s.threadId === threadId &&
+        s.mode === "triage" &&
+        !isSessionActive(s.state) &&
+        s.runtimeSessionId !== undefined,
     )
     .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
 

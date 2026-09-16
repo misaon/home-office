@@ -2,7 +2,8 @@ import { Popover } from "@base-ui/react/popover";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Floor, Thread, ThreadPick } from "./data.ts";
-import { useDesign } from "./store.ts";
+import { requireClient } from "../rpc.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
 import { MONO } from "./tokens.ts";
 
 const ROW = "flex-[0_0_auto] flex items-center gap-6 pt-10 px-16";
@@ -30,22 +31,39 @@ const POPOVER =
 const SEARCH =
   "w-full mb-9 py-7 px-10 rounded-9 bg-sunk border border-border-strong text-12h placeholder:text-ink-ghost";
 
+const DROP =
+  "w-22 h-22 flex-[0_0_22px] grid place-items-center rounded-6 border-0 bg-transparent text-ink-label cursor-pointer transition-all duration-200 disabled:opacity-40";
+
 const ITEM =
   "w-full flex items-center gap-8 py-8 px-9 rounded-9 border bg-transparent text-left cursor-pointer transition-all duration-200";
 
 const INLINE_LIMIT = 2;
 
 function ThreadMenu({
+  floor,
   threads,
   active,
   onPick,
 }: {
+  floor: Floor;
   threads: readonly Thread[];
   active: ThreadPick | "new";
   onPick: (id: ThreadPick) => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
+  const confirm = useDesign((s) => s.confirm);
+  const flash = useDesign((s) => s.flash);
+  const drop = useOfficeMutation({
+    mutationFn: (id: ThreadPick) =>
+      requireClient().chat.clear({
+        projectId: floor.id,
+        ...(id === "main" ? {} : { threadId: id }),
+      }),
+    onSuccess: (result) => {
+      flash(t("chat.cleared", { count: result.removed }));
+    },
+  });
   const needle = query.trim().toLowerCase();
   const shown =
     needle === "" ? threads : threads.filter((one) => one.title.toLowerCase().includes(needle));
@@ -64,21 +82,53 @@ function ThreadMenu({
           />
           <div className="max-h-260 overflow-y-auto flex flex-col gap-4">
             {shown.map((one) => (
-              <button
-                key={one.id}
-                type="button"
-                title={one.title}
-                onClick={() => {
-                  onPick(one.id);
-                }}
-                className={`hover:border-accent-a45 ${ITEM} ${one.id === active ? LIVE : "border-transparent text-ink-quiet"}`}
-              >
-                <span className={`flex-1 min-w-0 text-12h ${NAME}`}>{one.title}</span>
-                <span className={`${MONO} text-9h text-ink-label flex-[0_0_auto]`}>{one.when}</span>
-                <span className={`${MONO} text-9h text-ink-label flex-[0_0_auto]`}>
-                  {one.count}
-                </span>
-              </button>
+              <div key={one.id} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  title={one.title}
+                  onClick={() => {
+                    onPick(one.id);
+                  }}
+                  className={`hover:border-accent-a45 ${ITEM} ${one.id === active ? LIVE : "border-transparent text-ink-quiet"}`}
+                >
+                  <span className={`flex-1 min-w-0 text-12h ${NAME}`}>{one.title}</span>
+                  <span className={`${MONO} text-9h text-ink-label flex-[0_0_auto]`}>
+                    {one.when}
+                  </span>
+                  <span className={`${MONO} text-9h text-ink-label flex-[0_0_auto]`}>
+                    {one.count}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={t("chat.clear")}
+                  title={t("chat.clear")}
+                  disabled={drop.isPending}
+                  onClick={() => {
+                    confirm({
+                      title: t("chat.clearTitle"),
+                      body: t("chat.clearConfirm", { count: one.count }),
+                      okLabel: t("chat.clear"),
+                      act: () => {
+                        drop.mutate(one.id);
+                      },
+                    });
+                  }}
+                  className={`hover:text-bad-soft ${DROP}`}
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 10 10"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  >
+                    <line x1="2" y1="2" x2="8" y2="8" />
+                    <line x1="8" y1="2" x2="2" y2="8" />
+                  </svg>
+                </button>
+              </div>
             ))}
             {shown.length === 0 ? (
               <div className="py-14 text-center text-11h text-ink-label">
@@ -165,7 +215,7 @@ export function ChatThreads({
               <line x1="2" y1="8.5" x2="10" y2="8.5" strokeLinecap="round" />
             </svg>
           </Popover.Trigger>
-          <ThreadMenu threads={floor.threads} active={active} onPick={pick} />
+          <ThreadMenu floor={floor} threads={floor.threads} active={active} onPick={pick} />
         </Popover.Root>
       ) : null}
     </div>

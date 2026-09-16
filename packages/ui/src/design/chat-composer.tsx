@@ -5,7 +5,6 @@ import { rejects, upload } from "../attachments.ts";
 import { requireClient } from "../rpc.ts";
 import { ChatAttachment } from "./chat-attachment.tsx";
 import { ChatToolbar } from "./chat-toolbar.tsx";
-import { ChatWorking } from "./chat-working.tsx";
 import type { Floor, Message, ThreadPick } from "./data.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
 
@@ -140,7 +139,6 @@ export function ChatComposer({
 
   return (
     <div className="flex-[0_0_auto] pt-12 px-16 pb-16">
-      <ChatWorking floor={floor} />
       <div
         onDragEnter={(e) => {
           e.preventDefault();

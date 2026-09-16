@@ -5,6 +5,9 @@ import { UsageMenu, useContextFill } from "./chat-usage-menu.tsx";
 import type { Floor } from "./data.ts";
 import { Plus } from "lucide-react";
 import { MONO } from "./tokens.ts";
+import { useBossSession } from "./live.ts";
+import { requireClient } from "../rpc.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
 
 const SQUARE =
   "w-28 h-28 grid place-items-center border border-border-strong rounded-8 py-1 px-6 cursor-pointer transition-all duration-250 bg-transparent text-ink-quiet";
@@ -28,6 +31,15 @@ export function ChatToolbar({
   const [usageOpen, setUsageOpen] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const fill = useContextFill(floor.id);
+  const running = useBossSession(floor.id);
+  const flash = useDesign((s) => s.flash);
+  const stop = useOfficeMutation({
+    mutationFn: (id: NonNullable<typeof running>["sessionId"]) =>
+      requireClient().sessions.stop({ id }),
+    onSuccess: () => {
+      flash(t("chat.stopped", { name: running?.name ?? "" }));
+    },
+  });
 
   return (
     <div className="flex items-center gap-8">
@@ -83,26 +95,44 @@ export function ChatToolbar({
           }}
         />
       </Popover.Root>
-      <button
-        type="button"
-        aria-label={t("chat.sendHint")}
-        onClick={onSend}
-        className={`hover:-translate-y-2 hover:scale-106 hover:shadow-lift-md ${SEND}`}
-      >
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 14 14"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
+      {running === null ? (
+        <button
+          type="button"
+          aria-label={t("chat.sendHint")}
+          title={t("chat.sendHint")}
+          onClick={onSend}
+          className={`hover:-translate-y-2 hover:scale-106 hover:shadow-lift-md ${SEND}`}
         >
-          <line x1="7" y1="11.5" x2="7" y2="2.5" />
-          <polyline points="3,6.5 7,2.5 11,6.5" />
-        </svg>
-      </button>
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 14 14"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          >
+            <line x1="7" y1="11.5" x2="7" y2="2.5" />
+            <polyline points="3,6.5 7,2.5 11,6.5" />
+          </svg>
+        </button>
+      ) : (
+        <button
+          type="button"
+          aria-label={t("chat.stopOk", { name: running.name })}
+          title={t("chat.stopTitle", { name: running.name })}
+          disabled={stop.isPending}
+          onClick={() => {
+            stop.mutate(running.sessionId);
+          }}
+          className={`hover:scale-106 ${SEND} bg-bad-mid text-accent-ink-deep`}
+        >
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
+            <rect x="2.5" y="2.5" width="7" height="7" rx="1.4" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

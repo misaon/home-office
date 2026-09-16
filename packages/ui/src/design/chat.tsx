@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { Floor, ThreadPick } from "./data.ts";
 import { ChatComposer } from "./chat-composer.tsx";
-import { ChatHeader } from "./chat-header.tsx";
+import { ChatSearch } from "./chat-search.tsx";
 import { ChatMessage } from "./chat-message.tsx";
 import { ChatThreads } from "./chat-threads.tsx";
 import { ChatTranscript } from "./chat-transcript.tsx";
@@ -16,6 +16,8 @@ const STICK_WITHIN = 80;
 export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const query = useDesign((s) => s.query);
+  const searchOpen = useDesign((s) => s.searchOpen);
+  const set = useDesign((s) => s.set);
   const list = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
 
@@ -41,6 +43,22 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
   }, [active]);
 
   useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === "f" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        set({ searchOpen: true });
+      }
+      if (event.key === "Escape") {
+        set({ searchOpen: false, query: "" });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [set]);
+
+  useEffect(() => {
     const el = list.current;
     if (el === null || !atBottom.current) {
       return;
@@ -52,15 +70,15 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
 
   return (
     <div className="flex flex-col min-h-0 flex-1 animate-slide-420">
-      <ChatHeader
-        floor={floor}
-        boss={boss}
-        messages={inThread}
-        active={active}
-        hits={
-          needle === "" ? "" : t("common.ofTotal", { shown: shown.length, total: inThread.length })
-        }
-      />
+      {searchOpen ? (
+        <ChatSearch
+          hits={
+            needle === ""
+              ? ""
+              : t("common.ofTotal", { shown: shown.length, total: inThread.length })
+          }
+        />
+      ) : null}
       <div
         ref={list}
         onScroll={(e) => {

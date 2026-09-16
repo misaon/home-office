@@ -3,7 +3,6 @@ import {
   type Agent,
   type AgentId,
   isSessionActive,
-  type LiveEvent,
   type ProjectId,
   type SessionId,
   type ChatMessage,
@@ -14,6 +13,7 @@ import {
 import { useEffect, useState } from "react";
 import { activeSessionOf, sortedFloors, useUi, type Snapshot } from "../store.ts";
 import type { Card, Floor, Lane, Member, Message, Thread, ThreadPick } from "./data.ts";
+import { type Activity, transcriptOf } from "./transcript.ts";
 
 function useNow(): number {
   const [now, setNow] = useState(() => Date.now());
@@ -202,54 +202,7 @@ export function useBossSession(
   };
 }
 
-export type Step = { id: string; tool: string; detail: string; ok: boolean | null };
-
-export type Activity = { id: AgentId; name: string; steps: Step[]; text: string };
-
-const STEP_TAIL = 40;
-const TEXT_TAIL = 240;
-const DETAIL_MAX = 60;
-
-const detailOf = (input: unknown): string => {
-  if (typeof input !== "object" || input === null) {
-    return "";
-  }
-  const fields: Record<string, unknown> = { ...input };
-  const named = ["command", "file_path", "path", "pattern", "title", "query"];
-  const pick = named.map((key) => fields[key]).find((value) => typeof value === "string");
-  const text = pick ?? "";
-  return text.length <= DETAIL_MAX ? text : `${text.slice(0, DETAIL_MAX)}…`;
-};
-
-const toolLabel = (name: string): string => name.replace(/^mcp__[^_]+__/u, "");
-
-function transcriptOf(events: readonly LiveEvent[]): { steps: Step[]; text: string } {
-  const steps = new Map<string, Step>();
-  let text = "";
-  for (const { event } of events) {
-    if (event.kind === "tool_call") {
-      steps.set(event.id, {
-        id: event.id,
-        tool: toolLabel(event.name),
-        detail: detailOf(event.input),
-        ok: null,
-      });
-      text = "";
-    } else if (event.kind === "tool_result") {
-      const step = steps.get(event.id);
-      if (step !== undefined) {
-        steps.set(event.id, { ...step, ok: event.ok });
-      }
-    } else if (event.kind === "text_delta") {
-      text += event.text;
-    }
-  }
-  const tail = text.trim();
-  return {
-    steps: [...steps.values()].slice(-STEP_TAIL),
-    text: tail.length <= TEXT_TAIL ? tail : `…${tail.slice(-TEXT_TAIL)}`,
-  };
-}
+export type { Activity, Step } from "./transcript.ts";
 
 export function useFloorActivity(floorId: ProjectId): Activity[] {
   const snapshot = useUi((s) => s.snapshot);
