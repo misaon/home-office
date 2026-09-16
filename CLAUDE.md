@@ -12,9 +12,9 @@ Everything above applies. What follows is only what differs for you.
 - **Read narrowly.** `packages/ui/dist/` holds a bundle of tens of megabytes; never read or search it,
   nor `.hutch/`, `.tools/`, `.tscache/`, `build/`, `bun.lock`. Prefer `rg` and targeted reads over
   whole files.
-- **Do not create files the task did not ask for** — no README, no `docs/`, no plan or summary
-  markdown, no scratch scripts inside the repository. Temporary things belong in the scratchpad
-  directory.
+- **Do not create files the task did not ask for** — no `docs/`, no plan or summary markdown, no
+  scratch scripts inside the repository. Temporary things belong in the scratchpad directory. Editing
+  the existing `README.md` when your change makes it wrong is not a new file; do that.
 - **The product uses this repository too.** Branches named `ho/task-*`, the SQLite log under
   `$HO_HOME` and `.ho/config.json` belong to Home Office at runtime. Leave them alone unless the task
   is about them.

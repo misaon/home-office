@@ -1,7 +1,8 @@
 # AGENTS.md
 
-**Home Office** runs AI coding agents in isolated Docker sandboxes and draws them as a pixel-art
-office. Bun + TypeScript monorepo, Electrobun desktop shell, event-sourced daemon.
+**Home Office** runs AI coding agents in isolated Docker sandboxes and draws them as characters on a
+top-down office plan — flat-colour PixiJS shapes, no sprites and no textures anywhere. Bun +
+TypeScript monorepo, Electrobun desktop shell, event-sourced daemon.
 
 This file carries only what you cannot read off the repository. Structure, types and dependencies you
 discover yourself; the rules below you would otherwise break.
@@ -134,8 +135,9 @@ The owner decides these per task, and the standing answer is no.
   carries **zero** comments — seven such directives and two shebangs are all that is left — so a `//`
   appearing in your diff is a new comment, never an edit to an existing one.
 - Do not add tests. The source carries zero of them.
-- All prose documentation was deleted on 2026-09-16 and survives in `git show 6dc771d:docs/`. Do not
-  recreate `docs/`, a README or an ADR unasked.
+- The prose documentation was deleted on 2026-09-16 and survives in `git show 6dc771d:docs/`. Do not
+  recreate `docs/` or an ADR unasked. `README.md` is the exception and is expected to be current: if
+  your change alters what a newcomer installs, runs or configures, update it in the same commit.
 
 Write any of the three only when the task in front of you asks for it.
 
