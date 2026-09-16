@@ -77,6 +77,26 @@ Always `bun`. Never npm, pnpm, yarn or `node`.
 - **Everything owned gets disposed.** Processes, streams, timers, subscriptions, sandboxes — including
   on partial startup failure. `AsyncDisposableStack` is the pattern already used throughout.
 
+## How the code is written
+
+- **Reach for the newest form the toolchain accepts.** Bun 1.4, TypeScript 7, `target: esnext`,
+  React 19, Zod 4 — so the current idiom is the default, not the conservative one. What this repository
+  already writes: `AsyncDisposableStack` for anything owned, `#private` class fields, `satisfies`,
+  `toSorted` / `findLast` / `at` / `replaceAll`, `??=`, `AbortSignal.timeout`, top-level `await`,
+  discriminated unions over flags, and Bun's own APIs (`Bun.file`, `Bun.spawn`, `bun:sqlite`) ahead of
+  a `node:` equivalent. `erasableSyntaxOnly` rules out enums, parameter properties and namespaces;
+  `verbatimModuleSyntax` means `import type`; relative imports carry the `.ts` extension. React 19
+  takes `ref` as an ordinary prop, so no `forwardRef` and no `React.FC`.
+  One idiom per module: if a newer API exists but the file around you consistently uses the older one,
+  follow the file and raise the change separately rather than mixing both.
+- **Name everything in full words.** Files, types, classes, methods, functions, variables, props,
+  fields and parameters get the whole word: `configuration`, not `cfg`; `request`, not `req`;
+  `button`, not `btn`; `temporary`, not `tmp`; `response`, not `res`. An acronym that is the real name
+  of the thing keeps its form — `rpc`, `mcp`, `cli`, `ui`, `url`, `id`, `sql`. A name you would have to
+  explain in a comment is the wrong name, and a comment is not available to you. Apply this to what
+  you write; do not rename the existing short bindings (`ctx`, `deps`, single-letter lambda arguments)
+  as a side errand.
+
 ## Style the linter will enforce anyway
 
 - kebab-case file names, `type` instead of `interface`, explicit return types on declarations, no
