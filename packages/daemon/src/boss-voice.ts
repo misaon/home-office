@@ -37,7 +37,7 @@ function statusLine(
   const worker = nameOf(model, task.assigneeId);
   const mine = task.assigneeId === boss.id;
   if (to === "in_progress") {
-    return mine ? `I am working on ${quote(task)}.` : `${worker} is working on ${quote(task)}.`;
+    return mine ? null : `${worker} is working on ${quote(task)}.`;
   }
   if (to === "review") {
     return `${mine ? "I" : worker} finished ${quote(task)}; ${nameOf(model, task.reviewerId)} is reviewing it.`;

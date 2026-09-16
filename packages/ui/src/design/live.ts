@@ -200,19 +200,54 @@ export function useBossSession(
   };
 }
 
-export type Activity = { id: AgentId; name: string; tool: string | null };
+export type Step = { id: string; tool: string; detail: string; ok: boolean | null };
 
-const lastIndexOfKind = (events: readonly LiveEvent[], kind: LiveEvent["event"]["kind"]): number =>
-  events.findLastIndex((live) => live.event.kind === kind);
+export type Activity = { id: AgentId; name: string; steps: Step[]; text: string };
 
-const runningTool = (events: readonly LiveEvent[]): string | null => {
-  const called = lastIndexOfKind(events, "tool_call");
-  if (called === -1 || called < lastIndexOfKind(events, "tool_result")) {
-    return null;
+const STEP_TAIL = 4;
+const TEXT_TAIL = 240;
+const DETAIL_MAX = 60;
+
+const detailOf = (input: unknown): string => {
+  if (typeof input !== "object" || input === null) {
+    return "";
   }
-  const event = events[called]?.event;
-  return event?.kind === "tool_call" ? event.name : null;
+  const fields: Record<string, unknown> = { ...input };
+  const named = ["command", "file_path", "path", "pattern", "title", "query"];
+  const pick = named.map((key) => fields[key]).find((value) => typeof value === "string");
+  const text = pick ?? "";
+  return text.length <= DETAIL_MAX ? text : `${text.slice(0, DETAIL_MAX)}…`;
 };
+
+const toolLabel = (name: string): string => name.replace(/^mcp__[^_]+__/u, "");
+
+function transcriptOf(events: readonly LiveEvent[]): { steps: Step[]; text: string } {
+  const steps = new Map<string, Step>();
+  let text = "";
+  for (const { event } of events) {
+    if (event.kind === "tool_call") {
+      steps.set(event.id, {
+        id: event.id,
+        tool: toolLabel(event.name),
+        detail: detailOf(event.input),
+        ok: null,
+      });
+      text = "";
+    } else if (event.kind === "tool_result") {
+      const step = steps.get(event.id);
+      if (step !== undefined) {
+        steps.set(event.id, { ...step, ok: event.ok });
+      }
+    } else if (event.kind === "text_delta") {
+      text += event.text;
+    }
+  }
+  const tail = text.trim();
+  return {
+    steps: [...steps.values()].slice(-STEP_TAIL),
+    text: tail.length <= TEXT_TAIL ? tail : `…${tail.slice(-TEXT_TAIL)}`,
+  };
+}
 
 export function useFloorActivity(floorId: ProjectId): Activity[] {
   const snapshot = useUi((s) => s.snapshot);
@@ -222,7 +257,8 @@ export function useFloorActivity(floorId: ProjectId): Activity[] {
     if (!isSessionActive(session.state) || agent === undefined || agent.projectId !== floorId) {
       return [];
     }
-    return [{ id: agent.id, name: agent.name, tool: runningTool(live.get(session.id) ?? []) }];
+    const { steps, text } = transcriptOf(live.get(session.id) ?? []);
+    return [{ id: agent.id, name: agent.name, steps, text }];
   });
 }
 

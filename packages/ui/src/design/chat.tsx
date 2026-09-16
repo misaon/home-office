@@ -5,38 +5,19 @@ import { ChatComposer } from "./chat-composer.tsx";
 import { ChatHeader } from "./chat-header.tsx";
 import { ChatMessage } from "./chat-message.tsx";
 import { ChatThreads } from "./chat-threads.tsx";
-import { MONO } from "./tokens.ts";
-import { type Activity, bossOf, useFloorActivity } from "./live.ts";
+import { ChatTranscript } from "./chat-transcript.tsx";
+import { bossOf, useFloorActivity } from "./live.ts";
 import { useDesign } from "./store.ts";
 
 const LIST = "flex-1 min-h-0 overflow-y-auto p-16 flex flex-col gap-11";
 
-const BUBBLE =
-  "flex items-center gap-7 py-11 px-14 rounded-15 rounded-bl-5 bg-toast border border-border w-fit animate-lift-300";
-
-const DOT = "w-5 h-5 rounded-half bg-accent";
-
-function Working({ activity }: { activity: Activity }): React.JSX.Element {
-  const { t } = useTranslation();
-  const { name, tool } = activity;
-  return (
-    <div className={BUBBLE}>
-      {["0s", ".15s", ".3s"].map((delay) => (
-        <span key={delay} className={`${DOT} animate-dots wait`} style={{ "--wait": delay }} />
-      ))}
-      <span className={`${MONO} text-10 text-ink-label ml-4`}>
-        {tool === null
-          ? t("chat.thinking", { name })
-          : `${name} · ${t("chat.thinkingTool", { name: tool })}`}
-      </span>
-    </div>
-  );
-}
+const STICK_WITHIN = 80;
 
 export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const query = useDesign((s) => s.query);
   const list = useRef<HTMLDivElement>(null);
+  const atBottom = useRef(true);
 
   const boss = bossOf(floor);
   const activity = useFloorActivity(floor.id);
@@ -56,13 +37,18 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
     needle === "" ? inThread : inThread.filter((m) => m.text.toLowerCase().includes(needle));
 
   useEffect(() => {
+    atBottom.current = true;
+  }, [active]);
+
+  useEffect(() => {
     const el = list.current;
-    if (el !== null) {
-      requestAnimationFrame(() => {
-        el.scrollTop = el.scrollHeight;
-      });
+    if (el === null || !atBottom.current) {
+      return;
     }
-  });
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+  }, [active, shown.length, activity]);
 
   return (
     <div className="flex flex-col min-h-0 flex-1 animate-slide-420">
@@ -75,12 +61,19 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
           needle === "" ? "" : t("common.ofTotal", { shown: shown.length, total: inThread.length })
         }
       />
-      <div ref={list} className={LIST}>
+      <div
+        ref={list}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_WITHIN;
+        }}
+        className={LIST}
+      >
         {shown.map((m) => (
           <ChatMessage key={m.id} message={m} boss={boss?.name ?? t("chat.colleague")} />
         ))}
         {activity.map((one) => (
-          <Working key={one.id} activity={one} />
+          <ChatTranscript key={one.id} activity={one} />
         ))}
         {asking.length > 1 ? (
           <div className="text-10h text-warn text-center py-4">

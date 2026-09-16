@@ -107,6 +107,18 @@ export async function runPrompt(
 ): Promise<Outcome> {
   const message = openingMessage(ctx.task, ctx.session.mode, ctx.previous);
   const resume = ctx.previous?.runtimeSessionId ?? null;
+  deps.log.debug(
+    {
+      sessionId: ctx.session.id,
+      taskId: ctx.task.id,
+      mode: ctx.session.mode,
+      threadId: ctx.session.threadId ?? null,
+      resume,
+      previousSessionId: ctx.previous?.id ?? null,
+      previousTaskId: ctx.previous?.taskId ?? null,
+    },
+    "opening the runtime",
+  );
   try {
     const first = await openRuntime(deps, ctx, provisioned, secrets, resume);
     let outcome: Outcome & { sawInit: boolean; failureCode: RuntimeErrorCode | null };
@@ -115,14 +127,14 @@ export async function runPrompt(
     } finally {
       first.close();
     }
-    if (
-      resume !== null &&
-      !outcome.sawInit &&
-      outcome.failureCode === "process_exit" &&
-      !ctx.signal.aborted
-    ) {
+    if (resume !== null && !outcome.sawInit && outcome.failure !== null && !ctx.signal.aborted) {
       deps.log.warn(
-        { sessionId: ctx.session.id, resume },
+        {
+          sessionId: ctx.session.id,
+          resume,
+          code: outcome.failureCode,
+          failure: outcome.failure.slice(0, 300),
+        },
         "resume failed; starting a fresh conversation",
       );
       const fresh = await openRuntime(deps, ctx, provisioned, secrets, null);
