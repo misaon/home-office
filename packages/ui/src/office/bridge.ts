@@ -193,6 +193,7 @@ export class Bridge {
         this.syncFromModel();
         break;
       }
+      case "chat.cleared":
       case "chat.message_posted":
       case "mail.acknowledged":
       case "session.state_changed":

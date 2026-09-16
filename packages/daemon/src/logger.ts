@@ -10,12 +10,17 @@ const CHECK_EVERY_MS = 60_000;
 const sizeOf = async (file: string): Promise<number> =>
   ((await stat(file).catch(() => null)) ?? { size: 0 }).size;
 
+let current: Logger | null = null;
+
+export const daemonLog = (): Logger | null => current;
+
 export const createLogger = (
   level: DaemonConfig["logLevel"],
   file?: string,
 ): { log: Logger; close: () => void } => {
   if (file === undefined) {
-    return { log: pino({ level, base: { app: "ho" } }), close: () => undefined };
+    current = pino({ level, base: { app: "ho" } });
+    return { log: current, close: () => undefined };
   }
   const dest = destination({ dest: file, mkdir: true, sync: true });
   const timer = setInterval(() => {
@@ -28,8 +33,9 @@ export const createLogger = (
     })();
   }, CHECK_EVERY_MS);
   timer.unref();
+  current = pino({ level, base: { app: "ho" } }, dest);
   return {
-    log: pino({ level, base: { app: "ho" } }, dest),
+    log: current,
     close: () => {
       clearInterval(timer);
     },

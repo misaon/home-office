@@ -1,7 +1,7 @@
 import "pixi.js/unsafe-eval";
 import type { FloorTemplate } from "@ho/sim";
 import { Application, Container, Graphics } from "pixi.js";
-import { Camera } from "./camera.ts";
+import { Camera, readPose, writePose } from "./camera.ts";
 import { floorTiles, gridLines } from "./tiles.ts";
 
 const WHEEL_STEP = 1.15;
@@ -82,7 +82,10 @@ export class MapView {
     }
     this.#tiles.addChild(floorTiles(template));
     this.camera.setMap(template.map.width, template.map.height);
-    if (fit) {
+    const remembered = readPose(template.id);
+    if (remembered !== null) {
+      this.camera.restore(remembered);
+    } else if (fit) {
       this.camera.fit();
     }
     this.#gridScale = 0;
@@ -117,6 +120,9 @@ export class MapView {
   }
 
   protected applyCamera(): void {
+    if (this.#template !== null) {
+      writePose(this.#template.id, this.camera.pose);
+    }
     const { scale } = this.camera;
     this.world.scale.set(scale);
     this.world.position.set(

@@ -1,6 +1,7 @@
 import {
   AgentId,
   ChatMessageId,
+  ChatThreadId,
   EventId,
   MailItemId,
   ProjectId,
@@ -37,6 +38,7 @@ export type IdFactory = {
   task: () => TaskId;
   session: () => SessionId;
   chatMessage: () => ChatMessageId;
+  chatThread: () => ChatThreadId;
   mail: () => MailItemId;
   event: () => EventId;
 };
@@ -49,6 +51,7 @@ export const createIdFactory = (clock: Clock, random: Randomness): IdFactory => 
     task: () => TaskId.parse(next()),
     session: () => SessionId.parse(next()),
     chatMessage: () => ChatMessageId.parse(next()),
+    chatThread: () => ChatThreadId.parse(next()),
     mail: () => MailItemId.parse(next()),
     event: () => EventId.parse(next()),
   };

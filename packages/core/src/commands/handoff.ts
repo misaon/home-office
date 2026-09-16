@@ -2,6 +2,7 @@ import {
   type AgentId,
   type Attachment,
   type ChatMessage,
+  compact,
   conflict,
   type HoHandoffInput,
   notFound,
@@ -11,7 +12,7 @@ import {
   type TaskId,
   type TaskStatus,
 } from "@ho/protocol";
-import { findAgentByRef } from "../model/queries.ts";
+import { findAgentByRef, threadOfTask } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
 import { chatEvent, handoffEvent, note, noteEvent, statusChange, withTask } from "./shared.ts";
@@ -83,6 +84,7 @@ export function askHuman(
       text: question,
       attachments: [],
       taskId: task.id,
+      ...compact({ threadId: threadOfTask(model, task) }),
       at: ctx.now,
     };
     return ok({
@@ -111,6 +113,7 @@ export function answerQuestion(
       text,
       attachments: [...attachments],
       taskId: task.id,
+      ...compact({ threadId: threadOfTask(model, task) }),
       at: ctx.now,
     };
     const events = [

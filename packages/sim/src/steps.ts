@@ -1,6 +1,6 @@
 import { facingTowards, findPath, neighboursOf, samePoint } from "./grid.ts";
 import { nearestWalkable, type OccupancyIndex, occupied } from "./actors.ts";
-import { type Actor, release, SPEED_TILES_PER_S, type Step, type World } from "./world.ts";
+import { type Actor, release, speedOf, type Step, type World } from "./world.ts";
 
 const finishStep = (actor: Actor): void => {
   actor.steps.shift();
@@ -60,7 +60,7 @@ function advanceWalk(
   actor.moving = next;
   actor.activity = "walk";
   actor.facing = facingTowards(actor.tile, next);
-  const distance = (SPEED_TILES_PER_S * dtMs) / 1000;
+  const distance = (speedOf(actor) * dtMs) / 1000;
   const dx = next.x - actor.pos.x;
   const dy = next.y - actor.pos.y;
   const remaining = Math.hypot(dx, dy);

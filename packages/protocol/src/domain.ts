@@ -1,7 +1,22 @@
 import { z } from "zod";
 import { Attachments } from "./attachments.ts";
-import { AgentId, ChatMessageId, MailItemId, ProjectId, SessionId, TaskId } from "./ids.ts";
-import { IntakePolicy, PublishPolicy, ServicesPolicy, VerifyPolicy } from "./policies.ts";
+import {
+  AgentId,
+  ChatMessageId,
+  ChatThreadId,
+  MailItemId,
+  ProjectId,
+  SessionId,
+  TaskId,
+} from "./ids.ts";
+import {
+  HiringPolicy,
+  IntakePolicy,
+  PreviewPolicy,
+  PublishPolicy,
+  ServicesPolicy,
+  VerifyPolicy,
+} from "./policies.ts";
 import { Budgets, Usage } from "./usage.ts";
 
 export * from "./policies.ts";
@@ -140,6 +155,8 @@ export const Project = z.object({
   defaultBranch: z.string().min(1).default("main"),
   publish: PublishPolicy.prefault({}),
   intake: IntakePolicy.prefault({}),
+  hiring: HiringPolicy.prefault({}),
+  preview: PreviewPolicy.prefault({}),
   services: ServicesPolicy.prefault({}),
   verify: VerifyPolicy.prefault({}),
   createdAt: IsoDateTime,
@@ -177,6 +194,7 @@ export const Task = z.object({
   status: TaskStatus,
   assigneeId: AgentId.optional(),
   reviewerId: AgentId.optional(),
+  publish: PublishPolicy.shape.mode.optional(),
   reviewRounds: z.int().nonnegative().default(0),
   notes: z.array(TaskNote).default([]),
   source: TaskSource,
@@ -194,6 +212,7 @@ export const ChatMessage = z.object({
   text: z.string().min(1).max(20_000),
   attachments: Attachments,
   taskId: TaskId.optional(),
+  threadId: ChatThreadId.optional(),
   at: IsoDateTime,
 });
 export type ChatMessage = z.infer<typeof ChatMessage>;
@@ -235,6 +254,7 @@ export const Session = z.object({
   runtimeSessionId: z.string().optional(),
   sandboxId: z.string().optional(),
   services: SessionServices.optional(),
+  threadId: ChatThreadId.optional(),
   resumedFrom: SessionId.optional(),
   usage: Usage,
   startedAt: IsoDateTime,

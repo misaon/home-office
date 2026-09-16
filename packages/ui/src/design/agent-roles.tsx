@@ -1,13 +1,14 @@
 import type { AgentRole } from "@ho/protocol";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { useTranslation } from "react-i18next";
+import { useDesign } from "./store.ts";
 import { PickCard } from "./pick-card.tsx";
 
 export const ROLE_MARKS: Record<AgentRole, React.JSX.Element> = {
   boss: (
     <svg
-      width="15"
-      height="15"
+      width="17"
+      height="17"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
@@ -20,8 +21,8 @@ export const ROLE_MARKS: Record<AgentRole, React.JSX.Element> = {
   ),
   worker: (
     <svg
-      width="15"
-      height="15"
+      width="17"
+      height="17"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
@@ -34,8 +35,8 @@ export const ROLE_MARKS: Record<AgentRole, React.JSX.Element> = {
   ),
   reviewer: (
     <svg
-      width="15"
-      height="15"
+      width="17"
+      height="17"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
@@ -50,8 +51,8 @@ export const ROLE_MARKS: Record<AgentRole, React.JSX.Element> = {
   ),
   clerk: (
     <svg
-      width="15"
-      height="15"
+      width="17"
+      height="17"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
@@ -71,22 +72,37 @@ const offered = (value: AgentRole, bossTaken: boolean): AgentRole[] => {
 };
 
 export function RoleCards({
+  show,
   value,
   bossTaken,
+  bossLocked,
   onPick,
 }: {
+  show: boolean;
   value: AgentRole;
   bossTaken: boolean;
+  bossLocked: boolean;
   onPick: (role: AgentRole) => void;
-}): React.JSX.Element {
+}): React.JSX.Element | null {
   const { t } = useTranslation();
+  const flash = useDesign((s) => s.flash);
   const cards = offered(value, bossTaken);
+  const pick = (role: AgentRole): void => {
+    if (role !== "boss" && bossLocked) {
+      flash(t("agent.bossStays"));
+      return;
+    }
+    onPick(role);
+  };
+  if (!show) {
+    return null;
+  }
   return (
     <RadioGroup
       aria-label={t("agent.whoTheyAre")}
       value={value}
       onValueChange={(next) => {
-        onPick(next);
+        pick(next);
       }}
       className={`grid gap-10 mb-18 ${cards.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
     >

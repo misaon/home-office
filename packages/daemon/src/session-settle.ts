@@ -63,7 +63,7 @@ async function publish(
   if (ctx.project.repo.kind === "git") {
     await pushMirrorBranch(home, ctx.project, provisioned.branch);
   }
-  if (ctx.project.publish.mode !== "pull-request") {
+  if ((ctx.task.publish ?? ctx.project.publish.mode) !== "pull-request") {
     return null;
   }
   if (ctx.project.repo.kind === "local") {
@@ -86,7 +86,9 @@ export async function settle(
     return;
   }
   const filed = mcp.report(provisioned.mcpToken);
-  const summary = filed?.summary ?? (outcome.report.trim() === "" ? "(no report)" : outcome.report);
+  const reported = outcome.report.trim();
+  const summary =
+    filed?.summary ?? (reported !== "" ? outcome.report : (outcome.failure ?? "(no report)"));
   const blocked = outcome.failure !== null || filed?.status === "blocked";
   deps.log.debug(
     {

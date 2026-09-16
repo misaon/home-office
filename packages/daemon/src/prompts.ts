@@ -6,6 +6,7 @@ import {
   CHAT_OUTBOX_DIR,
   isSessionActive,
   type Project,
+  type PublishPolicy,
   type Session,
   type Task,
   type TaskNote,
@@ -14,6 +15,22 @@ import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 
 export type Services = { kind: "off" } | { kind: "ready" } | { kind: "failed"; message: string };
+
+const workPublish = (mode: PublishPolicy["mode"]): string =>
+  mode === "pull-request"
+    ? "Publishing: commit on the task branch and finish with ho_report. The office pushes that branch and opens the pull request for you once the checks pass — there is no ho_publish in this session and you do not need one."
+    : "Publishing: commit on the task branch and finish with ho_report. The office pushes the branch; this floor does not open pull requests, so do not promise one.";
+
+const REPO_RULES =
+  "House rules: this repository's own CLAUDE.md, .claude/skills and .claude/rules are loaded for you — follow them over your habits. AGENTS.md is not loaded automatically; if the repository has one, read it before you start and treat it the same way.";
+
+const HOST_TOOLS =
+  "Publishing: there is no `gh` in this sandbox and the only remote is a local path, so never try to open a pull request from the shell. Call ho_publish and the office pushes and opens it for you.";
+
+const previewGuide = (preview: { enabled: boolean; port: number }): string =>
+  preview.enabled
+    ? `Preview: a server you start on 0.0.0.0:${String(preview.port)} inside the sandbox is reachable from the human's own browser at http://127.0.0.1:${String(preview.port)}. Bind it to 0.0.0.0, not 127.0.0.1, or only you will see it. That port is the only one that leaves the sandbox; name it when you tell the human where to look.`
+    : "Preview: nothing you serve leaves this sandbox, so never tell the human to open a local URL — send a screenshot instead.";
 
 const browserGuide = (enabled: boolean): string =>
   enabled
@@ -75,6 +92,7 @@ type SessionFacts = {
   mode: Session["mode"];
   branch: string;
   browser: boolean;
+  preview: { enabled: boolean; port: number };
   services: Services;
 };
 
@@ -82,6 +100,10 @@ const workPrompt = (f: SessionFacts): string[] => [
   `The repository is checked out at ${REPO_IN_VOLUME} on branch ${f.branch}. Work only inside it.`,
   "Commit your changes with clear Conventional Commit messages.",
   browserGuide(f.browser),
+  previewGuide(f.preview),
+  REPO_RULES,
+  workPublish(f.project.publish.mode),
+  REPO_RULES,
   servicesGuide(f.services),
   `Task: ${f.task.title}`,
   criteriaGuide(f.task),
@@ -93,6 +115,9 @@ const workPrompt = (f: SessionFacts): string[] => [
 const reviewPrompt = (f: SessionFacts): string[] => [
   `You are reviewing branch ${f.branch} of the repository at ${REPO_IN_VOLUME} (base branch: ${f.project.defaultBranch}).`,
   browserGuide(f.browser),
+  previewGuide(f.preview),
+  REPO_RULES,
+  HOST_TOOLS,
   servicesGuide(f.services),
   `Start with \`git -C ${REPO_IN_VOLUME} diff ${f.project.defaultBranch}...HEAD --stat\` and then the full diff; read surrounding code only where needed.`,
   verifyGuide(f.project) === ""
@@ -116,10 +141,21 @@ const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
   ).length;
   return [
     `You run this floor. The human writes to you in the floor's chat; you turn requests into well-specified tasks for your team. The repository is checked out at ${REPO_IN_VOLUME} (branch ${f.project.defaultBranch}, ${String(open)} open task(s)) for planning only: read what you need to write precise briefs, do not modify or commit anything here — work happens in separate sessions.`,
-    `Team on this floor:\n${roster.join("\n") || "- nobody yet: you do the work yourself"}`,
+    `Team on this floor:\n${
+      roster.join("\n") ||
+      (f.project.hiring.enabled
+        ? "- nobody yet: hire whoever the work needs, or take it yourself when it is small"
+        : "- nobody yet: you do the work yourself")
+    }`,
+    f.project.hiring.enabled
+      ? `Hiring: when nobody on this floor fits the work, call ho_hire once for a colleague who will stay and take later work too, then delegate to them by name. Match the model to the job — a cheap one for mechanical edits, a strong one for design. Do not hire for a single errand you can do yourself.`
+      : "",
     staff.length === 0
       ? `Protocol: for actionable requests call ho_delegate once per independent piece of work, with assignee set to your own name; you will get a separate work session in the repository for each. ${DELEGATE_FIELDS} Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to do. Finish with ho_report (status done, one-line summary) and stop.`
       : `Protocol: for actionable requests call ho_delegate once per independent piece of work, assignee = the colleague who fits best (your own name only when nobody fits). ${DELEGATE_FIELDS} Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to delegate. Use ho_list_agents when unsure. Finish with ho_report (status done, one-line summary) and stop.`,
+    f.project.publish.mode === "pull-request"
+      ? "Delivery: finished work is pushed and a pull request opens by itself. Tell the human the branch; the pull request link arrives when it is ready, or call ho_publish to fetch it now."
+      : "Delivery: this floor only pushes the branch. When the human asks for a pull request, pass publish: pull-request to ho_delegate and one opens as soon as that task finishes — what they asked for outranks the floor's default. For work already finished, call ho_publish instead.",
     filesGuide(f.files),
     `Files: to send the human an image or a document, write it into ${CHAT_OUTBOX_DIR} and name the file in ho_reply's \`files\`. Screenshots the browser tools take land in ${BROWSER_OUTPUT_DIR}; copy the one you mean across. Accepted: png, jpg, gif, webp, pdf, txt, md, json, csv, up to 10 MB each.`,
     "Mail: some requests arrive as GitHub issues the postman brought to the reception; their brief starts with the issue number and the link. Quote the issue link in the brief. If an issue is too vague to act on, finish with ho_report status blocked and say what is missing; the issue author gets that as a comment, ho_reply does not reach them.",

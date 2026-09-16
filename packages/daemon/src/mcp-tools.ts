@@ -10,8 +10,6 @@ import {
   submitReview,
 } from "@ho/core";
 import {
-  type Actor,
-  type AgentId,
   HoAskHumanInput,
   HoDelegateInput,
   HoGetSkillFileInput,
@@ -23,65 +21,12 @@ import {
   HoReviewInput,
   HoTaskStatusInput,
   isSessionActive,
-  type ProjectId,
-  type SessionId,
-  type SessionMode,
-  type TaskId,
 } from "@ho/protocol";
-import type { ZodRawShapeCompat } from "@modelcontextprotocol/sdk/server/zod-compat.js";
-import { z } from "zod";
-import type { AttachmentStore } from "./attachments.ts";
-import type { Office } from "./office.ts";
+import { hire } from "./mcp-hire.ts";
+import { ALL, define, type AnyTool, type ToolResult } from "./mcp-tool.ts";
 import { publishTask } from "./publish.ts";
-import type { SkillLibrary } from "./skills.ts";
 
-export type McpSessionContext = {
-  sessionId: SessionId;
-  skillPack: string;
-  taskId: TaskId;
-  agentId: AgentId;
-  projectId: ProjectId;
-  mode: SessionMode;
-  attachments: AttachmentStore;
-  home: string;
-};
-
-export type Entry = {
-  ctx: McpSessionContext;
-  replied: boolean;
-  report: HoReportInput | null;
-  skills: SkillLibrary;
-};
-export type ToolResult = { content: { type: "text"; text: string }[]; isError?: true };
-type Tool<S extends z.ZodRawShape> = {
-  name: string;
-  description: string;
-  shape: S;
-  modes: readonly SessionMode[];
-  run: (
-    input: z.infer<z.ZodObject<S>>,
-    office: Office,
-    entry: Entry,
-    actor: Actor,
-  ) => Promise<unknown>;
-};
-export type AnyTool = {
-  name: string;
-  description: string;
-  shape: ZodRawShapeCompat;
-  modes: readonly SessionMode[];
-  handle: (input: unknown, office: Office, entry: Entry, actor: Actor) => Promise<unknown>;
-};
-
-const ALL: readonly SessionMode[] = ["work", "review", "triage"];
-
-const define = <S extends z.ZodRawShape>(tool: Tool<S>): AnyTool => {
-  const schema = z.object(tool.shape);
-  return {
-    ...tool,
-    handle: (input, office, entry, actor) => tool.run(schema.parse(input), office, entry, actor),
-  };
-};
+export type { AnyTool, Entry, McpSessionContext, ToolResult } from "./mcp-tool.ts";
 
 const report = define({
   name: "ho_report",
@@ -255,6 +200,7 @@ export const TOOLS: readonly AnyTool[] = [
   handoff,
   review,
   delegate,
+  hire,
   reply,
   publish,
   listSkills,

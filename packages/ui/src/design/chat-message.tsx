@@ -4,9 +4,13 @@ import { useTranslation } from "react-i18next";
 import { type Attachment, isImageType } from "@ho/protocol";
 import { useAttachmentUrl } from "../attachments.ts";
 import { useDesign } from "./store.ts";
+import { RichText } from "./markdown.tsx";
 
 const FRAME =
   "block w-full mt-10 h-118 rounded-10 cursor-pointer overflow-hidden p-0 border border-accent-a30 bg-sunk transition-all duration-220";
+
+const FILE =
+  "flex items-center gap-8 w-full mt-10 py-8 px-10 rounded-10 cursor-pointer border border-accent-a30 bg-sunk text-left transition-all duration-220";
 
 function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX.Element {
   const { t } = useTranslation();
@@ -14,6 +18,38 @@ function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX.Elemen
   const image = isImageType(attachment.mime);
   const url = useAttachmentUrl(attachment, image);
 
+  if (!image) {
+    return (
+      <button
+        type="button"
+        title={attachment.name}
+        onClick={() => {
+          set({ lightbox: attachment });
+        }}
+        className={`hover:border-accent-a70 ${FILE}`}
+      >
+        <svg
+          className="flex-[0_0_auto] stroke-accent-quote"
+          width="13"
+          height="13"
+          viewBox="0 0 14 14"
+          fill="none"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M8 1.5H3.6v11h6.8V4z" />
+          <path d="M8 1.5V4h2.4" />
+        </svg>
+        <span
+          className={`flex-1 min-w-0 ${MONO} text-10h text-accent-quote overflow-hidden text-ellipsis whitespace-nowrap`}
+        >
+          {attachment.name}
+        </span>
+        <span className={`${MONO} text-9h text-ink-label flex-[0_0_auto]`}>{t("chat.open")}</span>
+      </button>
+    );
+  }
   return (
     <button
       type="button"
@@ -24,9 +60,7 @@ function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX.Elemen
       className={`hover:border-accent-a70 hover:scale-101 ${FRAME}`}
     >
       {url === null ? (
-        <span className={`${MONO} text-10 text-accent-quote`}>
-          {image ? t("common.checking") : `${attachment.name} · ${t("chat.imageOpen")}`}
-        </span>
+        <span className={`${MONO} text-10 text-accent-quote`}>{t("common.checking")}</span>
       ) : (
         <img src={url} alt={attachment.name} className="w-full h-full object-cover block" />
       )}
@@ -43,6 +77,11 @@ const MINE =
 const THEIRS =
   "max-w-[92%] mr-auto py-11 px-13 rounded-15 rounded-bl-5 bg-toast border border-border";
 
+const ASKING =
+  "max-w-[92%] mr-auto py-11 px-13 rounded-15 rounded-bl-5 bg-toast border border-warn";
+
+const ASK_TAG = "flex items-center gap-6 mt-8 text-10h text-warn";
+
 export function ChatMessage({
   message,
   boss,
@@ -58,15 +97,36 @@ export function ChatMessage({
           <div className={`${META} text-accent-quote mb-5`}>
             {t("chat.you")} · <span>{message.time}</span>
           </div>
-          <div className={`${BODY} text-ink-bright`}>{message.text}</div>
+          <div className={`${BODY} text-ink-bright`}>
+            <RichText text={message.text} />
+          </div>
           {message.attachment === undefined ? null : <ChatThumb attachment={message.attachment} />}
         </div>
       ) : (
-        <div className={THEIRS}>
+        <div className={message.asks === undefined ? THEIRS : ASKING}>
           <div className={`${META} text-ink-label mb-6`}>
             <span>{message.who ?? boss}</span> · <span>{message.time}</span>
           </div>
-          <div className={`${BODY} text-ink-soft`}>{message.text}</div>
+          <div className={`${BODY} text-ink-soft`}>
+            <RichText text={message.text} />
+          </div>
+          {message.asks === undefined ? null : (
+            <div className={ASK_TAG}>
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              >
+                <path d="M4.3 4.3a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1.1v.3" />
+                <circle cx="6" cy="9.4" r=".6" fill="currentColor" stroke="none" />
+              </svg>
+              <span>{t("chat.awaitingAnswer")}</span>
+            </div>
+          )}
         </div>
       )}
     </div>

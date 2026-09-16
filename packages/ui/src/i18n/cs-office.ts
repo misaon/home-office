@@ -6,14 +6,14 @@ export const csOffice = {
   },
   taskKind: {
     code: "kód",
-    triage: "triáž",
+    triage: "triage",
   },
   status: {
     inbox: "příchozí",
     planned: "naplánováno",
     assigned: "přiřazeno",
     in_progress: "probíhá",
-    review: "revize",
+    review: "review",
     done: "hotovo",
     blocked: "zablokováno",
     failed: "selhalo",
@@ -61,7 +61,7 @@ export const csOffice = {
     cache: "cache",
     sessions: "sessions",
     allTime: "za celou dobu",
-    headline: "tokenů · {{window}} · {{count}} sezení",
+    headline: "tokenů · {{window}} · {{count}} session",
     lastWindow: "posledních {{window}}",
     noRunning: "Na tomto podlaží nic neběží.",
     openFull: "Otevřít celou spotřebu",
@@ -83,6 +83,6 @@ export const csOffice = {
     engine: "Docker engine",
     failed: "Engine se nepodařilo přečíst.",
     floor: "Podlaží",
-    held: "{{volumes}} svazků · {{images}} obrazy · {{disk}} dat",
+    held: "{{volumes}} volumes · {{images}} images · {{disk}} dat",
   },
 };

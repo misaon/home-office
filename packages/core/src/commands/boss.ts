@@ -2,6 +2,9 @@ import {
   type AgentId,
   type Attachment,
   type ChatMessage,
+  type ChatThreadId,
+  type ChatThreadTarget,
+  compact,
   conflict,
   type HoDelegateInput,
   type NewEvent,
@@ -12,7 +15,7 @@ import {
   type TaskId,
   type TaskSpec,
 } from "@ho/protocol";
-import { bossOf, findAgentByRef } from "../model/queries.ts";
+import { bossOf, findAgentByRef, latestThread, threadOfTask } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
 import { chatEvent, handoffEvent, note, titleFromText, withAgent, withProject } from "./shared.ts";
@@ -66,6 +69,7 @@ export function delegateTask(
       source: { kind: "delegation", byAgentId: boss.id, parentTaskId },
       assigneeId: assignee?.id,
       priority: input.priority,
+      publish: input.publish,
       notes: handoffNote === undefined ? [] : [handoffNote],
     });
     const events: NewEvent[] = [{ type: "task.created", actor: ctx.actor, payload: { task } }];
@@ -76,16 +80,33 @@ export function delegateTask(
   });
 }
 
+const resolveThread = (
+  model: ReadModel,
+  projectId: ProjectId,
+  target: ChatThreadTarget,
+  ctx: CommandContext,
+): ChatThreadId => {
+  if (target.kind === "thread") {
+    return target.id;
+  }
+  if (target.kind === "new") {
+    return ctx.ids.chatThread();
+  }
+  return latestThread(model, projectId) ?? ctx.ids.chatThread();
+};
+
 export function triageMessage(
   model: ReadModel,
   projectId: ProjectId,
   text: string,
   attachments: readonly Attachment[],
+  target: ChatThreadTarget,
   ctx: CommandContext,
 ): CommandResult<{ message: ChatMessage; task: Task | null }> {
   return withProject(model, projectId, () => {
     const boss = bossOf(model, projectId);
     const messageId = ctx.ids.chatMessage();
+    const threadId = resolveThread(model, projectId, target, ctx);
     const task =
       boss === undefined
         ? null
@@ -104,6 +125,7 @@ export function triageMessage(
       text,
       attachments: [...attachments],
       ...(task === null ? {} : { taskId: task.id }),
+      threadId,
       at: ctx.now,
     };
     const events: NewEvent[] = [chatEvent(ctx, message)];
@@ -126,6 +148,7 @@ export function postAgentMessage(
   attachments: readonly Attachment[] = [],
 ): CommandResult<ChatMessage> {
   return withAgent(model, agentId, (agent) => {
+    const task = taskId === undefined ? undefined : model.tasks.get(taskId);
     const message: ChatMessage = {
       id: ctx.ids.chatMessage(),
       projectId: agent.projectId,
@@ -133,8 +156,35 @@ export function postAgentMessage(
       text,
       attachments: [...attachments],
       ...(taskId === undefined ? {} : { taskId }),
+      ...compact({ threadId: task === undefined ? undefined : threadOfTask(model, task) }),
       at: ctx.now,
     };
     return ok({ events: [chatEvent(ctx, message)], read: () => message });
+  });
+}
+
+export function clearChat(
+  model: ReadModel,
+  projectId: ProjectId,
+  threadId: ChatThreadId | undefined,
+  ctx: CommandContext,
+): CommandResult<number> {
+  return withProject(model, projectId, () => {
+    const removed = (model.chat.get(projectId) ?? []).filter(
+      (message) => message.threadId === threadId,
+    ).length;
+    return ok({
+      events:
+        removed === 0
+          ? []
+          : [
+              {
+                type: "chat.cleared",
+                actor: ctx.actor,
+                payload: { projectId, ...compact({ threadId }) },
+              },
+            ],
+      read: () => removed,
+    });
   });
 }

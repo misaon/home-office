@@ -1,12 +1,11 @@
-import { type ChatSendInput } from "@ho/protocol";
-import { useRef, useState } from "react";
+import { type ChatSendInput, type ChatThreadTarget } from "@ho/protocol";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { rejects, upload } from "../attachments.ts";
 import { requireClient } from "../rpc.ts";
 import { ChatAttachment } from "./chat-attachment.tsx";
 import { ChatToolbar } from "./chat-toolbar.tsx";
-import { ChatWorking } from "./chat-working.tsx";
-import type { Floor } from "./data.ts";
+import type { Floor, Message, ThreadPick } from "./data.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
 
 const BOX = "relative rounded-15 p-12 transition-[border-color,background,box-shadow] duration-250";
@@ -14,9 +13,168 @@ const BOX = "relative rounded-15 p-12 transition-[border-color,background,box-sh
 const DROP =
   "absolute inset-0 z-5 rounded-15 bg-drop flex flex-col items-center justify-center gap-8 pointer-events-none animate-fade-160";
 
-const INPUT = "w-full border-0 bg-transparent text-13h pt-2 px-2 pb-10";
+const INPUT =
+  "w-full block resize-none overflow-y-auto border-0 bg-transparent text-13h leading-text pt-2 px-2 pb-10";
 
-export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
+const MAX_INPUT_HEIGHT = 168;
+
+const MARKER = /^(?<indent>\s*)(?<bullet>[-*]|\d+[.)])\s+(?<rest>.*)$/u;
+
+type Continued = { value: string; caret: number };
+
+const INDENT = "  ";
+
+const reindent = (value: string, caret: number, deeper: boolean): Continued | null => {
+  const before = value.slice(0, caret);
+  const start = before.lastIndexOf("\n") + 1;
+  const breakAt = value.indexOf("\n", caret);
+  const line = value.slice(start, breakAt === -1 ? value.length : breakAt);
+  if (MARKER.exec(line) === null) {
+    return null;
+  }
+  if (deeper) {
+    return {
+      value: value.slice(0, start) + INDENT + value.slice(start),
+      caret: caret + INDENT.length,
+    };
+  }
+  if (!line.startsWith(INDENT)) {
+    return null;
+  }
+  return {
+    value: value.slice(0, start) + line.slice(INDENT.length) + value.slice(start + line.length),
+    caret: Math.max(start, caret - INDENT.length),
+  };
+};
+
+const onTab = (
+  event: React.KeyboardEvent<HTMLTextAreaElement>,
+  write: (draft: string) => void,
+): void => {
+  if (event.key !== "Tab") {
+    return;
+  }
+  const field = event.currentTarget;
+  const moved = reindent(field.value, field.selectionStart, !event.shiftKey);
+  if (moved === null) {
+    return;
+  }
+  event.preventDefault();
+  write(moved.value);
+  requestAnimationFrame(() => {
+    field.setSelectionRange(moved.caret, moved.caret);
+  });
+};
+
+const onEnter = (
+  event: React.KeyboardEvent<HTMLTextAreaElement>,
+  submit: () => void,
+  write: (draft: string) => void,
+): void => {
+  if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+    return;
+  }
+  if (!event.shiftKey) {
+    event.preventDefault();
+    submit();
+    return;
+  }
+  const field = event.currentTarget;
+  const carried = continueList(field.value, field.selectionStart);
+  if (carried === null) {
+    return;
+  }
+  event.preventDefault();
+  write(carried.value);
+  requestAnimationFrame(() => {
+    field.setSelectionRange(carried.caret, carried.caret);
+  });
+};
+
+const continueList = (value: string, caret: number): Continued | null => {
+  const before = value.slice(0, caret);
+  const line = before.slice(before.lastIndexOf("\n") + 1);
+  const found = MARKER.exec(line)?.groups;
+  if (found === undefined) {
+    return null;
+  }
+  const { indent = "", bullet = "", rest = "" } = found;
+  if (rest.trim() === "") {
+    const start = before.length - line.length;
+    return { value: value.slice(0, start) + value.slice(caret), caret: start };
+  }
+  const next = /^\d/u.test(bullet)
+    ? `${String(Math.trunc(Number(bullet)) + 1)}${bullet.slice(-1)} `
+    : `${bullet} `;
+  const insert = `\n${indent}${next}`;
+  return { value: before + insert + value.slice(caret), caret: caret + insert.length };
+};
+
+const fitToText = (box: HTMLTextAreaElement | null): void => {
+  if (box === null) {
+    return;
+  }
+  box.style.height = "auto";
+  box.style.height = `${Math.min(box.scrollHeight, MAX_INPUT_HEIGHT)}px`;
+};
+
+function DropHint(): React.JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <div className={DROP}>
+      <svg
+        className="stroke-accent"
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 16V4" />
+        <polyline points="7,9 12,4 17,9" />
+        <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+      </svg>
+      <span className="text-12h text-accent-soft font-medium">{t("chat.dropHere")}</span>
+    </div>
+  );
+}
+
+const targetOf = (active: ThreadPick | "new"): ChatThreadTarget =>
+  active === "new" || active === "main" ? { kind: "new" } : { kind: "thread", id: active };
+
+const ANSWERING = "flex items-center gap-7 mb-8 px-2 text-10h text-warn";
+
+function AnsweringHint({ name }: { name: string }): React.JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <div className={ANSWERING}>
+      <svg
+        width="11"
+        height="11"
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      >
+        <path d="M2 6h8M6.5 2.5 10 6l-3.5 3.5" />
+      </svg>
+      <span>{t("chat.answering", { name })}</span>
+    </div>
+  );
+}
+
+export function ChatComposer({
+  floor,
+  active,
+  pending,
+}: {
+  floor: Floor;
+  active: ThreadPick | "new";
+  pending: NonNullable<Message["asks"]> | null;
+}): React.JSX.Element {
   const { t } = useTranslation();
   const draft = useDesign((s) => s.draft);
   const attachment = useDesign((s) => s.attachment);
@@ -24,9 +182,19 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
   const flash = useDesign((s) => s.flash);
   const [dragging, setDragging] = useState(false);
   const depth = useRef(0);
+  const box = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    fitToText(box.current);
+  }, [draft]);
 
   const send = useOfficeMutation({
     mutationFn: (input: ChatSendInput) => requireClient().chat.send(input),
+    onSuccess: (result) => {
+      if (result.message.threadId !== undefined) {
+        set({ thread: result.message.threadId });
+      }
+    },
   });
 
   const submit = (): void => {
@@ -34,11 +202,13 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
     if (text === "" && attachment === null) {
       return;
     }
-    send.mutate({
-      projectId: floor.id,
-      text: text === "" ? t("chat.lookAtThis") : text,
-      attachments: attachment === null ? [] : [attachment],
-    });
+    const body = text === "" ? t("chat.lookAtThis") : text;
+    const attachments = attachment === null ? [] : [attachment];
+    send.mutate(
+      pending === null
+        ? { projectId: floor.id, text: body, attachments, thread: targetOf(active) }
+        : { taskId: pending.taskId, text: body, attachments },
+    );
     set({ draft: "", attachment: null, query: "" });
   };
 
@@ -61,7 +231,6 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
 
   return (
     <div className="flex-[0_0_auto] pt-12 px-16 pb-16">
-      <ChatWorking floor={floor} />
       <div
         onDragEnter={(e) => {
           e.preventDefault();
@@ -90,38 +259,30 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
         }}
         className={`hover:border-accent-a40 hover:shadow-halo ${BOX} border ${dragging ? "border-accent-a60" : "border-border-strong"} ${dragging ? "bg-accent-a05" : "bg-card-lit"}`}
       >
-        {dragging ? (
-          <div className={DROP}>
-            <svg
-              className="stroke-accent"
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 16V4" />
-              <polyline points="7,9 12,4 17,9" />
-              <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-            </svg>
-            <span className="text-12h text-accent-soft font-medium">{t("chat.dropHere")}</span>
-          </div>
-        ) : null}
+        {dragging ? <DropHint /> : null}
+        {pending === null ? null : <AnsweringHint name={pending.who} />}
         {attachment === null ? null : <ChatAttachment file={attachment.name} />}
-        <input
+        <textarea
+          ref={box}
+          rows={1}
           value={draft}
           onChange={(e) => {
             set({ draft: e.target.value });
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              submit();
-            }
+            const write = (next: string): void => {
+              set({ draft: next });
+            };
+            onTab(e, write);
+            onEnter(e, submit, write);
           }}
-          placeholder={t("chat.placeholder")}
+          placeholder={t(
+            pending !== null
+              ? "chat.placeholderAnswer"
+              : active === "new" || active === "main"
+                ? "chat.placeholderNew"
+                : "chat.placeholder",
+          )}
           className={`${INPUT} placeholder:text-ink-ghost`}
         />
         <ChatToolbar floor={floor} onSend={submit} onAttach={attach} />

@@ -17,7 +17,7 @@ import {
   TaskStatus,
   Usage,
 } from "./domain.ts";
-import { AgentId, EventId, MailItemId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import { AgentId, ChatThreadId, EventId, MailItemId, ProjectId, SessionId, TaskId } from "./ids.ts";
 
 const Envelope = z.object({ id: EventId, at: IsoDateTime, actor: Actor });
 
@@ -69,6 +69,7 @@ export const DomainEvent = z.discriminatedUnion("type", [
   }),
 
   event("chat.message_posted", { message: ChatMessage }),
+  event("chat.cleared", { projectId: ProjectId, threadId: ChatThreadId.optional() }),
 
   event("mail.received", { mail: MailItem }),
   event("mail.acknowledged", { mailId: MailItemId, ack: MailAck }),

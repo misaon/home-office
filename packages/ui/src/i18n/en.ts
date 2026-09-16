@@ -1,3 +1,4 @@
+import { enTokens } from "./en-tokens.ts";
 import { enEditor } from "./en-editor.ts";
 import { enOffice } from "./en-office.ts";
 import { enStaff } from "./en-staff.ts";
@@ -114,7 +115,7 @@ export const en = {
     thinking: "is thinking…",
     attach: "Attach a file",
     attachRejected: "the office does not take {{names}}",
-    imageOpen: "Open {{name}}",
+    open: "open",
     imageFit: "Fit",
     imageZoomIn: "Zoom in",
     imageZoomOut: "Zoom out",
@@ -130,6 +131,18 @@ export const en = {
     you: "You",
     label: "Message to the selected floor",
     placeholder: "Ask the floor for something…",
+    placeholderNew: "Ask the floor for something — this starts a new session…",
+    newThread: "New session",
+    allSessions: "All sessions on this floor",
+    searchSessions: "Search sessions…",
+    noSessionMatch: "No session matches that.",
+    placeholderAnswer: "Your answer — the task resumes as soon as you send it…",
+    answering: "answering {{name}}",
+    awaitingAnswer: "waiting for your answer",
+    moreQuestions_one: "{{count}} earlier question is still waiting",
+    moreQuestions_few: "{{count}} earlier questions are still waiting",
+    moreQuestions_many: "{{count}} earlier questions are still waiting",
+    moreQuestions_other: "{{count}} earlier questions are still waiting",
     sendHint: "Enter sends, Shift+Enter makes a new line",
     answerPlaceholder: "Your answer…",
     empty:
@@ -138,6 +151,16 @@ export const en = {
     lookAtThis: "Have a look at this.",
     noBoss: "No boss on this floor yet",
     noHits: "Nothing in this conversation matches that.",
+    clear: "Clear the chat",
+    clearTitle: "Clear this conversation?",
+    clearConfirm_one: "Hide {{count}} message from the panel? It stays in the log.",
+    clearConfirm_few: "Hide {{count}} messages from the panel? They stay in the log.",
+    clearConfirm_many: "Hide {{count}} messages from the panel? They stay in the log.",
+    clearConfirm_other: "Hide {{count}} messages from the panel? They stay in the log.",
+    cleared_one: "{{count}} message cleared",
+    cleared_few: "{{count}} messages cleared",
+    cleared_many: "{{count}} messages cleared",
+    cleared_other: "{{count}} messages cleared",
     search: "Search this conversation",
   },
   session: {
@@ -186,6 +209,12 @@ export const en = {
     intakeHint: "The postman brings matching issues to the reception and the boss triages them.",
     intakeDryHint: "Nothing is created; the log says what would have been taken.",
     intakeCommentHint: "The office replies on the issue when the work is done or blocked.",
+    hiringLabel: "The boss may take on colleagues",
+    hiringHint:
+      "When nobody on this floor fits the work, the boss hires someone who stays and can take later work too. Off, it must do everything itself or wait for you to add someone in Team.",
+    previewLabel: "Local preview on port {{port}}",
+    previewHint:
+      "Publishes that one port from each sandbox to 127.0.0.1, so a dev server an agent starts opens in your browser. Off, nothing an agent serves can leave its container.",
     servicesLabel: "Own container engine",
     servicesHint:
       "The repository's docker compose runs inside the sandbox. A session with services takes two of the daemon's slots.",
@@ -193,29 +222,6 @@ export const en = {
     removeFloor: "Remove this floor",
     languageSet: "Office language changed",
     lang: { en: "English", cs: "Čeština" },
-  },
-  tokens: {
-    storedNote: "Stored in the configured secret store.",
-    replaceAction: "Replace",
-    claudeHint:
-      "Run `claude setup-token` in a terminal and paste the result. Stored in the configured secret store.",
-    anthropicHint:
-      "For Claude Code agents set to api-key auth (pay per use, optional USD budget per Claude session) and for OpenCode with anthropic/… models.",
-    githubHint:
-      "Reserved for future use. GitHub intake and pull requests currently use your host gh login.",
-    stored: "stored",
-    missing: "missing",
-    paste: "paste token",
-    replace: "paste a new token to replace it",
-    forget: "Forget",
-    claude: "Claude subscription token",
-    anthropic: "Anthropic API key",
-    openai: "OpenAI API key",
-    openaiHint: "Codex agents and OpenCode with openai/… models.",
-    gemini: "Gemini API key",
-    geminiHint: "Gemini CLI agents and OpenCode with google/… models (Google AI Studio key).",
-    github: "GitHub token",
-    forgotten: "{{name}} forgotten",
   },
   team: {
     filters: "Filter the team by status",
@@ -272,5 +278,6 @@ export const en = {
   ...enStaff,
   ...enOffice,
   ...enSetup,
+  ...enTokens,
   ...enEditor,
 };

@@ -6,6 +6,7 @@ import {
   type RepoSource,
 } from "@ho/protocol";
 import { stat } from "node:fs/promises";
+import { daemonLog } from "./logger.ts";
 import { basename } from "node:path";
 import { simpleGit, type SimpleGit } from "simple-git";
 
@@ -17,11 +18,13 @@ const gitIn = (baseDir?: string): SimpleGit =>
     timeout: { block: GIT_TIMEOUT_MS },
   });
 
-const tried = async (run: () => Promise<string>): Promise<string | null> => {
+const tried = async (what: string, run: () => Promise<string>): Promise<string | null> => {
   try {
     const out = await run();
+    daemonLog()?.debug({ git: what, ok: true }, "repo inspect");
     return out.trim();
-  } catch {
+  } catch (error) {
+    daemonLog()?.debug({ git: what, err: errorMessage(error).slice(0, 300) }, "repo inspect");
     return null;
   }
 };
@@ -41,13 +44,13 @@ const ordered = (defaultBranch: string, names: readonly string[]): string[] => {
 
 async function localDefaultBranch(path: string): Promise<string> {
   const git = gitIn(path);
-  const remote = await tried(() =>
+  const remote = await tried("remote", () =>
     git.raw(["symbolic-ref", "--short", "refs/remotes/origin/HEAD"]),
   );
   if (remote !== null && remote !== "") {
     return remote.replace(/^origin\//u, "");
   }
-  const head = await tried(() => git.raw(["symbolic-ref", "--short", "HEAD"]));
+  const head = await tried("head", () => git.raw(["symbolic-ref", "--short", "HEAD"]));
   return head === null || head === "" ? "main" : head;
 }
 
@@ -75,7 +78,7 @@ async function inspectLocal(path: string): Promise<RepoInspection> {
   }
   const repo: RepoSource = { kind: "local", path: top };
   const defaultBranch = await localDefaultBranch(top);
-  const refs = await tried(() =>
+  const refs = await tried("refs", () =>
     gitIn(top).raw([
       "for-each-ref",
       "--format=%(refname:short)",

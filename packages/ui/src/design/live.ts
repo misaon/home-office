@@ -1,7 +1,8 @@
-import { chatOf } from "@ho/core";
+import { awaitsAnswer, chatOf } from "@ho/core";
 import {
   type Agent,
   type AgentId,
+  isSessionActive,
   type ProjectId,
   type SessionId,
   type ChatMessage,
@@ -11,18 +12,19 @@ import {
 } from "@ho/protocol";
 import { useEffect, useState } from "react";
 import { activeSessionOf, sortedFloors, useUi, type Snapshot } from "../store.ts";
-import type { Card, Floor, Lane, Member, Message } from "./data.ts";
+import type { Card, Floor, Lane, Member, Message, Thread, ThreadPick } from "./data.ts";
+import { type Activity, transcriptOf } from "./transcript.ts";
 
-function useNow(): number {
+function useNow(everyMs = 30_000): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(Date.now());
-    }, 30_000);
+    }, everyMs);
     return () => {
       clearInterval(timer);
     };
-  }, []);
+  }, [everyMs]);
   return now;
 }
 
@@ -99,17 +101,49 @@ function messageOf(message: ChatMessage, snapshot: Snapshot): Message {
   const who =
     message.author.kind === "agent" ? snapshot.agents.get(message.author.agentId)?.name : undefined;
   const [first] = message.attachments;
+  const task = message.taskId === undefined ? undefined : snapshot.tasks.get(message.taskId);
+  const asks =
+    !mine && task !== undefined && awaitsAnswer(task)
+      ? { taskId: task.id, who: who ?? task.title }
+      : undefined;
   return {
     id: message.id,
     mine,
     ...(who === undefined ? {} : { who }),
     time: clock(message.at, true),
     text: message.text,
+    ...(message.threadId === undefined ? {} : { threadId: message.threadId }),
+    ...(asks === undefined ? {} : { asks }),
     ...(first === undefined ? {} : { attachment: first }),
   };
 }
 
+const CHIP_TITLE_MAX = 26;
+
+const chipTitle = (text: string): string => {
+  const firstLine = text.split("\n").find((line) => line.trim() !== "") ?? text;
+  const trimmed = firstLine.trim();
+  return trimmed.length <= CHIP_TITLE_MAX ? trimmed : `${trimmed.slice(0, CHIP_TITLE_MAX - 1)}…`;
+};
+
+function threadsOfChat(messages: readonly ChatMessage[], now: number): Thread[] {
+  const threads = new Map<ThreadPick, Thread>();
+  for (const message of messages) {
+    const id: ThreadPick = message.threadId ?? "main";
+    const known = threads.get(id);
+    threads.set(id, {
+      id,
+      title: known?.title ?? chipTitle(message.text),
+      count: (known?.count ?? 0) + 1,
+      at: message.at,
+      when: ago(message.at, now),
+    });
+  }
+  return [...threads.values()].toSorted((a, b) => b.at.localeCompare(a.at));
+}
+
 function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
+  const chat = chatOf({ chat: snapshot.chat }, project.id);
   return {
     id: project.id,
     name: project.name,
@@ -117,6 +151,8 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
     pr: project.publish.mode === "pull-request",
     issues: project.intake.enabled,
     services: project.services.enabled,
+    preview: project.preview,
+    hiring: project.hiring.enabled,
     verify: project.verify.command,
     team: [...snapshot.agents.values()]
       .filter((a) => a.projectId === project.id)
@@ -128,9 +164,21 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
       .filter((task) => task.projectId === project.id)
       .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map((task) => cardOf(task, snapshot)),
-    messages: chatOf({ chat: snapshot.chat }, project.id).map((m) => messageOf(m, snapshot)),
+    messages: chat.map((m) => messageOf(m, snapshot)),
+    threads: threadsOfChat(chat, now),
   };
 }
+
+const elapsed = (iso: string, now: number): string => {
+  const seconds = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
+  if (seconds < 60) {
+    return `${String(seconds)}s`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  return minutes < 60
+    ? `${String(minutes)}m ${String(seconds % 60)}s`
+    : `${String(Math.floor(minutes / 60))}h ${String(minutes % 60)}m`;
+};
 
 const ago = (iso: string, now: number): string => {
   const minutes = minutesSince(iso, now);
@@ -163,6 +211,24 @@ export function useBossSession(
     name: boss.name,
     doing: snapshot.tasks.get(session.taskId)?.title ?? "working",
   };
+}
+
+export type { Activity, Step } from "./transcript.ts";
+
+export function useFloorActivity(floorId: ProjectId): Activity[] {
+  const snapshot = useUi((s) => s.snapshot);
+  const live = useUi((s) => s.live);
+  const now = useNow(1000);
+  return [...snapshot.sessions.values()].flatMap((session) => {
+    const agent = snapshot.agents.get(session.agentId);
+    if (!isSessionActive(session.state) || agent === undefined || agent.projectId !== floorId) {
+      return [];
+    }
+    const { steps, text } = transcriptOf(live.get(session.id) ?? []);
+    return [
+      { id: agent.id, name: agent.name, steps, text, since: elapsed(session.startedAt, now) },
+    ];
+  });
 }
 
 export function useAgentWork(agentId: AgentId): { t: string; x: string }[] {

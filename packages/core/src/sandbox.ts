@@ -26,6 +26,7 @@ export type SandboxSpec = {
   tmpfs: Readonly<Record<string, string>>;
   limits: { memoryBytes: number; cpus: number; pids: number };
   readonlyRootfs: boolean;
+  ports: readonly number[];
 };
 
 export type SandboxHandle = { id: string; name: string };

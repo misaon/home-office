@@ -12,9 +12,9 @@ export const HoReportInput = z.object({
   summary: z
     .string()
     .min(1)
-    .max(1500)
+    .max(6000)
     .describe(
-      "What changed, how you verified it, open questions. Plain text, under 1500 characters.",
+      "What changed, how you verified it, open questions. Plain text; keep it under a page.",
     ),
 });
 export type HoReportInput = z.infer<typeof HoReportInput>;
@@ -44,23 +44,39 @@ export const HoAskHumanInput = z.object({
 });
 export type HoAskHumanInput = z.infer<typeof HoAskHumanInput>;
 
+export const HoHireInput = z.object({
+  name: z.string().min(1).max(60).describe("A first name nobody on this floor uses yet"),
+  role: z.enum(["worker", "reviewer"]).describe("What they are for"),
+  model: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Provider model id; omit for the role's default. Pick a cheaper one for mechanical work",
+    ),
+  effort: z.string().min(1).optional().describe("Reasoning effort, when the provider takes one"),
+  basePrompt: z.string().max(4000).default("").describe("How they work, not what they work on"),
+  why: z.string().min(1).max(300).describe("One sentence: why nobody already here fits"),
+});
+export type HoHireInput = z.infer<typeof HoHireInput>;
+
 export const HoDelegateInput = z.object({
   title: z.string().min(1).max(200),
-  goal: z.string().min(1).max(500).describe("One sentence: what this task achieves and for whom"),
+  goal: z.string().min(1).max(2000).describe("One sentence: what this task achieves and for whom"),
   acceptanceCriteria: z
-    .array(z.string().min(1).max(500))
+    .array(z.string().min(1).max(2000))
     .min(1)
     .max(CRITERIA_MAX)
     .describe(
       'Independently checkable conditions, each one "When <condition>, the system shall <behaviour>". The reviewer checks exactly these, so a criterion nobody can verify is not a criterion.',
     ),
   constraints: z
-    .array(z.string().min(1).max(500))
+    .array(z.string().min(1).max(2000))
     .max(CRITERIA_MAX)
     .prefault([])
     .describe("What the worker must not change, must reuse, or must keep working"),
   outOfScope: z
-    .array(z.string().min(1).max(500))
+    .array(z.string().min(1).max(2000))
     .max(CRITERIA_MAX)
     .prefault([])
     .describe("Nearby work this task deliberately does not include"),
@@ -77,6 +93,12 @@ export const HoDelegateInput = z.object({
     .optional()
     .describe(
       "Colleague name or id on this floor (your own name when you do it yourself); omit to leave the task in the inbox",
+    ),
+  publish: z
+    .enum(["branch", "pull-request"])
+    .optional()
+    .describe(
+      "Set only when the human asked for a particular delivery — pull-request when they want a PR, branch when they explicitly do not. Omit to follow the floor's own setting.",
     ),
   priority: TaskPriority.optional(),
 });

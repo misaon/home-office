@@ -41,8 +41,8 @@ function LocalField({
         <div className={`${FIELD_ROW} border ${border}`}>
           <svg
             className="flex-[0_0_auto] stroke-ink-ghost"
-            width="13"
-            height="13"
+            width="15"
+            height="15"
             viewBox="0 0 16 16"
             fill="none"
             strokeWidth="1.5"
@@ -95,8 +95,8 @@ function GitField({
       <div className={`${FIELD_ROW} border ${border}`}>
         <svg
           className="flex-[0_0_auto] stroke-ink-ghost"
-          width="13"
-          height="13"
+          width="15"
+          height="15"
           viewBox="0 0 16 16"
           fill="none"
           strokeWidth="1.5"
@@ -121,7 +121,7 @@ function GitField({
 const FIELD_ROW =
   "flex-1 min-w-0 flex items-center gap-9 py-0 px-13 rounded-12 bg-card transition-[border-color] duration-220";
 
-const BARE = `flex-1 min-w-0 py-12 px-0 border-0 bg-transparent ${MONO} text-12`;
+const BARE = `flex-1 min-w-0 py-16 px-0 border-0 bg-transparent ${MONO} text-12`;
 
 const BROWSE =
   "py-0 px-15 flex-[0_0_auto] rounded-12 border border-border-strong bg-raised text-ink-quiet text-12h cursor-pointer whitespace-nowrap transition-all duration-200";

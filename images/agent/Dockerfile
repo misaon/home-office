@@ -1,14 +1,22 @@
+# syntax=docker/dockerfile:1
 FROM rust:1-alpine@sha256:1716b3aa042d735f4566d14dc54e8037de9d69556e2d5dd58131d93a613d173d AS rtk
-RUN apk add --no-cache musl-dev git \
+RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    ln -sf /var/cache/apk /etc/apk/cache \
+ && apk add musl-dev git \
  && cargo install --git https://github.com/rtk-ai/rtk --rev fde0a8f185945556f51718de0f4c430bb62b3df6 --locked --root /out rtk
 
 FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS base
 ARG TARGETARCH
 ARG BUN_VERSION=1.4.2
 ARG BUN_SHA256=71760b6c8ea30623b81a4907cb815d48e2ea266f2e73e751534a44a0607950df
-RUN test "$TARGETARCH" = arm64 \
- && apk add --no-cache bash curl ca-certificates libgcc libstdc++ ripgrep git openssh-client \
+RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
+    test "$TARGETARCH" = arm64 \
+ && ln -sf /var/cache/apk /etc/apk/cache \
+ && apk add bash curl ca-certificates libgcc libstdc++ ripgrep git openssh-client \
       chromium nodejs npm python3 ttf-dejavu ttf-liberation unzip \
+      coreutils diffutils findutils gawk grep sed jq \
       docker-cli docker-cli-compose docker-cli-buildx \
  && adduser -D -u 1000 agent \
  && mkdir -p /work /home/agent/.config/rtk /home/agent/.cache /opt/ho/plugins /opt/ho/mcp \
@@ -21,9 +29,9 @@ RUN wget -qO /tmp/bun.zip "https://github.com/oven-sh/bun/releases/download/bun-
  && rm -r /tmp/bun /tmp/bun.zip \
  && apk del unzip
 COPY mcp/package*.json /opt/ho/mcp/
-RUN cd /opt/ho/mcp \
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    cd /opt/ho/mcp \
  && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 PUPPETEER_SKIP_DOWNLOAD=1 npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
- && npm cache clean --force \
  && test -f node_modules/@playwright/mcp/cli.js \
  && test -f node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js
 COPY --from=rtk /out/bin/rtk /usr/local/bin/rtk
@@ -41,10 +49,12 @@ CMD ["bun", "/usr/local/bin/ho-runner.js"]
 
 FROM base AS claude-code
 ARG CLAUDE_CODE_VERSION=2.1.272-r1
-RUN wget -qO /etc/apk/keys/claude-code.rsa.pub https://downloads.claude.ai/keys/claude-code.rsa.pub \
+RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
+    wget -qO /etc/apk/keys/claude-code.rsa.pub https://downloads.claude.ai/keys/claude-code.rsa.pub \
  && echo "395759c1f7449ef4cdef305a42e820f3c766d6090d142634ebdb049f113168b6  /etc/apk/keys/claude-code.rsa.pub" | sha256sum -c - \
  && echo "https://downloads.claude.ai/claude-code/apk/latest" >> /etc/apk/repositories \
- && apk add --no-cache "claude-code=${CLAUDE_CODE_VERSION}" \
+ && ln -sf /var/cache/apk /etc/apk/cache \
+ && apk add "claude-code=${CLAUDE_CODE_VERSION}" \
  && mkdir -p /home/agent/.claude && chown agent:agent /home/agent/.claude
 USER agent
 RUN rtk init -g --hook-only --auto-patch >/dev/null && test -s /home/agent/.claude/settings.json
@@ -58,9 +68,9 @@ ENV CLAUDE_CONFIG_DIR=/home/agent/.claude \
 
 FROM base AS opencode
 COPY providers/opencode/package*.json /opt/ho/provider/
-RUN cd /opt/ho/provider \
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    cd /opt/ho/provider \
  && npm ci --omit=dev --no-audit --no-fund \
- && npm cache clean --force \
  && mkdir -p /home/agent/.local/share/opencode /home/agent/.config/opencode \
  && chown -R agent:agent /home/agent/.local /home/agent/.config/opencode
 USER agent
@@ -68,9 +78,9 @@ RUN opencode --version
 
 FROM base AS gemini-cli
 COPY providers/gemini-cli/package*.json /opt/ho/provider/
-RUN cd /opt/ho/provider \
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    cd /opt/ho/provider \
  && npm ci --omit=dev --no-audit --no-fund \
- && npm cache clean --force \
  && mkdir -p /home/agent/.gemini && chown -R agent:agent /home/agent/.gemini
 USER agent
 ENV GEMINI_CLI_NO_RELAUNCH=true
@@ -78,9 +88,9 @@ RUN gemini --version
 
 FROM base AS codex
 COPY providers/codex/package*.json /opt/ho/provider/
-RUN cd /opt/ho/provider \
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    cd /opt/ho/provider \
  && npm ci --omit=dev --no-audit --no-fund \
- && npm cache clean --force \
  && mkdir -p /home/agent/.codex && chown -R agent:agent /home/agent/.codex
 USER agent
 RUN codex-acp --version && codex --version

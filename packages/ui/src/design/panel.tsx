@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useUi } from "../store.ts";
 import { Board } from "./board.tsx";
 import { Chat } from "./chat.tsx";
 import { Settings } from "./settings.tsx";
@@ -9,13 +11,31 @@ import { useFloor } from "./live.ts";
 import { useDesign } from "./store.ts";
 
 const ASIDE =
-  "w-420 flex-[0_0_420px] border-l border-line bg-[linear-gradient(180deg,var(--color-panel),var(--color-ground-deep)_60%)] flex flex-col min-h-0 relative overflow-hidden";
+  "w-550 flex-[0_0_550px] border-l border-line bg-[linear-gradient(180deg,var(--color-panel),var(--color-ground-deep)_60%)] flex flex-col min-h-0 relative overflow-hidden";
 
 export function Panel(): React.JSX.Element | null {
   const tab = useDesign((s) => s.tab);
   const sheet = useDesign((s) => s.sheet);
   const sheetDraft = useDesign((s) => s.sheetDraft);
   const floor = useFloor();
+  const selectedAgentId = useUi((s) => s.selectedAgentId);
+
+  useEffect(() => {
+    if (selectedAgentId === null) {
+      return;
+    }
+    const person = floor?.team.find((member) => member.id === selectedAgentId);
+    const open = useDesign.getState().sheet;
+    if (person === undefined || (open?.type === "agent" && open.id === person.id)) {
+      return;
+    }
+    useDesign.setState({
+      tab: "Team",
+      sheet: { type: "agent", id: person.id },
+      sheetDraft: { ...person },
+    });
+  }, [selectedAgentId, floor]);
+
   if (floor === null) {
     return null;
   }

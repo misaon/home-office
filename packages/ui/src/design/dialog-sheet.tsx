@@ -55,7 +55,7 @@ export const COMMIT =
 
 export const CAP = "font-mono tracking-caps-wider uppercase text-ink-label";
 
-export const INPUT = "w-full py-12 px-13 rounded-12 border border-border-strong bg-card text-12h";
+export const INPUT = "w-full py-16 px-13 rounded-12 border border-border-strong bg-card text-12h";
 
 export function DialogSheet({
   open,

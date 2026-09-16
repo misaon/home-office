@@ -32,8 +32,19 @@ import {
 import { startEngine } from "./engine.ts";
 import { buildImage, imageHash } from "./image.ts";
 
+const exposed = (ports: readonly number[]): Record<string, Record<string, never>> =>
+  Object.fromEntries(ports.map((port) => [`${String(port)}/tcp`, {}]));
+
+const published = (
+  ports: readonly number[],
+): Record<string, { HostIp: string; HostPort: string }[]> =>
+  Object.fromEntries(
+    ports.map((port) => [`${String(port)}/tcp`, [{ HostIp: "127.0.0.1", HostPort: String(port) }]]),
+  );
+
 const containerConfig = (spec: SandboxSpec): unknown => ({
   Image: spec.image,
+  ExposedPorts: exposed(spec.ports),
   Cmd: [...spec.cmd],
   User: spec.user,
   WorkingDir: spec.workdir,
@@ -41,6 +52,7 @@ const containerConfig = (spec: SandboxSpec): unknown => ({
   Labels: { ...spec.labels },
   HostConfig: {
     NetworkMode: spec.network,
+    PortBindings: published(spec.ports),
     ExtraHosts: ["host.docker.internal:host-gateway"],
     Binds: spec.binds.map((b) => `${b.source}:${b.target}${b.readonly ? ":ro" : ""}`),
     Mounts: volumeMounts(spec.volumes),

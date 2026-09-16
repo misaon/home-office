@@ -37,7 +37,7 @@ function statusLine(
   const worker = nameOf(model, task.assigneeId);
   const mine = task.assigneeId === boss.id;
   if (to === "in_progress") {
-    return mine ? `I am working on ${quote(task)}.` : `${worker} is working on ${quote(task)}.`;
+    return mine ? null : `${worker} is working on ${quote(task)}.`;
   }
   if (to === "review") {
     return `${mine ? "I" : worker} finished ${quote(task)}; ${nameOf(model, task.reviewerId)} is reviewing it.`;
@@ -88,12 +88,13 @@ export function startBossVoice(
     if (boss === undefined || task.source.byAgentId !== boss.id) {
       return;
     }
+    if (task.assigneeId === boss.id) {
+      return;
+    }
     const text =
       task.assigneeId === undefined
         ? `${quote(task)} waits in the inbox for an assignee.`
-        : task.assigneeId === boss.id
-          ? `I will take care of ${quote(task)} myself.`
-          : `I have handed ${quote(task)} to ${nameOf(office.model, task.assigneeId)}.`;
+        : `I have handed ${quote(task)} to ${nameOf(office.model, task.assigneeId)}.`;
     await say(boss, text, task.id);
   };
   const onStatus = async (

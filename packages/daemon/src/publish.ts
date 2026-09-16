@@ -1,6 +1,7 @@
 import { patchTaskArtifacts } from "@ho/core";
 import { githubRepoFromUrl, HUMAN_ACTOR, type Project, type Task, type TaskId } from "@ho/protocol";
-import { mustExec } from "./host-exec.ts";
+import { exec } from "./host-exec.ts";
+import { daemonLog } from "./logger.ts";
 import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
 import type { Office } from "./office.ts";
 
@@ -8,8 +9,71 @@ const GH_TIMEOUT_MS = 120_000;
 
 export type Published = { branch: string; prUrl: string | null };
 
-const gh = (args: readonly string[], cwd: string | undefined, what: string): Promise<string> =>
-  mustExec(["gh", ...args], { cwd, timeoutMs: GH_TIMEOUT_MS }, `gh ${what}`);
+const UNSEEN = /could not resolve to a repository|not found|HTTP 404/iu;
+
+let signedIn: Promise<string[]> | null = null;
+let worked: string | null = null;
+
+const readAccounts = async (): Promise<string[]> => {
+  const status = await exec(["gh", "auth", "status"], { timeoutMs: 10_000 });
+  const seen = `${status.stdout}\n${status.stderr}`;
+  return [...seen.matchAll(/account (?<name>[\w.-]+)/gu)]
+    .map((found) => found.groups?.["name"] ?? "")
+    .filter((name) => name !== "");
+};
+
+const accounts = (): Promise<string[]> => {
+  signedIn ??= readAccounts().catch(() => []);
+  return signedIn;
+};
+
+const tokenFor = async (account: string): Promise<string | null> => {
+  const result = await exec(["gh", "auth", "token", "--user", account], {
+    timeoutMs: 10_000,
+    secret: true,
+  });
+  return result.code === 0 && result.stdout !== "" ? result.stdout : null;
+};
+
+async function gh(args: readonly string[], cwd: string | undefined, what: string): Promise<string> {
+  const known = worked === null ? null : await tokenFor(worked);
+  const first = await exec(["gh", ...args], {
+    cwd,
+    timeoutMs: GH_TIMEOUT_MS,
+    ...(known === null ? {} : { env: { GH_TOKEN: known, GITHUB_TOKEN: known } }),
+  });
+  if (first.code === 0) {
+    return first.stdout;
+  }
+  const complaint = first.stderr || first.stdout;
+  if (!UNSEEN.test(complaint)) {
+    throw new Error(`gh ${what} failed (${String(first.code)}): ${complaint.slice(0, 500)}`);
+  }
+  for (const account of await accounts()) {
+    if (account === worked) {
+      continue;
+    }
+    const token = await tokenFor(account);
+    if (token === null) {
+      continue;
+    }
+    const again = await exec(["gh", ...args], {
+      cwd,
+      timeoutMs: GH_TIMEOUT_MS,
+      env: { GH_TOKEN: token, GITHUB_TOKEN: token },
+    });
+    if (again.code === 0) {
+      worked = account;
+      daemonLog()?.info({ account, what }, "gh fell back to another signed-in account");
+      return again.stdout;
+    }
+  }
+  const tried = await accounts();
+  const names = tried.join(", ");
+  throw new Error(
+    `gh ${what} failed (${String(first.code)}): ${complaint.slice(0, 400)}\n  tried every signed-in account (${names === "" ? "none found" : names}); none can see this repository`,
+  );
+}
 
 const repoTarget = (project: Project): { cwd: string | undefined; target: string[] } => {
   if (project.repo.kind === "local") {

@@ -50,6 +50,8 @@ export function FloorSwitches({ floor }: { floor: Floor }): React.JSX.Element {
       publish?: { mode: "branch" | "pull-request" };
       intake?: { enabled: boolean };
       services?: { enabled: boolean };
+      preview?: { enabled: boolean };
+      hiring?: { enabled: boolean };
     }) => requireClient().projects.update({ id: floor.id, patch }),
   });
 
@@ -69,6 +71,22 @@ export function FloorSwitches({ floor }: { floor: Floor }): React.JSX.Element {
         hint={t("settings.intakeHint")}
         onFlip={() => {
           update.mutate({ intake: { enabled: !floor.issues } });
+        }}
+      />
+      <Switch
+        on={floor.hiring}
+        title={t("settings.hiringLabel")}
+        hint={t("settings.hiringHint")}
+        onFlip={() => {
+          update.mutate({ hiring: { enabled: !floor.hiring } });
+        }}
+      />
+      <Switch
+        on={floor.preview.enabled}
+        title={t("settings.previewLabel", { port: floor.preview.port })}
+        hint={t("settings.previewHint", { port: floor.preview.port })}
+        onFlip={() => {
+          update.mutate({ preview: { enabled: !floor.preview.enabled } });
         }}
       />
       <Switch

@@ -3,6 +3,7 @@ import {
   type AgentId,
   type Attachment,
   type ChatMessage,
+  type ChatThreadId,
   isSessionActive,
   type MailConnector,
   type MailItem,
@@ -29,6 +30,37 @@ export const chatOf = (
   model: { chat: ReadonlyMap<ProjectId, readonly ChatMessage[]> },
   projectId: ProjectId,
 ): readonly ChatMessage[] => model.chat.get(projectId) ?? [];
+
+export const awaitsAnswer = (task: Task): boolean =>
+  task.status === "blocked" &&
+  task.notes.findLast((note) => note.kind === "question" || note.kind === "answer")?.kind ===
+    "question";
+
+export const latestThread = (
+  model: { chat: ReadonlyMap<ProjectId, readonly ChatMessage[]> },
+  projectId: ProjectId,
+): ChatThreadId | undefined =>
+  chatOf(model, projectId).findLast((m) => m.threadId !== undefined)?.threadId;
+
+const THREAD_WALK_MAX = 8;
+
+export function threadOfTask(
+  model: Pick<ReadModel, "chat" | "tasks">,
+  task: Task,
+): ChatThreadId | undefined {
+  let current: Task | undefined = task;
+  for (let depth = 0; depth < THREAD_WALK_MAX && current !== undefined; depth += 1) {
+    const source: Task["source"] = current.source;
+    if (source.kind === "chat") {
+      return chatOf(model, current.projectId).find((m) => m.id === source.messageId)?.threadId;
+    }
+    if (source.kind !== "delegation" || source.parentTaskId === undefined) {
+      return undefined;
+    }
+    current = model.tasks.get(source.parentTaskId);
+  }
+  return undefined;
+}
 
 export const tasksOf = (
   model: Pick<ReadModel, "tasks" | "tasksByProject">,
@@ -75,6 +107,21 @@ export const resumableSession = (
     )
     .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
 
+export const resumableThreadSession = (
+  model: Pick<ReadModel, "sessions" | "sessionsByAgent">,
+  threadId: ChatThreadId,
+  agentId: AgentId,
+): Session | undefined =>
+  sessionsOfAgent(model, agentId)
+    .filter(
+      (s) =>
+        s.threadId === threadId &&
+        s.mode === "triage" &&
+        !isSessionActive(s.state) &&
+        s.runtimeSessionId !== undefined,
+    )
+    .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
+
 export const findMail = (
   model: Pick<ReadModel, "mail" | "mailBySource">,
   projectId: ProjectId,
@@ -86,12 +133,30 @@ export const findMail = (
 };
 
 export function attachmentsOfTask(
-  model: Pick<ReadModel, "chat">,
+  model: Pick<ReadModel, "chat" | "tasks">,
   task: Task,
 ): readonly Attachment[] {
-  const source = task.source.kind === "chat" ? task.source.messageId : undefined;
+  const roots = new Set<TaskId>();
+  const sources = new Set<string>();
+  let current: Task | undefined = task;
+  for (let depth = 0; depth < THREAD_WALK_MAX && current !== undefined; depth += 1) {
+    roots.add(current.id);
+    const source: Task["source"] = current.source;
+    if (source.kind === "chat") {
+      sources.add(source.messageId);
+      break;
+    }
+    if (source.kind !== "delegation" || source.parentTaskId === undefined) {
+      break;
+    }
+    current = model.tasks.get(source.parentTaskId);
+  }
   return chatOf(model, task.projectId)
-    .filter((m) => m.author.kind === "human" && (m.taskId === task.id || m.id === source))
+    .filter(
+      (m) =>
+        m.author.kind === "human" &&
+        ((m.taskId !== undefined && roots.has(m.taskId)) || sources.has(m.id)),
+    )
     .flatMap((m) => m.attachments);
 }
 

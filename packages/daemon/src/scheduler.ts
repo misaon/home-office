@@ -18,19 +18,24 @@ export function startScheduler(
   let again = false;
   const run = async (): Promise<void> => {
     try {
-      const now = office.clock.now().toISOString();
-      for (const start of planSessionStarts(
+      const plan = planSessionStarts(
         office.model,
         config.scheduler.maxConcurrentSessions,
         config.services.enabled,
-      )) {
+      );
+      log.debug(
+        {
+          starts: plan.starts.length,
+          skipped: plan.skipped,
+          capacity: plan.capacity,
+          active: office.model.activeSessions.size,
+          max: config.scheduler.maxConcurrentSessions,
+        },
+        "scheduler tick",
+      );
+      for (const start of plan.starts) {
         if (stopped) {
           break;
-        }
-        const task = office.model.tasks.get(start.taskId);
-        if (task !== undefined && gate.blocks(task, now)) {
-          log.debug({ taskId: start.taskId }, "waiting for the office to deliver the handoff");
-          continue;
         }
         log.info({ taskId: start.taskId, agentId: start.agentId }, "scheduling session");
         await sessions.start(start.taskId, start.agentId, start.mode);

@@ -1,5 +1,5 @@
 import { attachmentsOfTask, type RuntimeSession } from "@ho/core";
-import type { RuntimeErrorCode, RuntimeEvent } from "@ho/protocol";
+import type { RuntimeErrorCode, RuntimeEvent, SessionMode } from "@ho/protocol";
 import { browserMcpServers } from "./browser.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import { openingMessage, systemPrompt } from "./prompts.ts";
@@ -38,13 +38,14 @@ const openRuntime = (
           mode: ctx.session.mode,
           branch: provisioned.branch,
           browser: deps.config.browser.enabled,
+          preview: ctx.project.preview,
           services: provisioned.services,
         },
         deps.office.model,
       ),
       cwd: REPO_IN_VOLUME,
       resume,
-      pluginDirs: ctx.agent.skillPack === "none" ? [] : [`${PLUGINS_ROOT}/${ctx.agent.skillPack}`],
+      pluginDirs: packDirs(ctx),
       mcpServers: {
         ho: {
           kind: "http",
@@ -98,6 +99,17 @@ async function consume(
   return outcome;
 }
 
+const PACK_BY_MODE: Readonly<Record<SessionMode, string | null>> = {
+  work: "worker",
+  review: "reviewer",
+  triage: null,
+};
+
+const packDirs = (ctx: SessionContext): string[] => {
+  const pack = PACK_BY_MODE[ctx.session.mode] ?? ctx.agent.skillPack;
+  return pack === "none" ? [] : [`${PLUGINS_ROOT}/${pack}`];
+};
+
 export async function runPrompt(
   deps: SessionDeps,
   ctx: SessionContext,
@@ -107,6 +119,18 @@ export async function runPrompt(
 ): Promise<Outcome> {
   const message = openingMessage(ctx.task, ctx.session.mode, ctx.previous);
   const resume = ctx.previous?.runtimeSessionId ?? null;
+  deps.log.debug(
+    {
+      sessionId: ctx.session.id,
+      taskId: ctx.task.id,
+      mode: ctx.session.mode,
+      threadId: ctx.session.threadId ?? null,
+      resume,
+      previousSessionId: ctx.previous?.id ?? null,
+      previousTaskId: ctx.previous?.taskId ?? null,
+    },
+    "opening the runtime",
+  );
   try {
     const first = await openRuntime(deps, ctx, provisioned, secrets, resume);
     let outcome: Outcome & { sawInit: boolean; failureCode: RuntimeErrorCode | null };
@@ -115,14 +139,14 @@ export async function runPrompt(
     } finally {
       first.close();
     }
-    if (
-      resume !== null &&
-      !outcome.sawInit &&
-      outcome.failureCode === "process_exit" &&
-      !ctx.signal.aborted
-    ) {
+    if (resume !== null && !outcome.sawInit && outcome.failure !== null && !ctx.signal.aborted) {
       deps.log.warn(
-        { sessionId: ctx.session.id, resume },
+        {
+          sessionId: ctx.session.id,
+          resume,
+          code: outcome.failureCode,
+          failure: outcome.failure.slice(0, 300),
+        },
         "resume failed; starting a fresh conversation",
       );
       const fresh = await openRuntime(deps, ctx, provisioned, secrets, null);

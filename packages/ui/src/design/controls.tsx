@@ -26,7 +26,7 @@ export function Button({
   );
 }
 
-export const FIELD = "w-full py-9 px-11 rounded-10 border border-border-strong bg-well text-12h";
+export const FIELD = "w-full py-12 px-11 rounded-10 border border-border-strong bg-well text-12h";
 
 export function Caption({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (

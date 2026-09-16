@@ -79,6 +79,7 @@ const sandboxSpec = (
   tmpfs: { "/tmp": "rw,nosuid,size=256m", "/home/agent": "rw,nosuid,size=128m,uid=1000,gid=1000" },
   limits: { memoryBytes: 1024 * MIB, cpus: 2, pids: 2048 },
   readonlyRootfs: true,
+  ports: [],
 });
 
 export const requestFor = (id: string, volume: string): TaskEngineRequest => ({
