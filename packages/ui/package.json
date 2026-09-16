@@ -20,6 +20,9 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-i18next": "catalog:",
+    "react-markdown": "catalog:",
+    "rehype-highlight": "catalog:",
+    "remark-gfm": "catalog:",
     "simple-icons": "catalog:",
     "zustand": "catalog:"
   },

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { type Attachment, isImageType } from "@ho/protocol";
 import { useAttachmentUrl } from "../attachments.ts";
 import { useDesign } from "./store.ts";
+import { RichText } from "./markdown.tsx";
 
 const FRAME =
   "block w-full mt-10 h-118 rounded-10 cursor-pointer overflow-hidden p-0 border border-accent-a30 bg-sunk transition-all duration-220";
@@ -58,7 +59,9 @@ export function ChatMessage({
           <div className={`${META} text-accent-quote mb-5`}>
             {t("chat.you")} · <span>{message.time}</span>
           </div>
-          <div className={`${BODY} text-ink-bright`}>{message.text}</div>
+          <div className={`${BODY} text-ink-bright`}>
+            <RichText text={message.text} />
+          </div>
           {message.attachment === undefined ? null : <ChatThumb attachment={message.attachment} />}
         </div>
       ) : (
@@ -66,7 +69,9 @@ export function ChatMessage({
           <div className={`${META} text-ink-label mb-6`}>
             <span>{message.who ?? boss}</span> · <span>{message.time}</span>
           </div>
-          <div className={`${BODY} text-ink-soft`}>{message.text}</div>
+          <div className={`${BODY} text-ink-soft`}>
+            <RichText text={message.text} />
+          </div>
         </div>
       )}
     </div>

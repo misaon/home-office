@@ -2,6 +2,8 @@ import { chatOf } from "@ho/core";
 import {
   type Agent,
   type AgentId,
+  isSessionActive,
+  type LiveEvent,
   type ProjectId,
   type SessionId,
   type ChatMessage,
@@ -163,6 +165,32 @@ export function useBossSession(
     name: boss.name,
     doing: snapshot.tasks.get(session.taskId)?.title ?? "working",
   };
+}
+
+export type Activity = { id: AgentId; name: string; tool: string | null };
+
+const lastIndexOfKind = (events: readonly LiveEvent[], kind: LiveEvent["event"]["kind"]): number =>
+  events.findLastIndex((live) => live.event.kind === kind);
+
+const runningTool = (events: readonly LiveEvent[]): string | null => {
+  const called = lastIndexOfKind(events, "tool_call");
+  if (called === -1 || called < lastIndexOfKind(events, "tool_result")) {
+    return null;
+  }
+  const event = events[called]?.event;
+  return event?.kind === "tool_call" ? event.name : null;
+};
+
+export function useFloorActivity(floorId: ProjectId): Activity[] {
+  const snapshot = useUi((s) => s.snapshot);
+  const live = useUi((s) => s.live);
+  return [...snapshot.sessions.values()].flatMap((session) => {
+    const agent = snapshot.agents.get(session.agentId);
+    if (!isSessionActive(session.state) || agent === undefined || agent.projectId !== floorId) {
+      return [];
+    }
+    return [{ id: agent.id, name: agent.name, tool: runningTool(live.get(session.id) ?? []) }];
+  });
 }
 
 export function useAgentWork(agentId: AgentId): { t: string; x: string }[] {

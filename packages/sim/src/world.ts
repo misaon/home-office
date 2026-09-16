@@ -110,7 +110,11 @@ export type World = {
   outbox: SimEvent[];
 };
 
-export const SPEED_TILES_PER_S = 3;
+const SPEED_TILES_PER_S = 3;
+const RECEPTIONIST_SPEED_TILES_PER_S = 5;
+
+export const speedOf = (actor: Actor): number =>
+  actor.kind === "receptionist" ? RECEPTIONIST_SPEED_TILES_PER_S : SPEED_TILES_PER_S;
 export const ELEVATOR_DOORS_MS = 700;
 
 export const createWorld = (seed: string): World => ({

@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { AgentDialogFields, AgentPrompt } from "./agent-dialog-fields.tsx";
 import { AgentDialogHead, AgentDoing } from "./agent-dialog-head.tsx";
+import { PresetCards } from "./agent-presets.tsx";
 import { RoleCards } from "./agent-roles.tsx";
 import type { Floor, Member } from "./data.ts";
 import { CANCEL, CAP, COMMIT, DialogSheet, HINT } from "./dialog-sheet.tsx";
@@ -239,6 +240,12 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
         <AgentDoing working={working} doing={editing.doing} since={editing.since} />
       ) : null}
       <div className={`${CAP} text-9h mb-10`}>{t("agent.whoTheyAre")}</div>
+      <PresetCards
+        show={editing === undefined}
+        bossTaken={boss !== undefined}
+        draft={draft}
+        patch={patch}
+      />
       <RoleCards value={draft.role} bossTaken={boss !== undefined} onPick={pickRole} />
       <AgentDialogFields draft={draft} patch={patch} />
       <AgentPrompt

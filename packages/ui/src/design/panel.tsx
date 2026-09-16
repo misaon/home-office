@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useUi } from "../store.ts";
 import { Board } from "./board.tsx";
 import { Chat } from "./chat.tsx";
 import { Settings } from "./settings.tsx";
@@ -16,6 +18,24 @@ export function Panel(): React.JSX.Element | null {
   const sheet = useDesign((s) => s.sheet);
   const sheetDraft = useDesign((s) => s.sheetDraft);
   const floor = useFloor();
+  const selectedAgentId = useUi((s) => s.selectedAgentId);
+
+  useEffect(() => {
+    if (selectedAgentId === null) {
+      return;
+    }
+    const person = floor?.team.find((member) => member.id === selectedAgentId);
+    const open = useDesign.getState().sheet;
+    if (person === undefined || (open?.type === "agent" && open.id === person.id)) {
+      return;
+    }
+    useDesign.setState({
+      tab: "Team",
+      sheet: { type: "agent", id: person.id },
+      sheetDraft: { ...person },
+    });
+  }, [selectedAgentId, floor]);
+
   if (floor === null) {
     return null;
   }
