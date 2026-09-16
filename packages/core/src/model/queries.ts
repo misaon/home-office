@@ -31,6 +31,11 @@ export const chatOf = (
   projectId: ProjectId,
 ): readonly ChatMessage[] => model.chat.get(projectId) ?? [];
 
+export const awaitsAnswer = (task: Task): boolean =>
+  task.status === "blocked" &&
+  task.notes.findLast((note) => note.kind === "question" || note.kind === "answer")?.kind ===
+    "question";
+
 export const latestThread = (
   model: { chat: ReadonlyMap<ProjectId, readonly ChatMessage[]> },
   projectId: ProjectId,

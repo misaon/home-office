@@ -84,6 +84,7 @@ export function askHuman(
       text: question,
       attachments: [],
       taskId: task.id,
+      ...compact({ threadId: threadOfTask(model, task) }),
       at: ctx.now,
     };
     return ok({

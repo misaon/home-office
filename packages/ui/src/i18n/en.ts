@@ -132,6 +132,13 @@ export const en = {
     placeholder: "Ask the floor for something…",
     placeholderNew: "Ask the floor for something — this starts a new session…",
     newThread: "New session",
+    placeholderAnswer: "Your answer — the task resumes as soon as you send it…",
+    answering: "answering {{name}}",
+    awaitingAnswer: "waiting for your answer",
+    moreQuestions_one: "{{count}} earlier question is still waiting",
+    moreQuestions_few: "{{count}} earlier questions are still waiting",
+    moreQuestions_many: "{{count}} earlier questions are still waiting",
+    moreQuestions_other: "{{count}} earlier questions are still waiting",
     sendHint: "Enter sends, Shift+Enter makes a new line",
     answerPlaceholder: "Your answer…",
     empty:

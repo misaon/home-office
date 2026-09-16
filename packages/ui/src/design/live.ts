@@ -1,4 +1,4 @@
-import { chatOf } from "@ho/core";
+import { awaitsAnswer, chatOf } from "@ho/core";
 import {
   type Agent,
   type AgentId,
@@ -101,6 +101,11 @@ function messageOf(message: ChatMessage, snapshot: Snapshot): Message {
   const who =
     message.author.kind === "agent" ? snapshot.agents.get(message.author.agentId)?.name : undefined;
   const [first] = message.attachments;
+  const task = message.taskId === undefined ? undefined : snapshot.tasks.get(message.taskId);
+  const asks =
+    !mine && task !== undefined && awaitsAnswer(task)
+      ? { taskId: task.id, who: who ?? task.title }
+      : undefined;
   return {
     id: message.id,
     mine,
@@ -108,6 +113,7 @@ function messageOf(message: ChatMessage, snapshot: Snapshot): Message {
     time: clock(message.at, true),
     text: message.text,
     ...(message.threadId === undefined ? {} : { threadId: message.threadId }),
+    ...(asks === undefined ? {} : { asks }),
     ...(first === undefined ? {} : { attachment: first }),
   };
 }

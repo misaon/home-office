@@ -44,6 +44,11 @@ const MINE =
 const THEIRS =
   "max-w-[92%] mr-auto py-11 px-13 rounded-15 rounded-bl-5 bg-toast border border-border";
 
+const ASKING =
+  "max-w-[92%] mr-auto py-11 px-13 rounded-15 rounded-bl-5 bg-toast border border-warn";
+
+const ASK_TAG = "flex items-center gap-6 mt-8 text-10h text-warn";
+
 export function ChatMessage({
   message,
   boss,
@@ -65,13 +70,30 @@ export function ChatMessage({
           {message.attachment === undefined ? null : <ChatThumb attachment={message.attachment} />}
         </div>
       ) : (
-        <div className={THEIRS}>
+        <div className={message.asks === undefined ? THEIRS : ASKING}>
           <div className={`${META} text-ink-label mb-6`}>
             <span>{message.who ?? boss}</span> · <span>{message.time}</span>
           </div>
           <div className={`${BODY} text-ink-soft`}>
             <RichText text={message.text} />
           </div>
+          {message.asks === undefined ? null : (
+            <div className={ASK_TAG}>
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              >
+                <path d="M4.3 4.3a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1.1v.3" />
+                <circle cx="6" cy="9.4" r=".6" fill="currentColor" stroke="none" />
+              </svg>
+              <span>{t("chat.awaitingAnswer")}</span>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -6,7 +6,7 @@ import { requireClient } from "../rpc.ts";
 import { ChatAttachment } from "./chat-attachment.tsx";
 import { ChatToolbar } from "./chat-toolbar.tsx";
 import { ChatWorking } from "./chat-working.tsx";
-import type { Floor, ThreadPick } from "./data.ts";
+import type { Floor, Message, ThreadPick } from "./data.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
 
 const BOX = "relative rounded-15 p-12 transition-[border-color,background,box-shadow] duration-250";
@@ -53,12 +53,36 @@ function DropHint(): React.JSX.Element {
 const targetOf = (active: ThreadPick | "new"): ChatThreadTarget =>
   active === "new" || active === "main" ? { kind: "new" } : { kind: "thread", id: active };
 
+const ANSWERING = "flex items-center gap-7 mb-8 px-2 text-10h text-warn";
+
+function AnsweringHint({ name }: { name: string }): React.JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <div className={ANSWERING}>
+      <svg
+        width="11"
+        height="11"
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      >
+        <path d="M2 6h8M6.5 2.5 10 6l-3.5 3.5" />
+      </svg>
+      <span>{t("chat.answering", { name })}</span>
+    </div>
+  );
+}
+
 export function ChatComposer({
   floor,
   active,
+  pending,
 }: {
   floor: Floor;
   active: ThreadPick | "new";
+  pending: NonNullable<Message["asks"]> | null;
 }): React.JSX.Element {
   const { t } = useTranslation();
   const draft = useDesign((s) => s.draft);
@@ -87,12 +111,13 @@ export function ChatComposer({
     if (text === "" && attachment === null) {
       return;
     }
-    send.mutate({
-      projectId: floor.id,
-      text: text === "" ? t("chat.lookAtThis") : text,
-      attachments: attachment === null ? [] : [attachment],
-      thread: targetOf(active),
-    });
+    const body = text === "" ? t("chat.lookAtThis") : text;
+    const attachments = attachment === null ? [] : [attachment];
+    send.mutate(
+      pending === null
+        ? { projectId: floor.id, text: body, attachments, thread: targetOf(active) }
+        : { taskId: pending.taskId, text: body, attachments },
+    );
     set({ draft: "", attachment: null, query: "" });
   };
 
@@ -145,6 +170,7 @@ export function ChatComposer({
         className={`hover:border-accent-a40 hover:shadow-halo ${BOX} border ${dragging ? "border-accent-a60" : "border-border-strong"} ${dragging ? "bg-accent-a05" : "bg-card-lit"}`}
       >
         {dragging ? <DropHint /> : null}
+        {pending === null ? null : <AnsweringHint name={pending.who} />}
         {attachment === null ? null : <ChatAttachment file={attachment.name} />}
         <textarea
           ref={box}
@@ -160,7 +186,11 @@ export function ChatComposer({
             }
           }}
           placeholder={t(
-            active === "new" || active === "main" ? "chat.placeholderNew" : "chat.placeholder",
+            pending !== null
+              ? "chat.placeholderAnswer"
+              : active === "new" || active === "main"
+                ? "chat.placeholderNew"
+                : "chat.placeholder",
           )}
           className={`${INPUT} placeholder:text-ink-ghost`}
         />

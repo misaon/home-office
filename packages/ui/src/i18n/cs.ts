@@ -132,6 +132,13 @@ export const cs: typeof en = {
     placeholder: "Napište podlaží, co potřebujete…",
     placeholderNew: "Napište podlaží, co potřebujete — založí to novou session…",
     newThread: "Nová session",
+    placeholderAnswer: "Vaše odpověď — úkol se rozjede hned po odeslání…",
+    answering: "odpovídáte: {{name}}",
+    awaitingAnswer: "čeká na vaši odpověď",
+    moreQuestions_one: "{{count}} starší otázka pořád čeká",
+    moreQuestions_few: "{{count}} starší otázky pořád čekají",
+    moreQuestions_many: "{{count}} starších otázek pořád čeká",
+    moreQuestions_other: "{{count}} starších otázek pořád čeká",
     sendHint: "Enter odešle, Shift+Enter udělá nový řádek",
     answerPlaceholder: "Vaše odpověď…",
     empty:

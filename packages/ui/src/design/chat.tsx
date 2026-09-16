@@ -49,6 +49,8 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
     active === "new"
       ? []
       : floor.messages.filter((message) => (message.threadId ?? "main") === active);
+  const asking = inThread.filter((message) => message.asks !== undefined);
+  const pending = asking.at(-1)?.asks ?? null;
   const needle = query.trim().toLowerCase();
   const shown =
     needle === "" ? inThread : inThread.filter((m) => m.text.toLowerCase().includes(needle));
@@ -80,12 +82,17 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
         {activity.map((one) => (
           <Working key={one.id} activity={one} />
         ))}
+        {asking.length > 1 ? (
+          <div className="text-10h text-warn text-center py-4">
+            {t("chat.moreQuestions", { count: asking.length - 1 })}
+          </div>
+        ) : null}
         {needle !== "" && shown.length === 0 ? (
           <div className="py-22 px-4 text-center text-12h text-ink-label">{t("chat.noHits")}</div>
         ) : null}
       </div>
       <ChatThreads floor={floor} active={active} />
-      <ChatComposer floor={floor} active={active} />
+      <ChatComposer floor={floor} active={active} pending={pending} />
     </div>
   );
 }

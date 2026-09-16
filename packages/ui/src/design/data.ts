@@ -51,6 +51,7 @@ export type Message = {
   time: string;
   text: string;
   threadId?: ChatThreadId;
+  asks?: { taskId: TaskId; who: string };
   attachment?: Attachment;
 };
 
