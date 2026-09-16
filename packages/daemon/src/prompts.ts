@@ -6,6 +6,7 @@ import {
   CHAT_OUTBOX_DIR,
   isSessionActive,
   type Project,
+  type PublishPolicy,
   type Session,
   type Task,
   type TaskNote,
@@ -15,8 +16,10 @@ import { REPO_IN_VOLUME } from "./git-bridge.ts";
 
 export type Services = { kind: "off" } | { kind: "ready" } | { kind: "failed"; message: string };
 
-const WORK_PUBLISH =
-  "Publishing: commit on the task branch and finish with ho_report. The office pushes that branch and opens the pull request for you once the checks pass — there is no ho_publish in this session and you do not need one.";
+const workPublish = (mode: PublishPolicy["mode"]): string =>
+  mode === "pull-request"
+    ? "Publishing: commit on the task branch and finish with ho_report. The office pushes that branch and opens the pull request for you once the checks pass — there is no ho_publish in this session and you do not need one."
+    : "Publishing: commit on the task branch and finish with ho_report. The office pushes the branch; this floor does not open pull requests, so do not promise one.";
 
 const HOST_TOOLS =
   "Publishing: there is no `gh` in this sandbox and the only remote is a local path, so never try to open a pull request from the shell. Call ho_publish and the office pushes and opens it for you.";
@@ -95,7 +98,7 @@ const workPrompt = (f: SessionFacts): string[] => [
   "Commit your changes with clear Conventional Commit messages.",
   browserGuide(f.browser),
   previewGuide(f.preview),
-  WORK_PUBLISH,
+  workPublish(f.project.publish.mode),
   servicesGuide(f.services),
   `Task: ${f.task.title}`,
   criteriaGuide(f.task),
@@ -139,6 +142,9 @@ const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
     staff.length === 0
       ? `Protocol: for actionable requests call ho_delegate once per independent piece of work, with assignee set to your own name; you will get a separate work session in the repository for each. ${DELEGATE_FIELDS} Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to do. Finish with ho_report (status done, one-line summary) and stop.`
       : `Protocol: for actionable requests call ho_delegate once per independent piece of work, assignee = the colleague who fits best (your own name only when nobody fits). ${DELEGATE_FIELDS} Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to delegate. Use ho_list_agents when unsure. Finish with ho_report (status done, one-line summary) and stop.`,
+    f.project.publish.mode === "pull-request"
+      ? "Delivery: finished work is pushed and a pull request opens by itself. Tell the human the branch; the pull request link arrives when it is ready, or call ho_publish to fetch it now."
+      : "Delivery: this floor only pushes the branch — no pull request opens on its own. If the human asks for one, call ho_publish for that task and give them the link it returns.",
     filesGuide(f.files),
     `Files: to send the human an image or a document, write it into ${CHAT_OUTBOX_DIR} and name the file in ho_reply's \`files\`. Screenshots the browser tools take land in ${BROWSER_OUTPUT_DIR}; copy the one you mean across. Accepted: png, jpg, gif, webp, pdf, txt, md, json, csv, up to 10 MB each.`,
     "Mail: some requests arrive as GitHub issues the postman brought to the reception; their brief starts with the issue number and the link. Quote the issue link in the brief. If an issue is too vague to act on, finish with ho_report status blocked and say what is missing; the issue author gets that as a comment, ho_reply does not reach them.",

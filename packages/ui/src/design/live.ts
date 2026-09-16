@@ -15,16 +15,16 @@ import { activeSessionOf, sortedFloors, useUi, type Snapshot } from "../store.ts
 import type { Card, Floor, Lane, Member, Message, Thread, ThreadPick } from "./data.ts";
 import { type Activity, transcriptOf } from "./transcript.ts";
 
-function useNow(): number {
+function useNow(everyMs = 30_000): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(Date.now());
-    }, 30_000);
+    }, everyMs);
     return () => {
       clearInterval(timer);
     };
-  }, []);
+  }, [everyMs]);
   return now;
 }
 
@@ -218,7 +218,7 @@ export type { Activity, Step } from "./transcript.ts";
 export function useFloorActivity(floorId: ProjectId): Activity[] {
   const snapshot = useUi((s) => s.snapshot);
   const live = useUi((s) => s.live);
-  const now = useNow();
+  const now = useNow(1000);
   return [...snapshot.sessions.values()].flatMap((session) => {
     const agent = snapshot.agents.get(session.agentId);
     if (!isSessionActive(session.state) || agent === undefined || agent.projectId !== floorId) {

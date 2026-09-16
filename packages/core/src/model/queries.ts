@@ -133,12 +133,30 @@ export const findMail = (
 };
 
 export function attachmentsOfTask(
-  model: Pick<ReadModel, "chat">,
+  model: Pick<ReadModel, "chat" | "tasks">,
   task: Task,
 ): readonly Attachment[] {
-  const source = task.source.kind === "chat" ? task.source.messageId : undefined;
+  const roots = new Set<TaskId>();
+  const sources = new Set<string>();
+  let current: Task | undefined = task;
+  for (let depth = 0; depth < THREAD_WALK_MAX && current !== undefined; depth += 1) {
+    roots.add(current.id);
+    const source: Task["source"] = current.source;
+    if (source.kind === "chat") {
+      sources.add(source.messageId);
+      break;
+    }
+    if (source.kind !== "delegation" || source.parentTaskId === undefined) {
+      break;
+    }
+    current = model.tasks.get(source.parentTaskId);
+  }
   return chatOf(model, task.projectId)
-    .filter((m) => m.author.kind === "human" && (m.taskId === task.id || m.id === source))
+    .filter(
+      (m) =>
+        m.author.kind === "human" &&
+        ((m.taskId !== undefined && roots.has(m.taskId)) || sources.has(m.id)),
+    )
     .flatMap((m) => m.attachments);
 }
 
