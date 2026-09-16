@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "tsBuildInfoFile": "../../.tscache/spikes-bench.tsbuildinfo" },
+  "include": ["src"]
+}
