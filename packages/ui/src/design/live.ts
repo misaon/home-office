@@ -169,6 +169,17 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
   };
 }
 
+const elapsed = (iso: string, now: number): string => {
+  const seconds = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
+  if (seconds < 60) {
+    return `${String(seconds)}s`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  return minutes < 60
+    ? `${String(minutes)}m ${String(seconds % 60)}s`
+    : `${String(Math.floor(minutes / 60))}h ${String(minutes % 60)}m`;
+};
+
 const ago = (iso: string, now: number): string => {
   const minutes = minutesSince(iso, now);
   if (minutes < 1) {
@@ -207,13 +218,16 @@ export type { Activity, Step } from "./transcript.ts";
 export function useFloorActivity(floorId: ProjectId): Activity[] {
   const snapshot = useUi((s) => s.snapshot);
   const live = useUi((s) => s.live);
+  const now = useNow();
   return [...snapshot.sessions.values()].flatMap((session) => {
     const agent = snapshot.agents.get(session.agentId);
     if (!isSessionActive(session.state) || agent === undefined || agent.projectId !== floorId) {
       return [];
     }
     const { steps, text } = transcriptOf(live.get(session.id) ?? []);
-    return [{ id: agent.id, name: agent.name, steps, text }];
+    return [
+      { id: agent.id, name: agent.name, steps, text, since: elapsed(session.startedAt, now) },
+    ];
   });
 }
 

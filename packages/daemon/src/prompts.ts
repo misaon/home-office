@@ -15,6 +15,9 @@ import { REPO_IN_VOLUME } from "./git-bridge.ts";
 
 export type Services = { kind: "off" } | { kind: "ready" } | { kind: "failed"; message: string };
 
+const WORK_PUBLISH =
+  "Publishing: commit on the task branch and finish with ho_report. The office pushes that branch and opens the pull request for you once the checks pass — there is no ho_publish in this session and you do not need one.";
+
 const HOST_TOOLS =
   "Publishing: there is no `gh` in this sandbox and the only remote is a local path, so never try to open a pull request from the shell. Call ho_publish and the office pushes and opens it for you.";
 
@@ -92,7 +95,7 @@ const workPrompt = (f: SessionFacts): string[] => [
   "Commit your changes with clear Conventional Commit messages.",
   browserGuide(f.browser),
   previewGuide(f.preview),
-  HOST_TOOLS,
+  WORK_PUBLISH,
   servicesGuide(f.services),
   `Task: ${f.task.title}`,
   criteriaGuide(f.task),

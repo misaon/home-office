@@ -16,7 +16,7 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
  && ln -sf /var/cache/apk /etc/apk/cache \
  && apk add bash curl ca-certificates libgcc libstdc++ ripgrep git openssh-client \
       chromium nodejs npm python3 ttf-dejavu ttf-liberation unzip \
-      coreutils diffutils findutils gawk grep sed \
+      coreutils diffutils findutils gawk grep sed jq \
       docker-cli docker-cli-compose docker-cli-buildx \
  && adduser -D -u 1000 agent \
  && mkdir -p /work /home/agent/.config/rtk /home/agent/.cache /opt/ho/plugins /opt/ho/mcp \

@@ -62,21 +62,21 @@ export type HoHireInput = z.infer<typeof HoHireInput>;
 
 export const HoDelegateInput = z.object({
   title: z.string().min(1).max(200),
-  goal: z.string().min(1).max(500).describe("One sentence: what this task achieves and for whom"),
+  goal: z.string().min(1).max(2000).describe("One sentence: what this task achieves and for whom"),
   acceptanceCriteria: z
-    .array(z.string().min(1).max(500))
+    .array(z.string().min(1).max(2000))
     .min(1)
     .max(CRITERIA_MAX)
     .describe(
       'Independently checkable conditions, each one "When <condition>, the system shall <behaviour>". The reviewer checks exactly these, so a criterion nobody can verify is not a criterion.',
     ),
   constraints: z
-    .array(z.string().min(1).max(500))
+    .array(z.string().min(1).max(2000))
     .max(CRITERIA_MAX)
     .prefault([])
     .describe("What the worker must not change, must reuse, or must keep working"),
   outOfScope: z
-    .array(z.string().min(1).max(500))
+    .array(z.string().min(1).max(2000))
     .max(CRITERIA_MAX)
     .prefault([])
     .describe("Nearby work this task deliberately does not include"),

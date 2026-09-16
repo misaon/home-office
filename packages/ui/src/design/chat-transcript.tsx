@@ -48,7 +48,10 @@ export function ChatTranscript({ activity }: { activity: Activity }): React.JSX.
         {["0s", ".15s", ".3s"].map((delay) => (
           <span key={delay} className={`${DOT} animate-dots wait`} style={{ "--wait": delay }} />
         ))}
-        <span className="ml-3">{t("chat.thinking", { name: activity.name })}</span>
+        <span className="ml-3 flex-1 min-w-0">{t("chat.thinking", { name: activity.name })}</span>
+        <span className={`${MONO} text-10h text-accent-soft flex-[0_0_auto]`}>
+          {activity.since}
+        </span>
       </div>
       <div className={STEPS}>
         {activity.steps.toReversed().map((step) => (

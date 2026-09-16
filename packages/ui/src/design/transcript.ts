@@ -2,7 +2,13 @@ import type { AgentId, LiveEvent } from "@ho/protocol";
 
 export type Step = { id: string; tool: string; detail: string; ok: boolean | null };
 
-export type Activity = { id: AgentId; name: string; steps: Step[]; text: string };
+export type Activity = {
+  id: AgentId;
+  name: string;
+  steps: Step[];
+  text: string;
+  since: string;
+};
 
 const STEP_TAIL = 40;
 const TEXT_TAIL = 240;

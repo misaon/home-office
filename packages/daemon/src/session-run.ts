@@ -1,5 +1,5 @@
 import { attachmentsOfTask, type RuntimeSession } from "@ho/core";
-import type { RuntimeErrorCode, RuntimeEvent } from "@ho/protocol";
+import type { RuntimeErrorCode, RuntimeEvent, SessionMode } from "@ho/protocol";
 import { browserMcpServers } from "./browser.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import { openingMessage, systemPrompt } from "./prompts.ts";
@@ -45,7 +45,7 @@ const openRuntime = (
       ),
       cwd: REPO_IN_VOLUME,
       resume,
-      pluginDirs: ctx.agent.skillPack === "none" ? [] : [`${PLUGINS_ROOT}/${ctx.agent.skillPack}`],
+      pluginDirs: packDirs(ctx),
       mcpServers: {
         ho: {
           kind: "http",
@@ -98,6 +98,17 @@ async function consume(
   }
   return outcome;
 }
+
+const PACK_BY_MODE: Readonly<Record<SessionMode, string | null>> = {
+  work: "worker",
+  review: "reviewer",
+  triage: null,
+};
+
+const packDirs = (ctx: SessionContext): string[] => {
+  const pack = PACK_BY_MODE[ctx.session.mode] ?? ctx.agent.skillPack;
+  return pack === "none" ? [] : [`${PLUGINS_ROOT}/${pack}`];
+};
 
 export async function runPrompt(
   deps: SessionDeps,

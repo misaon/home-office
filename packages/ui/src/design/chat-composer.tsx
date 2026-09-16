@@ -18,6 +18,54 @@ const INPUT =
 
 const MAX_INPUT_HEIGHT = 168;
 
+const MARKER = /^(?<indent>\s*)(?<bullet>[-*]|\d+[.)])\s+(?<rest>.*)$/u;
+
+type Continued = { value: string; caret: number };
+
+const onEnter = (
+  event: React.KeyboardEvent<HTMLTextAreaElement>,
+  submit: () => void,
+  write: (draft: string) => void,
+): void => {
+  if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+    return;
+  }
+  if (!event.shiftKey) {
+    event.preventDefault();
+    submit();
+    return;
+  }
+  const field = event.currentTarget;
+  const carried = continueList(field.value, field.selectionStart);
+  if (carried === null) {
+    return;
+  }
+  event.preventDefault();
+  write(carried.value);
+  requestAnimationFrame(() => {
+    field.setSelectionRange(carried.caret, carried.caret);
+  });
+};
+
+const continueList = (value: string, caret: number): Continued | null => {
+  const before = value.slice(0, caret);
+  const line = before.slice(before.lastIndexOf("\n") + 1);
+  const found = MARKER.exec(line)?.groups;
+  if (found === undefined) {
+    return null;
+  }
+  const { indent = "", bullet = "", rest = "" } = found;
+  if (rest.trim() === "") {
+    const start = before.length - line.length;
+    return { value: value.slice(0, start) + value.slice(caret), caret: start };
+  }
+  const next = /^\d/u.test(bullet)
+    ? `${String(Math.trunc(Number(bullet)) + 1)}${bullet.slice(-1)} `
+    : `${bullet} `;
+  const insert = `\n${indent}${next}`;
+  return { value: before + insert + value.slice(caret), caret: caret + insert.length };
+};
+
 const fitToText = (box: HTMLTextAreaElement | null): void => {
   if (box === null) {
     return;
@@ -178,10 +226,9 @@ export function ChatComposer({
             set({ draft: e.target.value });
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              submit();
-            }
+            onEnter(e, submit, (next) => {
+              set({ draft: next });
+            });
           }}
           placeholder={t(
             pending !== null
