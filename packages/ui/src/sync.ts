@@ -109,7 +109,8 @@ export async function startSync(bridge: Bridge): Promise<void> {
       await closed;
       controller.abort();
       bridge.detach();
-    } catch {
+    } catch (error) {
+      reportError(error);
       if (await daemonAnswers()) {
         useUi.getState().setConnection("rejected");
         await nextLaunchUrl();
