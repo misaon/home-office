@@ -1,6 +1,8 @@
-import { githubRepoFromUrl, type Project, type Task } from "@ho/protocol";
+import { patchTaskArtifacts } from "@ho/core";
+import { githubRepoFromUrl, HUMAN_ACTOR, type Project, type Task, type TaskId } from "@ho/protocol";
 import { mustExec } from "./host-exec.ts";
 import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
+import type { Office } from "./office.ts";
 
 const GH_TIMEOUT_MS = 120_000;
 
@@ -80,13 +82,27 @@ const pushBranchToOrigin = async (
     : pushLocalBranch(project.repo.path, branch));
 };
 
-export async function publishTaskBranch(
+export async function publishTask(
+  office: Office,
   home: string,
-  project: Project,
-  task: Task,
-  branch: string,
-  report: string,
+  taskId: TaskId,
 ): Promise<Published> {
+  const task = office.model.tasks.get(taskId);
+  if (task === undefined) {
+    throw new Error(`no such task: ${taskId}`);
+  }
+  const project = office.model.projects.get(task.projectId);
+  if (project === undefined) {
+    throw new Error(`the task's floor is gone: ${task.projectId}`);
+  }
+  const { branch } = task.artifacts;
+  if (branch === undefined) {
+    throw new Error("this task has no branch yet; nothing has been written for it");
+  }
   await pushBranchToOrigin(home, project, branch);
-  return { branch, prUrl: await openPullRequest(project, task, branch, report) };
+  const prUrl = await openPullRequest(project, task, branch, task.artifacts.report ?? task.brief);
+  if (prUrl !== null) {
+    await office.execute(HUMAN_ACTOR, (m, ctx) => patchTaskArtifacts(m, task.id, { prUrl }, ctx));
+  }
+  return { branch, prUrl };
 }

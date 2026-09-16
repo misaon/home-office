@@ -176,6 +176,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
       mode: ctx.session.mode,
       skillPack: ctx.agent.skillPack,
       attachments: deps.attachments,
+      home,
     });
     stack.defer(() => {
       mcp.unregister(mcpToken);
