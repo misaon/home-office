@@ -91,16 +91,26 @@ function declare(command: Program, action: Action): Program {
   return command.option("--json", "print the daemon's payload instead of the lines");
 }
 
+/** `--dry-run` reaches an action as commander's own `dryRun`; both spellings are kept so either reads. */
+const dashed = (name: string): string => name.replaceAll(/[A-Z]/gu, (c) => `-${c.toLowerCase()}`);
+
 /** What commander parsed, narrowed to the three shapes an action reads: string, boolean, string list. */
 function parsedFrom(options: Record<string, unknown>, positionals: readonly unknown[]): Parsed {
   const flags: Parsed["flags"] = {};
+  const keep = (name: string, value: Parsed["flags"][string]): void => {
+    flags[name] = value;
+    flags[dashed(name)] = value;
+  };
   for (const [name, value] of Object.entries(options)) {
     if (typeof value === "string" || typeof value === "boolean") {
-      flags[name] = value;
+      keep(name, value);
     } else if (Array.isArray(value)) {
-      flags[name] = value.filter(
-        (entry): entry is string | boolean =>
-          typeof entry === "string" || typeof entry === "boolean",
+      keep(
+        name,
+        value.filter(
+          (entry): entry is string | boolean =>
+            typeof entry === "string" || typeof entry === "boolean",
+        ),
       );
     }
   }

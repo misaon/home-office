@@ -44,6 +44,16 @@ export const csStaff: typeof enStaff = {
     nameHint: "převzato z repozitáře",
     importAgents: "Převzít postavy z jiných podlaží",
     floors: "Podlaží (projekty)",
+    configTitle: "Konfigurace v repozitáři",
+    configHint:
+      "Tohle podlaží může popisovat `.ho/config.json` v jeho vlastním repozitáři: jméno, větev, politiky a kdo tu pracuje. Kancelář ho použije při startu daemona a pokaždé, když se soubor změní.",
+    configSync: "Použít .ho/config.json",
+    configExport: "Zapsat .ho/config.json",
+    configNone: "Tenhle repozitář žádný .ho/config.json nemá.",
+    configNothing: "Není co měnit.",
+    configWrote: "Zapsáno do {{path}}",
+    verifyNone: "Žádné kontroly — práce se publikuje jen na slovo agenta.",
+    verifyCommand: "Kontroly před publikací: {{command}}",
     pullRequests: "Otevírat pull request",
     pullRequestsHint:
       "Zapnuto: hotová práce přijde jako pull request. Vypnuto: branch se jen pushne a nic dalšího se neděje.",

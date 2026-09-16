@@ -10,6 +10,7 @@ import {
   type ProjectId,
   type Task,
   type TaskId,
+  type TaskSpec,
 } from "@ho/protocol";
 import { bossOf, findAgentByRef } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
@@ -21,6 +22,23 @@ import { newTask, readTask } from "./tasks.ts";
  * The boss creates work for his floor (source: delegation). Only a boss delegates, only within his own
  * project, and only to its members — himself included, which is how a floor without staff gets things done.
  */
+const section = (heading: string, lines: readonly string[]): string =>
+  lines.length === 0 ? "" : `\n\n${heading}\n${lines.map((l) => `- ${l}`).join("\n")}`;
+
+/**
+ * The spec as prose, because the brief is what a session's opening message, a pull-request body and a
+ * review prompt all read. The structure stays beside it on the task; this is the rendering, not the
+ * source of truth.
+ */
+const renderBrief = (spec: TaskSpec, context: string): string =>
+  [
+    spec.goal,
+    section("Acceptance criteria:", spec.acceptanceCriteria),
+    section("Constraints:", spec.constraints),
+    section("Out of scope:", spec.outOfScope),
+    context.trim() === "" ? "" : `\n\nContext:\n${context.trim()}`,
+  ].join("");
+
 export function delegateTask(
   model: ReadModel,
   input: HoDelegateInput,
@@ -37,15 +55,23 @@ export function delegateTask(
     if (input.assignee !== undefined && assignee === undefined) {
       return err(notFound("agent", `${input.assignee} (on floor "${project.name}")`));
     }
+    const spec: TaskSpec = {
+      goal: input.goal,
+      acceptanceCriteria: input.acceptanceCriteria,
+      constraints: input.constraints,
+      outOfScope: input.outOfScope,
+    };
+    const brief = renderBrief(spec, input.context);
     const handoffNote =
       assignee === undefined
         ? undefined
-        : note(ctx, "handoff", `delegated by ${boss.name}: ${input.brief}`.slice(0, NOTE_MAX));
+        : note(ctx, "handoff", `delegated by ${boss.name}: ${brief}`.slice(0, NOTE_MAX));
     const task = newTask(ctx, {
       projectId: project.id,
       kind: "work",
       title: input.title,
-      brief: input.brief,
+      brief,
+      spec,
       source: { kind: "delegation", byAgentId: boss.id, parentTaskId },
       assigneeId: assignee?.id,
       priority: input.priority,

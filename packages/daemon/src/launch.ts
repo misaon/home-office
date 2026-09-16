@@ -1,9 +1,9 @@
 import { createGithubIssuesConnector } from "@ho/intake-github";
 import { createDockerProvider } from "@ho/sandbox-docker";
 import { createSecretStore } from "@ho/secrets";
-import { startBossVoice } from "./boss-voice.ts";
 import { DaemonConfig, loadConfig } from "./config.ts";
 import { type DaemonInfo, removeDaemonInfo, writeDaemonInfo } from "./daemon-info.ts";
+import { startFloorJobs } from "./floor-jobs.ts";
 import { startGc } from "./gc.ts";
 import { type DirectoryPicker, osascriptDirectoryPicker } from "./host-dialog.ts";
 import { IntakeService } from "./intake.ts";
@@ -14,8 +14,8 @@ import { openOffice } from "./office.ts";
 import { buildsImages, resolveResources } from "./paths.ts";
 import { RunnerGateway } from "./runner-gateway.ts";
 import { createRuntimes } from "./runtimes.ts";
-import { startScheduler } from "./scheduler.ts";
 import { startServer } from "./server.ts";
+import { SkillLibrary } from "./skills.ts";
 import { SessionManager } from "./sessions.ts";
 import { VERSION } from "./version.ts";
 
@@ -78,7 +78,7 @@ export async function launchDaemon(
     platform: config.docker.platform,
   });
   const gateway = new RunnerGateway(log);
-  const mcp = new McpGateway(office, log);
+  const mcp = new McpGateway(office, new SkillLibrary(resources.pluginsDir), log);
   const gate = new OfficeGate(log);
   // The port is known only after listening; sessions read the URLs lazily.
   let { port } = config;
@@ -117,6 +117,7 @@ export async function launchDaemon(
       provider,
       secrets,
       config,
+      home,
       resources,
       version: VERSION,
       startedAt,
@@ -143,12 +144,11 @@ export async function launchDaemon(
   };
   await writeDaemonInfo(home, info);
   cleanup.defer(() => removeDaemonInfo(home));
-  const voice = startBossVoice(office, gate, log);
-  cleanup.defer(() => voice.stop());
-  const scheduler = startScheduler(office, sessions, config, gate, log);
-  cleanup.defer(() => scheduler.stop());
   intake.start();
   cleanup.defer(() => intake.stop());
+  // Last, so a floor its own `.ho/config.json` changes is applied against a daemon already up.
+  const jobs = startFloorJobs({ office, sessions, config, gate, home, log });
+  cleanup.defer(() => jobs.stop());
   let stopping: Promise<void> | null = null;
   const stop = (): Promise<void> => {
     if (stopping === null) {
