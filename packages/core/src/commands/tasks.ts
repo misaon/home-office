@@ -5,6 +5,7 @@ import {
   type DomainError,
   type NewEvent,
   notFound,
+  NOTE_MAX,
   type ProjectId,
   type Task,
   type TaskArtifacts,
@@ -13,6 +14,7 @@ import {
   type TaskId,
   type TaskStatus,
   type TaskTransitionInput,
+  VERIFY_NOTE_PREFIX,
 } from "@ho/protocol";
 import { activeSessionOfTask, tasksOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
@@ -24,7 +26,7 @@ import {
   ok,
   type Result,
 } from "../result.ts";
-import { requireTask, statusChange } from "./shared.ts";
+import { note, noteEvent, statusChange, withProject, withTask } from "./shared.ts";
 
 /**
  * The task state machine. Terminal states have no outgoing edges.
@@ -77,6 +79,7 @@ const assignable = (
 export const newTask = (
   ctx: CommandContext,
   fields: Pick<Task, "projectId" | "kind" | "title" | "brief" | "source"> & {
+    spec?: Task["spec"] | undefined;
     assigneeId?: Task["assigneeId"] | undefined;
     priority?: Task["priority"] | undefined;
     notes?: Task["notes"] | undefined;
@@ -87,6 +90,7 @@ export const newTask = (
   kind: fields.kind,
   title: fields.title,
   brief: fields.brief,
+  ...compact({ spec: fields.spec }),
   status: fields.assigneeId === undefined ? "inbox" : "assigned",
   ...compact({ assigneeId: fields.assigneeId }),
   reviewRounds: 0,
@@ -108,19 +112,18 @@ export function createTask(
   input: TaskCreateInput,
   ctx: CommandContext,
 ): CommandResult<Task> {
-  if (!model.projects.has(input.projectId)) {
-    return err(notFound("project", input.projectId));
-  }
-  if (input.assigneeId !== undefined) {
-    const check = assignable(model, input.assigneeId, input.projectId);
-    if (!check.ok) {
-      return check;
+  return withProject(model, input.projectId, () => {
+    if (input.assigneeId !== undefined) {
+      const check = assignable(model, input.assigneeId, input.projectId);
+      if (!check.ok) {
+        return check;
+      }
     }
-  }
-  const task = newTask(ctx, { ...input, kind: "work", source: { kind: "manual" } });
-  return ok({
-    events: [{ type: "task.created", actor: ctx.actor, payload: { task } }],
-    read: readTask(task.id),
+    const task = newTask(ctx, { ...input, kind: "work", source: { kind: "manual" } });
+    return ok({
+      events: [{ type: "task.created", actor: ctx.actor, payload: { task } }],
+      read: readTask(task.id),
+    });
   });
 }
 
@@ -129,37 +132,34 @@ export function assignTask(
   input: TaskAssignInput,
   ctx: CommandContext,
 ): CommandResult<Task> {
-  const found = requireTask(model, input.id);
-  if (!found.ok) {
-    return found;
-  }
-  const task = found.value;
-  if (!REASSIGNABLE.has(task.status)) {
-    return err(conflict(`task in status "${task.status}" cannot be reassigned`));
-  }
-  if (input.agentId !== null) {
-    const check = assignable(model, input.agentId, task.projectId);
-    if (!check.ok) {
-      return check;
+  return withTask(model, input.id, (task) => {
+    if (!REASSIGNABLE.has(task.status)) {
+      return err(conflict(`task in status "${task.status}" cannot be reassigned`));
     }
-  }
-  const events: NewEvent[] = [
-    {
-      type: "task.assigned",
-      actor: ctx.actor,
-      payload: { taskId: task.id, agentId: input.agentId },
-    },
-  ];
-  if (input.agentId === null && task.status === "assigned") {
-    events.push(statusChange(ctx, task, "planned", "unassigned"));
-  } else if (
-    input.agentId !== null &&
-    task.status !== "assigned" &&
-    canTransition(task.status, "assigned")
-  ) {
-    events.push(statusChange(ctx, task, "assigned"));
-  }
-  return ok({ events, read: readTask(task.id) });
+    if (input.agentId !== null) {
+      const check = assignable(model, input.agentId, task.projectId);
+      if (!check.ok) {
+        return check;
+      }
+    }
+    const events: NewEvent[] = [
+      {
+        type: "task.assigned",
+        actor: ctx.actor,
+        payload: { taskId: task.id, agentId: input.agentId },
+      },
+    ];
+    if (input.agentId === null && task.status === "assigned") {
+      events.push(statusChange(ctx, task, "planned", "unassigned"));
+    } else if (
+      input.agentId !== null &&
+      task.status !== "assigned" &&
+      canTransition(task.status, "assigned")
+    ) {
+      events.push(statusChange(ctx, task, "assigned"));
+    }
+    return ok({ events, read: readTask(task.id) });
+  });
 }
 
 export function transitionTask(
@@ -167,18 +167,18 @@ export function transitionTask(
   input: TaskTransitionInput,
   ctx: CommandContext,
 ): CommandResult<Task> {
-  const found = requireTask(model, input.id);
-  if (!found.ok) {
-    return found;
-  }
-  const task = found.value;
-  if (!canTransition(task.status, input.to)) {
-    return err({ code: "invalid_transition", from: task.status, to: input.to });
-  }
-  if ((input.to === "assigned" || input.to === "in_progress") && task.assigneeId === undefined) {
-    return err(conflict("task has no assignee"));
-  }
-  return ok({ events: [statusChange(ctx, task, input.to, input.reason)], read: readTask(task.id) });
+  return withTask(model, input.id, (task) => {
+    if (!canTransition(task.status, input.to)) {
+      return err({ code: "invalid_transition", from: task.status, to: input.to });
+    }
+    if ((input.to === "assigned" || input.to === "in_progress") && task.assigneeId === undefined) {
+      return err(conflict("task has no assignee"));
+    }
+    return ok({
+      events: [statusChange(ctx, task, input.to, input.reason)],
+      read: readTask(task.id),
+    });
+  });
 }
 
 /** Merges into the task's artifacts (branch, pull request, report) whatever a session produced. */
@@ -188,20 +188,18 @@ export function patchTaskArtifacts(
   artifacts: TaskArtifacts,
   ctx: CommandContext,
 ): CommandResult<Task> {
-  const found = requireTask(model, taskId);
-  if (!found.ok) {
-    return found;
-  }
-  return ok({
-    events: [
-      {
-        type: "task.artifacts_changed",
-        actor: ctx.actor,
-        payload: { taskId, artifacts: { ...found.value.artifacts, ...artifacts } },
-      },
-    ],
-    read: readTask(taskId),
-  });
+  return withTask(model, taskId, (task) =>
+    ok({
+      events: [
+        {
+          type: "task.artifacts_changed",
+          actor: ctx.actor,
+          payload: { taskId, artifacts: { ...task.artifacts, ...artifacts } },
+        },
+      ],
+      read: readTask(taskId),
+    }),
+  );
 }
 
 /**
@@ -214,18 +212,17 @@ export function clearFinishedTasks(
   projectId: ProjectId,
   ctx: CommandContext,
 ): CommandResult<TaskId[]> {
-  if (!model.projects.has(projectId)) {
-    return err(notFound("project", projectId));
-  }
-  const finished = tasksOf(model, projectId).filter(
-    (task) => isTerminal(task.status) && activeSessionOfTask(model, task.id) === undefined,
-  );
-  const events: NewEvent[] = finished.map((task) => ({
-    type: "task.removed",
-    actor: ctx.actor,
-    payload: { taskId: task.id },
-  }));
-  return ok({ events, read: () => finished.map((task) => task.id) });
+  return withProject(model, projectId, () => {
+    const finished = tasksOf(model, projectId).filter(
+      (task) => isTerminal(task.status) && activeSessionOfTask(model, task.id) === undefined,
+    );
+    const events: NewEvent[] = finished.map((task) => ({
+      type: "task.removed",
+      actor: ctx.actor,
+      payload: { taskId: task.id },
+    }));
+    return ok({ events, read: () => finished.map((task) => task.id) });
+  });
 }
 
 /**
@@ -238,15 +235,55 @@ export function removeTask(
   taskId: TaskId,
   ctx: CommandContext,
 ): CommandResult<TaskId> {
-  const found = requireTask(model, taskId);
-  if (!found.ok) {
-    return found;
-  }
-  if (activeSessionOfTask(model, taskId) !== undefined) {
-    return err(conflict("task has an active session; stop it first"));
-  }
-  return ok({
-    events: [{ type: "task.removed", actor: ctx.actor, payload: { taskId } }],
-    read: () => taskId,
+  return withTask(model, taskId, () => {
+    if (activeSessionOfTask(model, taskId) !== undefined) {
+      return err(conflict("task has an active session; stop it first"));
+    }
+    return ok({
+      events: [{ type: "task.removed", actor: ctx.actor, payload: { taskId } }],
+      read: () => taskId,
+    });
+  });
+}
+
+/** How many times this task's checks have already come back failing. */
+const verifyAttempts = (task: Task): number =>
+  task.notes.filter((n) => n.author.kind === "system" && n.text.startsWith(VERIFY_NOTE_PREFIX))
+    .length;
+
+/**
+ * Failing checks do not publish. The output goes back to the task's author as a note and the task
+ * returns to them; once the floor's attempts are spent it blocks for the human instead of looping.
+ */
+export function recordVerificationFailure(
+  model: ReadModel,
+  taskId: TaskId,
+  detail: { command: string; output: string; maxAttempts: number },
+  ctx: CommandContext,
+): CommandResult<Task> {
+  return withTask(model, taskId, (task) => {
+    const spent = verifyAttempts(task) + 1 >= detail.maxAttempts;
+    const to: TaskStatus = spent || task.assigneeId === undefined ? "blocked" : "assigned";
+    if (!canTransition(task.status, to)) {
+      return err({ code: "invalid_transition", from: task.status, to });
+    }
+    const text = `${VERIFY_NOTE_PREFIX} \`${detail.command}\`\n\n${detail.output}`.slice(
+      0,
+      NOTE_MAX,
+    );
+    return ok({
+      events: [
+        noteEvent(ctx, task, note(ctx, "review", text)),
+        statusChange(
+          ctx,
+          task,
+          to,
+          spent
+            ? `checks still failing after ${String(detail.maxAttempts)} attempt(s)`
+            : "checks failed",
+        ),
+      ],
+      read: readTask(task.id),
+    });
   });
 }

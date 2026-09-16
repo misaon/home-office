@@ -12,7 +12,7 @@ import {
 import type { Actor, StoredEvent } from "@ho/protocol";
 import { openEventStore } from "@ho/store";
 import { join } from "node:path";
-import { DomainFailure } from "./domain-failure.ts";
+import { DomainFailureError } from "./domain-failure.ts";
 import { AttachmentStore } from "./attachments.ts";
 import type { Logger } from "./logger.ts";
 
@@ -53,7 +53,7 @@ export class Office {
     const ctx: CommandContext = { ids: this.ids, now: this.clock.now().toISOString(), actor };
     const result = command(this.model, ctx);
     if (!result.ok) {
-      throw new DomainFailure(result.error);
+      throw new DomainFailureError(result.error);
     }
     const stored = await this.store.append(result.value.events);
     for (const event of stored) {

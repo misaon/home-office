@@ -48,8 +48,10 @@ export function createDockerApi(socket: string): DockerApi {
   };
   return {
     raw,
-    json: async (schema, method, path, body) =>
-      schema.parse(await (await raw(method, path, body)).json()),
+    json: async (schema, method, path, body) => {
+      const response = await raw(method, path, body);
+      return schema.parse(await response.json());
+    },
     maybe: async (method, path, body) => {
       try {
         return await raw(method, path, body);
@@ -190,9 +192,15 @@ export const createContainer = async (
   api: DockerApi,
   name: string,
   config: unknown,
-): Promise<string> =>
-  (await api.json(Created, "POST", `/containers/create?name=${encodeURIComponent(name)}`, config))
-    .Id;
+): Promise<string> => {
+  const created = await api.json(
+    Created,
+    "POST",
+    `/containers/create?name=${encodeURIComponent(name)}`,
+    config,
+  );
+  return created.Id;
+};
 
 export const startContainer = async (api: DockerApi, id: string): Promise<void> => {
   await api.raw("POST", `${container(id)}/start`);

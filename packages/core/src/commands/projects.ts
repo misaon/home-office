@@ -13,6 +13,7 @@ import { activeSessionOfTask, membersOf, tasksOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, entity, err, ok } from "../result.ts";
 import { bossFor, copyOf } from "./office-defaults.ts";
+import { withProject } from "./shared.ts";
 import { isTerminal } from "./tasks.ts";
 
 const readProject =
@@ -86,20 +87,18 @@ export function updateProject(
   input: ProjectUpdateInput,
   ctx: CommandContext,
 ): CommandResult<Project> {
-  const current = model.projects.get(input.id);
-  if (current === undefined) {
-    return err(notFound("project", input.id));
-  }
-  if (input.patch.name !== undefined && nameTaken(model, input.patch.name, input.id)) {
-    return err(conflict(`project name "${input.patch.name}" is already used`));
-  }
-  if (input.patch.repo !== undefined && !sameRepo(current.repo, input.patch.repo)) {
-    return err(conflict("a floor's repository cannot change; create a new floor"));
-  }
-  const project: Project = { ...current, ...compact(input.patch), updatedAt: ctx.now };
-  return ok({
-    events: [{ type: "project.updated", actor: ctx.actor, payload: { project } }],
-    read: readProject(project.id),
+  return withProject(model, input.id, (current) => {
+    if (input.patch.name !== undefined && nameTaken(model, input.patch.name, input.id)) {
+      return err(conflict(`project name "${input.patch.name}" is already used`));
+    }
+    if (input.patch.repo !== undefined && !sameRepo(current.repo, input.patch.repo)) {
+      return err(conflict("a floor's repository cannot change; create a new floor"));
+    }
+    const project: Project = { ...current, ...compact(input.patch), updatedAt: ctx.now };
+    return ok({
+      events: [{ type: "project.updated", actor: ctx.actor, payload: { project } }],
+      read: readProject(project.id),
+    });
   });
 }
 
@@ -109,24 +108,23 @@ export function removeProject(
   id: ProjectId,
   ctx: CommandContext,
 ): CommandResult<ProjectId> {
-  if (!model.projects.has(id)) {
-    return err(notFound("project", id));
-  }
-  const tasks = tasksOf(model, id);
-  const open = tasks.filter((t) => !isTerminal(t.status)).length;
-  if (open > 0) {
-    return err(conflict(`project has ${String(open)} open task(s); finish or cancel them first`));
-  }
-  if (tasks.some((task) => activeSessionOfTask(model, task.id) !== undefined)) {
-    return err(conflict("project has active sessions"));
-  }
-  const events: NewEvent[] = [
-    ...membersOf(model, id).map((agent): NewEvent => ({
-      type: "agent.removed",
-      actor: ctx.actor,
-      payload: { agentId: agent.id },
-    })),
-    { type: "project.removed", actor: ctx.actor, payload: { projectId: id } },
-  ];
-  return ok({ events, read: () => id });
+  return withProject(model, id, () => {
+    const tasks = tasksOf(model, id);
+    const open = tasks.filter((t) => !isTerminal(t.status)).length;
+    if (open > 0) {
+      return err(conflict(`project has ${String(open)} open task(s); finish or cancel them first`));
+    }
+    if (tasks.some((task) => activeSessionOfTask(model, task.id) !== undefined)) {
+      return err(conflict("project has active sessions"));
+    }
+    const events: NewEvent[] = [
+      ...membersOf(model, id).map((agent): NewEvent => ({
+        type: "agent.removed",
+        actor: ctx.actor,
+        payload: { agentId: agent.id },
+      })),
+      { type: "project.removed", actor: ctx.actor, payload: { projectId: id } },
+    ];
+    return ok({ events, read: () => id });
+  });
 }

@@ -100,7 +100,8 @@ const ensureImage = async (api: DockerApi, ref: string, timeoutMs: number): Prom
 async function waitReady(api: DockerApi, handle: SandboxHandle, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const state = (await inspectContainer(api, handle.id)).State;
+    const inspected = await inspectContainer(api, handle.id);
+    const state = inspected.State;
     if (state.Health?.Status === "healthy") {
       return;
     }

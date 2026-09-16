@@ -20,10 +20,7 @@ export function Panel(): React.JSX.Element | null {
   if (floor === null) {
     return null;
   }
-  const task =
-    sheet !== null && sheet.type === "task"
-      ? floor.cards.find((c) => c.id === sheet.id)
-      : undefined;
+  const task = sheet?.type === "task" ? floor.cards.find((c) => c.id === sheet.id) : undefined;
 
   return (
     <aside className={ASIDE}>

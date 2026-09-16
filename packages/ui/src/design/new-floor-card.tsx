@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { Source } from "./add-project-inspect.ts";
+import { PickCard } from "./pick-card.tsx";
 
 /** One of the two places a floor's code can live, as the card the drawing picks it with. */
 
@@ -35,56 +36,15 @@ const MARKS: Record<Source, React.JSX.Element> = {
   ),
 };
 
-const CARD =
-  "relative flex flex-col items-start gap-10 p-14 rounded-14 cursor-pointer text-left transition-all duration-240 ease-soft";
-
-export function SourceCard({
-  kind,
-  on,
-  onPick,
-}: {
-  kind: Source;
-  on: boolean;
-  onPick: () => void;
-}): React.JSX.Element {
+export function SourceCard({ kind }: { kind: Source }): React.JSX.Element {
   const { t } = useTranslation();
   return (
-    <button
-      type="button"
-      onClick={onPick}
-      className={`hover:-translate-y-2 hover:border-accent-a50 ${CARD} border ${on ? "border-accent-a45" : "border-border"} ${on ? "bg-accent-a07" : "bg-card"}`}
-    >
-      <span
-        className={`w-30 h-30 rounded-10 grid place-items-center ${on ? "bg-accent-a16" : "bg-tile"} ${on ? "text-accent-soft" : "text-ink-faint"}`}
-      >
-        {MARKS[kind]}
-      </span>
-      <span className="block">
-        <span
-          className={`block text-13 font-semibold ${on ? "text-accent-soft" : "text-ink-warm"}`}
-        >
-          {t(kind === "local" ? "project.sourceLocal" : "project.sourceGit")}
-        </span>
-        <span className="block text-11h text-ink-meta mt-4 leading-body">
-          {t(kind === "local" ? "project.sourceLocalHint" : "project.sourceGitHint")}
-        </span>
-      </span>
-      {on ? (
-        <span className="absolute top-12 right-12 w-16 h-16 rounded-half bg-accent grid place-items-center">
-          <svg
-            className="stroke-accent-ink"
-            width="9"
-            height="9"
-            viewBox="0 0 10 10"
-            fill="none"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="1.8,5.2 4,7.4 8.2,2.6" />
-          </svg>
-        </span>
-      ) : null}
-    </button>
+    <PickCard
+      value={kind}
+      mark={MARKS[kind]}
+      title={t(kind === "local" ? "project.sourceLocal" : "project.sourceGit")}
+      hint={t(kind === "local" ? "project.sourceLocalHint" : "project.sourceGitHint")}
+      gap="gap-10"
+    />
   );
 }

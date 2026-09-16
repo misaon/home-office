@@ -1,0 +1,64 @@
+name: Bug report
+description: Something in Home Office does not behave the way it says it does.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not report security problems here — use
+        [private reporting](https://github.com/misaon/home-office/security/advisories/new) instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+      placeholder: I opened the agent dialog, clicked the provider select, and nothing opened.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      description: The shortest path from a running office to the problem.
+      placeholder: |
+        1. Open the office
+        2. Team → Hire someone new
+        3. Click the PROVIDER field
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release you are on, or the commit if you built it yourself.
+      placeholder: v0.0.2
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options:
+        - Desktop app
+        - Office UI in a browser
+        - CLI (`ho`)
+        - Daemon
+        - Agent images / sandboxes
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: macOS and hardware
+      placeholder: macOS 26.1, MacBook Pro M4
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: |
+        A screenshot, the daemon's log lines, or the output of `ho doctor`. Please check it carries no
+        credentials before pasting — the office keeps secrets out of its own logs, but your terminal is
+        yours.
+      render: shell

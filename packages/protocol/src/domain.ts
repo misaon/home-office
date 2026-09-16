@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { Attachments } from "./attachments.ts";
 import { AgentId, ChatMessageId, MailItemId, ProjectId, SessionId, TaskId } from "./ids.ts";
-import { IntakePolicy, PublishPolicy, ServicesPolicy } from "./policies.ts";
+import { IntakePolicy, PublishPolicy, ServicesPolicy, VerifyPolicy } from "./policies.ts";
+import { Budgets, Usage } from "./usage.ts";
 
-/** The per-project policies live in their own module; this one keeps them part of the domain surface. */
+/** Policies, budgets and usage live in their own modules; this one keeps them part of the domain surface. */
 export * from "./policies.ts";
+export * from "./usage.ts";
 
 export const IsoDateTime = z.iso.datetime();
 export type IsoDateTime = z.infer<typeof IsoDateTime>;
@@ -93,43 +95,8 @@ export const RepoSource = z.discriminatedUnion("kind", [
 ]);
 export type RepoSource = z.infer<typeof RepoSource>;
 
-export const Budgets = z.object({
-  maxTurnsPerTask: z.int().positive().default(60),
-  maxConcurrentSessions: z.int().positive().default(1),
-  maxWallMinutes: z.int().positive().default(60),
-  maxReviewRounds: z.int().nonnegative().default(2),
-  /** API-key sessions only (Claude Code `--max-budget-usd`); subscriptions have no per-task price. */
-  maxUsdPerTask: z.number().positive().optional(),
-});
-export type Budgets = z.infer<typeof Budgets>;
-
 const Appearance = z.object({ gender: Gender });
 type Appearance = z.infer<typeof Appearance>;
-
-export const Usage = z.object({
-  inputTokens: z.int().nonnegative(),
-  outputTokens: z.int().nonnegative(),
-  cacheReadTokens: z.int().nonnegative(),
-  cacheWriteTokens: z.int().nonnegative(),
-  turns: z.int().nonnegative(),
-});
-export type Usage = z.infer<typeof Usage>;
-
-export const ZERO_USAGE: Usage = {
-  inputTokens: 0,
-  outputTokens: 0,
-  cacheReadTokens: 0,
-  cacheWriteTokens: 0,
-  turns: 0,
-};
-
-export const addUsage = (a: Usage, b: Usage): Usage => ({
-  inputTokens: a.inputTokens + b.inputTokens,
-  outputTokens: a.outputTokens + b.outputTokens,
-  cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens,
-  cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens,
-  turns: a.turns + b.turns,
-});
 
 const TaskSource = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("chat"), messageId: ChatMessageId }),
@@ -144,6 +111,24 @@ const TaskSource = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("manual") }),
 ]);
 type TaskSource = z.infer<typeof TaskSource>;
+
+/** How many acceptance criteria one task may carry; more than this is two tasks. */
+export const CRITERIA_MAX = 12;
+
+/**
+ * What the boss actually asked for, kept beside the rendered brief. Acceptance criteria are the unit
+ * the reviewer checks and the worker ticks off, which is why they are a list rather than prose: MAST
+ * attributes 44.2 % of multi-agent failures to system design, 11.8 % of the total to an agent simply
+ * disobeying the task specification (arXiv 2503.13657, read 2026-09-15).
+ */
+export const TaskSpec = z.object({
+  goal: z.string().min(1).max(500),
+  /** Written as "When <condition>, the system shall <behaviour>"; each one independently checkable. */
+  acceptanceCriteria: z.array(z.string().min(1).max(500)).min(1).max(CRITERIA_MAX),
+  constraints: z.array(z.string().min(1).max(500)).max(CRITERIA_MAX).default([]),
+  outOfScope: z.array(z.string().min(1).max(500)).max(CRITERIA_MAX).default([]),
+});
+export type TaskSpec = z.infer<typeof TaskSpec>;
 
 export const TaskArtifacts = z.object({
   branch: z.string().min(1).optional(),
@@ -182,10 +167,19 @@ export const Project = z.object({
   publish: PublishPolicy.prefault({}),
   intake: IntakePolicy.prefault({}),
   services: ServicesPolicy.prefault({}),
+  verify: VerifyPolicy.prefault({}),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });
 export type Project = z.infer<typeof Project>;
+
+/**
+ * How long a colleague's own briefing may be. Anthropic caps the instructions that shape a persona at
+ * 1 500 characters for a profile and 3 000 for an organisation, and allows about 8 000 in a project
+ * (support.anthropic.com and the Claude custom-instructions guide, read 2026-09-15). This sits between
+ * them: long enough for habits and constraints, short enough that it does not crowd out the task.
+ */
+export const BASE_PROMPT_MAX = 4000;
 
 export const Agent = z.object({
   id: AgentId,
@@ -197,7 +191,7 @@ export const Agent = z.object({
   auth: AuthKind.default("subscription"),
   model: z.string().min(1),
   effort: EffortLevel,
-  basePrompt: z.string().max(4000).default(""),
+  basePrompt: z.string().max(BASE_PROMPT_MAX).default(""),
   skillPack: z.string().min(1).default("none"),
   budgets: Budgets,
   /** The floor this agent works on; every floor has exactly one boss and any number of staff. */
@@ -212,7 +206,9 @@ export const Task = z.object({
   projectId: ProjectId,
   kind: TaskKind.default("work"),
   title: z.string().min(1).max(200),
-  brief: z.string().max(20000),
+  brief: z.string().max(20_000),
+  /** Present when the boss delegated with structure; a task a human typed carries only `brief`. */
+  spec: TaskSpec.optional(),
   status: TaskStatus,
   assigneeId: AgentId.optional(),
   reviewerId: AgentId.optional(),
@@ -231,7 +227,7 @@ export const ChatMessage = z.object({
   id: ChatMessageId,
   projectId: ProjectId,
   author: Author,
-  text: z.string().min(1).max(20000),
+  text: z.string().min(1).max(20_000),
   /** Files the office keeps beside the log; the message carries only their descriptors. */
   attachments: Attachments,
   taskId: TaskId.optional(),

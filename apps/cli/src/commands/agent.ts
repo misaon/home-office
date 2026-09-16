@@ -1,6 +1,6 @@
 import { defaultChoice } from "@ho/core";
 import { AgentRole, AuthKind, compact, EffortLevel, Gender, ProviderId } from "@ho/protocol";
-import { required, str } from "../args.ts";
+import { required, str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
 import { colour } from "../output.ts";
 import { findAgent, findProject, projectFor, projectIdOf, projectNames } from "./lookup.ts";

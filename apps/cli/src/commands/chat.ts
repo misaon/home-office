@@ -1,5 +1,5 @@
 import { TaskId } from "@ho/protocol";
-import { str } from "../args.ts";
+import { str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
 import { colour } from "../output.ts";
 import { projectFor } from "./lookup.ts";

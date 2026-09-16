@@ -199,7 +199,7 @@ export function sleep(world: World, agentId: AgentId): void {
 
 export function wake(world: World, agentId: AgentId): void {
   const actor = world.actors.get(agentId);
-  if (actor !== undefined && actor.activity === "sleep") {
+  if (actor?.activity === "sleep") {
     release(world, actor);
     setSteps(actor, pendingDeliveries(actor));
     actor.activity = "idle";
@@ -225,7 +225,7 @@ type EmotionCue = { kind: Emotion; ttlMs: number | null };
 
 const STATIC_CUES: Partial<Record<RuntimeEvent["kind"], EmotionCue>> = {
   tool_call: { kind: "focused", ttlMs: 8000 },
-  error: { kind: "frustrated", ttlMs: 20000 },
+  error: { kind: "frustrated", ttlMs: 20_000 },
   permission_request: { kind: "question", ttlMs: null },
   rate_limited: { kind: "sleepy", ttlMs: null },
 };
@@ -236,7 +236,7 @@ export function emotionFor(event: RuntimeEvent): EmotionCue | null {
     return event.ok ? null : { kind: "frustrated", ttlMs: 6000 };
   }
   if (event.kind === "result") {
-    return event.ok ? { kind: "happy", ttlMs: 6000 } : { kind: "frustrated", ttlMs: 10000 };
+    return event.ok ? { kind: "happy", ttlMs: 6000 } : { kind: "frustrated", ttlMs: 10_000 };
   }
   return STATIC_CUES[event.kind] ?? null;
 }

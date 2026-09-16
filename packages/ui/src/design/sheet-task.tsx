@@ -1,11 +1,10 @@
 import { canTransition, isTerminal } from "@ho/core";
-import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { Card, Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
 import { PRIMARY, SheetShell } from "./sheet-shell.tsx";
 import { MONO, priority } from "./tokens.ts";
-import { useDesign } from "./store.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
 
 const TAG = `${MONO} text-9h py-4 px-9 rounded-6`;
 
@@ -18,19 +17,15 @@ const TAG = `${MONO} text-9h py-4 px-9 rounded-6`;
 export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);
-  const flash = useDesign((s) => s.flash);
   const tone = priority(task.p);
   const canFinish = canTransition(task.status, "done");
   const canResume = canTransition(task.status, "in_progress");
 
-  const move = useMutation({
+  const move = useOfficeMutation({
     mutationFn: (status: "done" | "in_progress") =>
       requireClient().tasks.transition({ id: task.id, to: status }),
     onSuccess: () => {
       set({ sheet: null });
-    },
-    onError: (error: Error) => {
-      flash(error.message);
     },
   });
 
@@ -47,6 +42,23 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
           {task.who === "" ? t("board.unassigned") : t("board.assignedTo", { name: task.who })}
         </div>
       </div>
+      {task.criteria.length === 0 ? null : (
+        <div className="p-12 rounded-12 bg-card-lit border border-border mb-18">
+          <div className={`${MONO} text-10 tracking-caps uppercase text-ink-label mb-7`}>
+            {t("board.criteria")}
+          </div>
+          <ol className="list-none m-0 p-0">
+            {task.criteria.map((criterion, index) => (
+              <li key={criterion} className="text-12h text-ink-dim leading-body flex gap-8 mt-6">
+                <span className={`${MONO} text-10 text-ink-meta flex-[0_0_auto]`}>
+                  {index + 1}.
+                </span>
+                <span>{criterion}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
       {canFinish || canResume ? (
         <div className="flex gap-9">
           {canFinish ? (

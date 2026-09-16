@@ -57,8 +57,8 @@ export type FloorTemplate = {
 
 /** Every cell index of a rectangle that is still on the map. */
 export function* cellsOf(rect: LayoutRect, width: number, height: number): Generator<number> {
-  for (let y = rect.y; y < rect.y + rect.h; y += 1) {
-    for (let x = rect.x; x < rect.x + rect.w; x += 1) {
+  for (let { y } = rect; y < rect.y + rect.h; y += 1) {
+    for (let { x } = rect; x < rect.x + rect.w; x += 1) {
       if (x >= 0 && y >= 0 && x < width && y < height) {
         yield y * width + x;
       }

@@ -33,6 +33,7 @@ export const en = {
   },
   app: {
     connecting: "Connecting to the daemon…",
+    officeFailed: "The office could not be drawn: {{message}}",
     connected: "Connected",
     offline: "Daemon offline — retrying…",
     noToken: "This page carries no daemon token. Run `ho ui` to open the office with it.",
@@ -67,6 +68,7 @@ export const en = {
     neutral: "neutral",
   },
   board: {
+    filters: "Filter the board by status",
     remove: "Remove",
     removeConfirm: "Take this task off the board?",
     clearTitle: "Clear finished work",
@@ -92,6 +94,7 @@ export const en = {
     emptyLane: "Nothing in this lane.",
     finished: "{{done}} of {{total}} tasks finished",
     handBack: "Hand back",
+    criteria: "Acceptance criteria",
     moveToDone: "Move to done",
     taskClosed: "This one is closed; nothing moves from here.",
     taskNotStarted: "It can be finished once somebody is working on it.",
@@ -217,6 +220,7 @@ export const en = {
     forgotten: "{{name}} forgotten",
   },
   team: {
+    filters: "Filter the team by status",
     intro: "Everyone on this floor. Open a card to see what they are doing, or configure them.",
     onFloor: "On floor {{floor}}",
     working: "working",

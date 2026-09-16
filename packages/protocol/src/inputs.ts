@@ -13,6 +13,7 @@ import {
   TaskPriority,
   TaskStatus,
   Usage,
+  VerifyPolicy,
 } from "./domain.ts";
 import { AgentId, ProjectId, SessionId, TaskId } from "./ids.ts";
 
@@ -25,6 +26,7 @@ const ProjectFields = Project.pick({
   publish: true,
   intake: true,
   services: true,
+  verify: true,
 });
 /**
  * A new floor. The daemon creates its boss (Andrew) in the same command; `importAgentIds` copies characters
@@ -76,6 +78,7 @@ const ProjectPatch = z
     publish: PublishPolicy,
     intake: IntakePolicy,
     services: ServicesPolicy,
+    verify: VerifyPolicy,
   })
   .partial();
 export const ProjectUpdateInput = z.object({ id: ProjectId, patch: ProjectPatch });
@@ -127,7 +130,7 @@ export const AgentListInput = z.object({ projectId: ProjectId.optional() });
 export const TaskCreateInput = z.object({
   projectId: ProjectId,
   title: z.string().min(1).max(200),
-  brief: z.string().max(20000).default(""),
+  brief: z.string().max(20_000).default(""),
   priority: TaskPriority.default("normal"),
   assigneeId: AgentId.optional(),
 });
@@ -145,7 +148,7 @@ export const TaskTransitionInput = z.object({
 });
 export type TaskTransitionInput = z.infer<typeof TaskTransitionInput>;
 
-const ChatText = z.string().trim().min(1).max(20000);
+const ChatText = z.string().trim().min(1).max(20_000);
 /**
  * A message to a floor's boss (`projectId`), who triages it, or an answer to a question an agent asked about a
  * task (`taskId`), which resumes that task.

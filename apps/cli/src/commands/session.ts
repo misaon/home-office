@@ -41,7 +41,8 @@ export const sessionCommand: Command = {
   subcommands: {
     list: {
       run: async (_parsed, client) => {
-        const sessions = await (await client()).sessions.list({});
+        const rpc = await client();
+        const sessions = await rpc.sessions.list({});
         return output(
           sessions.map(
             (s) =>
@@ -55,7 +56,8 @@ export const sessionCommand: Command = {
       positionals: ["<session-id>"],
       run: async (parsed, client) => {
         const ref = parsed.positionals[0] ?? "";
-        const found = pick(await (await client()).sessions.list({}), ref, "session");
+        const rpc = await client();
+        const found = pick(await rpc.sessions.list({}), ref, "session");
         print(found);
         return undefined;
       },
@@ -63,9 +65,10 @@ export const sessionCommand: Command = {
     watch: {
       positionals: ["[session-id|all]"],
       run: async (parsed, client) => {
-        const ref = parsed.positionals[0];
+        const [ref] = parsed.positionals;
         const sessionId = ref === undefined || ref === "all" ? undefined : SessionId.parse(ref);
-        for await (const live of await (await client()).sessions.stream(compact({ sessionId }))) {
+        const rpc = await client();
+        for await (const live of await rpc.sessions.stream(compact({ sessionId }))) {
           const text = describe(live);
           if (text !== null) {
             line(text);

@@ -1,5 +1,5 @@
 import { compact, type StoredEvent, type Usage } from "@ho/protocol";
-import { int, str } from "../args.ts";
+import { int, str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
 import { line } from "../output.ts";
 
@@ -19,7 +19,8 @@ export const tailCommand: Command = {
   strings: { after: "<seq>" },
   run: async (parsed, client) => {
     const afterSeq = int(parsed, "after");
-    for await (const event of await (await client()).events.subscribe(compact({ afterSeq }))) {
+    const rpc = await client();
+    for await (const event of await rpc.events.subscribe(compact({ afterSeq }))) {
       line(eventLine(event));
     }
     return undefined;
@@ -35,11 +36,11 @@ const hoursOf = (since: string | undefined): number | undefined => {
   if (since === undefined) {
     return undefined;
   }
-  const match = /^(\d+)([hd]?)$/u.exec(since);
-  if (match === null) {
+  const span = /^(?<amount>\d+)(?<unit>[hd]?)$/u.exec(since)?.groups;
+  if (span === undefined) {
     throw new Error(`--since expects hours or days like 24h or 7d, got "${since}"`);
   }
-  return Number(match[1]) * (match[2] === "d" ? 24 : 1);
+  return Number(span["amount"]) * (span["unit"] === "d" ? 24 : 1);
 };
 
 export const usageCommand: Command = {
@@ -48,7 +49,8 @@ export const usageCommand: Command = {
   strings: { since: "24h|7d" },
   run: async (parsed, client) => {
     const sinceHours = hoursOf(str(parsed, "since"));
-    const summary = await (await client()).usage.summary(compact({ sinceHours }));
+    const rpc = await client();
+    const summary = await rpc.usage.summary(compact({ sinceHours }));
     const lines = [
       `window: ${summary.since ?? "all time"}  sessions: ${String(summary.sessions)}  rate-limit incidents: ${String(summary.rateLimitIncidents)}`,
       row("TOTAL", summary.totals),

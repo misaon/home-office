@@ -8,7 +8,7 @@ const MAX_BYTES = 8 * 1024 * 1024;
 const CHECK_EVERY_MS = 60_000;
 
 const sizeOf = async (file: string): Promise<number> =>
-  (await stat(file).catch(() => null))?.size ?? 0;
+  ((await stat(file).catch(() => null)) ?? { size: 0 }).size;
 
 /**
  * NDJSON to stdout by default; the desktop app, whose stdout nobody sees, logs to a file that rotates at

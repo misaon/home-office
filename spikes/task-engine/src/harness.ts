@@ -127,13 +127,15 @@ export async function stopTask(provider: Provider, task: Task): Promise<void> {
 
 export const inSandbox = (task: Task, script: string): Promise<Bun.$.ShellOutput> =>
   $`docker exec ${task.sandbox.name} sh -c ${script}`.quiet().nothrow();
-export const output = async (task: Task, script: string): Promise<string> =>
-  (await inSandbox(task, script)).stdout.toString().trim();
+export const output = async (task: Task, script: string): Promise<string> => {
+  const ran = await inSandbox(task, script);
+  return ran.stdout.toString().trim();
+};
 
-export const imageOr = async (preferred: string, fallback: string): Promise<string> =>
-  (await $`docker image inspect ${preferred}`.quiet().nothrow()).exitCode === 0
-    ? preferred
-    : fallback;
+export const imageOr = async (preferred: string, fallback: string): Promise<string> => {
+  const inspected = await $`docker image inspect ${preferred}`.quiet().nothrow();
+  return inspected.exitCode === 0 ? preferred : fallback;
+};
 
 export async function sweep(provider: Provider, tasks: readonly Task[]): Promise<void> {
   const left = await provider.inventory({ "ho.managed": "true" });

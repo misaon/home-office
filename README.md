@@ -40,6 +40,15 @@ source checkout, or use the desktop app, when you want those.
 `bun run ui:watch` rebuilds and reloads an open development UI. `bun run setup` installs the local git hook.
 State defaults to `~/.config/home-office`; `HO_HOME` selects a separate state directory.
 
+A floor can also describe itself from inside its own repository. `.ho/config.json` states the floor's
+name, default branch, publish/intake/services policy, budgets and staff; the office applies it when the
+daemon starts, when the file changes and on `ho project sync <floor> [--dry-run]`, and
+`ho project export <floor>` writes the floor as it stands back into the file. Credentials are never in
+it — only `provider` and `auth`, which is enough for the daemon to find the key in the credential store.
+`.ho/config.local.json` beside it is gitignored and layers over the committed file for one machine. See
+[the architecture](docs/ARCHITECTURE.md#floor-configuration-in-the-repository) and
+[schema/office.schema.json](schema/office.schema.json).
+
 Secrets live in this machine's credential store — Keychain on macOS, libsecret on Linux, Credential
 Manager on Windows — and fall back to a mode-0600 JSON file in the state directory when the host has
 none; `secrets.store` in `config.json` (`auto`, `os` or `file`) overrides that choice.

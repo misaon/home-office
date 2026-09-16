@@ -80,12 +80,16 @@ jobs:
           The setup checklist builds the required images, stores provider credentials in the
           system secret store, and can run a task to verify the office.
 
-          This build is unsigned. After verifying SHA256SUMS.txt, clear the quarantine flag
-          on the installed application if macOS blocks it:
+          This build carries an ad-hoc signature, not an Apple Developer ID, so macOS will not
+          recognise the developer. After verifying SHA256SUMS.txt, drag the app to Applications
+          and clear the quarantine flag it was downloaded with:
 
           ```bash
           xattr -cr "/Applications/Home Office.app"
           ```
+
+          Right-clicking the app and choosing Open works too. If macOS instead says the app is
+          *damaged*, the bundle was not sealed — that was true of v0.0.1 and is fixed from v0.0.2.
           NOTES
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "Home Office $GITHUB_REF_NAME" \

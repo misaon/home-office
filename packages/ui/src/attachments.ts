@@ -1,4 +1,5 @@
 import { Attachment, attachmentType, errorMessage } from "@ho/protocol";
+import { useEffect, useState } from "react";
 import { requireToken } from "./rpc.ts";
 
 const PATH = "/attachments";
@@ -44,7 +45,7 @@ const objectUrls = new Map<string, Promise<string>>();
  * cannot carry, so they are fetched once and kept as an object URL for as long as the page lives. The
  * type comes from the message's own descriptor: the daemon serves every file as opaque bytes.
  */
-export function attachmentUrl(attachment: Attachment): Promise<string> {
+function attachmentUrl(attachment: Attachment): Promise<string> {
   const existing = objectUrls.get(attachment.id);
   if (existing !== undefined) {
     return existing;
@@ -63,4 +64,27 @@ export function attachmentUrl(attachment: Attachment): Promise<string> {
   });
   objectUrls.set(attachment.id, pending);
   return pending;
+}
+
+/**
+ * That URL as a component sees it: null while the bytes are still coming, then the object URL. A file
+ * the office will not draw as a picture is not worth fetching, which is what `wanted` says.
+ */
+export function useAttachmentUrl(attachment: Attachment, wanted = true): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!wanted) {
+      return undefined;
+    }
+    let live = true;
+    void attachmentUrl(attachment).then((value) => {
+      if (live) {
+        setUrl(value);
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [attachment, wanted]);
+  return url;
 }

@@ -1,5 +1,7 @@
 import {
   compact,
+  OFFICE_DIR,
+  OFFICE_FILE,
   type IntakePolicy,
   type PublishPolicy,
   type RepoInspection,
@@ -7,7 +9,7 @@ import {
   repoUrl,
 } from "@ho/protocol";
 import { resolve } from "node:path";
-import { int, list, onOff, str } from "../args.ts";
+import { bool, int, list, onOff, str } from "../flags.ts";
 import type { HoClient } from "../client.ts";
 import { type Command, output } from "../cli.ts";
 import { colour } from "../output.ts";
@@ -86,7 +88,7 @@ const describe = (
 export const projectCommand: Command = {
   name: "project",
   summary:
-    "floors in creation order; add takes a path or a git URL, --import copies characters from other floors, set changes the branch, delivery and GitHub intake",
+    "floors in creation order; add takes a path or a git URL, --import copies characters from other floors, set changes the branch, delivery and GitHub intake, sync and export move the floor between the office and its own .ho/config.json",
   subcommands: {
     list: {
       run: async (_parsed, client) => {
@@ -100,9 +102,8 @@ export const projectCommand: Command = {
     inspect: {
       strings: { path: "<dir>", url: "<git-url>" },
       run: async (parsed, client) => {
-        const seen = await (
-          await client()
-        ).projects.inspect({
+        const rpc = await client();
+        const seen = await rpc.projects.inspect({
           repo: repoFrom(str(parsed, "path"), str(parsed, "url")),
         });
         return output(
@@ -128,7 +129,10 @@ export const projectCommand: Command = {
           DEFAULT_PUBLISH,
         );
         const importAgentIds = await Promise.all(
-          list(parsed, "import").map(async (ref) => (await findAgent(rpc, ref)).id),
+          list(parsed, "import").map(async (ref) => {
+            const agent = await findAgent(rpc, ref);
+            return agent.id;
+          }),
         );
         const created = await rpc.projects.create({
           name: parsed.positionals[0] ?? inspection.name,
@@ -152,6 +156,7 @@ export const projectCommand: Command = {
         pr: "on|off",
         draft: "on|off",
         intake: "on|off",
+        verify: "<command>",
         labels: "a,b",
         interval: "<seconds>",
         "dry-run": "on|off",
@@ -163,6 +168,10 @@ export const projectCommand: Command = {
           id: current.id,
           patch: compact({
             defaultBranch: str(parsed, "branch"),
+            verify:
+              str(parsed, "verify") === undefined
+                ? undefined
+                : { ...current.verify, command: str(parsed, "verify") ?? "" },
             publish: publishFrom(
               onOff(str(parsed, "pr")),
               onOff(str(parsed, "draft")),
@@ -181,9 +190,43 @@ export const projectCommand: Command = {
         });
         return output(
           [
-            `floor ${colour.bold(updated.name)}: branch ${updated.defaultBranch}, delivery ${updated.publish.mode}, intake ${updated.intake.enabled ? "on" : "off"}`,
+            `floor ${colour.bold(updated.name)}: branch ${updated.defaultBranch}, delivery ${updated.publish.mode}, intake ${updated.intake.enabled ? "on" : "off"}, checks ${updated.verify.command === "" ? "off" : updated.verify.command}`,
           ],
           updated,
+        );
+      },
+    },
+    sync: {
+      positionals: ["<floor>"],
+      booleans: ["dry-run"],
+      run: async (parsed, client) => {
+        const rpc = await client();
+        const floor = await findProject(rpc, parsed.positionals[0] ?? "");
+        const dryRun = bool(parsed, "dry-run");
+        const result = await rpc.projects.sync({ id: floor.id, dryRun });
+        const head =
+          result.source === null
+            ? `${colour.dim(`${OFFICE_DIR}/${OFFICE_FILE}`)} not found in ${colour.bold(floor.name)}`
+            : `${colour.bold(floor.name)} ← ${colour.dim(result.source)}${dryRun ? colour.dim(" (dry run)") : ""}`;
+        const body =
+          result.changes.length === 0 && result.problems.length === 0
+            ? [colour.dim("  nothing to change")]
+            : [
+                ...result.changes.map((change) => `  ${change}`),
+                ...result.problems.map((problem) => `  ${colour.bad(problem)}`),
+              ];
+        return output([head, ...body], result);
+      },
+    },
+    export: {
+      positionals: ["<floor>"],
+      run: async (parsed, client) => {
+        const rpc = await client();
+        const floor = await findProject(rpc, parsed.positionals[0] ?? "");
+        const written = await rpc.projects.export({ id: floor.id });
+        return output(
+          [`wrote ${colour.bold(written.path)} ${colour.dim(`(${String(written.bytes)} bytes)`)}`],
+          written,
         );
       },
     },

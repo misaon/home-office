@@ -1,9 +1,10 @@
-import { useRef } from "react";
+import { Popover } from "@base-ui/react/popover";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { UsageMenu, useContextFill } from "./chat-usage-menu.tsx";
 import type { Floor } from "./data.ts";
+import { Plus } from "lucide-react";
 import { MONO } from "./tokens.ts";
-import { useDesign } from "./store.ts";
 
 const SQUARE =
   "w-28 h-28 grid place-items-center border border-border-strong rounded-8 py-1 px-6 cursor-pointer transition-all duration-250 bg-transparent text-ink-quiet";
@@ -25,8 +26,7 @@ export function ChatToolbar({
   onAttach: (file: File) => void;
 }): React.JSX.Element {
   const { t } = useTranslation();
-  const usageOpen = useDesign((s) => s.usageOpen);
-  const update = useDesign((s) => s.update);
+  const [usageOpen, setUsageOpen] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const fill = useContextFill(floor.id);
 
@@ -53,27 +53,13 @@ export function ChatToolbar({
         }}
         className={`hover:text-accent-soft hover:border-accent-a45 hover:rotate-90 ${SQUARE}`}
       >
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 12 12"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        >
-          <line x1="6" y1="2" x2="6" y2="10" />
-          <line x1="2" y1="6" x2="10" y2="6" />
-        </svg>
+        <Plus size={12} strokeWidth={1.5} />
       </button>
       <div className="flex-1" />
-      <div className="relative flex-[0_0_auto]">
-        <button
-          type="button"
-          onClick={() => {
-            update((s) => ({ usageOpen: !s.usageOpen, attachOpen: false, openSelect: null }));
-          }}
+      <Popover.Root open={usageOpen} onOpenChange={setUsageOpen}>
+        <Popover.Trigger
           title={t("usage.chipTitle")}
-          className={`hover:text-accent-soft hover:border-accent-a45 ${METER} ${usageOpen ? "bg-accent-a14" : "bg-transparent"} ${usageOpen ? "text-accent-soft" : "text-ink-quiet"}`}
+          className={`hover:text-accent-soft hover:border-accent-a45 flex-[0_0_auto] ${METER} ${usageOpen ? "bg-accent-a14" : "bg-transparent"} ${usageOpen ? "text-accent-soft" : "text-ink-quiet"}`}
         >
           <svg
             width="12"
@@ -90,9 +76,14 @@ export function ChatToolbar({
           <span className={`${MONO} text-10h`}>
             {fill === null ? "—" : `${String(Math.max(1, Math.round(fill * 100)))}%`}
           </span>
-        </button>
-        {usageOpen ? <UsageMenu floorId={floor.id} /> : null}
-      </div>
+        </Popover.Trigger>
+        <UsageMenu
+          floorId={floor.id}
+          onOpenFull={() => {
+            setUsageOpen(false);
+          }}
+        />
+      </Popover.Root>
       <button
         type="button"
         aria-label={t("chat.sendHint")}

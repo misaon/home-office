@@ -20,7 +20,7 @@ const DWELL: Record<
   coffee: { activity: "drink", ms: 7000, anchor: "coffee" },
   restroom: { activity: "restroom", ms: 6000, anchor: "restroom" },
   smoke: { activity: "smoke", ms: 9000, anchor: "smoke" },
-  relax: { activity: "relax", ms: 12000, anchor: "relax" },
+  relax: { activity: "relax", ms: 12_000, anchor: "relax" },
 };
 /** The boss leaves his office for a coffee or the restroom only; lounging is for the staff. */
 const BOSS_NEEDS: readonly NeedKind[] = ["coffee", "restroom"];

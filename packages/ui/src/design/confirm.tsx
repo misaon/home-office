@@ -1,7 +1,6 @@
-import { useEffect, useRef } from "react";
+import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { useTranslation } from "react-i18next";
 import { DISPLAY } from "./tokens.ts";
-import { CENTRE, outside } from "./dialog-sheet.tsx";
 
 export type Ask = {
   title: string;
@@ -13,9 +12,16 @@ export type Ask = {
 };
 
 const SHEET =
-  "w-[min(440px,100%)] rounded-18 bg-dialog border border-border-sheet shadow-sheet animate-pop-400";
+  "w-[min(440px,100vw-64px)] rounded-18 bg-dialog border border-border-sheet shadow-sheet animate-pop-400";
 
 const FOOT = "flex items-center justify-end gap-9 py-14 px-24 border-t border-line bg-foot";
+
+/**
+ * This dialog dims a shade further and settles a little sooner than the office's other sheets, because
+ * it is asking rather than showing.
+ */
+const BACKDROP =
+  "fixed inset-0 z-60 bg-scrim-a78 backdrop-blur-[12px] transition-opacity duration-240 data-starting-style:opacity-0 data-ending-style:opacity-0";
 
 /** How bad this is, as one mark: a warning triangle, or a circle that only wants to be sure. */
 function AskMark({ danger }: { danger: boolean }): React.JSX.Element {
@@ -91,8 +97,8 @@ function AskFoot({
 }
 
 /**
- * Asking before something cannot be undone. A real `<dialog>`, so the platform brings the focus trap,
- * Escape and the backdrop; what the office adds is the icon that says how bad this is.
+ * Asking before something cannot be undone. An alert dialog rather than a plain one, so a press in the
+ * room outside it does not count as an answer; what this adds is the icon that says how bad this is.
  */
 export function Confirm({
   ask,
@@ -101,49 +107,38 @@ export function Confirm({
   ask: Ask | null;
   onClose: () => void;
 }): React.JSX.Element {
-  const dialog = useRef<HTMLDialogElement>(null);
   const danger = ask?.danger !== false;
 
-  useEffect(() => {
-    const element = dialog.current;
-    if (ask !== null) {
-      element?.showModal();
-      // showModal() hands focus to the first focusable thing, which is the scrolling sheet: a scroll
-      // container Chrome rings in blue. The dialog itself takes it instead, and wears no ring.
-      element?.focus();
-    } else {
-      element?.close();
-    }
-  }, [ask]);
-
   return (
-    <dialog
-      ref={dialog}
-      className="border-0 p-0 m-0 max-w-none max-h-none w-full h-full bg-transparent text-inherit overflow-hidden outline-none focus:outline-none focus-visible:outline-none backdrop:bg-scrim-a74 backdrop:backdrop-blur-[10px] backdrop:animate-fade-280 backdrop:bg-scrim-a78 backdrop:backdrop-blur-[12px] backdrop:animate-fade-240"
-      aria-label={ask?.title ?? ""}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
+    <AlertDialog.Root
+      open={ask !== null}
+      onOpenChange={(next) => {
+        if (!next) {
+          onClose();
+        }
       }}
     >
-      <div role="presentation" className={CENTRE} onClick={outside(onClose)}>
-        <div className={SHEET}>
-          <div className="flex gap-14 pt-22 px-24 pb-18">
-            <AskMark danger={danger} />
-            <div className="flex-1 min-w-0">
-              <div
-                className={`${DISPLAY} font-bold text-17 tracking-tight leading-heading text-pretty`}
-              >
-                {ask?.title ?? ""}
-              </div>
-              <div className="text-12h text-ink-label mt-8 leading-prose text-pretty">
-                {ask?.body ?? ""}
+      <AlertDialog.Portal>
+        <AlertDialog.Backdrop className={BACKDROP} />
+        <AlertDialog.Viewport className="fixed inset-0 z-60 flex items-center justify-center p-32">
+          <AlertDialog.Popup className={`max-w-full outline-none ${SHEET}`}>
+            <div className="flex gap-14 pt-22 px-24 pb-18">
+              <AskMark danger={danger} />
+              <div className="flex-1 min-w-0">
+                <AlertDialog.Title
+                  className={`${DISPLAY} font-bold text-17 tracking-tight leading-heading text-pretty`}
+                >
+                  {ask?.title ?? ""}
+                </AlertDialog.Title>
+                <AlertDialog.Description className="text-12h text-ink-label mt-8 leading-prose text-pretty">
+                  {ask?.body ?? ""}
+                </AlertDialog.Description>
               </div>
             </div>
-          </div>
-          <AskFoot ask={ask} danger={danger} onClose={onClose} />
-        </div>
-      </div>
-    </dialog>
+            <AskFoot ask={ask} danger={danger} onClose={onClose} />
+          </AlertDialog.Popup>
+        </AlertDialog.Viewport>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
   );
 }

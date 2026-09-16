@@ -6,7 +6,7 @@ import type { ElectrobunConfig } from "electrobun";
  * repository paths the daemon needs: image build contexts and the UI bundle.
  */
 const version = Bun.env["HO_RELEASE_VERSION"] ?? "0.0.0";
-if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.test(version)) {
+if (!/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(version)) {
   throw new Error("HO_RELEASE_VERSION must be a stable semantic version");
 }
 

@@ -1,4 +1,9 @@
 import type { AgentId, AgentRole, AuthKind, Attachment, Gender, TaskId } from "@ho/protocol";
+import {
+  useMutation,
+  type UseMutationOptions,
+  type UseMutationResult,
+} from "@tanstack/react-query";
 import { create } from "zustand";
 import type { Ask } from "./confirm.tsx";
 import type { Lane, Member } from "./data.ts";
@@ -22,22 +27,17 @@ export type AgentDraft = {
   prompt: string;
 };
 /**
- * What the office is *showing*, as opposed to what it *is*: which panel is open, which popover, what is
- * half-typed. Everything with a fact behind it lives in the daemon and arrives through `../store.ts`.
+ * What the office is *showing*, as opposed to what it *is*: which panel is open, what is half-typed.
+ * Which menu is up is no longer here: Base UI owns each popup's own open state. Everything with a fact behind it lives in the daemon and arrives through `../store.ts`.
  */
 export type Design = {
   tab: Tab;
-  floorOpen: boolean;
   floorQuery: string;
-  floorX: number;
   editor: boolean;
   draft: string;
   toast: string | null;
   query: string;
   searchOpen: boolean;
-  attachOpen: boolean;
-  usageOpen: boolean;
-  openSelect: string | null;
   attachment: Attachment | null;
   lightbox: Attachment | null;
   sheet: Sheet;
@@ -47,18 +47,14 @@ export type Design = {
   agentDraft: AgentDraft | null;
   boardFilter: Lane | "all";
   teamFilter: "all" | "working" | "idle";
-  credOpen: string | null;
-  floorRowOpen: string | null;
-  openIntake: string | null;
-  openServices: string | null;
   /** What the office is about to do that cannot be undone, and how it says so. */
   ask: Ask | null;
   usageView: "Tokens" | "Resources";
   win: Window;
 
-  set: (patch: Partial<Design>) => void;
+  /** A patch, or what to make of the state it lands on. */
+  set: (patch: Partial<Design> | ((state: Design) => Partial<Design>)) => void;
   confirm: (ask: Ask) => void;
-  update: (fn: (state: Design) => Partial<Design>) => void;
   flash: (message: string) => void;
 };
 
@@ -66,17 +62,12 @@ let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 const INITIAL = {
   tab: "Chat",
-  floorOpen: false,
   floorQuery: "",
-  floorX: 190,
   editor: false,
   draft: "",
   toast: null,
   query: "",
   searchOpen: false,
-  attachOpen: false,
-  usageOpen: false,
-  openSelect: null,
   attachment: null,
   lightbox: null,
   sheet: null,
@@ -85,10 +76,6 @@ const INITIAL = {
   agentDraft: null,
   boardFilter: "all",
   teamFilter: "all",
-  credOpen: null,
-  floorRowOpen: null,
-  openIntake: null,
-  openServices: null,
   ask: null,
   usageView: "Tokens",
   win: "24 h",
@@ -103,9 +90,6 @@ export const useDesign = create<Design>((set) => ({
   confirm: (ask) => {
     set({ ask });
   },
-  update: (fn) => {
-    set(fn);
-  },
   /** What just happened, said once and then gone. */
   flash: (message) => {
     clearTimeout(toastTimer);
@@ -116,5 +100,22 @@ export const useDesign = create<Design>((set) => ({
   },
 }));
 
+/**
+ * Every mutation in the office reports failure the same way: the daemon's own message, in the toast.
+ * Twelve call sites wrote that handler out; this writes it once. `onError` is not accepted, so a site
+ * cannot quietly grow a different way of failing — changing that is a deliberate edit, not an omission.
+ */
+export function useOfficeMutation<TData, TVariables>(
+  options: Omit<UseMutationOptions<TData, Error, TVariables>, "onError">,
+): UseMutationResult<TData, Error, TVariables> {
+  const flash = useDesign((s) => s.flash);
+  return useMutation({
+    ...options,
+    onError: (error: Error) => {
+      flash(error.message);
+    },
+  });
+}
+
 /** Thin spaces between thousands, the way the design writes every number. */
-export const fmt = (n: number): string => String(n).replaceAll(/\B(?=(\d{3})+(?!\d))/gu, " ");
+export const fmt = (n: number): string => String(n).replaceAll(/\B(?=(?:\d{3})+(?!\d))/gu, " ");

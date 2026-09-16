@@ -17,8 +17,11 @@ Expected domain errors use the existing `Result` contract; adapter failures can 
 ## Structure and state
 
 Keep domain decisions and simulation pure. I/O belongs to adapters behind the existing core ports.
-Persist state changes as events; projections are rebuilt from the event log. Serialized command
-execution belongs to the daemon's Office, not ad hoc locks scattered among callers.
+Persist state changes as events; projections are rebuilt from the event log. A repository's own
+`.ho/config.json` is an input that produces those events, not a second store to reconcile: parsing and
+reading it are the daemon's, the diff is a pure function in core, and what it cannot do is reported
+rather than forced. Serialized command execution belongs to the daemon's Office, not ad hoc locks
+scattered among callers.
 
 Prefer focused modules and maintained small dependencies over generic utility layers. Shared helpers
 belong with the behavior they implement; there is no required `core/src/shared` directory. Lifecycle
@@ -35,10 +38,15 @@ programs, type-aware oxlint with warnings denied, oxfmt, Knip **and the office U
 because the UI is compiled with Bun's React Compiler, so a UI change that only typechecks is not checked.
 Missing desktop declarations fail.
 
-Oxlint enables correctness, suspicious, pedantic and performance categories. Style is off except for
-explicit rules. React hooks and JSX accessibility checks are enabled; automatic JSX does not require a
-React namespace import. The separate experimental exhaustive-effect-dependencies rule is disabled;
-standard exhaustive-deps remains enabled. CSS is covered by Knip in the UI workspace.
+Oxlint enables every category except `restriction`: correctness, suspicious, pedantic, performance,
+style and nursery, 554 rules as of 2026-09-15. `restriction` exists to forbid language features and on
+this codebase bans `async`/`await`, optional chaining and rest/spread. React hooks and JSX accessibility
+checks are enabled; automatic JSX does not require a React namespace import. The separate experimental
+exhaustive-effect-dependencies rule is disabled; standard exhaustive-deps remains enabled. Thirty-four
+rules are off with a reason each — see [the plan](plans/2026-09-15-strict-linting.md); two of them,
+`unicorn/number-literal-case` and `unicorn/no-nested-ternary`, deadlock with oxfmt and cannot be turned
+back on. Oxlint has no CSS rules: CSS syntax is gated by the Tailwind compile in `bun run check`, and
+Knip covers the UI workspace's unused CSS.
 
 The rules worth knowing before writing code, because they change how it is written:
 `typescript/no-unsafe-type-assertion` (an `as` that widens is an error — parse instead, or state the

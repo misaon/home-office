@@ -7,6 +7,7 @@
     ".": "./index.html"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@ho/core": "workspace:*",
     "@ho/protocol": "workspace:*",
     "@ho/sim": "workspace:*",
@@ -14,10 +15,12 @@
     "@orpc/contract": "catalog:",
     "@tanstack/react-query": "catalog:",
     "i18next": "catalog:",
+    "lucide-react": "catalog:",
     "pixi.js": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-i18next": "catalog:",
+    "simple-icons": "catalog:",
     "zustand": "catalog:"
   },
   "devDependencies": {

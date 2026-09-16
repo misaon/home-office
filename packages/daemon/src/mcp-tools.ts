@@ -15,6 +15,8 @@ import {
   type AgentId,
   HoAskHumanInput,
   HoDelegateInput,
+  HoGetSkillFileInput,
+  HoGetSkillInput,
   HoHandoffInput,
   HoReplyInput,
   HoReportInput,
@@ -30,9 +32,12 @@ import type { ZodRawShapeCompat } from "@modelcontextprotocol/sdk/server/zod-com
 import { z } from "zod";
 import type { AttachmentStore } from "./attachments.ts";
 import type { Office } from "./office.ts";
+import type { SkillLibrary } from "./skills.ts";
 
 export type McpSessionContext = {
   sessionId: SessionId;
+  /** Which pack this agent's skills come from; "none" means it was hired without one. */
+  skillPack: string;
   taskId: TaskId;
   agentId: AgentId;
   projectId: ProjectId;
@@ -40,7 +45,12 @@ export type McpSessionContext = {
   attachments: AttachmentStore;
 };
 
-export type Entry = { ctx: McpSessionContext; replied: boolean; report: HoReportInput | null };
+export type Entry = {
+  ctx: McpSessionContext;
+  replied: boolean;
+  report: HoReportInput | null;
+  skills: SkillLibrary;
+};
 export type ToolResult = { content: { type: "text"; text: string }[]; isError?: true };
 type Tool<S extends z.ZodRawShape> = {
   name: string;
@@ -201,6 +211,38 @@ const reply = define({
   },
 });
 
+/**
+ * Skills, served the way the Agent Skills format loads them from disk: an index of names and
+ * descriptions, then one body, then a bundled file. Claude Code reads the same directories through
+ * `--plugin-dir`; every other provider reads them here, so a skill stays one artifact.
+ */
+const listSkills = define({
+  name: "ho_list_skills",
+  description:
+    "The skills available to you: name and one-line description each. Read one with ho_get_skill before doing work it covers.",
+  shape: {},
+  modes: ALL,
+  run: (_input, _office, entry) => entry.skills.index(entry.ctx.skillPack),
+});
+
+const getSkill = define({
+  name: "ho_get_skill",
+  description:
+    "The full instructions of one skill, and the names of the files it bundles. Call it when its description matches the work in front of you.",
+  shape: HoGetSkillInput.shape,
+  modes: ALL,
+  run: (input, _office, entry) => entry.skills.read(entry.ctx.skillPack, input.name),
+});
+
+const getSkillFile = define({
+  name: "ho_get_skill_file",
+  description:
+    "One file bundled with a skill, by the path ho_get_skill listed. Read it only when that skill's instructions send you to it.",
+  shape: HoGetSkillFileInput.shape,
+  modes: ALL,
+  run: (input, _office, entry) => entry.skills.file(entry.ctx.skillPack, input.name, input.path),
+});
+
 export const TOOLS: readonly AnyTool[] = [
   report,
   askTheHuman,
@@ -210,6 +252,9 @@ export const TOOLS: readonly AnyTool[] = [
   review,
   delegate,
   reply,
+  listSkills,
+  getSkill,
+  getSkillFile,
 ];
 
 export const text = (value: unknown): ToolResult => ({

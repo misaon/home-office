@@ -44,7 +44,10 @@ export const officeUrl = (info: DaemonInfo): string => `${daemonUrl(info)}/#toke
 /** Whether the daemon `daemon.json` describes still answers, so a stale file after a crash is not trusted. */
 export const daemonAnswers = async (info: DaemonInfo): Promise<boolean> => {
   try {
-    return (await fetch(`${daemonUrl(info)}/health`, { signal: AbortSignal.timeout(1500) })).ok;
+    const answered = await fetch(`${daemonUrl(info)}/health`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    return answered.ok;
   } catch {
     return false;
   }

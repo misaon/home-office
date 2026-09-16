@@ -25,6 +25,7 @@ export const csEditor: typeof enEditor = {
     name: "Název",
     file: "Soubor",
     fileHint: "převzato z názvu",
+    palette: "Prvky zvoleného nástroje",
     tool: "Nástroj",
     wall: "Zeď",
     room: "Místnost",

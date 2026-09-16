@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { Dialog } from "@base-ui/react/dialog";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { hintFor, typedIn, useRepoInspection, type RepoDraft } from "./add-project-inspect.ts";
@@ -9,7 +9,7 @@ import { FloorSource } from "./new-floor-source.tsx";
 import { type Client, requireClient } from "../rpc.ts";
 import { useUi } from "../store.ts";
 import { DISPLAY } from "./tokens.ts";
-import { useDesign } from "./store.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
 
 const EMPTY: RepoDraft = {
   kind: "local",
@@ -77,9 +77,8 @@ export function NewFloor(): React.JSX.Element | null {
   const close = (): void => {
     setOpen(false);
     setDraft(EMPTY);
-    set({ openSelect: null });
   };
-  const create = useMutation({
+  const create = useOfficeMutation({
     mutationFn: (input: Parameters<Client["projects"]["create"]>[0]) =>
       requireClient().projects.create(input),
     onSuccess: (project) => {
@@ -87,9 +86,6 @@ export function NewFloor(): React.JSX.Element | null {
       close();
       set({ tab: "Team" });
       flash(t("project.created", { name: project.name }));
-    },
-    onError: (error: Error) => {
-      flash(error.message);
     },
   });
 
@@ -121,13 +117,12 @@ export function NewFloor(): React.JSX.Element | null {
               ? t("project.repoIsAll")
               : t("project.changeLater", { number: floors + 1 })}
           </span>
-          <button
-            type="button"
+          <Dialog.Close
             onClick={close}
             className={`hover:text-ink hover:border-border-hover hover:bg-raised ${CANCEL}`}
           >
             {t("common.cancel")}
-          </button>
+          </Dialog.Close>
           <button
             type="button"
             disabled={create.isPending}

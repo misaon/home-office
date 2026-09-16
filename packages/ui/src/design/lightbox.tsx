@@ -1,7 +1,7 @@
+import { Dialog } from "@base-ui/react/dialog";
 import { isImageType, type Attachment } from "@ho/protocol";
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { attachmentUrl } from "../attachments.ts";
+import { useAttachmentUrl } from "../attachments.ts";
 import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
@@ -36,42 +36,45 @@ function LightboxBar({
 export function Lightbox({ attachment }: { attachment: Attachment }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);
-  const [url, setUrl] = useState<string | null>(null);
+  const url = useAttachmentUrl(attachment);
   const close = (): void => {
     set({ lightbox: null });
   };
 
-  useEffect(() => {
-    let live = true;
-    void attachmentUrl(attachment).then((value) => {
-      if (live) {
-        setUrl(value);
-      }
-    });
-    return () => {
-      live = false;
-    };
-  }, [attachment]);
-
   return (
-    <div
-      role="presentation"
-      onClick={close}
-      className="fixed inset-0 z-85 bg-scrim-a86 backdrop-blur-[14px] flex flex-col items-center justify-center gap-14 p-24 animate-fade-260"
+    <Dialog.Root
+      open
+      onOpenChange={(next) => {
+        if (!next) {
+          close();
+        }
+      }}
     >
-      <div className="w-[min(1240px,97vw)] flex-[1_1_auto] min-h-0 flex flex-col rounded-18 overflow-hidden border border-accent-a30 shadow-sheet animate-pop-420">
-        <div className="flex-1 min-h-0 bg-sunk grid place-items-center overflow-hidden">
-          {!isImageType(attachment.mime) ? (
-            <span className={`${MONO} text-13 text-accent-quote`}>{attachment.name}</span>
-          ) : url === null ? (
-            <span className={`${MONO} text-13 text-accent-quote`}>{t("common.checking")}</span>
-          ) : (
-            <img src={url} alt={attachment.name} className="max-w-full max-h-full object-contain" />
-          )}
-        </div>
-        <LightboxBar attachment={attachment} onClose={close} />
-      </div>
-      <span className="text-11h text-ink-meta flex-[0_0_auto]">{t("chat.clickToClose")}</span>
-    </div>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-85 bg-scrim-a86 backdrop-blur-[14px] transition-opacity duration-260 data-starting-style:opacity-0 data-ending-style:opacity-0" />
+        <Dialog.Viewport className="fixed inset-0 z-85 flex flex-col items-center justify-center gap-14 p-24">
+          <Dialog.Popup
+            aria-label={attachment.name}
+            className="w-[min(1240px,97vw)] flex-[1_1_auto] min-h-0 flex flex-col rounded-18 overflow-hidden border border-accent-a30 shadow-sheet outline-none animate-pop-420"
+          >
+            <div className="flex-1 min-h-0 bg-sunk grid place-items-center overflow-hidden">
+              {!isImageType(attachment.mime) ? (
+                <span className={`${MONO} text-13 text-accent-quote`}>{attachment.name}</span>
+              ) : url === null ? (
+                <span className={`${MONO} text-13 text-accent-quote`}>{t("common.checking")}</span>
+              ) : (
+                <img
+                  src={url}
+                  alt={attachment.name}
+                  className="max-w-full max-h-full object-contain"
+                />
+              )}
+            </div>
+            <LightboxBar attachment={attachment} onClose={close} />
+          </Dialog.Popup>
+          <span className="text-11h text-ink-meta flex-[0_0_auto]">{t("chat.clickToClose")}</span>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

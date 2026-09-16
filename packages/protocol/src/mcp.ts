@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ATTACHMENTS_MAX, AttachmentName, CHAT_OUTBOX_DIR } from "./attachments.ts";
-import { TaskPriority } from "./domain.ts";
+import { CRITERIA_MAX, TaskPriority } from "./domain.ts";
 import { TaskId } from "./ids.ts";
 
 /**
@@ -51,11 +51,31 @@ export type HoAskHumanInput = z.infer<typeof HoAskHumanInput>;
 /** The boss creates work on his own floor; `assignee` may be himself when nobody else is around. */
 export const HoDelegateInput = z.object({
   title: z.string().min(1).max(200),
-  brief: z
-    .string()
+  goal: z.string().min(1).max(500).describe("One sentence: what this task achieves and for whom"),
+  acceptanceCriteria: z
+    .array(z.string().min(1).max(500))
     .min(1)
-    .max(8000)
-    .describe("Everything the worker needs: goal, acceptance criteria, constraints"),
+    .max(CRITERIA_MAX)
+    .describe(
+      'Independently checkable conditions, each one "When <condition>, the system shall <behaviour>". The reviewer checks exactly these, so a criterion nobody can verify is not a criterion.',
+    ),
+  constraints: z
+    .array(z.string().min(1).max(500))
+    .max(CRITERIA_MAX)
+    .prefault([])
+    .describe("What the worker must not change, must reuse, or must keep working"),
+  outOfScope: z
+    .array(z.string().min(1).max(500))
+    .max(CRITERIA_MAX)
+    .prefault([])
+    .describe("Nearby work this task deliberately does not include"),
+  context: z
+    .string()
+    .max(4000)
+    .prefault("")
+    .describe(
+      "Background the worker cannot derive from the repository: decisions, links, prior art",
+    ),
   assignee: z
     .string()
     .min(1)
@@ -83,3 +103,18 @@ export const HoReplyInput = z.object({
     ),
 });
 export type HoReplyInput = z.infer<typeof HoReplyInput>;
+
+/** A skill is addressed by its own name, which the Agent Skills format keeps equal to its directory. */
+export const HoGetSkillInput = z.object({
+  name: z.string().min(1).max(64).describe("Skill name exactly as ho_list_skills reported it"),
+});
+export type HoGetSkillInput = z.infer<typeof HoGetSkillInput>;
+
+export const HoGetSkillFileInput = HoGetSkillInput.extend({
+  path: z
+    .string()
+    .min(1)
+    .max(200)
+    .describe("Bundled file path as ho_get_skill listed it, e.g. references/REFERENCE.md"),
+});
+export type HoGetSkillFileInput = z.infer<typeof HoGetSkillFileInput>;

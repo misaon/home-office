@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { ROLE_KEY } from "../i18n/labels.ts";
 import type { Member } from "./data.ts";
+import { ChevronRight } from "lucide-react";
 import { DISPLAY, MONO, separator } from "./tokens.ts";
 
 const INNER = "flex-1 min-w-0 p-13 flex items-center gap-12";
@@ -73,17 +74,7 @@ export function TeamRow({
             <span>{`${person.model.toLowerCase()} / ${person.effort}`}</span>
           </div>
         </div>
-        <svg
-          className="flex-[0_0_auto] stroke-ink-idle"
-          width="10"
-          height="10"
-          viewBox="0 0 12 12"
-          fill="none"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        >
-          <polyline points="4.5,3 8,6 4.5,9" />
-        </svg>
+        <ChevronRight size={10} strokeWidth={1.5} className="flex-[0_0_auto] stroke-ink-idle" />
       </div>
     </div>
   );

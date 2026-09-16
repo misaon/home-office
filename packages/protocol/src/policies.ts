@@ -39,3 +39,22 @@ export const ServicesPolicy = z.object({
   mode: z.enum(["rootless", "rootful"]).default("rootless"),
 });
 export type ServicesPolicy = z.infer<typeof ServicesPolicy>;
+
+/**
+ * The checks a floor runs on its own work before anything is published. `command` is executed by a
+ * shell inside the task's sandbox — the same place the repository's own code already runs — and never
+ * on the host. Empty disables the gate, which is what a floor that says nothing gets.
+ */
+export const VerifyPolicy = z.object({
+  command: z.string().max(500).default(""),
+  timeoutSeconds: z.int().min(10).max(3600).default(900),
+  /** How often a failing report goes back to its author before the task blocks for the human. */
+  maxAttempts: z.int().min(1).max(5).default(2),
+});
+export type VerifyPolicy = z.infer<typeof VerifyPolicy>;
+
+/**
+ * The prefix every failed-verification note carries. Attempts are counted by reading them back, so the
+ * office needs no second place to store a counter; changing this resets the count of tasks in flight.
+ */
+export const VERIFY_NOTE_PREFIX = "verification failed:";

@@ -1,9 +1,67 @@
+import { type Floor, type Member } from "./data.ts";
 import { useTranslation } from "react-i18next";
-import type { Floor, Member } from "./data.ts";
 import { newDraft } from "./agent-dialog.tsx";
-import { TeamHeader } from "./team-header.tsx";
+import { Plus } from "lucide-react";
 import { TeamRow } from "./team-row.tsx";
 import { useDesign } from "./store.ts";
+import { type Chip, FilterChips } from "./filter-chips.tsx";
+import { DISPLAY } from "./tokens.ts";
+
+type Key = "all" | "working" | "idle";
+
+const FILTERS = [
+  ["all", "team.all", null],
+  ["working", "team.working", "bg-accent"],
+  ["idle", "team.idle", "bg-ink-idle"],
+] as const satisfies readonly [Key, string, string | null][];
+
+const TOP = "flex items-baseline justify-between gap-10 mb-14";
+
+const COUNT = `${DISPLAY} font-bold text-30 tracking-display leading-flat whitespace-nowrap`;
+
+const LABEL = "text-11h text-ink-label overflow-hidden text-ellipsis whitespace-nowrap";
+
+/** How many people are on the floor, the button that hires another, and the three filters. */
+function TeamHeader({ floor, onHire }: { floor: Floor; onHire: () => void }): React.JSX.Element {
+  const { t } = useTranslation();
+  const teamFilter = useDesign((s) => s.teamFilter);
+  const set = useDesign((s) => s.set);
+  const { team } = floor;
+  const chips: Chip<Key>[] = FILTERS.map(([key, label, dot]) => ({
+    key,
+    label,
+    dot,
+    count: key === "all" ? team.length : team.filter((p) => p.status === key).length,
+  }));
+
+  return (
+    <div className="pt-16 px-16 pb-14 border-b border-line mb-16">
+      <div className={TOP}>
+        <div className="flex items-baseline gap-9 min-w-0 flex-wrap">
+          <span className={COUNT}>{team.length}</span>
+          <span
+            className={LABEL}
+          >{`${team.length === 1 ? "agent on " : "agents on "}${floor.name}`}</span>
+        </div>
+        <button
+          type="button"
+          onClick={onHire}
+          className="hover:border-accent-a50 py-6 px-11 rounded-9 border border-border-strong bg-transparent text-11h text-ink-quiet cursor-pointer whitespace-nowrap flex-[0_0_auto] transition-all duration-200"
+        >
+          {t("team.newAgent")}
+        </button>
+      </div>
+      <FilterChips
+        label={t("team.filters")}
+        chips={chips}
+        value={teamFilter}
+        onPick={(key) => {
+          set({ teamFilter: key });
+        }}
+      />
+    </div>
+  );
+}
 
 const LIST = "rounded-14 bg-card border border-edge overflow-hidden mb-12";
 
@@ -16,20 +74,18 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
   const teamFilter = useDesign((s) => s.teamFilter);
   const set = useDesign((s) => s.set);
 
-  const team = floor.team;
+  const { team } = floor;
   const rows = team.filter((p) => teamFilter === "all" || p.status === teamFilter);
   const hire = (): void => {
     set({
       agentDlg: { mode: "new" },
       agentDraft: newDraft(team.some((p) => p.role === "boss")),
-      openSelect: null,
     });
   };
   const open = (person: Member): void => {
     set({
       sheet: { type: "agent", id: person.id },
       sheetDraft: { ...person },
-      openSelect: null,
     });
   };
 
@@ -57,17 +113,7 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
           onClick={hire}
           className={`hover:bg-accent-a14 hover:border-accent-a65 ${HIRE}`}
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          >
-            <line x1="6" y1="2" x2="6" y2="10" />
-            <line x1="2" y1="6" x2="10" y2="6" />
-          </svg>
+          <Plus size={12} strokeWidth={1.6} />
           <span>{t("team.hire")}</span>
         </button>
       </div>

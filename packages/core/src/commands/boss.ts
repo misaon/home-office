@@ -10,17 +10,35 @@ import {
   type ProjectId,
   type Task,
   type TaskId,
+  type TaskSpec,
 } from "@ho/protocol";
 import { bossOf, findAgentByRef } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
-import { chatEvent, handoffEvent, note, titleFromText } from "./shared.ts";
+import { chatEvent, handoffEvent, note, titleFromText, withAgent, withProject } from "./shared.ts";
 import { newTask, readTask } from "./tasks.ts";
 
 /**
  * The boss creates work for his floor (source: delegation). Only a boss delegates, only within his own
  * project, and only to its members — himself included, which is how a floor without staff gets things done.
  */
+const section = (heading: string, lines: readonly string[]): string =>
+  lines.length === 0 ? "" : `\n\n${heading}\n${lines.map((l) => `- ${l}`).join("\n")}`;
+
+/**
+ * The spec as prose, because the brief is what a session's opening message, a pull-request body and a
+ * review prompt all read. The structure stays beside it on the task; this is the rendering, not the
+ * source of truth.
+ */
+const renderBrief = (spec: TaskSpec, context: string): string =>
+  [
+    spec.goal,
+    section("Acceptance criteria:", spec.acceptanceCriteria),
+    section("Constraints:", spec.constraints),
+    section("Out of scope:", spec.outOfScope),
+    context.trim() === "" ? "" : `\n\nContext:\n${context.trim()}`,
+  ].join("");
+
 export function delegateTask(
   model: ReadModel,
   input: HoDelegateInput,
@@ -31,34 +49,40 @@ export function delegateTask(
   if (boss?.role !== "boss") {
     return err(conflict("only the boss delegates tasks"));
   }
-  const project = model.projects.get(boss.projectId);
-  if (project === undefined) {
-    return err(notFound("project", boss.projectId));
-  }
-  const assignee =
-    input.assignee === undefined ? undefined : findAgentByRef(model, input.assignee, project.id);
-  if (input.assignee !== undefined && assignee === undefined) {
-    return err(notFound("agent", `${input.assignee} (on floor "${project.name}")`));
-  }
-  const handoffNote =
-    assignee === undefined
-      ? undefined
-      : note(ctx, "handoff", `delegated by ${boss.name}: ${input.brief}`.slice(0, NOTE_MAX));
-  const task = newTask(ctx, {
-    projectId: project.id,
-    kind: "work",
-    title: input.title,
-    brief: input.brief,
-    source: { kind: "delegation", byAgentId: boss.id, parentTaskId },
-    assigneeId: assignee?.id,
-    priority: input.priority,
-    notes: handoffNote === undefined ? [] : [handoffNote],
+  return withProject(model, boss.projectId, (project) => {
+    const assignee =
+      input.assignee === undefined ? undefined : findAgentByRef(model, input.assignee, project.id);
+    if (input.assignee !== undefined && assignee === undefined) {
+      return err(notFound("agent", `${input.assignee} (on floor "${project.name}")`));
+    }
+    const spec: TaskSpec = {
+      goal: input.goal,
+      acceptanceCriteria: input.acceptanceCriteria,
+      constraints: input.constraints,
+      outOfScope: input.outOfScope,
+    };
+    const brief = renderBrief(spec, input.context);
+    const handoffNote =
+      assignee === undefined
+        ? undefined
+        : note(ctx, "handoff", `delegated by ${boss.name}: ${brief}`.slice(0, NOTE_MAX));
+    const task = newTask(ctx, {
+      projectId: project.id,
+      kind: "work",
+      title: input.title,
+      brief,
+      spec,
+      source: { kind: "delegation", byAgentId: boss.id, parentTaskId },
+      assigneeId: assignee?.id,
+      priority: input.priority,
+      notes: handoffNote === undefined ? [] : [handoffNote],
+    });
+    const events: NewEvent[] = [{ type: "task.created", actor: ctx.actor, payload: { task } }];
+    if (assignee !== undefined && handoffNote !== undefined) {
+      events.push(handoffEvent(ctx, task.id, boss.id, assignee.id, handoffNote.text));
+    }
+    return ok({ events, read: readTask(task.id) });
   });
-  const events: NewEvent[] = [{ type: "task.created", actor: ctx.actor, payload: { task } }];
-  if (assignee !== undefined && handoffNote !== undefined) {
-    events.push(handoffEvent(ctx, task.id, boss.id, assignee.id, handoffNote.text));
-  }
-  return ok({ events, read: readTask(task.id) });
 }
 
 /**
@@ -72,39 +96,37 @@ export function triageMessage(
   attachments: readonly Attachment[],
   ctx: CommandContext,
 ): CommandResult<{ message: ChatMessage; task: Task | null }> {
-  const project = model.projects.get(projectId);
-  if (project === undefined) {
-    return err(notFound("project", projectId));
-  }
-  const boss = bossOf(model, projectId);
-  const messageId = ctx.ids.chatMessage();
-  const task =
-    boss === undefined
-      ? null
-      : newTask(ctx, {
-          projectId,
-          kind: "triage",
-          title: titleFromText(text),
-          brief: text,
-          source: { kind: "chat", messageId },
-          assigneeId: boss.id,
-        });
-  const message: ChatMessage = {
-    id: messageId,
-    projectId,
-    author: { kind: "human" },
-    text,
-    attachments: [...attachments],
-    ...(task === null ? {} : { taskId: task.id }),
-    at: ctx.now,
-  };
-  const events: NewEvent[] = [chatEvent(ctx, message)];
-  if (task !== null) {
-    events.push({ type: "task.created", actor: ctx.actor, payload: { task } });
-  }
-  return ok({
-    events,
-    read: (m) => ({ message, task: task === null ? null : readTask(task.id)(m) }),
+  return withProject(model, projectId, () => {
+    const boss = bossOf(model, projectId);
+    const messageId = ctx.ids.chatMessage();
+    const task =
+      boss === undefined
+        ? null
+        : newTask(ctx, {
+            projectId,
+            kind: "triage",
+            title: titleFromText(text),
+            brief: text,
+            source: { kind: "chat", messageId },
+            assigneeId: boss.id,
+          });
+    const message: ChatMessage = {
+      id: messageId,
+      projectId,
+      author: { kind: "human" },
+      text,
+      attachments: [...attachments],
+      ...(task === null ? {} : { taskId: task.id }),
+      at: ctx.now,
+    };
+    const events: NewEvent[] = [chatEvent(ctx, message)];
+    if (task !== null) {
+      events.push({ type: "task.created", actor: ctx.actor, payload: { task } });
+    }
+    return ok({
+      events,
+      read: (m) => ({ message, task: task === null ? null : readTask(task.id)(m) }),
+    });
   });
 }
 
@@ -117,18 +139,16 @@ export function postAgentMessage(
   ctx: CommandContext,
   attachments: readonly Attachment[] = [],
 ): CommandResult<ChatMessage> {
-  const agent = model.agents.get(agentId);
-  if (agent === undefined) {
-    return err(notFound("agent", agentId));
-  }
-  const message: ChatMessage = {
-    id: ctx.ids.chatMessage(),
-    projectId: agent.projectId,
-    author: { kind: "agent", agentId },
-    text,
-    attachments: [...attachments],
-    ...(taskId === undefined ? {} : { taskId }),
-    at: ctx.now,
-  };
-  return ok({ events: [chatEvent(ctx, message)], read: () => message });
+  return withAgent(model, agentId, (agent) => {
+    const message: ChatMessage = {
+      id: ctx.ids.chatMessage(),
+      projectId: agent.projectId,
+      author: { kind: "agent", agentId },
+      text,
+      attachments: [...attachments],
+      ...(taskId === undefined ? {} : { taskId }),
+      at: ctx.now,
+    };
+    return ok({ events: [chatEvent(ctx, message)], read: () => message });
+  });
 }

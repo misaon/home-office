@@ -1,10 +1,42 @@
-import { useMutation } from "@tanstack/react-query";
+import { type Floor, type Lane } from "./data.ts";
 import { useTranslation } from "react-i18next";
-import { BoardFilters } from "./board-filters.tsx";
-import type { Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
 import { DISPLAY } from "./tokens.ts";
-import { useDesign } from "./store.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
+import { type Chip, FilterChips } from "./filter-chips.tsx";
+
+type Key = Lane | "all";
+
+const FILTERS = [
+  ["all", "board.all", null],
+  ["running", "board.inProgress", "bg-accent"],
+  ["blocked", "board.blocked", "bg-bad"],
+  ["done", "board.done", "bg-good"],
+] as const satisfies readonly [Key, string, string | null][];
+
+/** Which lanes the board is showing, each with how many cards it holds. */
+function BoardFilters({ floor }: { floor: Floor }): React.JSX.Element {
+  const { t } = useTranslation();
+  const boardFilter = useDesign((s) => s.boardFilter);
+  const set = useDesign((s) => s.set);
+  const chips: Chip<Key>[] = FILTERS.map(([key, label, dot]) => ({
+    key,
+    label,
+    dot,
+    count: key === "all" ? floor.cards.length : floor.cards.filter((c) => c.s === key).length,
+  }));
+
+  return (
+    <FilterChips
+      label={t("board.filters")}
+      chips={chips}
+      value={boardFilter}
+      onPick={(key) => {
+        set({ boardFilter: key });
+      }}
+    />
+  );
+}
 
 const SEGMENT = "transition-[width] duration-500 ease-glide";
 
@@ -22,19 +54,16 @@ export function BoardHeader({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const flash = useDesign((s) => s.flash);
   const confirm = useDesign((s) => s.confirm);
-  const cards = floor.cards;
+  const { cards } = floor;
   const total = cards.length === 0 ? 1 : cards.length;
   const done = cards.filter((c) => c.s === "done").length;
   const share = (lane: string): string =>
     `${String(Math.round((cards.filter((c) => c.s === lane).length / total) * 100))}%`;
 
-  const clear = useMutation({
+  const clear = useOfficeMutation({
     mutationFn: () => requireClient().tasks.clear({ projectId: floor.id }),
     onSuccess: (result) => {
       flash(t("board.cleared", { count: result.removed }));
-    },
-    onError: (error: Error) => {
-      flash(error.message);
     },
   });
 

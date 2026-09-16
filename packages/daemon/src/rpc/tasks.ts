@@ -33,11 +33,10 @@ export const taskRoutes = {
   remove: base.tasks.remove.handler(async ({ input, context }) => ({
     id: await context.office.execute(HUMAN_ACTOR, (m, ctx) => removeTask(m, input.id, ctx)),
   })),
-  clear: base.tasks.clear.handler(async ({ input, context }) => ({
-    removed: (
-      await context.office.execute(HUMAN_ACTOR, (m, ctx) =>
-        clearFinishedTasks(m, input.projectId, ctx),
-      )
-    ).length,
-  })),
+  clear: base.tasks.clear.handler(async ({ input, context }) => {
+    const cleared = await context.office.execute(HUMAN_ACTOR, (m, ctx) =>
+      clearFinishedTasks(m, input.projectId, ctx),
+    );
+    return { removed: cleared.length };
+  }),
 };

@@ -7,13 +7,36 @@ import { useUi } from "../store.ts";
 import { Confirm } from "./confirm.tsx";
 import { EmptyOffice } from "./empty-office.tsx";
 import { FaultScreen } from "./fault.tsx";
-import { FloorOverlays } from "./overlays.tsx";
 import { Header } from "./header.tsx";
 import { Lightbox } from "./lightbox.tsx";
 import { Panel } from "./panel.tsx";
 import { Stage } from "./stage.tsx";
-import { Toast } from "./toast.tsx";
 import { useDesign } from "./store.ts";
+import { AgentDialog } from "./agent-dialog.tsx";
+import { useFloor } from "./live.ts";
+
+/** The dialogs that belong to a floor but stand over the whole office. */
+function FloorOverlays(): React.JSX.Element | null {
+  const floor = useFloor();
+  if (floor === null) {
+    return null;
+  }
+  return <AgentDialog floor={floor} />;
+}
+
+/** What just happened, said once and then gone. */
+function Toast(): React.JSX.Element | null {
+  const toast = useDesign((s) => s.toast);
+  if (toast === null) {
+    return null;
+  }
+  return (
+    <div className="fixed bottom-28 left-1/2 z-90 flex items-center gap-10 py-11 px-16 rounded-12 bg-toast border border-accent-a35 shadow-toast animate-toast">
+      <span className="w-7 h-7 rounded-half bg-accent shadow-glow-gold flex-[0_0_auto]" />
+      <span className="text-12h text-ink-warm">{toast}</span>
+    </div>
+  );
+}
 
 /** The office editor is internal: a production bundle carries neither the branch nor the import. */
 const DEV = process.env.NODE_ENV === "development";
@@ -35,10 +58,6 @@ export function App(): React.JSX.Element {
   // Until the log has been replayed the office does not yet know whether it has floors; showing the
   // empty office in that gap would flash the wrong screen at every reload.
   const empty = useUi((s) => s.replayed && s.snapshot.projects.size === 0);
-  const attachOpen = useDesign((s) => s.attachOpen);
-  const usageOpen = useDesign((s) => s.usageOpen);
-  const openSelect = useDesign((s) => s.openSelect);
-  const floorOpen = useDesign((s) => s.floorOpen);
   const lightbox = useDesign((s) => s.lightbox);
   const editor = useDesign((s) => s.editor);
   const ask = useDesign((s) => s.ask);
@@ -54,32 +73,13 @@ export function App(): React.JSX.Element {
       </div>
       <Header internal={DEV} hasFloors={hasFloors} />
       {empty ? <EmptyOffice /> : null}
-      {/* The drawing gave `main` a z-index, which founds a stacking context and caps every popover
-          inside the panel below the sheet that dismisses them; tree order alone already puts it above
-          the glows behind it. */}
+      {/* The drawing gave `main` a z-index, which founds a stacking context; tree order alone already
+          puts it above the glows behind it, and every popup is portalled out of it now. */}
       {hasFloors ? (
         <main className="flex-1 flex min-h-0 relative">
           <Stage internal={DEV} />
           <Panel />
         </main>
-      ) : null}
-      {floorOpen ? (
-        <div
-          role="presentation"
-          onClick={() => {
-            set({ floorOpen: false });
-          }}
-          className="fixed inset-0 z-35"
-        />
-      ) : null}
-      {attachOpen || usageOpen || openSelect !== null ? (
-        <div
-          role="presentation"
-          onClick={() => {
-            set({ attachOpen: false, usageOpen: false, openSelect: null });
-          }}
-          className="fixed inset-0 z-28"
-        />
       ) : null}
       {DEV && (editor || editorFromUrl) ? (
         <EditorOverlay
