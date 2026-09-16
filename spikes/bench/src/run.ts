@@ -74,6 +74,7 @@ function seed(agents: number, tasks: number): StoredEvent[] {
           comment: true,
         },
         services: { enabled: false, mode: "rootless" },
+        verify: { command: "", timeoutSeconds: 900, maxAttempts: 2 },
         createdAt: AT,
         updatedAt: AT,
       },
