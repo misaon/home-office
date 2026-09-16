@@ -8,7 +8,6 @@ import { useDesign } from "./store.ts";
 const FRAME =
   "block w-full mt-10 h-118 rounded-10 cursor-pointer overflow-hidden p-0 border border-accent-a30 bg-sunk transition-all duration-220";
 
-/** A file hanging on a message: the picture itself when it is one, its name when it is not. */
 function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);
@@ -44,7 +43,6 @@ const MINE =
 const THEIRS =
   "max-w-[92%] mr-auto py-11 px-13 rounded-15 rounded-bl-5 bg-toast border border-border";
 
-/** One thing that was said: yours on the right in gold, theirs on the left in grey. */
 export function ChatMessage({
   message,
   boss,

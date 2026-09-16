@@ -10,11 +10,6 @@ const parseJson = (text: string): unknown => {
   }
 };
 
-/**
- * Reads `<repo>/layouts/*.json`, the offices drawn in the internal editor. A packaged app has no
- * repository, so `directory` is null and the store reports itself unavailable instead of pretending. A
- * file that no longer matches the schema is reported rather than silently dropped.
- */
 export async function listLayouts(
   directory: string | null,
   onProblem: (file: string, reason: string) => void,
@@ -40,7 +35,6 @@ export async function listLayouts(
   return { available: true, directory, layouts };
 }
 
-/** Writes `<id>.json`; the RPC boundary already validated `id` as a slug, which is what makes it a file name. */
 export async function saveLayout(
   directory: string | null,
   layout: OfficeLayout,

@@ -19,7 +19,6 @@ import { type CommandContext, type CommandResult, err } from "../result.ts";
 
 export const TITLE_MAX = 200;
 
-/** The first line of a brief makes a decent title until the boss rewrites it. */
 export const titleFromText = (text: string): string => {
   const firstLine = text.split("\n").find((line) => line.trim() !== "") ?? text;
   const trimmed = firstLine.trim();
@@ -50,7 +49,6 @@ export const statusChange = (
   payload: { taskId: task.id, from: task.status, to, ...compact({ reason }) },
 });
 
-/** The office animates this: `from` walks the envelope over to `to` before the daemon acts on it. */
 export const handoffEvent = (
   ctx: CommandContext,
   taskId: TaskId,
@@ -69,11 +67,6 @@ export const chatEvent = (ctx: CommandContext, message: ChatMessage): NewEvent =
   payload: { message },
 });
 
-/**
- * The entity a command works on, handed to the rest of the command — or the `not_found` each one of
- * them used to write out for itself. A command that needs nothing from the entity but its existence
- * ignores the argument.
- */
 const withEntity =
   <Id extends string, Value>(
     kind: Parameters<typeof notFound>[0],

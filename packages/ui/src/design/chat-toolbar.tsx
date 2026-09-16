@@ -15,7 +15,6 @@ const METER =
 const SEND =
   "w-32 h-32 flex-[0_0_32px] grid place-items-center border-0 rounded-10 py-1 px-6 bg-accent text-accent-ink cursor-pointer transition-all duration-220 ease-soft";
 
-/** What sits on the composer's bottom edge: attach, what it costs, and send. */
 export function ChatToolbar({
   floor,
   onSend,

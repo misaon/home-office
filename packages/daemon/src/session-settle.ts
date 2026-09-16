@@ -19,10 +19,6 @@ const GH_TIMEOUT_MS = 120_000;
 const gh = (args: readonly string[], cwd: string | undefined, what: string): Promise<string> =>
   mustExec(["gh", ...args], { cwd, timeoutMs: GH_TIMEOUT_MS }, `gh ${what}`);
 
-/**
- * Opens the project's pull request for a branch (reusing an open one), through the host's `gh`, and
- * returns its URL; null when the project delivers branches only.
- */
 async function openPullRequest(
   project: Project,
   task: Task,
@@ -87,18 +83,11 @@ async function openPullRequest(
   return created.split("\n").findLast((line) => line.startsWith("https://")) ?? null;
 }
 
-/**
- * The floor's own checks, run against what the session committed, before anything leaves the sandbox.
- * A floor that states no command passes by definition. False means the task has already been moved —
- * back to its author with the failing output, or blocked once its attempts are spent — so the caller
- * must publish nothing.
- */
 async function verified(
   deps: SessionDeps,
   ctx: SessionContext,
   provisioned: Provisioned,
 ): Promise<boolean> {
-  // Re-read the project: its own `.ho/config.json` may have changed the command mid-session.
   const project = deps.office.model.projects.get(ctx.project.id) ?? ctx.project;
   if (project.verify.command === "") {
     return true;
@@ -126,7 +115,6 @@ async function verified(
   return false;
 }
 
-/** Pushes the branch back to the source repository, then (per project policy) opens a pull request. */
 async function publish(
   deps: SessionDeps,
   ctx: SessionContext,
@@ -147,10 +135,6 @@ async function publish(
   return openPullRequest(ctx.project, ctx.task, provisioned.branch, report);
 }
 
-/**
- * Closes the loop after the prompt ended. Tools may already have moved the task (report, verdict, handoff,
- * question); only when they did not does the outcome text stand in for the missing report.
- */
 export async function settle(
   deps: SessionDeps,
   ctx: SessionContext,
@@ -159,8 +143,6 @@ export async function settle(
 ): Promise<void> {
   const { office, mcp } = deps;
   const actor = { kind: "agent", agentId: ctx.agent.id } as const;
-  // Re-read rather than close over: publishing a branch takes minutes, in which a human can cancel or
-  // reassign the task, and filing a report against a task that moved on fails the settled session.
   const taskNow = (): Task | undefined => office.model.tasks.get(ctx.task.id);
   const current = taskNow();
   if (current === undefined) {
@@ -187,9 +169,6 @@ export async function settle(
       return;
     }
     case "triage": {
-      // A triage task that blocks is announced by the boss, and without a filed report the reason he
-      // reads out is this very text — so posting it here as well says the same sentence twice. That is
-      // what a failed prompt looks like: the runtime's error is both the "report" and the reason.
       const bossWillReadItOut = blocked && filed === null;
       if (
         !bossWillReadItOut &&
@@ -210,8 +189,6 @@ export async function settle(
       return;
     }
     case "work": {
-      // Work the agent calls finished is checked before it is published; blocked work is not, because
-      // there is nothing to publish and the human is being asked for a decision either way.
       const status = blocked ? "blocked" : (filed?.status ?? "review");
       if (status !== "blocked" && !(await verified(deps, ctx, provisioned))) {
         return;
@@ -226,7 +203,6 @@ export async function settle(
         ),
       );
       if (taskNow()?.status === "in_progress") {
-        // What the agent filed through `ho_report` stands; without a report the work goes to review.
         await office.execute(actor, (m, c) => fileReport(m, ctx.task.id, { status, summary }, c));
       }
     }

@@ -14,7 +14,6 @@ import { useDesign } from "./store.ts";
 import { CredForm, NAMED } from "./settings-cred-form.tsx";
 import { ChevronRight } from "lucide-react";
 
-/** Which language the office speaks to you in; agents are briefed in English regardless. */
 function LanguageCard(): React.JSX.Element {
   const { t, i18n } = useTranslation();
   const flash = useDesign((s) => s.flash);
@@ -62,7 +61,6 @@ const NAME = "flex-1 min-w-0 text-13 overflow-hidden text-ellipsis whitespace-no
 
 const TAG = `${MONO} text-9h py-3 px-9 rounded-pill flex-[0_0_auto]`;
 
-/** One key the office holds: whether it has it, and the door to pasting a new one. */
 function CredRow({
   name,
   stored,
@@ -105,7 +103,6 @@ const HEADING = `${MONO} text-10 tracking-caps-wider uppercase text-ink-label`;
 
 const CARD = "rounded-14 bg-card border border-edge overflow-hidden";
 
-/** A section rule with its name on the left and its count on the right. */
 function Rule({ name, count }: { name: string; count: string }): React.JSX.Element {
   return (
     <div className="flex items-center gap-8 mt-0 mx-2 mb-9">
@@ -116,7 +113,6 @@ function Rule({ name, count }: { name: string; count: string }): React.JSX.Eleme
   );
 }
 
-/** The office itself: the language it speaks, the keys it holds and the floors it has. */
 export function Settings(): React.JSX.Element {
   const { t } = useTranslation();
   const floors = useFloors();

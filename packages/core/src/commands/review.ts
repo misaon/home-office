@@ -12,13 +12,11 @@ import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
 import { handoffEvent, note, noteEvent, statusChange, withTask } from "./shared.ts";
 import { readTask } from "./tasks.ts";
 
-/** A reviewer for a floor: a member with the reviewer role who is not the author. */
 const reviewerFor = (model: ReadModel, task: Task): Agent | undefined =>
   [...model.agents.values()].find(
     (a) => a.role === "reviewer" && a.id !== task.assigneeId && a.projectId === task.projectId,
   );
 
-/** Worker (or boss in triage) closes its session: report text + the next status, with automatic review routing. */
 export function fileReport(
   model: ReadModel,
   taskId: TaskId,
@@ -42,11 +40,9 @@ export function fileReport(
       events.push(statusChange(ctx, task, "blocked", input.summary.slice(0, 2000)));
       return ok({ events, read });
     }
-    // "done" means the agent is asking for no review, which the tool's own description promises.
     const reviewer =
       input.status === "review" && task.kind === "work" ? reviewerFor(model, task) : undefined;
     if (reviewer === undefined) {
-      // Without a reviewer in the project the branch is the deliverable: the human reviews it on GitHub.
       events.push(
         statusChange(
           ctx,
@@ -59,7 +55,6 @@ export function fileReport(
       );
       return ok({ events, read });
     }
-    // The author carries the work to the reviewer: a handoff the office animates before the review starts.
     const handoffNote = note(ctx, "handoff", `review requested from ${reviewer.name}`);
     events.push(
       noteEvent(ctx, task, handoffNote),
@@ -77,7 +72,6 @@ export function fileReport(
   });
 }
 
-/** Reviewer verdict: approve closes the task; request_changes sends it back to the worker or blocks it after the budget. */
 export function submitReview(
   model: ReadModel,
   taskId: TaskId,
@@ -115,7 +109,6 @@ export function submitReview(
       );
       return ok({ events, read });
     }
-    // Changes requested: the reviewer walks the findings back to the author.
     const reviewerName =
       task.reviewerId === undefined
         ? "the reviewer"

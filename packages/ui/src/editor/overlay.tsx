@@ -20,11 +20,6 @@ import {
   type Tool,
 } from "./draft.ts";
 
-/**
- * The internal office editor. Compiled into development bundles only — `ui-build.ts` resolves this
- * module to a stub for production. Left button paints, right button erases, and Save writes
- * `layouts/<id>.json` in the repository through the daemon.
- */
 export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.Element {
   const { t } = useTranslation();
   const queries = useQueryClient();
@@ -41,7 +36,6 @@ export function EditorOverlay({ onClose }: { onClose: () => void }): React.JSX.E
   });
   const [note, setNote] = useState<Note | null>(null);
 
-  // R rotates the piece being held, the way Prison Architect does, unless a field has the keyboard.
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (event.key.toLowerCase() === "r" && document.activeElement?.tagName !== "INPUT") {

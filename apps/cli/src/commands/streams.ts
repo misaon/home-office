@@ -31,7 +31,6 @@ const fmt = (n: number): string => n.toLocaleString("en-US");
 const row = (label: string, u: Usage, sessions?: number): string =>
   `${label.padEnd(24)} in=${fmt(u.inputTokens).padStart(10)} out=${fmt(u.outputTokens).padStart(9)} cache=${fmt(u.cacheReadTokens).padStart(10)} write=${fmt(u.cacheWriteTokens).padStart(9)} turns=${String(u.turns).padStart(5)}${sessions === undefined ? "" : ` sessions=${String(sessions)}`}`;
 
-/** `24h`, `7d` or plain hours. */
 const hoursOf = (since: string | undefined): number | undefined => {
   if (since === undefined) {
     return undefined;

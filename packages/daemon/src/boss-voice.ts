@@ -22,7 +22,6 @@ const nameOf = (model: Model, id: Agent["id"] | undefined): string =>
 
 const quote = (task: Task): string => `“${task.title}”`;
 
-/** What Andrew says when a task he created changes hands or state; null for moments he stays quiet about. */
 function statusLine(
   model: Model,
   boss: Agent,
@@ -53,7 +52,6 @@ function statusLine(
     return `${quote(task)} is done.${outcome === "" ? "" : `\n${outcome}`}`;
   }
   if (to === "blocked") {
-    // A question is already in the chat as the colleague's own message; only other blocks are reported.
     return reason?.startsWith(QUESTION_PREFIX) === true
       ? null
       : `${quote(task)} is blocked${reason === undefined ? "" : `: ${reason}`}.`;
@@ -64,17 +62,12 @@ function statusLine(
   return null;
 }
 
-/** Whether finished work walks back to the boss before he speaks: somebody else did it and it just ended. */
 const walksBack = (boss: Agent, task: Task, to: TaskStatus, reason: string | undefined): boolean =>
   task.kind === "work" &&
   task.assigneeId !== undefined &&
   task.assigneeId !== boss.id &&
   (to === "done" || (to === "blocked" && reason?.startsWith(QUESTION_PREFIX) !== true));
 
-/**
- * The boss's voice in the floor's chat (D23): deterministic status lines when he delegates, when work starts,
- * goes to review, comes back or ends. Finished work first walks back to his office while somebody watches.
- */
 export function startBossVoice(
   office: Office,
   gate: OfficeGate,
@@ -115,7 +108,6 @@ export function startBossVoice(
     if (walksBack(boss, before, to, reason)) {
       await gate.waitFor(before.id, event.at);
     }
-    // Artifacts (branch, PR) land right after the status change; re-read so the line carries them.
     const task = office.model.tasks.get(taskId) ?? before;
     const text = statusLine(office.model, boss, task, to, reason);
     if (text !== null) {

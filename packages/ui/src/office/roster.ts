@@ -11,7 +11,6 @@ import {
 } from "@ho/sim";
 import { model } from "../store.ts";
 
-/** Adds a floor for a project (the same plane under the project's id) with Lola at the reception spot. */
 function ensureFloor(
   world: World,
   receptionists: Map<string, AgentId>,
@@ -33,7 +32,6 @@ function ensureFloor(
   }
 }
 
-/** The boss starts at his desk (his office is his home); the staff arrive by the elevator. */
 function spawnAgent(world: World, id: AgentId, floorId: ProjectId, boss: boolean): void {
   if (!boss) {
     spawnActor(world, id, floorId, { kind: "staff" });
@@ -47,9 +45,6 @@ function spawnAgent(world: World, id: AgentId, floorId: ProjectId, boss: boolean
   }
 }
 
-/**
- * Reconciles floors and actors with the read model: one floor per project, one actor per agent, Lola on each.
- */
 export function syncRoster(
   world: World,
   receptionists: Map<string, AgentId>,
@@ -67,7 +62,6 @@ export function syncRoster(
     }
   }
   for (const agent of model.agents.values()) {
-    // A floor is ensured per project above; an agent of a floor that is gone gets no character.
     if (!world.floors.has(agent.projectId)) {
       continue;
     }

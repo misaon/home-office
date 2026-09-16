@@ -34,7 +34,6 @@ export const layoutsQuery = queryOptions({
   queryFn: ({ signal }) => requireClient().layouts.list(undefined, { signal }),
 });
 
-/** `hours` 0 means all time. */
 export const usageQuery = (hours: number): UseQueryOptions<UsageSummary> => ({
   queryKey: ["usage", hours],
   queryFn: ({ signal }) =>

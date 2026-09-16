@@ -31,10 +31,6 @@ const sameRepo = (a: Project["repo"], b: Project["repo"]): boolean =>
     ? a.path === b.path
     : a.kind === "git" && b.kind === "git" && a.url === b.url;
 
-/**
- * A new floor: the project, its boss (Andrew) and copies of the characters imported from other floors. Bosses
- * are never imported (the floor has its own) and imported names must not collide with each other.
- */
 export function createProject(
   model: ReadModel,
   input: ProjectCreateInput,
@@ -102,7 +98,6 @@ export function updateProject(
   });
 }
 
-/** Removes a floor with its staff; open tasks must be finished or cancelled first. Nobody may be mid-session. */
 export function removeProject(
   model: ReadModel,
   id: ProjectId,

@@ -24,10 +24,6 @@ const readSession =
   (model: ReadModel): Session =>
     entity(model.sessions, id);
 
-/**
- * Opens a session. `work`/`triage` start on an assigned task and move it to `in_progress`; `review` runs the
- * task's reviewer on a task in `review` without changing the task status.
- */
 export function startSession(
   model: ReadModel,
   input: { taskId: TaskId; agentId: AgentId; mode: SessionMode },
@@ -99,7 +95,6 @@ export function changeSessionState(
 ): CommandResult<Session> {
   return withSession(model, input.sessionId, (session) => {
     if (!isSessionActive(session.state)) {
-      // Teardown can run twice (the happy path and the catch); a settled session simply stays settled.
       return ok({ events: [], read: readSession(session.id) });
     }
     const { sessionId, state, runtimeSessionId, sandboxId, services, reason } = input;

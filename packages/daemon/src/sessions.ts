@@ -51,7 +51,6 @@ export type SessionDeps = {
   secrets: SecretStore;
   config: DaemonConfig;
   home: string;
-  /** Known only once the server listens, so sessions ask at start time. */
   gatewayUrl: () => string;
   mcpUrl: () => string;
   log: Logger;
@@ -59,7 +58,6 @@ export type SessionDeps = {
 
 type Subscriber = { sessionId: SessionId | null; push: (event: LiveEvent) => void };
 
-/** Runs sessions end to end: sandbox, git-bridge, runtime, MCP tools, live fan-out, persisted outcomes. */
 export class SessionManager {
   readonly #deps: SessionDeps;
   readonly #subscribers = new Set<Subscriber>();
@@ -71,10 +69,6 @@ export class SessionManager {
     this.#deps = deps;
   }
 
-  /**
-   * After a restart: sessions the previous daemon left active are failed, their containers removed and
-   * their tasks blocked for explicit resumption.
-   */
   async recover(): Promise<void> {
     await recoverSessions(
       this.#deps,
@@ -83,7 +77,6 @@ export class SessionManager {
     );
   }
 
-  /** Live runtime events for the UI and CLI. Not persisted. */
   stream(sessionId: SessionId | null, signal?: AbortSignal): AsyncIterable<LiveEvent> {
     const subscriber: Subscriber = {
       sessionId,
@@ -145,7 +138,6 @@ export class SessionManager {
       signal: controller.signal,
     })
       .catch((error: unknown) => {
-        // #run handles its own failures; this catches a teardown that throws after the work is done.
         this.#deps.log.error(
           { sessionId: session.id, err: errorMessage(error) },
           "session teardown failed",
@@ -159,13 +151,6 @@ export class SessionManager {
     return session;
   }
 
-  /**
-   * Cuts one running session off where it is. The abort travels the same path the wall-time budget
-   * takes: the run throws, its task is blocked for explicit resumption, and the sandbox is disposed.
-   * It does not wait for that to finish — tearing a sandbox down can take as long as it takes, and the
-   * caller only asked for the cut. A session that is not running here answers false: it already ended,
-   * or another daemon ran it.
-   */
   stop(sessionId: SessionId): boolean {
     const running = this.#running.get(sessionId);
     if (running === undefined) {
@@ -215,7 +200,6 @@ export class SessionManager {
     );
   }
 
-  /** A task whose session died mid-way waits for a human: a blocked task is not picked up again by itself. */
   async #block(taskId: TaskId, reason: string): Promise<void> {
     const status = this.#deps.office.model.tasks.get(taskId)?.status;
     if (status === "in_progress" || status === "review" || status === "assigned") {

@@ -1,5 +1,3 @@
-// The internal office editor's own vocabulary: its tools and notes, and the names of what it places —
-// shown instead of the slugs the office file is written with.
 export const enEditor = {
   editor: {
     noteNoFit: "does not fit on the map",

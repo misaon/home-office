@@ -1,7 +1,6 @@
 import { type Agent, compact, type Project, type ProjectId } from "@ho/protocol";
 import type { HoClient } from "../client.ts";
 
-/** By exact id or name, else by a unique id prefix or suffix (lists print the last eight characters). */
 export const pick = <T extends { id: string; name?: string }>(
   items: readonly T[],
   ref: string,
@@ -29,7 +28,6 @@ export const pick = <T extends { id: string; name?: string }>(
   );
 };
 
-/** Floors in creation order: the first project is floor 1. */
 export const sortedProjects = async (client: HoClient): Promise<Project[]> => {
   const projects = await client.projects.list();
   return projects.toSorted(
@@ -37,7 +35,6 @@ export const sortedProjects = async (client: HoClient): Promise<Project[]> => {
   );
 };
 
-/** A floor by name, id, id prefix or floor number (1 is the first project). */
 export const findProject = async (client: HoClient, ref: string): Promise<Project> => {
   const projects = await sortedProjects(client);
   const number = /^\d+$/u.test(ref) ? Number(ref) : null;
@@ -45,7 +42,6 @@ export const findProject = async (client: HoClient, ref: string): Promise<Projec
   return byNumber ?? pick(projects, ref, "project");
 };
 
-/** The id behind an optional `--project`; undefined when the flag was not given. */
 export const projectIdOf = async (
   client: HoClient,
   ref: string | undefined,
@@ -57,20 +53,17 @@ export const projectIdOf = async (
   return project.id;
 };
 
-/** Floor names by id, for lists that show where something lives. */
 export const projectNames = async (client: HoClient): Promise<Map<ProjectId, string>> => {
   const projects = await client.projects.list();
   return new Map(projects.map((p) => [p.id, p.name]));
 };
 
-/** An agent by name or id, on one floor when given (names repeat across floors: every floor has an Andrew). */
 export const findAgent = async (
   client: HoClient,
   ref: string,
   projectId?: ProjectId,
 ): Promise<Agent> => pick(await client.agents.list(compact({ projectId })), ref, "agent");
 
-/** The floor a command means when `--project` is omitted: the only one there is, otherwise an error. */
 const onlyProject = async (client: HoClient): Promise<Project> => {
   const projects = await client.projects.list();
   const [only] = projects;
@@ -85,6 +78,5 @@ const onlyProject = async (client: HoClient): Promise<Project> => {
   );
 };
 
-/** `--project` when given, else the only floor. */
 export const projectFor = (client: HoClient, ref: string | undefined): Promise<Project> =>
   ref === undefined ? onlyProject(client) : findProject(client, ref);

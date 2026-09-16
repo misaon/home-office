@@ -21,23 +21,19 @@ import { MONO } from "./tokens.ts";
 
 export type Variant = "crash" | "config" | "offline";
 
-/** Everything the fault screen says about one way the office cannot work. */
 export type Fault = {
   variant: Variant;
   kind: ParseKeys;
   title: ParseKeys;
   body: ParseKeys;
   primary: ParseKeys;
-  /** The wash behind the whole screen, as a colour token the radial gradient reads. */
   glow: string;
-  /** What the variant's mark is painted in. */
   tile: string;
   ink: string;
   checks: Check[];
   log: string;
 };
 
-/** The mark, the kind, the headline and the paragraph: what the office says went wrong. */
 function FaultHead({ fault }: { fault: Fault }): React.JSX.Element {
   const { t } = useTranslation();
   return (
@@ -52,7 +48,6 @@ function FaultHead({ fault }: { fault: Fault }): React.JSX.Element {
   );
 }
 
-/** Reload, open setup, copy the report: the three things left to do. */
 function FaultActions({
   primary,
   onSetup,
@@ -106,7 +101,6 @@ function FaultActions({
   );
 }
 
-/** The office cannot work: what happened, what it checked, and the two ways forward. */
 export function FaultBody({
   fault,
   reference,

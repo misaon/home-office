@@ -1,4 +1,3 @@
-// Hutch drives Electrobun; the Bun workspace install at the repository root provides node_modules.
 const config = {
   packageManager: "bun",
   scripts: {

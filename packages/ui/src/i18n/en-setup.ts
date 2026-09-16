@@ -1,4 +1,3 @@
-// The first-run checklist's own words: Docker, the agent images and the token.
 export const enSetup = {
   setup: {
     done: "done",

@@ -19,28 +19,19 @@ import { SkillLibrary } from "./skills.ts";
 import { SessionManager } from "./sessions.ts";
 import { VERSION } from "./version.ts";
 
-/** How long `stop()` waits for sessions, jobs and the server before giving up on them. */
 const STOP_TIMEOUT_MS = 20_000;
 
 export type DaemonHandle = {
   info: DaemonInfo;
   config: DaemonConfig;
-  /** Stops sessions, jobs and the server, removes daemon.json and releases the lock; bounded by 20 s. */
   stop: () => Promise<void>;
 };
 
 export type DaemonOptions = {
-  /** State directory (config.json, ho.db, daemon.json, logs/); defaults to `HO_HOME` or `~/.config/home-office`. */
   home?: string;
   overrides?: Partial<DaemonConfig>;
-  /** Where image contexts and the UI bundle live; defaults to the repository. */
   resourcesRoot?: string;
-  /** Log to this file instead of stdout (the desktop app has no visible stdout). */
   logFile?: string;
-  /**
-   * Shows the host's directory dialog. The desktop app injects a panel owned by its own window;
-   * without one the daemon falls back to macOS `osascript`.
-   */
   pickDirectory?: DirectoryPicker;
 };
 
@@ -54,7 +45,6 @@ const withDeadline = (work: Promise<void>, ms: number): Promise<void> =>
     });
   });
 
-/** Everything the daemon is made of, wired in dependency order; `cleanup` unwinds it in reverse. */
 export async function launchDaemon(
   options: DaemonOptions,
   home: string,
@@ -80,7 +70,6 @@ export async function launchDaemon(
   const gateway = new RunnerGateway(log);
   const mcp = new McpGateway(office, new SkillLibrary(resources.pluginsDir), log);
   const gate = new OfficeGate(log);
-  // The port is known only after listening; sessions read the URLs lazily.
   let { port } = config;
   const sessions = new SessionManager({
     office,
@@ -126,8 +115,6 @@ export async function launchDaemon(
       log,
     },
   });
-  // One callback, because the order matters: sessions end (stdin, SIGTERM, SIGKILL, settle) while their
-  // runner sockets are still open, and only then does the server force the rest of its connections shut.
   cleanup.defer(async () => {
     await sessions.stopAll();
     await server.stop();
@@ -146,7 +133,6 @@ export async function launchDaemon(
   cleanup.defer(() => removeDaemonInfo(home));
   intake.start();
   cleanup.defer(() => intake.stop());
-  // Last, so a floor its own `.ho/config.json` changes is applied against a daemon already up.
   const jobs = startFloorJobs({ office, sessions, config, gate, home, log });
   cleanup.defer(() => jobs.stop());
   let stopping: Promise<void> | null = null;

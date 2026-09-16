@@ -2,7 +2,6 @@ import type { ParseKeys } from "i18next";
 import { useTranslation } from "react-i18next";
 import { MONO, separator } from "./tokens.ts";
 
-/** One line of the office's own report: what it looked at, and how that answered. */
 export type Check = { name: ParseKeys; state: ParseKeys; ok: boolean };
 
 const TICK = (

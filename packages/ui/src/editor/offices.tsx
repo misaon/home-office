@@ -7,7 +7,6 @@ import { Section } from "../design/section.tsx";
 import { layoutsQuery } from "../queries.ts";
 import { useOnline } from "../store.ts";
 
-/** Any office JSON, not only the ones already in the repository. */
 function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX.Element {
   const { t } = useTranslation();
   const [problem, setProblem] = useState<string | null>(null);

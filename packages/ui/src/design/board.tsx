@@ -16,7 +16,6 @@ const RULE = `${MONO} text-10 tracking-caps-wider uppercase text-ink-label`;
 
 const CARD = "rounded-14 bg-card border border-edge overflow-hidden";
 
-/** What the floor is carrying: a share finished, four lanes, and one card per task. */
 export function Board({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const boardFilter = useDesign((s) => s.boardFilter);

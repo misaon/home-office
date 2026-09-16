@@ -18,10 +18,6 @@ import type { Logger } from "./logger.ts";
 
 const DB_FILE = "ho.db";
 
-/**
- * The office holds the read model and turns commands into appended events.
- * Every mutation goes through `execute`, so the model only ever changes by applying stored events.
- */
 export class Office {
   readonly model: ReadModel = createReadModel();
   readonly ids: IdFactory;
@@ -64,13 +60,11 @@ export class Office {
   }
 }
 
-/** Opens the event log under `home` and replays it into a fresh office. The file is never replaced. */
 export async function openOffice(
   home: string,
   clock: Clock,
   log: Logger,
 ): Promise<{ office: Office; attachments: AttachmentStore; close: () => void }> {
-  // Both halves of the office's state live under the same directory: the log, and the files it names.
   const attachments = new AttachmentStore(home);
   await attachments.init();
   const ids = createIdFactory(clock, {
@@ -98,10 +92,6 @@ export async function openOffice(
   return { office, attachments, close: store.close };
 }
 
-/**
- * Follows the stored events of the given types until stopped, running `handler` for each and awaiting
- * every handler it started before `stop()` resolves. Handler failures are logged, never fatal.
- */
 export function followEvents(
   office: Office,
   types: readonly StoredEvent["type"][],

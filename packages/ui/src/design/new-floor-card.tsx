@@ -2,8 +2,6 @@ import { useTranslation } from "react-i18next";
 import type { Source } from "./add-project-inspect.ts";
 import { PickCard } from "./pick-card.tsx";
 
-/** One of the two places a floor's code can live, as the card the drawing picks it with. */
-
 const MARKS: Record<Source, React.JSX.Element> = {
   local: (
     <svg

@@ -7,7 +7,6 @@ const TIMEOUT_MS = 5000;
 const STUCK =
   "the system secret store did not answer in 5 s; on macOS a build it has not seen before waits for a Keychain access prompt (approve it, or use a file-backed secret store)";
 
-/** Distinct from "there is no secret service here", which is what makes `auto` fall back to a file. */
 export class SecretStoreTimeoutError extends Error {
   constructor() {
     super(STUCK);
@@ -24,7 +23,6 @@ const bounded = async <T>(work: Promise<T>): Promise<T> => {
   return Promise.race([work, timer]);
 };
 
-/** `Bun.secrets`: Keychain Services on macOS, libsecret on Linux, Credential Manager on Windows. */
 export const createOsSecretStore = (service = "home-office"): SecretStore => ({
   get: (name: SecretKeyName) => bounded(secrets.get({ service, name })),
   set: (name: SecretKeyName, value: string) => bounded(secrets.set({ service, name, value })),

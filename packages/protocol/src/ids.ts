@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Branded, time-ordered identifiers (UUIDv7). Generation lives in @ho/core; the protocol only validates.
 export const ProjectId = z.uuidv7().brand<"ProjectId">();
 export type ProjectId = z.infer<typeof ProjectId>;
 

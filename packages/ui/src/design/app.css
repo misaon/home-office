@@ -1,38 +1,15 @@
-/*
- * The office's whole stylesheet. Everything that paints is a Tailwind utility on the element that
- * wears it; what lives here is the vocabulary those utilities are spelled in — the palette the office
- * was drawn with, its motion, and the three typefaces it is set in.
- *
- * The scale is one pixel. The office was drawn in whole pixels against a fixed grid, so `p-13` is
- * thirteen pixels and reads as the drawing reads. Colours with alpha are named rather than written as
- * `accent/12`: Tailwind mixes an opacity modifier in oklab, which lands up to one channel value away
- * from the `rgba()` the drawing used, and this port is held to the pixel.
- */
 @import "tailwindcss";
 @import "./fonts.css";
 @source "./";
 @source "../editor";
 @source "../setup";
 @source "../office";
-/*
- * There was an exclusion here. It existed because the scrim was the `::backdrop` pseudo-element and the
- * scanner read the bare utilities out of the modal's prefixed class list, where nothing wore them. The
- * scrim is now a real element rendered by Base UI, so the office writes those utilities for real and the
- * exclusion would have quietly taken the dialog's blur out of the build. Measured 2026-09-15: with it,
- * the stylesheet has no `.backdrop-blur-[10px]` rule at all.
- */
 
-/*
- * Tailwind's own `hover:` is wrapped in `@media (hover: hover)`, so on a touch pointer it stops
- * applying. The office is drawn once and its hover states are part of that drawing, so the variant
- * is redefined here to the bare pseudo-class the design was authored with.
- */
 @custom-variant hover (&:hover);
 
 @theme {
   --spacing: 1px;
 
-  /* ---- ground: the surfaces the office is built out of, darkest first ---- */
   --color-ground: #0a0a0b;
   --color-ground-deep: #09090a;
   --color-well: #0a0a0c;
@@ -56,7 +33,6 @@
   --color-chip: #24242a;
   --color-floor: #edebe4;
 
-  /* ---- lines: rules, edges and borders ---- */
   --color-line: #1b1b1f;
   --color-rule: #1e1e23;
   --color-edge: #232328;
@@ -67,7 +43,6 @@
   --color-border-hover: #45454d;
   --color-dot-idle: #3a3a41;
 
-  /* ---- ink: what the office is written in, lightest first ---- */
   --color-ink: #f4f3f0;
   --color-ink-bright: #f9f4e7;
   --color-ink-warm: #f2efe8;
@@ -83,7 +58,6 @@
   --color-ink-ghost: #8a8780;
   --color-ink-lane: #6e6b66;
 
-  /* ---- accent: the office's gold ---- */
   --color-accent: #ffc531;
   --color-accent-soft: #ffd666;
   --color-accent-deep: #e0a400;
@@ -94,7 +68,6 @@
   --color-accent-ink-deep: #1a1300;
   --color-accent-ink-badge: #141006;
 
-  /* ---- states ---- */
   --color-good: #5bd9a0;
   --color-good-soft: #8fe8c4;
   --color-bad: #ff9e9e;
@@ -104,7 +77,6 @@
   --color-bad-mid: #f28b8b;
   --color-warn: #f2994a;
 
-  /* ---- the same colours at the exact alphas the drawing used ---- */
   --color-accent-a05: rgba(255, 197, 49, 0.05);
   --color-accent-a07: rgba(255, 197, 49, 0.07);
   --color-accent-a08: rgba(255, 197, 49, 0.08);
@@ -178,7 +150,6 @@
 
   --color-floor: #edebe4;
 
-  /* ---- type: the drawing's own steps, `h` for a half pixel ---- */
   --text-9: 9px;
   --text-9h: 9.5px;
   --text-10: 10px;
@@ -206,7 +177,6 @@
 
   --leading-auto: normal;
 
-  /* ---- radii, in the drawing's own steps ---- */
   --radius-1: 1px;
   --radius-2: 2px;
   --radius-5: 5px;
@@ -226,11 +196,8 @@
   --radius-28: 28px;
   --radius-36: 36px;
   --radius-pill: 99px;
-  /* The drawing rounds a circle with a percentage; `rounded-full` is an infinity and rasterises a
-     hair differently, so the half is spelled out. */
   --radius-half: 50%;
 
-  /* ---- tracking and leading ---- */
   --tracking-caps: 0.12em;
   --tracking-caps-wide: 0.14em;
   --tracking-caps-wider: 0.16em;
@@ -256,7 +223,6 @@
   --leading-loose: 1.7;
   --leading-log: 1.75;
 
-  /* ---- the shadows the office casts ---- */
   --shadow-sheet: 0 50px 120px var(--color-shade-a75);
   --shadow-dialog: 0 50px 120px var(--color-shade-a72);
   --shadow-setup: 0 50px 120px var(--color-shade-a70);
@@ -274,7 +240,6 @@
   --shadow-glow-good: 0 0 10px var(--color-good-a70);
   --shadow-glow-idle: 0 0 10px var(--color-ink-idle);
 
-  /* what a control casts while the pointer is on it */
   --shadow-lift-sm: 0 8px 18px var(--color-accent-a30);
   --shadow-lift-sm-plus: 0 8px 20px var(--color-accent-a35);
   --shadow-lift-md: 0 10px 22px var(--color-accent-a40);
@@ -285,10 +250,8 @@
   --shadow-lift-dark-lg: 0 14px 28px var(--color-shade-a45);
   --shadow-halo: 0 0 0 3px var(--color-accent-a07);
 
-  /* CSS's own default, so `transition-all duration-200` is `transition: all .2s` to the pixel. */
   --default-transition-timing-function: ease;
 
-  /* ---- motion ---- */
   --ease-soft: cubic-bezier(0.2, 0.8, 0.3, 1);
   --ease-pop: cubic-bezier(0.2, 0.9, 0.3, 1.05);
   --ease-pop-far: cubic-bezier(0.2, 0.9, 0.3, 1.1);
@@ -297,7 +260,6 @@
   --ease-spring-far: cubic-bezier(0.34, 1.5, 0.5, 1);
 }
 
-/* ---- motion, named by what moves and how long it takes ---- */
 @theme {
   --animate-fade-160: fade 0.16s ease both;
   --animate-fade-200: fade 0.2s ease both;
@@ -322,9 +284,6 @@
   --animate-lift-400: lift 0.4s var(--ease-soft) both;
   --animate-lift-450: lift 0.45s var(--ease-soft) both;
 
-  /* `backwards` rather than `both`: the panel ends this slide exactly where it stands anyway, and a
-   * held `transform: none` still resolves to an identity matrix, which founds a stacking context and
-   * traps the popovers inside the panel under the sheet that dismisses them. */
   --animate-slide-360: slide 0.36s var(--ease-soft) backwards;
   --animate-slide-420: slide 0.42s var(--ease-soft) backwards;
 
@@ -502,11 +461,6 @@
   }
 }
 
-/*
- * Three paints the office repeats, each drawn from the palette rather than written out again where it
- * is worn: the gold an avatar is made of, the dotted ground the floor sits on, and the delay a
- * staggered entrance reads from the element that sets it.
- */
 @utility bg-gold {
   background-image: linear-gradient(145deg, var(--color-accent-soft), var(--color-accent-deep));
 }
@@ -520,14 +474,6 @@
   animation-delay: var(--wait);
 }
 
-/*
- * A disabled control does not answer the pointer. The office writes its lifts and glows as `hover:`
- * utilities — `hover:shadow-lift-lg` is an accent-coloured shadow — and Tailwind applies them whether
- * or not the button can be pressed, so a greyed-out "Hire agent" still lit up gold underneath.
- *
- * This is deliberately **outside** `@layer`: layer order beats specificity, and the utilities live in a
- * later layer than `base`, so a rule written there would lose to them however specific it was.
- */
 button:disabled:hover,
 [disabled]:hover,
 [data-disabled]:hover {
@@ -536,11 +482,6 @@ button:disabled:hover,
   background-color: revert-layer;
 }
 
-/*
- * What the drawing reset that Tailwind's preflight does not, kept global because that is how it was
- * drawn: a control the office paints its own focus for is not also ringed by the browser, and every
- * surface that scrolls gets the office's thin bar rather than the platform's.
- */
 @layer base {
   input:focus,
   textarea:focus,
@@ -570,13 +511,6 @@ button:disabled:hover,
     background: transparent;
   }
 
-  /*
-   * Where a vertical and a horizontal scrollbar meet there is a corner, and it is not the track: left
-   * alone it takes the user agent's default, which on a page that declares no dark colour scheme is
-   * white. The build log is where the office shows it — a `<pre>` does not wrap, and `overflow-y: auto`
-   * makes `overflow-x` compute to `auto`, so both bars appear and the corner with them. Measured
-   * 2026-09-15 with scrollbars forced visible: rgb(255,255,255) against tracks at rgb(10,10,12).
-   */
   ::-webkit-scrollbar-corner {
     background: transparent;
   }

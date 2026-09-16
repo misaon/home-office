@@ -1,13 +1,5 @@
 import type { RuntimeSessionSpec } from "@ho/core";
 
-/**
- * Static, token-lean Claude Code settings applied inside every sandbox (inline JSON, no files).
- * The RTK PreToolUse hook is not here: `rtk init --hook-only` writes it into the image's user settings,
- * which Claude Code reads through `--setting-sources user` and RTK checks before rewriting.
- * `includeGitInstructions: false` because the office supplies its own git workflow and forbids pushing;
- * `bashOutputMaxChars` bounds what a verbose command pours into the context (RTK keeps the full output
- * on tmpfs). The telemetry and autoupdater switches are environment variables the image sets.
- */
 const CLAUDE_SETTINGS = {
   attribution: { commit: "", pr: "", sessionUrl: false },
   includeGitInstructions: false,
@@ -23,7 +15,6 @@ const mcpEntry = (spec: RuntimeSessionSpec["mcpServers"][string]): McpConfigEntr
     ? { type: "http", url: spec.url, headers: { ...spec.headers } }
     : { type: "stdio", command: spec.command, args: [...spec.args], env: { ...spec.env } };
 
-/** Builds the `claude` argv for a session. Prompts travel over stdin as stream-json user messages. */
 export function claudeArgv(spec: RuntimeSessionSpec, claudeSessionId: string): string[] {
   const argv = [
     "claude",
@@ -73,6 +64,5 @@ export function claudeArgv(spec: RuntimeSessionSpec, claudeSessionId: string): s
   return argv;
 }
 
-/** A user turn in stream-json input mode. */
 export const userMessage = (text: string): string =>
   `${JSON.stringify({ type: "user", message: { role: "user", content: text }, parent_tool_use_id: null })}\n`;

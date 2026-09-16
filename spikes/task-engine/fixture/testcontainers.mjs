@@ -1,6 +1,3 @@
-// Does a real Testcontainers run work against a task's private engine, with the environment the
-// daemon hands the sandbox? Started from inside the sandbox, so DOCKER_HOST and the two
-// TESTCONTAINERS_* variables are already in place.
 import { GenericContainer } from "testcontainers";
 
 const container = await new GenericContainer("postgres:18-alpine")

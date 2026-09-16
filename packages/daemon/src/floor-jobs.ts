@@ -12,16 +12,10 @@ type Deps = {
   sessions: SessionManager;
   config: DaemonConfig;
   gate: OfficeGate;
-  /** The daemon's state directory, which is where mirrors of git floors live. */
   home: string;
   log: Logger;
 };
 
-/**
- * The three things that run behind the server once the office is up: the boss saying what happened,
- * the scheduler starting sessions, and every floor being brought into line with its own
- * `.ho/config.json`. They stop in the reverse order, each bounded by its own stop.
- */
 export function startFloorJobs(deps: Deps): { stop: () => Promise<void> } {
   const { office, sessions, config, gate, home, log } = deps;
   const voice = startBossVoice(office, gate, log);

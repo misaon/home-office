@@ -14,7 +14,6 @@ const FILTERS = [
   ["done", "board.done", "bg-good"],
 ] as const satisfies readonly [Key, string, string | null][];
 
-/** Which lanes the board is showing, each with how many cards it holds. */
 function BoardFilters({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const boardFilter = useDesign((s) => s.boardFilter);
@@ -49,7 +48,6 @@ const BAR = "flex h-5 rounded-pill overflow-hidden gap-2 mb-14";
 const CLEAR =
   "py-6 px-11 rounded-9 border border-border-strong bg-transparent text-11h text-ink-quiet cursor-pointer whitespace-nowrap flex-[0_0_auto] transition-all duration-200";
 
-/** How much of the floor's work is finished, and which lanes you want to look at. */
 export function BoardHeader({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const flash = useDesign((s) => s.flash);

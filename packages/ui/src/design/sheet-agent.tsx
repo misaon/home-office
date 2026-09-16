@@ -6,7 +6,6 @@ import { CAPS, PRIMARY, SheetShell } from "./sheet-shell.tsx";
 import { MONO, separator } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
-/** What this colleague is at right now, and for how long. */
 function AgentStatus({ draft }: { draft: Member }): React.JSX.Element {
   const dot =
     draft.status === "working" ? "bg-accent shadow-glow-gold" : "bg-ink-idle shadow-glow-idle";
@@ -25,7 +24,6 @@ function AgentStatus({ draft }: { draft: Member }): React.JSX.Element {
 
 const LIST = "rounded-13 bg-card border border-edge overflow-hidden mb-16";
 
-/** One colleague, opened up: what they are doing now, what they have been doing, and the way in. */
 export function AgentSheet({ draft }: { draft: Member }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);

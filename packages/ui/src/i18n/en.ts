@@ -1,5 +1,3 @@
-// The office speaks English by default. Every other language is checked against these keys by the
-// compiler, so a missing translation is a type error rather than a blank label.
 import { enEditor } from "./en-editor.ts";
 import { enOffice } from "./en-office.ts";
 import { enStaff } from "./en-staff.ts";

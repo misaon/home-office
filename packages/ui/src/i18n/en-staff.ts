@@ -1,5 +1,3 @@
-// Floors and the people on them: the two dialogs that make both, and the words they are made of.
-
 export const enStaff = {
   project: {
     newTitle: "New floor",

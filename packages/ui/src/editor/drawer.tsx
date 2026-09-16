@@ -22,7 +22,6 @@ const TOOLS = [
 
 const HINT = "text-11h leading-loose text-ink-meta my-11h";
 
-/** The office's own fields. The file name is the name, slugified, so it cannot drift from it. */
 function OfficeFields({
   draft,
   setDraft,
@@ -67,7 +66,6 @@ function OfficeFields({
   );
 }
 
-/** Everything the editor is driven by, in the drawer the design drew for it. */
 export function EditorDrawer({
   draft,
   setDraft,

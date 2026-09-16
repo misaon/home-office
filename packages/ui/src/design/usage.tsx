@@ -26,7 +26,6 @@ const TOTAL = `${DISPLAY} font-semibold text-13 text-accent-soft flex-[0_0_auto]
 
 const DETAIL = `flex justify-between gap-9 mt-7 ${MONO} text-10 text-ink-meta`;
 
-/** One way of slicing the spend: a name, its share as a bar, and its total. */
 function Breakdown({ name, rows }: { name: string; rows: Row[] }): React.JSX.Element {
   return (
     <div className="mb-18">
@@ -62,7 +61,6 @@ const HOURS: Record<Window, number> = { "24 h": 24, "7 d": 168, all: 0 };
 
 const spentIn = (usage: UsageSummary["totals"]): number => usage.inputTokens + usage.outputTokens;
 
-/** One bucket as the design draws a row: a name, a share, a total and the detail under it. */
 function rowsOf(buckets: UsageSummary["byAgent"], say: TFunction): Row[] {
   const top = Math.max(1, ...buckets.map((b) => spentIn(b.usage)));
   return buckets.map((bucket) => ({
@@ -77,7 +75,6 @@ function rowsOf(buckets: UsageSummary["byAgent"], say: TFunction): Row[] {
   }));
 }
 
-/** What the office has spent: the split, the window, and who or what spent it. */
 export function Usage({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const usageView = useDesign((s) => s.usageView);

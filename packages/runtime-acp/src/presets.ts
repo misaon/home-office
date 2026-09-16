@@ -1,25 +1,19 @@
 import type { RuntimeSessionSpec } from "@ho/core";
 import type { ProviderId } from "@ho/protocol";
 
-/** How one ACP-speaking CLI is started inside the sandbox and which auth method it should be offered. */
 export type AcpPreset = {
   id: ProviderId;
-  /** Human name for log lines and errors. */
   name: string;
   argv: (spec: RuntimeSessionSpec) => string[];
-  /** Non-secret environment for the agent process (secrets are merged by the runtime). */
   env: (spec: RuntimeSessionSpec) => Record<string, string>;
-  /** Preferred ACP `authMethods` ids, most preferred first; anything containing `api` also qualifies. */
   authMethods: readonly string[];
 };
 
-/** Local model servers on the Mac, reached from the sandbox through Docker Desktop's host alias. */
 const LOCAL_PROVIDERS: Readonly<Record<string, { name: string; baseURL: string }>> = {
   ollama: { name: "Ollama", baseURL: "http://host.docker.internal:11434/v1" },
   lmstudio: { name: "LM Studio", baseURL: "http://host.docker.internal:1234/v1" },
 };
 
-/** OpenCode's provider block for `ollama/<model>` and `lmstudio/<model>`; cloud providers need none. */
 const providerBlock = (model: string): Record<string, unknown> => {
   const slash = model.indexOf("/");
   const prefix = slash === -1 ? "" : model.slice(0, slash);
@@ -40,7 +34,6 @@ const providerBlock = (model: string): Record<string, unknown> => {
   };
 };
 
-/** OpenCode reads its whole configuration from `OPENCODE_CONFIG_CONTENT`; permissions are wide open because the sandbox is the boundary. */
 export const opencodePreset = (): AcpPreset => ({
   id: "opencode",
   name: "OpenCode",
@@ -58,7 +51,6 @@ export const opencodePreset = (): AcpPreset => ({
   authMethods: ["api", "apikey", "api-key"],
 });
 
-/** Gemini CLI in ACP mode with every tool auto-approved; the key arrives as GEMINI_API_KEY. */
 export const geminiPreset = (): AcpPreset => ({
   id: "gemini-cli",
   name: "Gemini CLI",

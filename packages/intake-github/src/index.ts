@@ -32,10 +32,6 @@ const CLOSING: Record<MailOutcome, (detail: string) => string> = {
 };
 const closing = (ack: MailAck): string => CLOSING[ack.outcome](ack.detail);
 
-/**
- * GitHub Issues through the owner's `gh` CLI: open issues (optionally filtered by labels) become mail;
- * acknowledgements are comments and an optional label. Everything runs on the host, never in a sandbox.
- */
 export function createGithubIssuesConnector(): IntakeConnector {
   return {
     id: GITHUB_ISSUES_CONNECTOR,

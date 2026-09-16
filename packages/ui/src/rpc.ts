@@ -8,16 +8,11 @@ export type Client = ContractRouterClient<Contract>;
 
 const PROTOCOL_PREFIX = "ho.bearer.";
 
-/**
- * The launch URL (`ho ui`) carries the daemon token in the fragment, which browsers never send to the
- * server. It moves into sessionStorage and the fragment is wiped from the address bar and history.
- */
 export function resolveToken(): string | null {
   const fragment = new URLSearchParams(window.location.hash.replace(/^#/u, ""));
   const fromHash = fragment.get("token");
   if (fromHash !== null && fromHash !== "") {
     window.sessionStorage.setItem(TOKEN_STORAGE_KEY, fromHash);
-    // The search survives: only the fragment carried the token.
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     return fromHash;
   }
@@ -27,7 +22,6 @@ export function resolveToken(): string | null {
 let current: Client | null = null;
 let bearer: string | null = null;
 
-/** The token of the live connection, for the HTTP routes that carry files rather than RPC calls. */
 export function requireToken(): string {
   if (bearer === null) {
     throw new Error("daemon is offline");
@@ -35,7 +29,6 @@ export function requireToken(): string {
   return bearer;
 }
 
-/** The client of the live connection; panels call RPCs through this and fail fast while offline. */
 export function requireClient(): Client {
   if (current === null) {
     throw new Error("daemon is offline");

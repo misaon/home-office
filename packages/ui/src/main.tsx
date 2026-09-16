@@ -10,8 +10,6 @@ const root = document.querySelector("#root");
 if (root === null) {
   throw new Error("missing #root");
 }
-// The dictionaries are in the bundle, so this settles in a microtask; rendering after it keeps the
-// first paint from flashing raw keys.
 await startI18n();
 createRoot(root).render(
   <QueryClientProvider client={queryClient}>

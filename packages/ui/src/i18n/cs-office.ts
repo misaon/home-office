@@ -1,5 +1,3 @@
-// Slovník kanceláře: co je úkol, v jakém je stavu a co dělá kamera.
-
 export const csOffice = {
   priority: {
     high: "vysoká",

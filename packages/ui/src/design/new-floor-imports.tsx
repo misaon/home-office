@@ -8,12 +8,6 @@ import { ROLE_KEY } from "../i18n/labels.ts";
 import { type Snapshot, sortedFloors, useUi } from "../store.ts";
 import { MONO } from "./tokens.ts";
 
-/**
- * Characters already working on other floors, offered to the new one. The drawing has no such block —
- * it was drawn against an office with a single floor — so this only appears once there is somebody to
- * import, which is exactly when the drawn dialog has nothing to say.
- */
-
 type Group = { floor: string; agents: Agent[] };
 
 const groupsOf = (projects: Snapshot["projects"], agents: Snapshot["agents"]): Group[] =>

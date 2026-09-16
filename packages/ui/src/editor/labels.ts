@@ -3,12 +3,10 @@ import { type Container, Text, type TextStyleOptions } from "pixi.js";
 import type { KindName } from "../i18n/kinds.ts";
 import type { OfficeDraft } from "./draft.ts";
 
-/** A name written across the middle of a shape, in cell coordinates. */
 type Label = { text: string; x: number; y: number };
 
 type Component = { cells: number[]; kind: string };
 
-/** Contiguous areas of the same room, found by flooding four ways. */
 function* components(draft: OfficeDraft): Generator<Component> {
   const seen = new Uint8Array(draft.width * draft.height);
   for (let start = 0; start < draft.room.length; start += 1) {
@@ -45,11 +43,6 @@ function* components(draft: OfficeDraft): Generator<Component> {
   }
 }
 
-/**
- * The most interior cell of an area: depth grows inward from its edge and the label takes the deepest
- * cell. The middle of the bounding box is wrong the moment a room is not a rectangle — a corridor
- * wrapped around other rooms would have its name printed inside one of them.
- */
 function heart(draft: OfficeDraft, cells: readonly number[]): { x: number; y: number } {
   const member = new Set(cells);
   const depth = new Map<number, number>();
@@ -66,8 +59,6 @@ function heart(draft: OfficeDraft, cells: readonly number[]): { x: number; y: nu
   }
   let deepest = cells[0] ?? 0;
   let best = 0;
-  // The queue grows while this walks it — that is the breadth-first search — and an array's own
-  // iterator re-reads the length on every step, so the pushes below are picked up.
   for (const index of queue) {
     const distance = depth.get(index) ?? 1;
     if (distance > best) {
@@ -90,7 +81,6 @@ function heart(draft: OfficeDraft, cells: readonly number[]): { x: number; y: nu
   return { x: (deepest % draft.width) + 0.5, y: Math.floor(deepest / draft.width) + 0.5 };
 }
 
-/** Every placed shape names itself, so a colour never has to be remembered. */
 const labelsOf = (draft: OfficeDraft, name: KindName): Label[] => [
   ...[...components(draft)].map(({ cells, kind }) => {
     const at = heart(draft, cells);
@@ -108,7 +98,6 @@ const labelsOf = (draft: OfficeDraft, name: KindName): Label[] => [
   })),
 ];
 
-/** Redraws the layer that names every shape, at a size the camera's zoom does not inflate. */
 export function drawLabels(
   layer: Container,
   draft: OfficeDraft,

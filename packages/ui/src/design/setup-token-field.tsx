@@ -5,10 +5,6 @@ import { useTranslation } from "react-i18next";
 import { requireClient } from "../rpc.ts";
 import { Button, FIELD, Failure } from "./controls.tsx";
 
-/**
- * Pasting one secret, where the checklist needs it. A step that is already satisfied says so and offers
- * to replace it rather than leaving an open field behind.
- */
 export function SecretField({
   secret,
   label,

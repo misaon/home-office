@@ -28,7 +28,6 @@ const event = <TType extends string, TPayload extends z.ZodRawShape>(
   typeof Envelope.extend<{ type: z.ZodLiteral<TType>; payload: z.ZodObject<TPayload> }>
 > => Envelope.extend({ type: z.literal(type), payload: z.object(payload) });
 
-/** Persisted domain events. Keep these coarse: live agent chatter is streamed, not stored. */
 export const DomainEvent = z.discriminatedUnion("type", [
   event("project.created", { project: Project }),
   event("project.updated", { project: Project }),
@@ -39,7 +38,6 @@ export const DomainEvent = z.discriminatedUnion("type", [
   event("agent.removed", { agentId: AgentId }),
 
   event("task.created", { task: Task }),
-  /** No command produces this any more; logs written before 2026-09-13 may still carry it. */
   event("task.edited", {
     taskId: TaskId,
     title: Task.shape.title.optional(),
@@ -61,10 +59,8 @@ export const DomainEvent = z.discriminatedUnion("type", [
     verdict: z.enum(["approve", "request_changes"]),
     rounds: z.int().nonnegative(),
   }),
-  /** Finished work taken off the board. The log keeps how it went; the projection stops carrying it. */
   event("task.removed", { taskId: TaskId }),
 
-  /** Drives the office animation: the source agent walks over and hands the folder to the target. */
   event("handoff.requested", {
     taskId: TaskId,
     fromAgentId: AgentId,
@@ -74,7 +70,6 @@ export const DomainEvent = z.discriminatedUnion("type", [
 
   event("chat.message_posted", { message: ChatMessage }),
 
-  /** The postman's trigger: a connector delivered an item (its task is created in the same command). */
   event("mail.received", { mail: MailItem }),
   event("mail.acknowledged", { mailId: MailItemId, ack: MailAck }),
 
@@ -97,11 +92,9 @@ export const DomainEvent = z.discriminatedUnion("type", [
 ]);
 export type DomainEvent = z.infer<typeof DomainEvent>;
 
-/** An event as returned by the store: the append order becomes `seq`. */
 export const StoredEvent = z.intersection(DomainEvent, z.object({ seq: z.int().nonnegative() }));
 export type StoredEvent = DomainEvent & { seq: number };
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
-/** What a producer hands to the store: everything but `id` and `at`, which the store assigns. */
 export type NewEvent = DistributiveOmit<DomainEvent, "id" | "at">;

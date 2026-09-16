@@ -1,7 +1,6 @@
 import { Select } from "@base-ui/react/select";
 import { MONO } from "./tokens.ts";
 
-/** The caption every field in a dialog is labelled with. */
 const LABEL = `${MONO} text-9h tracking-caps-wider uppercase text-ink-label mb-8`;
 
 const TRIGGER =
@@ -17,11 +16,6 @@ const ELLIPSIS = "overflow-hidden text-ellipsis whitespace-nowrap";
 
 const DOT = "w-5 h-5 rounded-half justify-self-center bg-dot-idle group-data-selected:bg-accent";
 
-/**
- * The design's own dropdown, over Base UI's Select: the library owns the open state, the keyboard,
- * the listbox semantics and the placement, so nothing here tracks which menu is up and Escape lands
- * on the select rather than on the dialog behind it.
- */
 export function SelectField({
   label,
   options,
@@ -34,11 +28,8 @@ export function SelectField({
   label: string;
   options: readonly string[];
   value: string;
-  /** What to draw in front of an option, where the choice reads faster as a shape than as a word. */
   markOf?: (option: string) => React.ReactNode;
-  /** Branches and paths are written in the office's monospace, names and models are not. */
   mono?: boolean;
-  /** A value that is a placeholder rather than a choice. */
   muted?: boolean;
   onPick: (next: string) => void;
 }): React.JSX.Element {

@@ -7,7 +7,6 @@ import type { ContractRouterClient } from "@orpc/contract";
 
 export type HoClient = ContractRouterClient<Contract>;
 
-/** The running daemon's `daemon.json`, or an error that says how to start one. */
 export async function requireDaemon(): Promise<DaemonInfo> {
   const home = resolveHome();
   const info = await readDaemonInfo(home);

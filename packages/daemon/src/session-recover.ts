@@ -3,12 +3,6 @@ import { errorMessage, type SessionId, type TaskId } from "@ho/protocol";
 import { LABELS } from "./labels.ts";
 import type { SessionDeps } from "./sessions.ts";
 
-/**
- * What a daemon does about the sessions the last one left running: fail them, take their containers
- * away, and block their tasks so nothing picks them up again by itself. A Docker that does not answer
- * only skips the removal — garbage collection prunes the labelled containers later — so the office
- * still starts.
- */
 export async function recoverSessions(
   deps: SessionDeps,
   end: (sessionId: SessionId, reason: string) => Promise<unknown>,

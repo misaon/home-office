@@ -11,7 +11,6 @@ import { useDesign } from "./store.ts";
 const ASIDE =
   "w-420 flex-[0_0_420px] border-l border-line bg-[linear-gradient(180deg,var(--color-panel),var(--color-ground-deep)_60%)] flex flex-col min-h-0 relative overflow-hidden";
 
-/** The right-hand column: one of the five panels, plus whatever sheet is sliding over it. */
 export function Panel(): React.JSX.Element | null {
   const tab = useDesign((s) => s.tab);
   const sheet = useDesign((s) => s.sheet);

@@ -10,7 +10,6 @@ const BAR =
 const STOP =
   "flex items-center gap-7 py-6 px-11 rounded-9 border border-bad-a35 bg-bad-a10 text-bad-soft text-11h cursor-pointer flex-[0_0_auto] transition-all duration-200";
 
-/** While the floor's boss is running: what it is at, and the one way to cut it off. */
 export function ChatWorking({ floor }: { floor: Floor }): React.JSX.Element | null {
   const { t } = useTranslation();
   const flash = useDesign((s) => s.flash);

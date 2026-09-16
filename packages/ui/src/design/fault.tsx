@@ -7,13 +7,6 @@ import { useUi } from "../store.ts";
 import { FaultBody, type Fault } from "./fault-body.tsx";
 import { useDesign } from "./store.ts";
 
-/**
- * The screen the office shows when it cannot work at all. The drawing has three of these and each one
- * is wired to a condition the office can actually detect: the daemon refuses this page, the daemon
- * stopped answering, or no container engine is running. Nothing here is shown on a hunch.
- */
-
-/** How long the daemon may be unreachable before the office stops pretending. */
 const GRACE_MS = 12_000;
 
 const refused = (rejected: boolean): Fault => ({
@@ -76,7 +69,6 @@ const noEngine = (doctor: Doctor): Fault | null => {
   };
 };
 
-/** True once the daemon has been gone long enough that a reconnect is no longer the likely story. */
 function useGone(since: number | null): boolean {
   const [waited, setWaited] = useState<number | null>(null);
   useEffect(() => {
@@ -93,7 +85,6 @@ function useGone(since: number | null): boolean {
   return since !== null && waited === since;
 }
 
-/** Eight characters that identify one report: the same fault copies under the same name twice. */
 const referenceOf = (log: string): string => {
   let hash = 0x811c9dc5;
   for (const character of log) {
@@ -102,7 +93,6 @@ const referenceOf = (log: string): string => {
   return hash.toString(16).padStart(8, "0");
 };
 
-/** Whichever of the three the office is actually in, or nothing at all. */
 export function FaultScreen(): React.JSX.Element | null {
   const { t } = useTranslation();
   const [at] = useState(() => new Date().toLocaleString());
@@ -123,8 +113,6 @@ export function FaultScreen(): React.JSX.Element | null {
           ? null
           : noEngine(doctor);
 
-  // The first-run checklist says the same things with more to do about them, and it opens over the
-  // office rather than replacing it; while it is up, the fault screen stays out of its way.
   if (fault === null || setupOpen) {
     return null;
   }

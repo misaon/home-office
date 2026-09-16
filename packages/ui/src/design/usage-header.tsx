@@ -19,7 +19,6 @@ const SPLIT = "flex h-8 rounded-pill overflow-hidden gap-2 mb-10";
 
 const KEY = `flex items-center gap-6 ${MONO} text-10h text-ink-meta`;
 
-/** The headline figure, how it splits, and over which window it was counted. */
 export function UsageHeader({ summary }: { summary: UsageSummary | null }): React.JSX.Element {
   const { t } = useTranslation();
   const win = useDesign((s) => s.win);

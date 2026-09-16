@@ -1,6 +1,3 @@
-// A minimal ACP agent over stdio, built with the official SDK's app API, that exercises everything
-// @ho/runtime-acp relies on: version negotiation, auth_required → authenticate, session/new with MCP
-// servers, streamed message chunks, a tool call with a permission request, and the end_turn stop reason.
 import { agent, type McpServer, ndJsonStream, RequestError } from "@agentclientprotocol/sdk";
 
 let authenticated = false;

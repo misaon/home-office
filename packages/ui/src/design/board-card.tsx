@@ -16,7 +16,6 @@ const BIN =
 
 const META = `flex items-center gap-8 mt-8 ${MONO} text-10 text-ink-meta flex-wrap`;
 
-/** One task as a row: what it is, who has it, and the bin that takes it off the board. */
 export function BoardCard({
   floor,
   card,
@@ -43,7 +42,6 @@ export function BoardCard({
 
   return (
     <div
-      // The row carries its own delete button, and a <button> may not contain another button.
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="button"
       aria-label={card.t}

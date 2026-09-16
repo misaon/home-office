@@ -17,35 +17,23 @@ const PREVIEW_ALPHA = 0.28;
 
 type Cell = { x: number; y: number };
 
-/** What the React side hands the scene on every change. */
 export type EditorProps = {
   draft: OfficeDraft;
   tool: Tool;
   brush: Brush;
   kindName: KindName;
   onPaint: (rect: LayoutRect, erase: boolean) => void;
-  /** A right click on a piece in hand turns it a quarter; only a right drag erases. */
   onRotate: () => void;
 };
 
-/** Doors and furniture have a footprint of their own, so they are placed by a click, not a drag. */
 const placesOnClick = (tool: Tool): boolean => tool === "door" || tool === "object";
 
-/** Whether what is in hand has a direction worth showing: a doorway always, furniture by its kind. */
 const turns = (tool: Tool, object: ObjectKind): boolean =>
   tool === "door" || (tool === "object" && OBJECT_SPEC[object].arrow);
 
-/**
- * The editor's canvas: the draft compiled and drawn exactly as the office would draw it, with the cell
- * under the cursor outlined and the pending drag previewed. Dragging paints; shift, the middle button or
- * the right button pans; the wheel zooms.
- */
 export class EditorScene extends MapView {
-  /** The whole preview layer is translucent, so its own fill stays a plain colour. */
   readonly #preview = new Container({ alpha: PREVIEW_ALPHA });
-  /** Names written across placed shapes; kept at a constant size whatever the zoom. */
   readonly #labels = new Container();
-  /** Which way each placed piece is turned: a door swings, an air conditioner blows. */
   readonly #arrows = new Container();
   #props: EditorProps | null = null;
   #kindName: KindName = kindNameOf("en");
@@ -62,12 +50,10 @@ export class EditorScene extends MapView {
     this.#listen(this.app.canvas);
   }
 
-  /** Takes the latest draft, tool, brush and language; rebuilds what changed and redraws. */
   sync(props: EditorProps): void {
     const previous = this.#props;
     this.#props = props;
     if (previous?.draft !== props.draft) {
-      // Compiling 2000 cells is cheaper than diffing them; the first draft fits the camera to the map.
       this.setTemplate(compileDraft(props.draft), previous === null);
       this.#drawArrows(props.draft);
     }
@@ -79,7 +65,6 @@ export class EditorScene extends MapView {
   }
 
   protected override afterCamera(): void {
-    // Labels live in world space but must not grow with it, or a zoomed-in office is all text.
     const inverse = 1 / this.camera.scale;
     for (const label of this.#labels.children) {
       label.scale.set(inverse);
@@ -96,7 +81,6 @@ export class EditorScene extends MapView {
     }
   }
 
-  /** The rectangle the pointer is about to affect: a drag, or a piece of furniture's own footprint. */
   #pending(from: Cell | null, to: Cell): LayoutRect {
     const props = this.#props;
     if (props !== null && placesOnClick(props.tool) && !this.#erasing) {
@@ -133,7 +117,6 @@ export class EditorScene extends MapView {
         .fill(colour)
         .stroke(edge),
     );
-    // The placeholder already shows which way the piece opens or faces.
     if (!this.#erasing && turns(props.tool, props.brush.object)) {
       this.#preview.addChild(arrowGraphic(arrowFor({ x, y, w, h }, props.brush.facing), HOVER));
     }
@@ -145,7 +128,6 @@ export class EditorScene extends MapView {
       event.preventDefault();
     });
     canvas.addEventListener("pointerdown", (event) => {
-      // Left paints, right erases, the middle button and shift pan.
       this.#panning = event.button === 1 || event.shiftKey;
       this.#erasing = !this.#panning && event.button === 2;
       if (!this.#panning) {
@@ -153,7 +135,6 @@ export class EditorScene extends MapView {
         this.#drawPreview(this.#paintFrom, this.#paintFrom);
       }
       this.#pointer = { x: event.clientX, y: event.clientY };
-      // Capture last: painting must not depend on the browser granting it.
       canvas.setPointerCapture(event.pointerId);
     });
     canvas.addEventListener("pointermove", (event) => {
@@ -179,7 +160,6 @@ export class EditorScene extends MapView {
         if (this.#erasing && clicked && placesOnClick(props.tool)) {
           props.onRotate();
         } else {
-          // Doors and furniture are placed where the pointer was released, never dragged out.
           const rect =
             placesOnClick(props.tool) && !this.#erasing
               ? { x: to.x, y: to.y, w: 1, h: 1 }

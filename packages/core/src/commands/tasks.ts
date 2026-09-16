@@ -28,11 +28,6 @@ import {
 } from "../result.ts";
 import { note, noteEvent, statusChange, withProject, withTask } from "./shared.ts";
 
-/**
- * The task state machine. Terminal states have no outgoing edges.
- * `in_progress → assigned` is a handoff or a question that paused the work; `review → assigned` is a review that
- * requested changes.
- */
 const TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = {
   inbox: ["planned", "assigned", "blocked", "cancelled"],
   planned: ["assigned", "blocked", "cancelled"],
@@ -50,7 +45,6 @@ export const canTransition = (from: TaskStatus, to: TaskStatus): boolean =>
 
 export const isTerminal = (status: TaskStatus): boolean => TRANSITIONS[status].length === 0;
 
-/** Statuses a human may hand to somebody else; a task mid-session or under review is not reassigned. */
 const REASSIGNABLE: ReadonlySet<TaskStatus> = new Set([
   "inbox",
   "planned",
@@ -59,7 +53,6 @@ const REASSIGNABLE: ReadonlySet<TaskStatus> = new Set([
   "failed",
 ]);
 
-/** An agent only works on its own floor (the boss included). */
 const assignable = (
   model: ReadModel,
   agentId: Agent["id"],
@@ -75,7 +68,6 @@ const assignable = (
   return ok(agent);
 };
 
-/** A fresh task: assigned when it has an assignee, otherwise waiting in the inbox. */
 export const newTask = (
   ctx: CommandContext,
   fields: Pick<Task, "projectId" | "kind" | "title" | "brief" | "source"> & {
@@ -181,7 +173,6 @@ export function transitionTask(
   });
 }
 
-/** Merges into the task's artifacts (branch, pull request, report) whatever a session produced. */
 export function patchTaskArtifacts(
   model: ReadModel,
   taskId: TaskId,
@@ -202,11 +193,6 @@ export function patchTaskArtifacts(
   );
 }
 
-/**
- * Takes finished work off a floor's board. Only terminal tasks go, and only ones no session is still
- * holding: the board is a place of work in progress, and a done column that only ever grows stops being
- * one. What happened is not lost — the log keeps every event of a removed task, and so does its history.
- */
 export function clearFinishedTasks(
   model: ReadModel,
   projectId: ProjectId,
@@ -225,11 +211,6 @@ export function clearFinishedTasks(
   });
 }
 
-/**
- * One task off the board, whatever state it reached. The board belongs to the human: work that was
- * abandoned, asked a question nobody will answer, or was filed twice is theirs to take down. A task a
- * session is still holding stays, because removing it would strand the session that reports to it.
- */
 export function removeTask(
   model: ReadModel,
   taskId: TaskId,
@@ -246,15 +227,10 @@ export function removeTask(
   });
 }
 
-/** How many times this task's checks have already come back failing. */
 const verifyAttempts = (task: Task): number =>
   task.notes.filter((n) => n.author.kind === "system" && n.text.startsWith(VERIFY_NOTE_PREFIX))
     .length;
 
-/**
- * Failing checks do not publish. The output goes back to the task's author as a note and the task
- * returns to them; once the floor's attempts are spent it blocks for the human instead of looping.
- */
 export function recordVerificationFailure(
   model: ReadModel,
   taskId: TaskId,

@@ -1,31 +1,20 @@
 import { OBJECT_SPEC, type Facing, type LayoutRect, type OfficeLayout } from "@ho/protocol";
 import { Grid, type Point } from "./grid.ts";
 
-/**
- * Pixels per cell at zoom 1. Prison Architect's square tile is the map's atom here too: floors, walls,
- * objects and room designations are all per cell, and a wall is the content of a cell rather than an edge
- * (a 4×4 room therefore needs a 6×6 outline).
- */
 export const CELL_PX = 24;
 
-/** Material ids are open strings: the view maps unknown ids to a default. */
 type Material = string;
 
-/** A compiled office: one entry per cell in row-major order, plus what movement is not allowed through. */
 export type TileMap = {
   width: number;
   height: number;
   floor: readonly (Material | null)[];
   wall: readonly (Material | null)[];
-  /** Id of the object whose footprint covers this cell. */
   object: readonly (string | null)[];
-  /** Id of the room designated over this cell. */
   room: readonly (string | null)[];
-  /** 1 where a cell cannot be walked through: void, a wall, or an object that blocks. */
   blocked: Uint8Array;
 };
 
-/** A door or a piece of furniture as the office placed it: footprint, kind and the way it faces. */
 type PlacedObject = LayoutRect & { id: string; kind: string; facing: Facing };
 
 export type AnchorKind =
@@ -43,10 +32,8 @@ export type AnchorKind =
   | "car"
   | "wander";
 
-/** A named cell an actor can walk to and use; `group` reserves a spot for one kind (the boss's desk). */
 export type Anchor = { id: string; kind: AnchorKind; at: Point; facing: Facing; group?: string };
 
-/** One floor: a compiled office, the objects standing in it and the spots its characters move between. */
 export type FloorTemplate = {
   id: string;
   name: string;
@@ -55,7 +42,6 @@ export type FloorTemplate = {
   anchors: readonly Anchor[];
 };
 
-/** Every cell index of a rectangle that is still on the map. */
 export function* cellsOf(rect: LayoutRect, width: number, height: number): Generator<number> {
   for (let { y } = rect; y < rect.y + rect.h; y += 1) {
     for (let { x } = rect; x < rect.x + rect.w; x += 1) {
@@ -66,7 +52,6 @@ export function* cellsOf(rect: LayoutRect, width: number, height: number): Gener
   }
 }
 
-/** Runs of equal values in one row, so a rectangle of floor becomes one draw call instead of hundreds. */
 export function* runsOf<T>(
   values: readonly (T | null)[],
   width: number,
@@ -88,11 +73,6 @@ export function* runsOf<T>(
   }
 }
 
-/**
- * Compiles a drawn office into the map a floor is made of. The whole map is floor; later elements win over
- * earlier ones, so a layout reads top-down: walls around it, the rooms designated over it, then the
- * doors, which open the wall cells they span, and the furniture, which blocks where its spec says so.
- */
 export function compileLayout(
   floorId: string,
   office: OfficeLayout,
@@ -116,8 +96,6 @@ export function compileLayout(
       room[i] = rect.room;
     }
   }
-  // A door opens the wall it cuts through; a piece of furniture never does. Something that hangs on a
-  // wall (a window, a picture) leaves it standing, and a lift car is walked into from the room side.
   const objects: PlacedObject[] = [
     ...office.doors.map((door, i) => ({
       ...door,
@@ -151,7 +129,6 @@ export function compileLayout(
   };
 }
 
-/** The collision grid movement uses: everything the map marks as blocked is impassable. */
 export function gridFromMap(map: TileMap): Grid {
   const walkable = new Uint8Array(map.width * map.height);
   for (let i = 0; i < walkable.length; i += 1) {

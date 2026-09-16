@@ -20,7 +20,6 @@ export const daemonCommand: Command = {
           : `office UI: served on ${host}:${String(port)}, but the page needs this launch's token — run \`ho ui\` to open it, or \`ho ui --print\` for the URL. Opening http://${host}:${String(port)}/ without the token shows an empty office.`,
       );
     }
-    // The first signal stops the daemon (bounded by its own deadline); a second one gives up waiting.
     const shutdown = (): void => {
       process.once("SIGINT", () => process.exit(130));
       process.once("SIGTERM", () => process.exit(130));
@@ -34,9 +33,7 @@ export const daemonCommand: Command = {
     };
     process.once("SIGINT", shutdown);
     process.once("SIGTERM", shutdown);
-    await new Promise<never>(() => {
-      // Keep the process alive until a signal arrives.
-    });
+    await new Promise<never>(() => {});
     return undefined;
   },
 };

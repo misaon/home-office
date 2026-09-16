@@ -1,4 +1,3 @@
-// Claude Code `--output-format stream-json` events, validated loosely: only the fields we consume.
 import { compact, type RuntimeErrorCode, type RuntimeEvent } from "@ho/protocol";
 import { z } from "zod";
 
@@ -77,7 +76,6 @@ const summarize = (content: string | unknown[] | undefined): string => {
   return text.length > SUMMARY_MAX ? `${text.slice(0, SUMMARY_MAX - 1)}…` : text;
 };
 
-/** `api_retry` errors worth surfacing; rate limits have their own event and transient server errors none. */
 const RETRY_ERROR_CODES: Readonly<Record<string, RuntimeErrorCode>> = {
   authentication_failed: "authentication_failed",
   oauth_org_not_allowed: "authentication_failed",
@@ -86,7 +84,6 @@ const RETRY_ERROR_CODES: Readonly<Record<string, RuntimeErrorCode>> = {
   invalid_request: "invalid_request",
 };
 
-/** Parses one stdout line. Returns the normalised events it implies; unknown lines yield nothing. */
 export function normalizeLine(raw: string, now: () => Date): RuntimeEvent[] {
   if (!raw.startsWith("{")) {
     return [];

@@ -22,7 +22,6 @@ const EMPTY: RepoDraft = {
 
 const ICON = "w-40 h-40 flex-[0_0_40px] rounded-13 bg-accent grid place-items-center shadow-gold";
 
-/** The gold house and the two lines that say what a floor is. */
 function NewFloorHead(): React.JSX.Element {
   const { t } = useTranslation();
   return (
@@ -54,10 +53,6 @@ function NewFloorHead(): React.JSX.Element {
   );
 }
 
-/**
- * A floor is one project with its own boss, its own board and its own sandboxes. Point it at a
- * repository — a folder on this machine or a git URL — and the daemon checks it before it is made.
- */
 export function NewFloor(): React.JSX.Element | null {
   const { t } = useTranslation();
   const open = useUi((s) => s.addProjectOpen);

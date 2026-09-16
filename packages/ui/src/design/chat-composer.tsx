@@ -16,7 +16,6 @@ const DROP =
 
 const INPUT = "w-full border-0 bg-transparent text-13h pt-2 px-2 pb-10";
 
-/** Where a message is written: what is attached, what it costs, and the button that sends it. */
 export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const draft = useDesign((s) => s.draft);
@@ -24,8 +23,6 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
   const set = useDesign((s) => s.set);
   const flash = useDesign((s) => s.flash);
   const [dragging, setDragging] = useState(false);
-  // dragenter/dragleave fire for every child the pointer crosses; counting them is what keeps the
-  // highlight from blinking while the file travels over the composer's own controls.
   const depth = useRef(0);
 
   const send = useOfficeMutation({

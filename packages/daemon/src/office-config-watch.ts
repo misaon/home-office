@@ -5,17 +5,10 @@ import type { Logger } from "./logger.ts";
 import { syncProject } from "./office-config.ts";
 import { followEvents, type Office } from "./office.ts";
 
-/** Editors write a file in several steps; one apply per settled second is enough. */
 const DEBOUNCE_MS = 1000;
 
 type Timer = ReturnType<typeof setTimeout>;
 
-/**
- * Keeps every floor in step with its own `.ho/config.json`: once for each floor when the daemon starts,
- * again whenever a local checkout's `.ho` changes, and for a floor the moment it is created. A mirrored
- * repository is read at start only — its default branch moves on someone else's machine, not on a path
- * this host can watch.
- */
 export class OfficeConfigSync {
   readonly #office: Office;
   readonly #home: string;
@@ -32,7 +25,6 @@ export class OfficeConfigSync {
     this.#log = log;
   }
 
-  /** Returns as soon as the watchers are attached; the first pass runs behind it. */
   start(): void {
     this.#follow = followEvents(
       this.#office,
@@ -69,7 +61,6 @@ export class OfficeConfigSync {
     await this.#initial;
   }
 
-  /** One floor at a time: a mirrored repository is cloned here, and one git at a time is plenty. */
   async #firstPass(projects: readonly Project[]): Promise<void> {
     for (const project of projects) {
       if (this.#stopped) {
@@ -97,11 +88,6 @@ export class OfficeConfigSync {
     }
   }
 
-  /**
-   * Watches `.ho` where it exists. Where it does not, the repository root is watched instead, only so
-   * that a `.ho` appearing later swaps the watch over to it — a recursive watch of a whole checkout
-   * would mean following `node_modules` around.
-   */
   #arm(project: Project): void {
     if (this.#stopped || project.repo.kind !== "local") {
       return;

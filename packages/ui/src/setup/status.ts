@@ -1,6 +1,5 @@
 import type { Doctor } from "@ho/protocol";
 
-/** Docker Engine API level the daemon relies on (Docker Desktop 4.27+ / Engine 25+). */
 export const MIN_DOCKER_API = 1.44;
 
 export type StepState = "ok" | "todo" | "error" | "unknown";
@@ -38,10 +37,8 @@ export const tokenState = (doctor: Doctor | null): StepState => {
   return doctor.secrets.anthropicOauthToken ? "ok" : "todo";
 };
 
-/** True while any step a working office depends on is still open (floors and their teams are separate). */
 export const setupNeeded = (doctor: Doctor): boolean =>
   [dockerState, imagesState, tokenState].some((state) => state(doctor) !== "ok");
 
-/** The office can start its first sandbox: the doctor answered and every environment step is done. */
 export const setupReady = (doctor: Doctor | null): boolean =>
   doctor !== null && !setupNeeded(doctor);

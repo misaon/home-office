@@ -10,10 +10,6 @@ const CHECK_EVERY_MS = 60_000;
 const sizeOf = async (file: string): Promise<number> =>
   ((await stat(file).catch(() => null)) ?? { size: 0 }).size;
 
-/**
- * NDJSON to stdout by default; the desktop app, whose stdout nobody sees, logs to a file that rotates at
- * 8 MiB and keeps one previous file. `reopen()` is what `pino.destination` offers for exactly this.
- */
 export const createLogger = (
   level: DaemonConfig["logLevel"],
   file?: string,

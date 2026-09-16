@@ -3,13 +3,11 @@ import type { RuntimeSessionSpec } from "@ho/core";
 import { errorMessage } from "@ho/protocol";
 import type { AcpPreset } from "./presets.ts";
 
-/** JSON-RPC application error the ACP spec assigns to "authentication required". */
 const AUTH_REQUIRED = -32_000;
 const NEGOTIATION_TIMEOUT_MS = 30_000;
 
 export type Negotiated = {
   sessionId: string;
-  /** True when the agent restored the previous conversation (the prompt appendix is already in it). */
   resumed: boolean;
   servers: McpServer[];
 };
@@ -17,10 +15,6 @@ export type Negotiated = {
 export const isAuthRequired = (error: unknown): boolean =>
   typeof error === "object" && error !== null && "code" in error && error.code === AUTH_REQUIRED;
 
-/**
- * Every request races the agent's exit, so a CLI that dies (missing binary, bad key) fails fast with its
- * exit code and the tail of what it said on stderr; a deadline turns silence into a failure too.
- */
 export const raceExit = async <T>(
   work: Promise<T>,
   exited: Promise<number | null>,
@@ -50,7 +44,6 @@ export const raceExit = async <T>(
   }
 };
 
-/** HO's MCP server (http) and the sandbox-local browser servers (stdio) in ACP's shape. */
 const mcpServers = (spec: RuntimeSessionSpec): McpServer[] =>
   Object.entries(spec.mcpServers).map(([name, server]) =>
     server.kind === "http"
@@ -68,7 +61,6 @@ const mcpServers = (spec: RuntimeSessionSpec): McpServer[] =>
         },
   );
 
-/** initialize → (authenticate on demand) → session/load when possible, else session/new. */
 export async function negotiate(
   conn: ClientConnection,
   preset: AcpPreset,

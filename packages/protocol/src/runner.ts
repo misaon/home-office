@@ -1,9 +1,5 @@
 import { z } from "zod";
 
-/**
- * Wire protocol between the daemon's runner gateway and `ho-runner` inside a sandbox.
- * The runner dials out, authenticates with a one-time token, then relays one child process.
- */
 export const ToRunner = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("spawn"),

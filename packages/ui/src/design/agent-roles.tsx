@@ -3,13 +3,6 @@ import { RadioGroup } from "@base-ui/react/radio-group";
 import { useTranslation } from "react-i18next";
 import { PickCard } from "./pick-card.tsx";
 
-/**
- * Who this colleague is. The office hires two of its four roles here — the boss, while the floor has
- * none, and the worker — which is what the drawing shows. A reviewer or a clerk still exists (the CLI
- * hires them, and a review needs one), so if this colleague is already one, their card is shown too
- * rather than letting the dialog say they are something else.
- */
-
 export const ROLE_MARKS: Record<AgentRole, React.JSX.Element> = {
   boss: (
     <svg
@@ -72,21 +65,17 @@ export const ROLE_MARKS: Record<AgentRole, React.JSX.Element> = {
   ),
 };
 
-/** The boss only while the chair is free, the worker always, and this colleague's own role if it is
- *  neither of those. */
 const offered = (value: AgentRole, bossTaken: boolean): AgentRole[] => {
   const cards: AgentRole[] = bossTaken ? ["worker"] : ["boss", "worker"];
   return cards.includes(value) ? cards : [...cards, value];
 };
 
-/** The cards this floor can hire, one row of them. */
 export function RoleCards({
   value,
   bossTaken,
   onPick,
 }: {
   value: AgentRole;
-  /** Whether this floor already has a boss other than the colleague being edited. */
   bossTaken: boolean;
   onPick: (role: AgentRole) => void;
 }): React.JSX.Element {

@@ -4,7 +4,6 @@ import { requireToken } from "./rpc.ts";
 
 const PATH = "/attachments";
 
-/** A file name as a header value: UTF-8 bytes, base64url, no padding. */
 const base64url = (name: string): string => {
   const bytes = new TextEncoder().encode(name);
   let binary = "";
@@ -14,21 +13,15 @@ const base64url = (name: string): string => {
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 };
 
-/** The name of a file the office does not take, or null when it does. */
 export const rejects = (file: File): string | null =>
   attachmentType(file.name) === null ? file.name : null;
 
-/**
- * Uploads one file and returns what a message should carry. The daemon stores it under the hash of its
- * content, so sending the same image twice costs one copy.
- */
 export async function upload(file: File): Promise<Attachment> {
   const response = await fetch(PATH, {
     method: "POST",
     body: file,
     headers: {
       authorization: `Bearer ${requireToken()}`,
-      // Any file name has to survive a header, and a header is ASCII.
       "x-ho-filename": base64url(file.name),
     },
   });
@@ -40,11 +33,6 @@ export async function upload(file: File): Promise<Attachment> {
 
 const objectUrls = new Map<string, Promise<string>>();
 
-/**
- * A URL the page can show an attachment from. The bytes need the daemon's token, which an `<img src>`
- * cannot carry, so they are fetched once and kept as an object URL for as long as the page lives. The
- * type comes from the message's own descriptor: the daemon serves every file as opaque bytes.
- */
 function attachmentUrl(attachment: Attachment): Promise<string> {
   const existing = objectUrls.get(attachment.id);
   if (existing !== undefined) {
@@ -66,10 +54,6 @@ function attachmentUrl(attachment: Attachment): Promise<string> {
   return pending;
 }
 
-/**
- * That URL as a component sees it: null while the bytes are still coming, then the object URL. A file
- * the office will not draw as a picture is not worth fetching, which is what `wanted` says.
- */
 export function useAttachmentUrl(attachment: Attachment, wanted = true): string | null {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {

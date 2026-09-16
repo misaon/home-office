@@ -14,7 +14,6 @@ for (let i = 0; i < 256; i += 1) {
   HEX.push(i.toString(16).padStart(2, "0"));
 }
 
-/** RFC 9562 UUIDv7: 48-bit unix milliseconds, then random bits. Sortable by creation time. */
 function uuidv7(clock: Clock, random: Randomness): string {
   const bytes = new Uint8Array(16);
   random.randomize(bytes);

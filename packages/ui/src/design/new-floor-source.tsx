@@ -8,7 +8,6 @@ import { SourceCard } from "./new-floor-card.tsx";
 import { requireClient } from "../rpc.ts";
 import { MONO } from "./tokens.ts";
 
-/** The caption above a field, with what the office can say about it on the right. */
 function FieldCap({ label, hint }: { label: string; hint: string }): React.JSX.Element {
   return (
     <div className="flex items-center gap-8 mb-8">
@@ -19,7 +18,6 @@ function FieldCap({ label, hint }: { label: string; hint: string }): React.JSX.E
   );
 }
 
-/** A folder on this machine, typed or chosen with the host's own dialog. */
 function LocalField({
   draft,
   setDraft,
@@ -79,7 +77,6 @@ function LocalField({
   );
 }
 
-/** A repository the office clones into the sandbox itself. */
 function GitField({
   draft,
   setDraft,
@@ -121,7 +118,6 @@ function GitField({
   );
 }
 
-/** Where the code lives: the two cards, and the one field the chosen card asks for. */
 const FIELD_ROW =
   "flex-1 min-w-0 flex items-center gap-9 py-0 px-13 rounded-12 bg-card transition-[border-color] duration-220";
 

@@ -1,16 +1,6 @@
 import type { EffortLevel, Gender, ProviderId } from "@ho/protocol";
 import { siClaudecode, siGooglegemini, siOpencode } from "simple-icons";
 
-/**
- * The marks the agent dialog puts in front of a choice, so a provider, an effort and a gender are read
- * at a glance rather than off their words.
- *
- * The three provider marks are the vendors' own, from simple-icons (CC0-1.0). There is no fourth:
- * simple-icons does not carry OpenAI, so Codex takes a plain terminal caret rather than a logo invented
- * for it. Each is drawn in `currentColor`, not in the brand's hex, because the office's palette decides
- * what a picked row looks like.
- */
-
 const BOX = "flex-[0_0_14px] w-14 h-14 grid place-items-center";
 
 function Brand({ path, label }: { path: string; label: string }): React.JSX.Element {
@@ -23,7 +13,6 @@ function Brand({ path, label }: { path: string; label: string }): React.JSX.Elem
   );
 }
 
-/** A caret, for the provider whose logo is not ours to draw. */
 function Caret(): React.JSX.Element {
   return (
     <span className={BOX}>
@@ -56,7 +45,6 @@ export function providerMark(id: ProviderId): React.JSX.Element {
   return brand === null ? <Caret /> : <Brand path={brand.path} label={brand.title} />;
 }
 
-/** Five bars for five levels: how many are lit is the effort, without reading the word. */
 const BARS: Record<EffortLevel, number> = { low: 1, medium: 2, high: 3, xhigh: 4, max: 5 };
 
 export function effortMark(level: EffortLevel): React.JSX.Element {
@@ -74,7 +62,6 @@ export function effortMark(level: EffortLevel): React.JSX.Element {
   );
 }
 
-/** The three the office offers, each as the sign it is usually written with. */
 export function genderMark(gender: Gender): React.JSX.Element {
   const stroke = {
     fill: "none",

@@ -7,11 +7,6 @@ import { channelStream } from "./stream.ts";
 
 export type AcpRuntimeOptions = { clientVersion: string; onStderr: (text: string) => void };
 
-/**
- * One ACP agent per office session: spawn the CLI through the runner relay, negotiate, create (or load) a
- * session with the office's MCP servers, then run one prompt per `prompt()` call and translate the
- * notifications into runtime events.
- */
 export function createAcpRuntime(preset: AcpPreset, options: AcpRuntimeOptions): AgentRuntime {
   return {
     id: preset.id,

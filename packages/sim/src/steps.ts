@@ -7,7 +7,6 @@ const finishStep = (actor: Actor): void => {
   actor.moving = null;
 };
 
-/** How long a walker waits for a taken cell before looking for a way around it (plus a per-actor jitter). */
 const BLOCKED_WAIT_MS = 500;
 function advanceWalk(
   world: World,
@@ -35,7 +34,6 @@ function advanceWalk(
     finishStep(actor);
     return;
   }
-  // Somebody stands in or is stepping into the next cell: wait a moment, then plan a detour around them.
   if (actor.moving === null && occupied(occupancy, actor, true)(next)) {
     step.blockedMs = (step.blockedMs ?? 0) + dtMs;
     actor.activity = "idle";
@@ -49,7 +47,6 @@ function advanceWalk(
         step.path = detour;
         return;
       }
-      // Boxed in head-on: step aside into any free neighbour, then plan again from there.
       const aside = neighboursOf(actor.tile).find(
         (p) => floor.grid.isWalkable(p) && !around(p) && !samePoint(p, next),
       );
@@ -123,7 +120,6 @@ export function advanceStep(
       return;
     }
     case "away": {
-      // Standing in the car (its doors opened for them): the actor rides off and is gone for a while.
       actor.hidden = true;
       actor.activity = "idle";
       actor.awayUntil = world.time + step.ms;

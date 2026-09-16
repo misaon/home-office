@@ -11,10 +11,6 @@ import { err, ok, type Result } from "./result.ts";
 
 type AgentChoice = Pick<Agent, "provider" | "auth" | "model" | "effort">;
 
-/**
- * Effort a new agent starts at, by what the role actually does: the agents that change the repository think
- * hard, triage and errands do not. `xhigh` and `max` stay a deliberate per-agent choice in Settings.
- */
 const EFFORT_BY_ROLE: Readonly<Record<AgentRole, EffortLevel>> = {
   boss: "medium",
   worker: "high",
@@ -22,7 +18,6 @@ const EFFORT_BY_ROLE: Readonly<Record<AgentRole, EffortLevel>> = {
   clerk: "low",
 };
 
-/** Claude Code aliases per role (D12); other providers start from their catalog default. */
 const CLAUDE_MODEL_BY_ROLE: Readonly<Record<AgentRole, string>> = {
   boss: "opus",
   worker: "sonnet",
@@ -30,7 +25,6 @@ const CLAUDE_MODEL_BY_ROLE: Readonly<Record<AgentRole, string>> = {
   clerk: "haiku",
 };
 
-/** The catalog's defaults for a provider and role; both fall back to the provider's own defaults. */
 export const defaultChoice = (
   provider: ProviderId,
   role: AgentRole = "worker",
@@ -45,7 +39,6 @@ export const defaultChoice = (
   };
 };
 
-/** Rejects provider/auth/model/effort combinations the catalog does not offer. */
 export function validateChoice(choice: AgentChoice): Result<AgentChoice, DomainError> {
   const p = PROVIDERS[choice.provider];
   if (!p.authKinds.includes(choice.auth)) {

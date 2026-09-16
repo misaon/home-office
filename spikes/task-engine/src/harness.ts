@@ -1,5 +1,3 @@
-// The moving parts of the harness: one "task" is a task volume, a hardened sandbox and its engine,
-// started and swept the way the daemon does it. The checks themselves live in run.ts.
 import { $ } from "bun";
 import {
   createIdFactory,
@@ -90,7 +88,6 @@ export const requestFor = (id: string, volume: string): TaskEngineRequest => ({
   labels: labelsFor(id),
 });
 
-/** Fills the task volume the way git-bridge fills it for a real session: a repository at /work/repo. */
 const seedRepo = async (volume: string): Promise<void> => {
   await $`docker run --rm -v ${volume}:/work -v ${FIXTURE}:/seed:ro alpine:3.24 sh -c ${"mkdir -p /work/repo && cp -R /seed/. /work/repo/ && chown -R 1000:1000 /work"}`.quiet();
 };
@@ -105,7 +102,6 @@ export async function startTask(
   await provider.createVolume(volume, { ...labelsFor(id), "ho.kind": "task-volume" });
   await seedRepo(volume);
   const request = requestFor(id, volume);
-  // The harness owns its cleanup in stopTask, so the volume outlives this stack on purpose.
   const plan = await step(`task ${id}: volumes`, () =>
     prepareTaskEngine(provider, request, new AsyncDisposableStack()),
   );

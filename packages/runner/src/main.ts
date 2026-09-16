@@ -1,6 +1,3 @@
-// ho-runner: PID 1 inside an agent sandbox. Dials the daemon's runner gateway over WebSocket with a
-// one-time token, then relays exactly one child process (stdin/stdout lines/stderr/exit). The agent's
-// credentials arrive over this channel and only ever live in the child's environment.
 import { compact, errorMessage } from "@ho/protocol";
 import { type FromRunner, RUNNER_ENV, RUNNER_PATH, ToRunner } from "@ho/protocol/runner";
 import { pumpLines, pumpText } from "./pump.ts";
@@ -29,7 +26,6 @@ const send = (message: FromRunner): void => {
 const reportError = (error: unknown): void => {
   send({ type: "error", message: errorMessage(error) });
 };
-// FileSink operations may return a promise when the pipe is backed up; never leave it floating.
 const settle = (result: number | Promise<number>): void => {
   if (result instanceof Promise) {
     result.catch(reportError);

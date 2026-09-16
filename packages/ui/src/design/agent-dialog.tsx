@@ -14,7 +14,6 @@ import { type AgentDraft, useDesign } from "./store.ts";
 const REMOVE =
   "py-10 px-14 rounded-11 border border-bad-a30 bg-bad-a10 text-bad-soft text-12h cursor-pointer flex-[0_0_auto] transition-all duration-200";
 
-/** What a new hire starts as: Claude Code at the catalogue's own defaults for the role it takes. */
 export const newDraft = (hasBoss: boolean): AgentDraft => {
   const role: AgentRole = hasBoss ? "worker" : "boss";
   return {
@@ -38,7 +37,6 @@ export const draftOf = (member: Member): AgentDraft => ({
   prompt: member.prompt,
 });
 
-/** Remove on the left, what will be saved in the middle, and the two ways out. */
 function AgentDialogFoot({
   id,
   name,
@@ -53,7 +51,6 @@ function AgentDialogFoot({
   name: string;
   draft: AgentDraft;
   busy: boolean;
-  /** Someone else on this floor already answers to this name. */
   taken: boolean;
   onCancel: () => void;
   onSave: () => void;
@@ -107,11 +104,6 @@ function AgentDialogFoot({
   );
 }
 
-/**
- * Hiring a colleague, or changing one. The floor's boss is fixed — the daemon refuses a second one and
- * refuses to demote the first — so the boss card names whoever holds it instead of offering a swap.
- */
-/** One draft, sent the way the office sends it: a patch for someone here, a whole hire for someone new. */
 async function commit(
   draft: AgentDraft,
   name: string,
@@ -159,11 +151,6 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
     flash(error.message);
   };
   const name = draft === null ? "" : draft.name.trim();
-  /**
-   * Two colleagues on one floor answering to the same name is a mess the office cannot undo: the chat,
-   * the board and the boss's delegation all name people rather than ids. The dialog refuses it here,
-   * case-insensitively, counting everyone but whoever is being edited.
-   */
   const taken =
     name !== "" &&
     floor.team.some(

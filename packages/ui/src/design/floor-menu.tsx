@@ -14,7 +14,6 @@ const SEARCH = "flex items-center gap-8 py-9 px-10 rounded-9 bg-sunk border bord
 const ADD =
   "w-full flex items-center gap-9 py-9 px-10 rounded-9 border-0 bg-transparent cursor-pointer text-left transition-[background] duration-180";
 
-/** Which floor the office is showing, with a search because a workshop can have many. */
 export function FloorMenu({ onPicked }: { onPicked: () => void }): React.JSX.Element {
   const { t } = useTranslation();
   const floors = useFloors();

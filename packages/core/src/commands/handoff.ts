@@ -16,7 +16,6 @@ import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
 import { chatEvent, handoffEvent, note, noteEvent, statusChange, withTask } from "./shared.ts";
 import { canTransition, readTask } from "./tasks.ts";
 
-/** Passes the task to a colleague: the current session ends, the target's session starts with the brief. */
 export function handoffTask(
   model: ReadModel,
   taskId: TaskId,
@@ -63,7 +62,6 @@ const readTaskAndMessage =
     message,
   });
 
-/** Pauses the task with a question for the human; the answer (chat.send with taskId) resumes it. */
 export function askHuman(
   model: ReadModel,
   taskId: TaskId,
@@ -97,7 +95,6 @@ export function askHuman(
   });
 }
 
-/** The human answers; the task goes back to its assignee (or the inbox) and the paused session resumes. */
 export function answerQuestion(
   model: ReadModel,
   taskId: TaskId,

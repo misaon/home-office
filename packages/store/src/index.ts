@@ -14,11 +14,6 @@ import { z } from "zod";
 const BATCH = 500;
 const SCHEMA_VERSION = 1;
 
-/**
- * The event log's one table, in the shape the old ORM created before 2026-09-13, so an existing file
- * opens as it is. The two nullable id columns carry no data — they are always written NULL — and exist
- * only so this one statement matches both an old file and a new one.
- */
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS events (
     seq integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -43,7 +38,6 @@ const Row = z.object({
   payload: z.string(),
 });
 
-/** Names the row a schema change has orphaned; without it a replay failure says only which field broke. */
 const toStored = (raw: unknown): StoredEvent => {
   const row = Row.parse(raw);
   const named = (what: string, cause: unknown): Error =>
@@ -73,7 +67,6 @@ const toStored = (raw: unknown): StoredEvent => {
 const matches = (filter: EventFilter | undefined, event: StoredEvent): boolean =>
   filter?.types === undefined || filter.types.includes(event.type);
 
-/** The log carries briefs and reports, so it is the owner's alone; the WAL and shm files inherit its mode. */
 const restrict = async (path: string): Promise<void> => {
   for (const file of [path, `${path}-wal`, `${path}-shm`]) {
     await chmod(file, 0o600).catch((error: unknown) => {
@@ -84,13 +77,11 @@ const restrict = async (path: string): Promise<void> => {
   }
 };
 
-/** Opens (or creates) the SQLite event log in WAL mode, mode 0600, with its schema in place. */
 export async function openEventStore(
   path: string,
   deps: { ids: IdFactory; clock: Clock },
 ): Promise<EventStore & { close: () => void }> {
   const db = new Database(path, { create: true, strict: true });
-  // A half-opened database would hold the file locked with nobody left holding a handle to close it.
   try {
     db.run("PRAGMA journal_mode = WAL");
     db.run("PRAGMA synchronous = NORMAL");

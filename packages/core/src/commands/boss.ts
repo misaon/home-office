@@ -18,18 +18,9 @@ import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
 import { chatEvent, handoffEvent, note, titleFromText, withAgent, withProject } from "./shared.ts";
 import { newTask, readTask } from "./tasks.ts";
 
-/**
- * The boss creates work for his floor (source: delegation). Only a boss delegates, only within his own
- * project, and only to its members — himself included, which is how a floor without staff gets things done.
- */
 const section = (heading: string, lines: readonly string[]): string =>
   lines.length === 0 ? "" : `\n\n${heading}\n${lines.map((l) => `- ${l}`).join("\n")}`;
 
-/**
- * The spec as prose, because the brief is what a session's opening message, a pull-request body and a
- * review prompt all read. The structure stays beside it on the task; this is the rendering, not the
- * source of truth.
- */
 const renderBrief = (spec: TaskSpec, context: string): string =>
   [
     spec.goal,
@@ -85,10 +76,6 @@ export function delegateTask(
   });
 }
 
-/**
- * A chat message from the human to a floor: Lola carries it to the floor's boss as a triage task. Without a
- * boss (a floor mid-removal) the message is only recorded.
- */
 export function triageMessage(
   model: ReadModel,
   projectId: ProjectId,
@@ -130,7 +117,6 @@ export function triageMessage(
   });
 }
 
-/** An agent (usually the boss) speaks in his floor's chat. */
 export function postAgentMessage(
   model: ReadModel,
   agentId: AgentId,

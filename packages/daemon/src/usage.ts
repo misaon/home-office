@@ -18,7 +18,6 @@ const sorted = (buckets: Map<string, Bucket>): Bucket[] =>
       b.usage.inputTokens + b.usage.outputTokens - (a.usage.inputTokens + a.usage.outputTokens),
   );
 
-/** Token usage from the session projection, grouped for the Usage panel and `ho usage`. */
 export function usageSummary(
   model: ReadModel,
   now: number,

@@ -21,15 +21,9 @@ const setupDismissed = (): boolean => {
 const dismiss = (): void => {
   try {
     window.localStorage.setItem(DISMISSED_KEY, "1");
-  } catch {
-    // Storage may be unavailable; the checklist simply reappears next time.
-  }
+  } catch {}
 };
 
-/**
- * Opens the checklist once per connection when the office cannot work yet, unless it was dismissed
- * before; the header's Setup button reopens it either way.
- */
 export function useSetupAutoOpen(): void {
   const online = useOnline();
   const setSetupOpen = useUi((s) => s.setSetupOpen);
@@ -41,7 +35,6 @@ export function useSetupAutoOpen(): void {
   }, [online, doctor, setSetupOpen]);
 }
 
-/** The checklist's own two header buttons, a size smaller than the ones the steps carry. */
 const QUIET =
   "py-8 px-13 rounded-10 border border-border-strong bg-transparent text-12 text-ink-quiet cursor-pointer whitespace-nowrap transition-all duration-200";
 
@@ -50,7 +43,6 @@ const SHEET =
 
 const HEAD = "pt-24 px-26 pb-20 border-b border-line flex items-start gap-16 flex-wrap";
 
-/** The three things a working office needs, each one able to say how it is doing. */
 export function Setup(): React.JSX.Element {
   const { t } = useTranslation();
   const open = useUi((s) => s.setupOpen);

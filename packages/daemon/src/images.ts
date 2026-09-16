@@ -11,10 +11,6 @@ import type { Resources } from "./paths.ts";
 const IMAGE_LABELS = { [LABELS.managed]: "true", [LABELS.kind]: "image" };
 const RUNNER_IN_CONTEXT = "bin/ho-runner.js";
 
-/**
- * Bundles ho-runner into the agent image build context; the image's own Bun runs it. Packaged builds ship
- * the bundle inside the context (no sources, no `bun` on PATH), so the step only checks that it is there.
- */
 async function ensureRunner(
   context: string,
   resources: Resources,
@@ -37,7 +33,6 @@ async function ensureRunner(
   }
 }
 
-/** Provider variants the roster needs: Claude Code always, plus every provider some agent uses. */
 export const neededVariants = (model: Pick<ReadModel, "agents">): ProviderId[] => [
   "claude-code",
   ...[...new Set([...model.agents.values()].map((a) => a.provider))].filter(
@@ -45,7 +40,6 @@ export const neededVariants = (model: Pick<ReadModel, "agents">): ProviderId[] =
   ),
 ];
 
-/** Every image this build can build, or null when it carries no build contexts (a compiled CLI). */
 async function imageSpecs(
   config: DaemonConfig,
   resources: Resources,
@@ -99,7 +93,6 @@ export async function ensureImages(
 
 export type ImageStatus = { ref: string; present: boolean; upToDate: boolean };
 
-/** Whether each image exists locally and was built from the current build context; empty without contexts. */
 export async function imageStatus(
   provider: SandboxProvider,
   config: DaemonConfig,

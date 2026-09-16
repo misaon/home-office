@@ -22,9 +22,7 @@ const DWELL: Record<
   smoke: { activity: "smoke", ms: 9000, anchor: "smoke" },
   relax: { activity: "relax", ms: 12_000, anchor: "relax" },
 };
-/** The boss leaves his office for a coffee or the restroom only; lounging is for the staff. */
 const BOSS_NEEDS: readonly NeedKind[] = ["coffee", "restroom"];
-/** Idle staff now and then ride the elevator off the floor for a while and come back on their own. */
 const AWAY_CHANCE = 0.06;
 const AWAY_MIN_MS = 45_000;
 const AWAY_SPAN_MS = 90_000;
@@ -34,10 +32,6 @@ const pressingNeed = (actor: Actor, allowed: readonly NeedKind[]): NeedKind | un
     .filter((n) => actor.needs[n] >= THRESHOLD)
     .toSorted((a, b) => actor.needs[b] - actor.needs[a])[0];
 
-/**
- * Walks to a free spot for the need, dwells there, then heads home (the boss) or strolls on (the staff). The boss
- * takes the nearest spot (the kitchen, not the terrace grill); staff pick any.
- */
 function satisfy(world: World, actor: Actor, need: NeedKind): boolean {
   const plan = DWELL[need];
   const options = freeAnchors(world, actor.floorId, plan.anchor, actor.kind);
@@ -59,7 +53,6 @@ function satisfy(world: World, actor: Actor, need: NeedKind): boolean {
   return true;
 }
 
-/** Off for a while: walk into the elevator car (its doors open for anybody standing there) and ride away. */
 function leaveFloor(world: World, actor: Actor, ms: number): boolean {
   const car = anchorOf(world, actor.floorId, "car");
   if (car === undefined) {
@@ -70,7 +63,6 @@ function leaveFloor(world: World, actor: Actor, ms: number): boolean {
   return true;
 }
 
-/** The boss between tasks: a coffee or the restroom when pressing, otherwise back at (or staying at) his desk. */
 function bossIdle(world: World, actor: Actor): void {
   const need = pressingNeed(actor, BOSS_NEEDS);
   if (need !== undefined && world.rng.chance(0.7) && satisfy(world, actor, need)) {
@@ -83,7 +75,6 @@ function bossIdle(world: World, actor: Actor): void {
   actor.idleUntil = world.time + 5000;
 }
 
-/** Staff between tasks: needs first, an occasional trip off the floor, else a stroll or a pause. */
 function staffIdle(world: World, actor: Actor): void {
   const need = pressingNeed(actor, NEEDS);
   if (need !== undefined && world.rng.chance(0.7) && satisfy(world, actor, need)) {
@@ -108,7 +99,6 @@ function staffIdle(world: World, actor: Actor): void {
   actor.idleUntil = world.time + 3000;
 }
 
-/** Utility-style idle behaviour per kind of actor; working actors, visitors and the receptionist stay put. */
 export function idleBehaviour(world: World, actor: Actor): void {
   if (actor.work !== null || actor.kind === "visitor" || actor.kind === "receptionist") {
     return;

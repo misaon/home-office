@@ -15,7 +15,6 @@ const ROUND =
 const WIDE =
   "py-0 px-12 h-30 border-0 rounded-9 cursor-pointer text-12 whitespace-nowrap transition-all duration-200";
 
-/** A square icon button on the camera bar. */
 function Round({
   label,
   plus,
@@ -47,7 +46,6 @@ function Round({
   );
 }
 
-/** The camera keeps this colleague in the middle of the floor until it is let go. */
 function FollowBoss({
   id,
   name,
@@ -75,7 +73,6 @@ function FollowBoss({
   );
 }
 
-/** The camera's own controls, floating over the floor: how close you are, and who you follow. */
 export function StageCamera({
   internal,
   office,
@@ -89,8 +86,6 @@ export function StageCamera({
   const [zoom, setZoom] = useState(100);
   const boss = floor === null ? undefined : bossOf(floor);
 
-  // The camera also moves under the pointer and the wheel, so the read-out follows it rather than
-  // only our own clicks.
   useEffect(() => {
     if (office === null) {
       return undefined;

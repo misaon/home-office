@@ -1,14 +1,6 @@
 import { Radio } from "@base-ui/react/radio";
 import { Check } from "lucide-react";
 
-/**
- * The card the office picks one of something with: a lit tile holding the mark, a name, a line of
- * explanation, and a tick in the corner once it is the chosen one. The dialog that hires a colleague
- * and the dialog that points a floor at a repository both ask the same question, so they ask it with
- * the same card. Each card is a radio, so the group it stands in says which one is picked and the
- * arrow keys move between them.
- */
-
 const CARD =
   "relative flex flex-col items-start p-14 rounded-14 cursor-pointer text-left outline-none transition-all duration-240 ease-soft border bg-card border-border data-checked:border-accent-a45 data-checked:bg-accent-a07";
 
@@ -22,7 +14,6 @@ export function PickCard({
   mark,
   title,
   hint,
-  /** The drawing sets the two sets of cards one pixel apart, so the gap is the caller's to say. */
   gap,
 }: {
   value: string;

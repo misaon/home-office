@@ -1,7 +1,6 @@
 import type { LiveEvent, SessionId } from "@ho/protocol";
 import { nextBump, useUi } from "./store.ts";
 
-/** Recent live runtime events per session (the daemon does not persist them either). */
 const liveLog = new Map<SessionId, LiveEvent[]>();
 const dirty = new Set<SessionId>();
 const LIVE_LIMIT = 300;

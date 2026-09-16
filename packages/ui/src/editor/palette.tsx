@@ -1,6 +1,5 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
-// The palette of the active tool: what can be painted, what it is called and how much room it takes.
 import { DoorKind, OBJECT_SPEC, ObjectKind, RoomKind, WallMaterial } from "@ho/protocol";
 import type { TFunction } from "i18next";
 import { useState } from "react";
@@ -16,7 +15,6 @@ const KIND_LABEL = {
   object: "editor.furniture",
 } as const satisfies Record<Tool, string>;
 
-/** What each tool paints from: the closed list of the protocol, whose slugs the office file stores. */
 const SCHEMA = {
   wall: WallMaterial,
   room: RoomKind,
@@ -24,7 +22,6 @@ const SCHEMA = {
   object: ObjectKind,
 } as const;
 
-/** Every choice of the active tool, two to a row, with a footprint where a piece has one. */
 function Choices({
   label,
   options,
@@ -33,7 +30,6 @@ function Choices({
   name,
   pick,
 }: {
-  /** What the grid of choices is for; a toggle group carries its own name. */
   label: string;
   options: readonly string[];
   value: string;
@@ -82,7 +78,6 @@ const footprintOf = (option: string, t: TFunction): string | null => {
   return spec.onWall ? t("editor.footprintWall", size) : t("editor.footprint", size);
 };
 
-/** The palette of the active tool, plus the footprint of what is in hand. */
 export function Palette({
   brush,
   setBrush,
@@ -99,7 +94,6 @@ export function Palette({
   const all: readonly string[] = SCHEMA[tool].options;
   const needle = search.trim().toLowerCase();
   const name = (option: string): string => kindName(tool, option);
-  // The slug is what a saved office contains, so searching keeps matching it as well as the name.
   const options =
     needle === ""
       ? all

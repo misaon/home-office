@@ -77,14 +77,11 @@ async function runToCompletion(
   }
 }
 
-// ---- housekeeping --------------------------------------------------------------------------------
-
 const removeVolumeIfFree = async (api: DockerApi, name: string): Promise<boolean> => {
   try {
     await api.raw("DELETE", `/volumes/${encodeURIComponent(name)}`);
     return true;
   } catch (error) {
-    // 404: already gone; 409: still in use by a container, leave it for the next sweep.
     if (error instanceof DockerApiError && (error.status === 404 || error.status === 409)) {
       return false;
     }
@@ -103,7 +100,6 @@ async function prune(api: DockerApi, scope: PruneScope): Promise<PruneReport> {
       `/containers/json?all=1&filters=${labelFilter(scope.labels)}`,
     );
     for (const c of containers) {
-      // "created" is the window between create and start: that container belongs to a session being born.
       if (c.State !== "running" && c.State !== "created" && c.Created * 1000 <= cutoff) {
         await removeContainer(api, c.Id);
         report.containers.push(nameOf(c));
@@ -188,8 +184,6 @@ async function inventory(
   };
 }
 
-// ---- the provider --------------------------------------------------------------------------------
-
 export function createDockerProvider(options: {
   socket: string;
   platform?: string;
@@ -202,8 +196,6 @@ export function createDockerProvider(options: {
         const v = await api.json(Version, "GET", "/version");
         return { ok: true, version: v.Version, apiVersion: v.ApiVersion, os: v.Os, arch: v.Arch };
       } catch (error) {
-        // Names the socket it tried: this message is what the office's fault screen shows and what the
-        // owner pastes when asking why no engine was found.
         return {
           ok: false,
           message: `cannot reach the Docker engine at ${options.socket}\n${errorMessage(error)}`,

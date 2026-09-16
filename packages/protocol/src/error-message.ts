@@ -32,11 +32,6 @@ const describe = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);
 };
 
-/**
- * A ZodError's own `message` is the JSON issue array and an oRPC validation failure says only "Input
- * validation failed", so both are rendered from their issues instead. Causes are appended because the
- * diagnosis usually lives there: a wrapper explains what failed, its cause explains why.
- */
 export const errorMessage = (error: unknown): string => {
   const parts: string[] = [];
   let current: unknown = error;

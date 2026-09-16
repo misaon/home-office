@@ -4,7 +4,6 @@ import { useOffice } from "../office/office-canvas.tsx";
 const FRAME =
   "flex-1 min-w-0 relative rounded-20 border border-edge-lit overflow-hidden bg-floor shadow-floor";
 
-/** The floor itself, drawn by the office, inside the frame the design puts around it. */
 export function Stage({ internal }: { internal: boolean }): React.JSX.Element {
   const { ref, handle } = useOffice();
 

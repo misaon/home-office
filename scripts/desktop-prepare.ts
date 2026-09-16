@@ -1,6 +1,3 @@
-// Assembles everything the desktop app bundles besides its own main process: the office UI and the image
-// build contexts (with the bundled ho-runner). Output: apps/desktop/resources/ho, which mirrors the
-// repository paths @ho/daemon resolves; git-ignored. `bun run desktop:dev|build` runs this first.
 import { $ } from "bun";
 import { cp, mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -19,8 +16,6 @@ await $`bun run ${at("scripts/ui-build.ts")}`.cwd(root);
 await cp(at("packages/ui/dist"), resolve(out, "packages/ui/dist"), { recursive: true });
 say("ui bundle copied");
 
-// The Dockerfiles as in the repository, plus the runner bundle the daemon would otherwise produce at build
-// time (the packaged app has neither sources nor `bun`).
 await cp(at("images/git-bridge"), resolve(out, "images/git-bridge"), { recursive: true });
 await cp(at("images/agent"), resolve(out, "images/agent"), {
   recursive: true,

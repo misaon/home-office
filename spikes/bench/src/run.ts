@@ -16,13 +16,6 @@ import {
 } from "@ho/protocol";
 import { addFloor, createWorld, floorTemplate, spawnActor, tick } from "@ho/sim";
 
-/**
- * What the office costs, measured rather than guessed. Every number this prints is wall-clock on the
- * machine that ran it; what matters is the shape of the curve as a floor's history grows.
- *
- * Run with `bun run bench`.
- */
-
 const AT = "2026-09-15T12:00:00.000Z";
 const ids = createIdFactory(
   { now: () => new Date(AT) },
@@ -33,7 +26,6 @@ const ids = createIdFactory(
   },
 );
 
-/** Median of repeated runs: one slow run is the garbage collector, not the code. */
 function measure(runs: number, body: () => void): number {
   const times: number[] = [];
   for (let i = 0; i < runs; i += 1) {
@@ -46,7 +38,6 @@ function measure(runs: number, body: () => void): number {
 
 const ms = (value: number): string => `${value.toFixed(3)} ms`;
 
-/** A floor with `agents` colleagues, `tasks` tasks, and a session per task that starts and ends. */
 function seed(agents: number, tasks: number): StoredEvent[] {
   const projectId = ids.project();
   const agentIds = Array.from({ length: agents }, () => ids.agent());
@@ -178,14 +169,12 @@ for (const tasks of [100, 1000, 10_000]) {
   );
 }
 
-/** Exactly what `ui/src/store.ts` does today: no index, so every call walks every session. */
 const scanForSession = (
   sessions: ReadonlyMap<SessionId, Session>,
   agentId: AgentId,
 ): Session | undefined =>
   [...sessions.values()].find((s) => s.agentId === agentId && isSessionActive(s.state));
 
-/** What an index would cost instead: one pass to build, then a map lookup each. */
 const buildActiveIndex = (sessions: ReadonlyMap<SessionId, Session>): Map<AgentId, Session> => {
   const index = new Map<AgentId, Session>();
   for (const session of sessions.values()) {
@@ -203,7 +192,6 @@ process.stdout.write(
 process.stdout.write("   last one per agent, so an idle colleague's lookup walks the whole map.\n");
 const ACTORS = 12;
 for (const tasks of [100, 1000, 10_000]) {
-  // Drop only the last `ACTORS` end events, so that many sessions are still running.
   const all = seed(ACTORS, tasks);
   const ends = all.filter((e): e is StoredEvent => e.type === "session.ended");
   const stillRunning = new Set<StoredEvent>(ends.slice(-ACTORS));

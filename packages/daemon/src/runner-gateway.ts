@@ -5,13 +5,8 @@ import type { Logger } from "./logger.ts";
 import { bearerToken, mintToken } from "./token.ts";
 
 export type RunnerConnection = {
-  /** The sandbox user the runner reports; anything but 1000 is a broken image. */
   uid: number;
   channel: RunnerChannel;
-  /**
-   * Ends the child politely and then firmly: stdin closes, SIGTERM after 5 s, SIGKILL after 10 s, and the
-   * promise settles on the exit line or at 15 s. The connection closes afterwards either way.
-   */
   terminate: () => Promise<void>;
 };
 export type RunnerSocket = { send: (data: string) => unknown; close: () => void };
@@ -32,7 +27,6 @@ type Live = {
   stderrTail: string;
 };
 
-/** A frame from the sandbox, or null: malformed JSON is as invalid as a frame of the wrong shape. */
 const parseFrame = (raw: string | Buffer | Uint8Array): FromRunner | null => {
   try {
     const parsed = FromRunner.safeParse(
@@ -49,11 +43,6 @@ const SPAWN_TIMEOUT_MS = 15_000;
 const TERMINATE_STEP_MS = 5000;
 const STDERR_TAIL_CHARS = 600;
 
-/**
- * Where sandboxes dial in. A session first `issue`s a one-time token and gets a promise of the connection;
- * the runner presents the token on its WebSocket upgrade, says hello, and from then on the session drives
- * the child through a `RunnerChannel`.
- */
 export class RunnerGateway {
   readonly #pending = new Map<string, Pending>();
   readonly #live = new Map<string, Live>();
@@ -213,7 +202,6 @@ export class RunnerGateway {
         }
         const spawned = Promise.withResolvers<void>();
         live.spawned = spawned;
-        // Both belong to the child, not the connection: a retry spawns a second one over this socket.
         live.exited = Promise.withResolvers<void>();
         live.stderrTail = "";
         const timer = setTimeout(() => {

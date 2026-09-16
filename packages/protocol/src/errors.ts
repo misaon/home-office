@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { TaskStatus } from "./domain.ts";
 
-/** Expected command failures, as values: the daemon maps them to RPC errors, the UI to messages. */
 const NotFound = z.object({
   entity: z.enum(["project", "agent", "task", "session", "mail", "attachment"]),
   id: z.string(),
@@ -33,7 +32,6 @@ export const describeDomainError = (error: DomainError): string => {
   return `cannot move task from ${error.from} to ${error.to}`;
 };
 
-/** The oRPC error table of the contract, one entry per domain error code. */
 export const RPC_ERRORS = {
   NOT_FOUND: { message: "Entity not found", data: NotFound },
   CONFLICT: { message: "The request conflicts with the current state", data: Conflict },

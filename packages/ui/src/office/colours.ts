@@ -1,6 +1,4 @@
-/** The office has no art yet, so every material is a colour. Unknown ids fall back to the defaults. */
 export const GROUND = 0xeceae4;
-/** One colour and one weight for every line of the grid, the map's own edge included. */
 export const GRID_LINE = 0xdedbd3;
 
 export const FLOOR: Readonly<Record<string, number>> = { office: 0xffffff };
@@ -9,10 +7,6 @@ export const FLOOR_DEFAULT = 0xf7f6f2;
 export const WALL: Readonly<Record<string, number>> = { wall: 0x2b3140, glass: 0x8fb8c9 };
 export const WALL_DEFAULT = 0x2b3140;
 
-/**
- * Doors and furniture, by what they are. These are placeholders until the art lands: the id in the
- * layout never changes, so a sprite added later replaces the fill without touching a saved office.
- */
 export const OBJECTS: Readonly<Record<string, number>> = {
   door: 0xb07d4a,
   "glass-door": 0x7fb4c9,
@@ -47,7 +41,6 @@ export const OBJECTS: Readonly<Record<string, number>> = {
 export const OBJECT_FILL = 0xb9bfca;
 export const OBJECT_EDGE = 0x8b93a1;
 
-/** A hue per room, so a plan can be read without consulting a legend. */
 export const ROOM: Readonly<Record<string, number>> = {
   reception: 0xe0a33c,
   "boss-office": 0x8b6fd0,
@@ -61,10 +54,8 @@ export const ROOM: Readonly<Record<string, number>> = {
   corridor: 0x9aa2b1,
   terrace: 0x5fae4c,
 };
-/** The tint is faint, so the same hue draws the room's own edge to show where it ends. */
 export const ROOM_EDGE_ALPHA = 0.75;
 export const ROOM_DEFAULT = 0x6f9bd8;
-/** Room designation is a tint over the floor, as Prison Architect's chessboard overlay is. */
 export const ROOM_ALPHA = 0.22;
 
 export const DOT = 0x2b3140;

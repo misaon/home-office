@@ -53,11 +53,6 @@ const runOrThrow = async (
   }
 };
 
-/**
- * Makes sure the task volume holds the repository on the task branch. A fresh task clones the default branch
- * and creates the branch; a task whose branch already exists in the source (resumed after GC, or under review)
- * clones that branch directly.
- */
 export async function prepareRepo(
   provider: SandboxProvider,
   config: DaemonConfig,
@@ -103,7 +98,6 @@ export async function prepareRepo(
   );
 }
 
-/** Pushes the task branch back into the source repository. The agent never had this read-write mount. */
 export const pushFromVolume = (
   provider: SandboxProvider,
   config: DaemonConfig,

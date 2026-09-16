@@ -12,7 +12,6 @@ const NAME = `flex-1 min-w-0 ${MONO} text-11 text-accent-soft overflow-hidden te
 const CLEAR =
   "w-20 h-20 flex-[0_0_20px] grid place-items-center border-0 rounded-6 bg-transparent text-accent-quote cursor-pointer transition-all duration-200";
 
-/** What is hanging on the message you have not sent yet. */
 export function ChatAttachment({ file }: { file: string }): React.JSX.Element {
   const set = useDesign((s) => s.set);
   return (

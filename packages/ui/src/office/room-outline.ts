@@ -1,13 +1,7 @@
 import { NEIGHBOURS, type TileMap } from "@ho/sim";
 
-/** One edge of one cell where the room changes, in cell coordinates. */
 type Edge = { x1: number; y1: number; x2: number; y2: number; room: string };
 
-/**
- * Every cell edge where the room changes, which traces each room's outline without having to find the
- * outline itself. The tint alone leaves the end of a room hard to see, and a room is not always a
- * rectangle, so this is per cell rather than per rectangle.
- */
 export function roomOutline(map: TileMap): Edge[] {
   const at = (x: number, y: number): string | null =>
     x < 0 || y < 0 || x >= map.width || y >= map.height

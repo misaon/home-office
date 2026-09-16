@@ -3,14 +3,7 @@ import { t as translate } from "i18next";
 import { Container, Graphics, Text } from "pixi.js";
 import { activeSessionOf, useUi } from "../store.ts";
 
-/**
- * What the drawing puts under a character: a name and a status on a dark pill, and — while they are
- * working — the same slow ring the office uses everywhere else. Built once per colleague and then only
- * updated, because this runs on every frame.
- */
-
 const BODY = CELL_PX;
-/** `inset: -6px` on a 42px puck, at the office's own scale. */
 const RING_GAP = 6 * (BODY / 21);
 const RING_FROM = 0.85;
 const RING_TO = 2.4;
@@ -56,7 +49,6 @@ export function makeBadge(): Badge {
   return { root, ring, pill, plate, mark, text, caption: "", busy: null };
 }
 
-/** Lays the pill out again, which only has to happen when the words or the mood change. */
 const relayout = (badge: Badge, caption: string, busy: boolean): void => {
   badge.text.text = caption;
   const width = PAD_X + MARK + GAP + Math.ceil(badge.text.width) + PAD_X;
@@ -72,7 +64,6 @@ const relayout = (badge: Badge, caption: string, busy: boolean): void => {
   badge.text.position.set(-width / 2 + PAD_X + MARK + GAP, (PILL_H - badge.text.height) / 2);
 };
 
-/** One frame of one colleague: where they stand, what they are called, and whether they are at work. */
 export function updateBadge(
   badge: Badge,
   caption: string,
@@ -85,21 +76,17 @@ export function updateBadge(
     badge.busy = busy;
     relayout(badge, caption, busy);
   }
-  // The pill is a label on a map, not a thing in the office: it keeps the size it was drawn at while
-  // the floor under it zooms.
   badge.pill.scale.set(1 / scale);
   badge.pill.position.set(0, BODY + PILL_TOP / scale);
   badge.ring.visible = busy;
   if (busy) {
     const phase = (elapsedMs % RING_MS) / RING_MS;
-    // ease-out, as the stylesheet's own `ring` is.
     const eased = 1 - (1 - phase) ** 3;
     badge.ring.scale.set(RING_FROM + (RING_TO - RING_FROM) * eased);
     badge.ring.alpha = 0.6 * (1 - eased);
   }
 }
 
-/** What Lola is doing, in the words the pill has room for. */
 function receptionWork(actor: Actor): { caption: string; busy: boolean } {
   const carrying = actor.emotion?.kind === "envelope";
   const doing = carrying
@@ -112,10 +99,7 @@ function receptionWork(actor: Actor): { caption: string; busy: boolean } {
   return { caption: `${translate("stage.receptionist")} · ${doing}`, busy: carrying };
 }
 
-/** What the pill under a character says, and whether the office draws them as working. */
 export function captionOf(actor: Actor): { caption: string; busy: boolean } | null {
-  // Lola keeps the counter and is nobody's agent, so her pill comes from the floor rather than the
-  // read model — she is the only character on it the daemon has no record of.
   if (actor.kind === "receptionist") {
     return receptionWork(actor);
   }

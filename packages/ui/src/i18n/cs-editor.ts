@@ -1,4 +1,3 @@
-// Czech for the editor; the slugs in a saved office file never change.
 import type { enEditor } from "./en-editor.ts";
 
 export const csEditor: typeof enEditor = {

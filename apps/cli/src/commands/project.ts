@@ -67,7 +67,6 @@ const intakeFrom = (
         dryRun: flags.dryRun ?? current.dryRun,
       };
 
-/** Asks the daemon what the repository is (git, name, default branch) before it becomes a floor. */
 const inspect = async (
   client: HoClient,
   repo: RepoSource,

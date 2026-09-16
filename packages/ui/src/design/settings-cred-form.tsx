@@ -6,7 +6,6 @@ import { requireClient } from "../rpc.ts";
 import { MONO } from "./tokens.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
 
-/** The dictionary names these by what they are, not by the store's key. */
 export const NAMED: Record<SecretKeyName, "claude" | "anthropic" | "openai" | "gemini" | "github"> =
   {
     "anthropic-oauth-token": "claude",
@@ -21,7 +20,6 @@ const FIELD = `flex-1 min-w-120 py-9 px-11 rounded-10 border border-border-stron
 const ACTION =
   "py-9 px-14 rounded-10 border-0 bg-accent text-accent-ink text-12 font-semibold cursor-pointer whitespace-nowrap flex-[0_0_auto] transition-all duration-200";
 
-/** Where a key is pasted, saved and forgotten. The value never leaves this component. */
 export function CredForm({
   name,
   stored,

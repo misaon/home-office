@@ -36,7 +36,6 @@ const projectNameTaken = (model: ReadModel, name: string, except: ProjectId): bo
     (p) => p.id !== except && p.name.toLowerCase() === name.toLowerCase(),
   );
 
-/** One `project.updated` for whatever the file says differently about the floor itself. */
 function planProject(
   model: ReadModel,
   project: Project,
@@ -85,14 +84,8 @@ function planProject(
   });
 }
 
-/** Where the file came from, and whether this run is allowed to append what it planned. */
 export type OfficeFileOrigin = { source: string | null; dryRun: boolean };
 
-/**
- * The file turned into events. `ho.db` stays the single source of truth: this is an input that
- * produces `project.updated`, `agent.created`, `agent.updated` and `agent.removed`, never a second
- * store to reconcile. Whatever it cannot do is reported rather than forced.
- */
 export function applyOfficeFile(
   model: ReadModel,
   projectId: ProjectId,

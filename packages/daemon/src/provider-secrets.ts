@@ -6,10 +6,6 @@ const HINT: Partial<Record<keyof typeof SECRET_ENV, string>> = {
     "run `claude setup-token` and store the result with `ho secret set anthropic-oauth-token`",
 };
 
-/**
- * The environment an agent process signs in with, read from the secret store at session start: the
- * subscription token or API key the agent's provider and auth kind require. Never logged, never persisted.
- */
 export async function secretEnvFor(
   secrets: SecretStore,
   agent: Agent,
