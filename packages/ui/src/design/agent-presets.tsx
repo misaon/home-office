@@ -1,36 +1,70 @@
 import { defaultChoice } from "@ho/core";
-import { type AgentRole, type EffortLevel, ProviderId } from "@ho/protocol";
+import { type AgentRole, type EffortLevel, PROVIDERS, ProviderId } from "@ho/protocol";
 import { useTranslation } from "react-i18next";
 import { ROLE_MARKS } from "./agent-roles.tsx";
 import { SelectField } from "./select-field.tsx";
 import type { AgentDraft } from "./store.ts";
 
-const PRESET_IDS = ["triage", "builder", "quick", "reviewer"] as const;
+const PRESET_IDS = [
+  "triage",
+  "worker",
+  "architect",
+  "bugfixer",
+  "refactor",
+  "tester",
+  "quick",
+  "docs",
+  "deps",
+  "reviewer",
+  "security",
+  "clerk",
+] as const;
 type PresetId = (typeof PRESET_IDS)[number];
 
-const SHAPE: Record<PresetId, { role: AgentRole; effort: EffortLevel }> = {
-  triage: { role: "boss", effort: "medium" },
-  builder: { role: "worker", effort: "medium" },
-  quick: { role: "worker", effort: "low" },
-  reviewer: { role: "reviewer", effort: "medium" },
+type Shape = { role: AgentRole; effort?: EffortLevel; model?: string };
+
+const SHAPE: Record<PresetId, Shape> = {
+  triage: { role: "boss" },
+  worker: { role: "worker" },
+  architect: { role: "worker", effort: "max" },
+  bugfixer: { role: "worker" },
+  refactor: { role: "worker" },
+  tester: { role: "worker" },
+  quick: { role: "worker", effort: "low", model: "haiku" },
+  docs: { role: "worker", effort: "low", model: "haiku" },
+  deps: { role: "worker", effort: "low", model: "haiku" },
+  reviewer: { role: "reviewer" },
+  security: { role: "reviewer", effort: "max" },
+  clerk: { role: "clerk" },
 };
 
-const presetDraft = (id: PresetId, draft: AgentDraft, name: string): AgentDraft => {
-  const { role, effort } = SHAPE[id];
-  const provider = ProviderId.safeParse(draft.provider);
+const presetDraft = (id: PresetId, draft: AgentDraft, name: string, prompt: string): AgentDraft => {
+  const { role, effort, model } = SHAPE[id];
+  const parsed = ProviderId.safeParse(draft.provider);
+  const provider = parsed.success ? parsed.data : "claude-code";
+  const capabilities = PROVIDERS[provider];
+  const base = defaultChoice(provider, role);
+  const wantedModel =
+    model !== undefined &&
+    (capabilities.freeFormModels || capabilities.models.some((m) => m.id === model))
+      ? model
+      : base.model;
   return {
     ...draft,
-    ...defaultChoice(provider.success ? provider.data : "claude-code", role),
+    ...base,
     role,
-    effort,
+    model: wantedModel,
+    effort:
+      effort !== undefined && capabilities.effortLevels.includes(effort) ? effort : base.effort,
     name: draft.name === "" ? name : draft.name,
+    prompt: prompt !== "" && draft.prompt === "" ? prompt : draft.prompt,
   };
 };
 
 const matching = (draft: AgentDraft): PresetId =>
   PRESET_IDS.find((id) => SHAPE[id].role === draft.role && SHAPE[id].effort === draft.effort) ??
   PRESET_IDS.find((id) => SHAPE[id].role === draft.role) ??
-  "builder";
+  "worker";
 
 export function PresetSelect({
   show,
@@ -49,21 +83,24 @@ export function PresetSelect({
   }
   const offered = PRESET_IDS.filter((id) => !(bossTaken && SHAPE[id].role === "boss"));
   const labelOf = (id: PresetId): string => t(`agent.preset_${id}`);
-  const options = offered.map((id) => labelOf(id));
+  const idOf = (label: string): PresetId | undefined =>
+    offered.find((one) => labelOf(one) === label);
   return (
     <div className="mb-14">
       <SelectField
         label={t("agent.presetLead")}
-        options={options}
+        options={offered.map((id) => labelOf(id))}
         value={labelOf(matching(draft))}
         markOf={(option) => {
-          const id = offered.find((one) => labelOf(one) === option);
+          const id = idOf(option);
           return id === undefined ? null : ROLE_MARKS[SHAPE[id].role];
         }}
         onPick={(next) => {
-          const id = offered.find((one) => labelOf(one) === next);
+          const id = idOf(next);
           if (id !== undefined) {
-            patch(presetDraft(id, draft, t(`agent.presetName_${id}`)));
+            patch(
+              presetDraft(id, draft, t(`agent.presetName_${id}`), t(`agent.presetPrompt_${id}`)),
+            );
           }
         }}
       />
