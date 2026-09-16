@@ -6,6 +6,7 @@ import {
   type HoHandoffInput,
   notFound,
   NOTE_MAX,
+  questionReason,
   type Task,
   type TaskId,
   type TaskStatus,
@@ -88,7 +89,7 @@ export function askHuman(
       events: [
         noteEvent(ctx, task, note(ctx, "question", question)),
         chatEvent(ctx, message),
-        statusChange(ctx, task, "blocked", `question: ${question.slice(0, 1900)}`),
+        statusChange(ctx, task, "blocked", questionReason(question)),
       ],
       read: readTaskAndMessage(task.id, message),
     });

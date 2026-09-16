@@ -1,6 +1,7 @@
 import { bossOf, createIdFactory } from "@ho/core";
 import {
   type AgentId,
+  isQuestionReason,
   isSessionActive,
   type LiveEvent,
   type Session,
@@ -18,7 +19,6 @@ import {
   releaseWork,
   removeActor,
   setEmotion,
-  type SimEvent,
   sleep,
   tick,
   wake,
@@ -31,7 +31,6 @@ import { syncRoster } from "./roster.ts";
 
 const MAX_DT_MS = 250;
 const STEP_MS = 1000 / 30;
-const QUESTION_PREFIX = "question:";
 
 export class Bridge {
   readonly world = createWorld("home-office");
@@ -79,8 +78,8 @@ export class Bridge {
 
   syncFromModel(): void {
     syncRoster(this.world, this.#receptionists, () => this.#ids.agent());
-    this.#envelopes.sweep((taskId) => inFlight(this.world, taskId));
-    this.#mail.sweep((ref) => inFlight(this.world, ref) > 0);
+    this.#envelopes.sweep((taskId) => inFlight(this.world, { kind: "task", id: taskId }));
+    this.#mail.sweep((ref) => inFlight(this.world, { kind: "mail", id: ref }) > 0);
     for (const session of model.sessions.values()) {
       if (isSessionActive(session.state)) {
         this.#seat(session);
@@ -96,7 +95,11 @@ export class Bridge {
   }
 
   #carry(from: AgentId, to: AgentId, taskId: TaskId): void {
-    if (from !== to && this.#watching && carry(this.world, from, to, taskId)) {
+    if (
+      from !== to &&
+      this.#watching &&
+      carry(this.world, from, to, { kind: "task", id: taskId })
+    ) {
       this.#envelopes.sent(taskId);
     } else {
       this.#deliver(taskId);
@@ -126,7 +129,7 @@ export class Bridge {
     const walks =
       task.assigneeId !== undefined &&
       task.assigneeId !== boss.id &&
-      (to === "done" || (to === "blocked" && reason?.startsWith(QUESTION_PREFIX) !== true));
+      (to === "done" || (to === "blocked" && !isQuestionReason(reason)));
     if (!walks) {
       return;
     }
@@ -238,23 +241,21 @@ export class Bridge {
     for (const event of this.world.outbox.splice(0)) {
       if (event.kind === "visitor_left") {
         removeActor(this.world, event.actorId);
-      } else if (!this.#onDelivered(event)) {
+      } else if (event.kind === "delivered" && event.ref.kind === "task") {
+        this.#onEnvelope(event.ref.id, event.by, event.to);
+      } else {
         this.#mail.onSimEvent(event);
       }
     }
   }
 
-  #onDelivered(event: SimEvent): boolean {
-    if (event.kind !== "delivered") {
-      return false;
-    }
-    const taskId = TaskId.safeParse(event.ref);
+  #onEnvelope(id: string, by: AgentId, to: AgentId): void {
+    const taskId = TaskId.safeParse(id);
     if (!taskId.success || !this.#envelopes.arrived(taskId.data)) {
-      return false;
+      return;
     }
-    receive(this.world, event.to, event.by);
+    receive(this.world, to, by);
     this.#deliver(taskId.data);
-    return true;
   }
 }
 

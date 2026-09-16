@@ -1,5 +1,5 @@
 import { attachmentsOfTask, type RuntimeSession } from "@ho/core";
-import type { RuntimeEvent } from "@ho/protocol";
+import type { RuntimeErrorCode, RuntimeEvent } from "@ho/protocol";
 import { browserMcpServers } from "./browser.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import { openingMessage, systemPrompt } from "./prompts.ts";
@@ -65,8 +65,13 @@ async function consume(
   ctx: SessionContext,
   message: string,
   onEvent: (event: RuntimeEvent) => Promise<void>,
-): Promise<Outcome & { sawInit: boolean }> {
-  const outcome = { report: "", failure: null as string | null, sawInit: false };
+): Promise<Outcome & { sawInit: boolean; failureCode: RuntimeErrorCode | null }> {
+  const outcome = {
+    report: "",
+    failure: null as string | null,
+    failureCode: null as RuntimeErrorCode | null,
+    sawInit: false,
+  };
   let sawResult = false;
   for await (const event of runtimeSession.prompt({ text: message }, ctx.signal)) {
     await onEvent(event);
@@ -80,6 +85,7 @@ async function consume(
       }
     } else if (event.kind === "error") {
       outcome.failure = `${event.code}: ${event.message}`;
+      outcome.failureCode = event.code;
     }
   }
   if (ctx.signal.aborted && outcome.failure === null) {
@@ -102,7 +108,7 @@ export async function runPrompt(
   const resume = ctx.previous?.runtimeSessionId ?? null;
   try {
     const first = await openRuntime(deps, ctx, provisioned, secrets, resume);
-    let outcome: Outcome & { sawInit: boolean };
+    let outcome: Outcome & { sawInit: boolean; failureCode: RuntimeErrorCode | null };
     try {
       outcome = await consume(first, ctx, message, onEvent);
     } finally {
@@ -111,7 +117,7 @@ export async function runPrompt(
     if (
       resume !== null &&
       !outcome.sawInit &&
-      outcome.failure?.startsWith("process_exit") === true &&
+      outcome.failureCode === "process_exit" &&
       !ctx.signal.aborted
     ) {
       deps.log.warn(

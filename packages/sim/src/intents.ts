@@ -12,6 +12,7 @@ import type { Anchor } from "./map.ts";
 import {
   type Actor,
   anchorOf,
+  type DeliveryRef,
   type Emotion,
   freeAnchors,
   release,
@@ -111,7 +112,7 @@ export function carry(
   world: World,
   from: AgentId,
   to: AgentId,
-  ref: string,
+  ref: DeliveryRef,
   before: readonly Step[] = [],
 ): boolean {
   const source = world.actors.get(from);

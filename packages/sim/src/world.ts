@@ -43,11 +43,15 @@ export type Step =
   | { kind: "emit"; event: SimEvent }
   | { kind: "release" };
 
-export const inFlight = (world: World, ref: string): number => {
+export type DeliveryRef = { kind: "task"; id: string } | { kind: "mail"; id: string };
+
+const sameRef = (a: DeliveryRef, b: DeliveryRef): boolean => a.kind === b.kind && a.id === b.id;
+
+export const inFlight = (world: World, ref: DeliveryRef): number => {
   let count = 0;
   for (const actor of world.actors.values()) {
     for (const step of actor.steps) {
-      if (step.kind === "emit" && step.event.kind === "delivered" && step.event.ref === ref) {
+      if (step.kind === "emit" && step.event.kind === "delivered" && sameRef(step.event.ref, ref)) {
         count += 1;
       }
     }
@@ -56,7 +60,7 @@ export const inFlight = (world: World, ref: string): number => {
 };
 
 export type SimEvent =
-  | { kind: "delivered"; ref: string; by: AgentId; to: AgentId }
+  | { kind: "delivered"; ref: DeliveryRef; by: AgentId; to: AgentId }
   | { kind: "mail_dropped"; ref: string }
   | { kind: "visitor_left"; actorId: AgentId };
 

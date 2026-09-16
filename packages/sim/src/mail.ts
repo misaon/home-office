@@ -48,7 +48,7 @@ export function fetchMail(
     { kind: "dwell", activity: "receive", facing: mailbox.facing, until: null, ms: PICKUP_MS },
   ];
   if (courierId !== bossId) {
-    return carry(world, courierId, bossId, ref, pickup);
+    return carry(world, courierId, bossId, { kind: "mail", id: ref }, pickup);
   }
   const boss = world.actors.get(bossId);
   if (boss === undefined || boss.floorId !== floorId) {
@@ -57,7 +57,10 @@ export function fetchMail(
   setSteps(boss, [
     ...pendingDeliveries(boss),
     ...pickup,
-    { kind: "emit", event: { kind: "delivered", ref, by: bossId, to: bossId } },
+    {
+      kind: "emit",
+      event: { kind: "delivered", ref: { kind: "mail", id: ref }, by: bossId, to: bossId },
+    },
     ...resumeSteps(world, boss),
   ]);
   return true;

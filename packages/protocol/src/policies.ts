@@ -34,3 +34,9 @@ export const VerifyPolicy = z.object({
 export type VerifyPolicy = z.infer<typeof VerifyPolicy>;
 
 export const VERIFY_NOTE_PREFIX = "verification failed:";
+
+const QUESTION_REASON_PREFIX = "question:";
+export const questionReason = (question: string): string =>
+  `${QUESTION_REASON_PREFIX} ${question.slice(0, 1900)}`;
+export const isQuestionReason = (reason: string | undefined): boolean =>
+  reason?.startsWith(QUESTION_REASON_PREFIX) === true;
