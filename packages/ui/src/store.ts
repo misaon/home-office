@@ -175,12 +175,12 @@ export function scheduleModelBump(): void {
       modelBumpScheduled = false;
       const state = useUi.getState();
       const snapshot = takeSnapshot(state.snapshot);
-      const { floorId } = state;
-      const valid = floorId !== null && snapshot.projects.has(floorId);
+      const { floorId, replayed } = state;
+      const known = floorId !== null && snapshot.projects.has(floorId);
       useUi.setState(
-        valid
-          ? { snapshot }
-          : { snapshot, floorId: sortedFloors(snapshot.projects)[0]?.id ?? null },
+        replayed && !known
+          ? { snapshot, floorId: sortedFloors(snapshot.projects)[0]?.id ?? null }
+          : { snapshot },
       );
     });
   }

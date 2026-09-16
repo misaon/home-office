@@ -30,10 +30,25 @@ export const readPose = (floorId: string): CameraPose | null => {
   }
 };
 
+let poseTimer: ReturnType<typeof setTimeout> | undefined;
+let pendingPose: { floorId: string; pose: CameraPose } | null = null;
+
 export const writePose = (floorId: string, pose: CameraPose): void => {
-  try {
-    window.localStorage.setItem(`${POSE_PREFIX}${floorId}`, JSON.stringify(pose));
-  } catch {}
+  pendingPose = { floorId, pose };
+  if (poseTimer !== undefined) {
+    return;
+  }
+  poseTimer = setTimeout(() => {
+    poseTimer = undefined;
+    const last = pendingPose;
+    pendingPose = null;
+    if (last === null) {
+      return;
+    }
+    try {
+      window.localStorage.setItem(`${POSE_PREFIX}${last.floorId}`, JSON.stringify(last.pose));
+    } catch {}
+  }, 400);
 };
 
 export class Camera {
