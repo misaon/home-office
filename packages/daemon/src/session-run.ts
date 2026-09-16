@@ -81,7 +81,8 @@ async function consume(
       sawResult = true;
       outcome.report = event.text.slice(0, REPORT_MAX);
       if (!event.ok && outcome.failure === null) {
-        outcome.failure = "the agent reported an error";
+        const reported = event.text.trim();
+        outcome.failure = reported === "" ? "the agent reported an error" : reported.slice(0, 1000);
       }
     } else if (event.kind === "error") {
       outcome.failure = `${event.code}: ${event.message}`;

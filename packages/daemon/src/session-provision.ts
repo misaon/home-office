@@ -28,6 +28,20 @@ import {
 
 const SANDBOX_STOP_GRACE_S = 5;
 
+const gitIdentity = (agent: Agent): Readonly<Record<string, string>> => {
+  const slug = agent.name
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/gu, "-")
+    .replaceAll(/^-+|-+$/gu, "");
+  const address = `${slug === "" ? agent.id : slug}@agents.home-office.local`;
+  return {
+    GIT_AUTHOR_NAME: agent.name,
+    GIT_AUTHOR_EMAIL: address,
+    GIT_COMMITTER_NAME: agent.name,
+    GIT_COMMITTER_EMAIL: address,
+  };
+};
+
 export type SessionContext = {
   session: Session;
   task: Task;
@@ -69,6 +83,7 @@ const sandboxSpec = (
     HO_SESSION_TOKEN: token,
     HOME: "/home/agent",
     TERM: "dumb",
+    ...gitIdentity(ctx.agent),
     ...(engine === null ? {} : engineEnv(engine.mode)),
   },
   user: "1000:1000",
