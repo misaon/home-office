@@ -17,6 +17,7 @@ import {
   HoGetSkillFileInput,
   HoGetSkillInput,
   HoHandoffInput,
+  HoPublishInput,
   HoReplyInput,
   HoReportInput,
   HoReviewInput,
@@ -31,6 +32,7 @@ import type { ZodRawShapeCompat } from "@modelcontextprotocol/sdk/server/zod-com
 import { z } from "zod";
 import type { AttachmentStore } from "./attachments.ts";
 import type { Office } from "./office.ts";
+import { publishTask } from "./publish.ts";
 import type { SkillLibrary } from "./skills.ts";
 
 export type McpSessionContext = {
@@ -41,6 +43,7 @@ export type McpSessionContext = {
   projectId: ProjectId;
   mode: SessionMode;
   attachments: AttachmentStore;
+  home: string;
 };
 
 export type Entry = {
@@ -208,6 +211,15 @@ const reply = define({
   },
 });
 
+const publish = define({
+  name: "ho_publish",
+  description:
+    "Push a finished task's branch to the remote and open a pull request for it, returning the link. The task must already have a branch — work that has not been done yet cannot be published.",
+  shape: HoPublishInput.shape,
+  modes: ["triage"],
+  run: async (input, office, entry) => publishTask(office, entry.ctx.home, input.taskId),
+});
+
 const listSkills = define({
   name: "ho_list_skills",
   description:
@@ -244,6 +256,7 @@ export const TOOLS: readonly AnyTool[] = [
   review,
   delegate,
   reply,
+  publish,
   listSkills,
   getSkill,
   getSkillFile,

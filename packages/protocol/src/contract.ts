@@ -78,6 +78,9 @@ export const contract = {
     assign: base.input(TaskAssignInput).output(Task),
     transition: base.input(TaskTransitionInput).output(Task),
     remove: base.input(z.object({ id: TaskId })).output(z.object({ id: TaskId })),
+    publish: base
+      .input(z.object({ id: TaskId }))
+      .output(z.object({ branch: z.string(), prUrl: z.string().nullable() })),
     clear: base
       .input(z.object({ projectId: ProjectId }))
       .output(z.object({ removed: z.int().nonnegative() })),

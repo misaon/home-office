@@ -1,5 +1,6 @@
 import { assignTask, clearFinishedTasks, createTask, removeTask, transitionTask } from "@ho/core";
 import { HUMAN_ACTOR } from "@ho/protocol";
+import { publishTask } from "../publish.ts";
 import { guarded } from "./guarded.ts";
 import { os } from "./implement.ts";
 
@@ -32,6 +33,9 @@ export const taskRoutes = {
   remove: base.tasks.remove.handler(async ({ input, context }) => ({
     id: await context.office.execute(HUMAN_ACTOR, (m, ctx) => removeTask(m, input.id, ctx)),
   })),
+  publish: base.tasks.publish.handler(({ input, context }) =>
+    publishTask(context.office, context.home, input.id),
+  ),
   clear: base.tasks.clear.handler(async ({ input, context }) => {
     const cleared = await context.office.execute(HUMAN_ACTOR, (m, ctx) =>
       clearFinishedTasks(m, input.projectId, ctx),

@@ -15,7 +15,10 @@ const FORMAT: { [K in RuntimeEvent["kind"]]: Formatter<K> } = {
   },
   tool_call: (e, tag) => `\n${tag} ▶ ${e.name} ${JSON.stringify(e.input).slice(0, 160)}`,
   tool_result: (e, tag) => `${tag} ${e.ok ? "✔" : "✖"} ${e.summary}`,
-  result: (e, tag) => `\n${tag} result ok=${String(e.ok)} turns=${String(e.turns)}`,
+  result: (e, tag) =>
+    e.ok
+      ? `\n${tag} result ok=true turns=${String(e.turns)}`
+      : `\n${tag} result ok=false turns=${String(e.turns)}\n${tag} ${e.text.slice(0, 1000)}`,
   usage: (e, tag) => `${tag} usage ${JSON.stringify(e.usage)}`,
   context: (e, tag) =>
     `${tag} context ${String(e.usedTokens)}/${String(e.windowTokens)}${e.cost === null ? "" : ` cost ${e.cost.amount.toFixed(2)} ${e.cost.currency}`}`,
