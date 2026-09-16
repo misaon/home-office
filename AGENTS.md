@@ -106,8 +106,14 @@ Always `bun`. Never npm, pnpm, yarn or `node`.
 
 The owner decides these per task, and the standing answer is no.
 
-- The source carries **zero** tests and **zero** comments. Verified 2026-09-16: what is left is seven
-  `oxlint-disable` directives and two shebangs. A `//` in your diff is a new comment, not an edit.
+- **Do not write comments in the code.** No `//`, no `/* */`, no JSDoc, no `TODO` — not even to
+  explain something subtle, and not in a file you are only passing through. If a line needs a
+  sentence, rename it or restructure it until it does not, and put the reasoning in the commit or the
+  pull request. The only prose allowed to survive in a source file is a scoped `oxlint-disable`
+  directive with its reason, because that one is read by a tool. Verified 2026-09-16: the source
+  carries **zero** comments — seven such directives and two shebangs are all that is left — so a `//`
+  appearing in your diff is a new comment, never an edit to an existing one.
+- Do not add tests. The source carries zero of them.
 - All prose documentation was deleted on 2026-09-16 and survives in `git show 6dc771d:docs/`. Do not
   recreate `docs/`, a README or an ADR unasked.
 
