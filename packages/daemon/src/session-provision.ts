@@ -124,7 +124,12 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
   await provider.createVolume(volume, { ...labels, [LABELS.kind]: "task-volume" });
   await provider.createVolume(stateVolume, { ...labels, [LABELS.kind]: "provider-state" });
   const sourcePath = await sourcePathFor(home, ctx.project);
+  log.debug(
+    { sessionId: ctx.session.id, volume, stateVolume, branch, sourcePath },
+    "volumes ready; preparing the repository",
+  );
   await prepareRepo(provider, config, sourcePath, ctx.project.defaultBranch, volume, branch);
+  log.debug({ sessionId: ctx.session.id, branch }, "repository prepared");
   const engineRequest: TaskEngineRequest | null = needsEngine(
     config.services.enabled,
     ctx.project,
@@ -185,6 +190,10 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
         );
       }
     }
+    log.debug(
+      { sessionId: ctx.session.id, sandbox: sandbox.id, services: services.kind },
+      "sandbox started; waiting for the runner to connect",
+    );
     const connection = await issued.connected;
     ctx.signal.throwIfAborted();
     return {

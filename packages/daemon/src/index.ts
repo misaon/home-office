@@ -4,7 +4,7 @@ import { type DaemonHandle, type DaemonOptions, launchDaemon } from "./launch.ts
 import { resolveHome } from "./config.ts";
 import { acquireSingleInstanceLock } from "./single-instance.ts";
 
-export { DaemonConfig, resolveHome } from "./config.ts";
+export { DaemonConfig, LogLevel, resolveHome } from "./config.ts";
 export { DaemonInfo, daemonAnswers, daemonUrl, officeUrl, readDaemonInfo } from "./daemon-info.ts";
 export type { DirectoryPicker } from "./host-dialog.ts";
 export type { DaemonHandle, DaemonOptions } from "./launch.ts";
