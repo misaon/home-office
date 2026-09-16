@@ -5,7 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { AgentDialogFields, AgentPrompt } from "./agent-dialog-fields.tsx";
 import { AgentDialogHead, AgentDoing } from "./agent-dialog-head.tsx";
-import { PresetCards } from "./agent-presets.tsx";
+import { PresetSelect } from "./agent-presets.tsx";
 import { RoleCards } from "./agent-roles.tsx";
 import type { Floor, Member } from "./data.ts";
 import { CANCEL, CAP, COMMIT, DialogSheet, HINT } from "./dialog-sheet.tsx";
@@ -192,13 +192,6 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
   const patch = (next: Partial<AgentDraft>): void => {
     set((s) => ({ agentDraft: s.agentDraft === null ? null : { ...s.agentDraft, ...next } }));
   };
-  const pickRole = (role: AgentRole): void => {
-    if (role !== "boss" && editing?.role === "boss") {
-      flash(t("agent.bossStays"));
-      return;
-    }
-    patch({ role });
-  };
 
   return (
     <DialogSheet
@@ -240,13 +233,21 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
         <AgentDoing working={working} doing={editing.doing} since={editing.since} />
       ) : null}
       <div className={`${CAP} text-9h mb-10`}>{t("agent.whoTheyAre")}</div>
-      <PresetCards
+      <PresetSelect
         show={editing === undefined}
         bossTaken={boss !== undefined}
         draft={draft}
         patch={patch}
       />
-      <RoleCards value={draft.role} bossTaken={boss !== undefined} onPick={pickRole} />
+      <RoleCards
+        show={editing !== undefined}
+        value={draft.role}
+        bossTaken={boss !== undefined}
+        bossLocked={editing?.role === "boss"}
+        onPick={(role) => {
+          patch({ role });
+        }}
+      />
       <AgentDialogFields draft={draft} patch={patch} />
       <AgentPrompt
         value={draft.prompt}

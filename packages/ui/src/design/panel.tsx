@@ -11,7 +11,7 @@ import { useFloor } from "./live.ts";
 import { useDesign } from "./store.ts";
 
 const ASIDE =
-  "w-420 flex-[0_0_420px] border-l border-line bg-[linear-gradient(180deg,var(--color-panel),var(--color-ground-deep)_60%)] flex flex-col min-h-0 relative overflow-hidden";
+  "w-550 flex-[0_0_550px] border-l border-line bg-[linear-gradient(180deg,var(--color-panel),var(--color-ground-deep)_60%)] flex flex-col min-h-0 relative overflow-hidden";
 
 export function Panel(): React.JSX.Element | null {
   const tab = useDesign((s) => s.tab);
