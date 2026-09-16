@@ -1,5 +1,5 @@
 import { type ChatSendInput } from "@ho/protocol";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { rejects, upload } from "../attachments.ts";
 import { requireClient } from "../rpc.ts";
@@ -14,7 +14,18 @@ const BOX = "relative rounded-15 p-12 transition-[border-color,background,box-sh
 const DROP =
   "absolute inset-0 z-5 rounded-15 bg-drop flex flex-col items-center justify-center gap-8 pointer-events-none animate-fade-160";
 
-const INPUT = "w-full border-0 bg-transparent text-13h pt-2 px-2 pb-10";
+const INPUT =
+  "w-full block resize-none overflow-y-auto border-0 bg-transparent text-13h leading-text pt-2 px-2 pb-10";
+
+const MAX_INPUT_HEIGHT = 168;
+
+const fitToText = (box: HTMLTextAreaElement | null): void => {
+  if (box === null) {
+    return;
+  }
+  box.style.height = "auto";
+  box.style.height = `${Math.min(box.scrollHeight, MAX_INPUT_HEIGHT)}px`;
+};
 
 export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
@@ -24,6 +35,11 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
   const flash = useDesign((s) => s.flash);
   const [dragging, setDragging] = useState(false);
   const depth = useRef(0);
+  const box = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    fitToText(box.current);
+  }, [draft]);
 
   const send = useOfficeMutation({
     mutationFn: (input: ChatSendInput) => requireClient().chat.send(input),
@@ -110,13 +126,15 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
           </div>
         ) : null}
         {attachment === null ? null : <ChatAttachment file={attachment.name} />}
-        <input
+        <textarea
+          ref={box}
+          rows={1}
           value={draft}
           onChange={(e) => {
             set({ draft: e.target.value });
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               submit();
             }

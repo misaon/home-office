@@ -22,6 +22,7 @@
     "react-i18next": "catalog:",
     "react-markdown": "catalog:",
     "rehype-highlight": "catalog:",
+    "remark-breaks": "catalog:",
     "remark-gfm": "catalog:",
     "simple-icons": "catalog:",
     "zustand": "catalog:"

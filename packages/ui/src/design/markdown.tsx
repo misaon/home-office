@@ -1,5 +1,6 @@
 import Markdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
+import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 
 const LANGUAGES = [
@@ -40,7 +41,7 @@ export function RichText({ text }: { text: string }): React.JSX.Element {
   return (
     <div className="ho-md">
       <Markdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkBreaks]}
         rehypePlugins={[[rehypeHighlight, { detect: true, subset: LANGUAGES }]]}
         components={COMPONENTS}
       >
