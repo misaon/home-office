@@ -59,6 +59,7 @@ const StreamLine = z.discriminatedUnion("type", [
     usage: Usage.optional(),
   }),
 ]);
+const SPEND_LIMIT_PATTERN = /\b(?:spend|usage|weekly) limit\b/iu;
 const SUMMARY_MAX = 200;
 const summarize = (content: string | unknown[] | undefined): string => {
   if (content === undefined) {
@@ -174,6 +175,9 @@ export function normalizeLine(raw: string, now: () => Date): RuntimeEvent[] {
       ];
       if (line.is_error && line.subtype === "error_max_turns") {
         events.push({ kind: "error", code: "max_turns", message: "turn budget exhausted" });
+      }
+      if (line.is_error && SPEND_LIMIT_PATTERN.test(line.result ?? "")) {
+        events.push({ kind: "rate_limited", retryAt: null });
       }
       events.push({
         kind: "result",

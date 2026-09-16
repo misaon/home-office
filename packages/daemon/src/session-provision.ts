@@ -12,7 +12,13 @@ import {
   type Task,
 } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
-import { branchFor, prepareRepo, REPO_IN_VOLUME } from "./git-bridge.ts";
+import {
+  branchFor,
+  type GitIdentity,
+  hostGitIdentity,
+  prepareRepo,
+  REPO_IN_VOLUME,
+} from "./git-bridge.ts";
 import { LABELS } from "./labels.ts";
 import { sourcePathFor } from "./mirrors.ts";
 import type { Services } from "./prompts.ts";
@@ -27,6 +33,23 @@ import {
 } from "./task-engine.ts";
 
 const SANDBOX_STOP_GRACE_S = 5;
+
+const gitIdentity = (
+  agent: Agent,
+  committer: GitIdentity | null,
+): Readonly<Record<string, string>> => {
+  const slug = agent.name
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/gu, "-")
+    .replaceAll(/^-+|-+$/gu, "");
+  const address = `${slug === "" ? agent.id : slug}@agents.home-office.local`;
+  return {
+    GIT_AUTHOR_NAME: agent.name,
+    GIT_AUTHOR_EMAIL: address,
+    GIT_COMMITTER_NAME: committer?.name ?? agent.name,
+    GIT_COMMITTER_EMAIL: committer?.email ?? address,
+  };
+};
 
 export type SessionContext = {
   session: Session;
@@ -60,6 +83,7 @@ const sandboxSpec = (
   token: string,
   engine: TaskEnginePlan | null,
   chat: { outbox: string; inbox: string },
+  committer: GitIdentity | null,
 ): SandboxSpec => ({
   name: `ho-session-${ctx.session.id.slice(-12)}`,
   image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
@@ -69,6 +93,7 @@ const sandboxSpec = (
     HO_SESSION_TOKEN: token,
     HOME: "/home/agent",
     TERM: "dumb",
+    ...gitIdentity(ctx.agent, committer),
     ...(engine === null ? {} : engineEnv(engine.mode)),
   },
   user: "1000:1000",
@@ -164,10 +189,17 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     );
     stack.defer(() => deps.attachments.closeInbox(ctx.session.id));
     const sandbox = await provider.start(
-      sandboxSpec(config, ctx, volume, stateVolume, deps.gatewayUrl(), issued.token, plan, {
-        outbox,
-        inbox,
-      }),
+      sandboxSpec(
+        config,
+        ctx,
+        volume,
+        stateVolume,
+        deps.gatewayUrl(),
+        issued.token,
+        plan,
+        { outbox, inbox },
+        await hostGitIdentity(),
+      ),
     );
     stack.defer(async () => {
       await provider.stop(sandbox, SANDBOX_STOP_GRACE_S).catch(() => null);
