@@ -4,6 +4,38 @@ const ZOOM_IN_MAX = 64;
 
 type Size = { width: number; height: number };
 
+export type CameraPose = { zoom: number; x: number; y: number };
+
+const POSE_PREFIX = "ho.camera.";
+
+export const readPose = (floorId: string): CameraPose | null => {
+  try {
+    const raw = window.localStorage.getItem(`${POSE_PREFIX}${floorId}`);
+    if (raw === null) {
+      return null;
+    }
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === "object" &&
+      parsed !== null &&
+      "zoom" in parsed &&
+      typeof parsed.zoom === "number" &&
+      "x" in parsed &&
+      typeof parsed.x === "number" &&
+      "y" in parsed &&
+      typeof parsed.y === "number"
+      ? { zoom: parsed.zoom, x: parsed.x, y: parsed.y }
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+export const writePose = (floorId: string, pose: CameraPose): void => {
+  try {
+    window.localStorage.setItem(`${POSE_PREFIX}${floorId}`, JSON.stringify(pose));
+  } catch {}
+};
+
 export class Camera {
   #zoom = ZOOM_IN_MAX;
   #x = 0;
@@ -35,6 +67,17 @@ export class Camera {
 
   fit(): void {
     this.#zoom = this.#fitZoom();
+    this.#clamp();
+  }
+
+  get pose(): CameraPose {
+    return { zoom: this.#zoom, x: this.#x, y: this.#y };
+  }
+
+  restore(pose: CameraPose): void {
+    this.#zoom = pose.zoom;
+    this.#x = pose.x;
+    this.#y = pose.y;
     this.#clamp();
   }
 

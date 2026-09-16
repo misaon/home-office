@@ -5,6 +5,7 @@ import {
   type UseMutationResult,
 } from "@tanstack/react-query";
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { Ask } from "./confirm.tsx";
 import type { Lane, Member } from "./data.ts";
 
@@ -72,22 +73,38 @@ const INITIAL = {
   win: "24 h",
 } satisfies Partial<Design>;
 
-export const useDesign = create<Design>((set) => ({
-  ...INITIAL,
-  set: (patch) => {
-    set(patch);
-  },
-  confirm: (ask) => {
-    set({ ask });
-  },
-  flash: (message) => {
-    clearTimeout(toastTimer);
-    set({ toast: message });
-    toastTimer = setTimeout(() => {
-      set({ toast: null });
-    }, 2400);
-  },
-}));
+export const useDesign = create<Design>()(
+  persist(
+    (set) => ({
+      ...INITIAL,
+      set: (patch) => {
+        set(patch);
+      },
+      confirm: (ask) => {
+        set({ ask });
+      },
+      flash: (message) => {
+        clearTimeout(toastTimer);
+        set({ toast: message });
+        toastTimer = setTimeout(() => {
+          set({ toast: null });
+        }, 2400);
+      },
+    }),
+    {
+      name: "ho.design",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        tab: state.tab,
+        draft: state.draft,
+        boardFilter: state.boardFilter,
+        teamFilter: state.teamFilter,
+        usageView: state.usageView,
+        win: state.win,
+      }),
+    },
+  ),
+);
 
 export function useOfficeMutation<TData, TVariables>(
   options: Omit<UseMutationOptions<TData, Error, TVariables>, "onError">,
