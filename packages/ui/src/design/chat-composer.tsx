@@ -1,4 +1,4 @@
-import { type ChatSendInput } from "@ho/protocol";
+import { type ChatSendInput, type ChatThreadTarget } from "@ho/protocol";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { rejects, upload } from "../attachments.ts";
@@ -6,7 +6,7 @@ import { requireClient } from "../rpc.ts";
 import { ChatAttachment } from "./chat-attachment.tsx";
 import { ChatToolbar } from "./chat-toolbar.tsx";
 import { ChatWorking } from "./chat-working.tsx";
-import type { Floor } from "./data.ts";
+import type { Floor, ThreadPick } from "./data.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
 
 const BOX = "relative rounded-15 p-12 transition-[border-color,background,box-shadow] duration-250";
@@ -27,7 +27,39 @@ const fitToText = (box: HTMLTextAreaElement | null): void => {
   box.style.height = `${Math.min(box.scrollHeight, MAX_INPUT_HEIGHT)}px`;
 };
 
-export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
+function DropHint(): React.JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <div className={DROP}>
+      <svg
+        className="stroke-accent"
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 16V4" />
+        <polyline points="7,9 12,4 17,9" />
+        <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+      </svg>
+      <span className="text-12h text-accent-soft font-medium">{t("chat.dropHere")}</span>
+    </div>
+  );
+}
+
+const targetOf = (active: ThreadPick | "new"): ChatThreadTarget =>
+  active === "new" || active === "main" ? { kind: "new" } : { kind: "thread", id: active };
+
+export function ChatComposer({
+  floor,
+  active,
+}: {
+  floor: Floor;
+  active: ThreadPick | "new";
+}): React.JSX.Element {
   const { t } = useTranslation();
   const draft = useDesign((s) => s.draft);
   const attachment = useDesign((s) => s.attachment);
@@ -43,6 +75,11 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
 
   const send = useOfficeMutation({
     mutationFn: (input: ChatSendInput) => requireClient().chat.send(input),
+    onSuccess: (result) => {
+      if (result.message.threadId !== undefined) {
+        set({ thread: result.message.threadId });
+      }
+    },
   });
 
   const submit = (): void => {
@@ -54,6 +91,7 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
       projectId: floor.id,
       text: text === "" ? t("chat.lookAtThis") : text,
       attachments: attachment === null ? [] : [attachment],
+      thread: targetOf(active),
     });
     set({ draft: "", attachment: null, query: "" });
   };
@@ -106,25 +144,7 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
         }}
         className={`hover:border-accent-a40 hover:shadow-halo ${BOX} border ${dragging ? "border-accent-a60" : "border-border-strong"} ${dragging ? "bg-accent-a05" : "bg-card-lit"}`}
       >
-        {dragging ? (
-          <div className={DROP}>
-            <svg
-              className="stroke-accent"
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 16V4" />
-              <polyline points="7,9 12,4 17,9" />
-              <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-            </svg>
-            <span className="text-12h text-accent-soft font-medium">{t("chat.dropHere")}</span>
-          </div>
-        ) : null}
+        {dragging ? <DropHint /> : null}
         {attachment === null ? null : <ChatAttachment file={attachment.name} />}
         <textarea
           ref={box}
@@ -139,7 +159,9 @@ export function ChatComposer({ floor }: { floor: Floor }): React.JSX.Element {
               submit();
             }
           }}
-          placeholder={t("chat.placeholder")}
+          placeholder={t(
+            active === "new" || active === "main" ? "chat.placeholderNew" : "chat.placeholder",
+          )}
           className={`${INPUT} placeholder:text-ink-ghost`}
         />
         <ChatToolbar floor={floor} onSend={submit} onAttach={attach} />

@@ -1,7 +1,7 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { DISPLAY, MONO } from "./tokens.ts";
 import { useTranslation } from "react-i18next";
-import type { Floor, Member } from "./data.ts";
+import type { Floor, Member, Message, ThreadPick } from "./data.ts";
 import { requireClient } from "../rpc.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
 
@@ -19,10 +19,14 @@ const SPEC = `${MONO} text-10h text-ink-label mt-2 overflow-hidden text-ellipsis
 export function ChatHeader({
   floor,
   boss,
+  messages,
+  active,
   hits,
 }: {
   floor: Floor;
   boss: Member | undefined;
+  messages: readonly Message[];
+  active: ThreadPick | "new";
   hits: string;
 }): React.JSX.Element {
   const { t } = useTranslation();
@@ -32,7 +36,11 @@ export function ChatHeader({
   const confirm = useDesign((s) => s.confirm);
   const flash = useDesign((s) => s.flash);
   const clear = useOfficeMutation({
-    mutationFn: () => requireClient().chat.clear({ projectId: floor.id }),
+    mutationFn: () =>
+      requireClient().chat.clear({
+        projectId: floor.id,
+        ...(active === "new" || active === "main" ? {} : { threadId: active }),
+      }),
     onSuccess: (result) => {
       flash(t("chat.cleared", { count: result.removed }));
     },
@@ -68,7 +76,7 @@ export function ChatHeader({
           </div>
         </div>
       )}
-      {floor.messages.length === 0 ? null : (
+      {messages.length === 0 ? null : (
         <button
           type="button"
           aria-label={t("chat.clear")}
@@ -77,7 +85,7 @@ export function ChatHeader({
           onClick={() => {
             confirm({
               title: t("chat.clearTitle"),
-              body: t("chat.clearConfirm", { count: floor.messages.length }),
+              body: t("chat.clearConfirm", { count: messages.length }),
               okLabel: t("chat.clear"),
               act: () => {
                 clear.mutate();

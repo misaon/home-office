@@ -130,6 +130,8 @@ export const cs: typeof en = {
     you: "Vy",
     label: "Zpráva vybranému podlaží",
     placeholder: "Napište podlaží, co potřebujete…",
+    placeholderNew: "Napište podlaží, co potřebujete — založí to novou session…",
+    newThread: "Nová session",
     sendHint: "Enter odešle, Shift+Enter udělá nový řádek",
     answerPlaceholder: "Vaše odpověď…",
     empty:

@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { Attachments } from "./attachments.ts";
-import { AgentId, ChatMessageId, MailItemId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import {
+  AgentId,
+  ChatMessageId,
+  ChatThreadId,
+  MailItemId,
+  ProjectId,
+  SessionId,
+  TaskId,
+} from "./ids.ts";
 import { IntakePolicy, PublishPolicy, ServicesPolicy, VerifyPolicy } from "./policies.ts";
 import { Budgets, Usage } from "./usage.ts";
 
@@ -194,6 +202,7 @@ export const ChatMessage = z.object({
   text: z.string().min(1).max(20_000),
   attachments: Attachments,
   taskId: TaskId.optional(),
+  threadId: ChatThreadId.optional(),
   at: IsoDateTime,
 });
 export type ChatMessage = z.infer<typeof ChatMessage>;
@@ -235,6 +244,7 @@ export const Session = z.object({
   runtimeSessionId: z.string().optional(),
   sandboxId: z.string().optional(),
   services: SessionServices.optional(),
+  threadId: ChatThreadId.optional(),
   resumedFrom: SessionId.optional(),
   usage: Usage,
   startedAt: IsoDateTime,

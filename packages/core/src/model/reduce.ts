@@ -244,7 +244,12 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
       break;
     }
     case "chat.cleared": {
-      model.chat.set(event.payload.projectId, []);
+      const { projectId, threadId } = event.payload;
+      const floor = model.chat.get(projectId) ?? [];
+      model.chat.set(
+        projectId,
+        floor.filter((message) => message.threadId !== threadId),
+      );
       return;
     }
     case "chat.message_posted": {

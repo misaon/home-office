@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { Floor } from "./data.ts";
+import type { Floor, ThreadPick } from "./data.ts";
 import { ChatComposer } from "./chat-composer.tsx";
 import { ChatHeader } from "./chat-header.tsx";
 import { ChatMessage } from "./chat-message.tsx";
+import { ChatThreads } from "./chat-threads.tsx";
 import { MONO } from "./tokens.ts";
 import { type Activity, bossOf, useFloorActivity } from "./live.ts";
 import { useDesign } from "./store.ts";
@@ -39,11 +40,18 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
 
   const boss = bossOf(floor);
   const activity = useFloorActivity(floor.id);
+  const pick = useDesign((s) => s.thread);
+  const active: ThreadPick | "new" =
+    pick === "new" || floor.threads.some((thread) => thread.id === pick)
+      ? pick
+      : (floor.threads[0]?.id ?? "new");
+  const inThread =
+    active === "new"
+      ? []
+      : floor.messages.filter((message) => (message.threadId ?? "main") === active);
   const needle = query.trim().toLowerCase();
   const shown =
-    needle === ""
-      ? floor.messages
-      : floor.messages.filter((m) => m.text.toLowerCase().includes(needle));
+    needle === "" ? inThread : inThread.filter((m) => m.text.toLowerCase().includes(needle));
 
   useEffect(() => {
     const el = list.current;
@@ -59,10 +67,10 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
       <ChatHeader
         floor={floor}
         boss={boss}
+        messages={inThread}
+        active={active}
         hits={
-          needle === ""
-            ? ""
-            : t("common.ofTotal", { shown: shown.length, total: floor.messages.length })
+          needle === "" ? "" : t("common.ofTotal", { shown: shown.length, total: inThread.length })
         }
       />
       <div ref={list} className={LIST}>
@@ -76,7 +84,8 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
           <div className="py-22 px-4 text-center text-12h text-ink-label">{t("chat.noHits")}</div>
         ) : null}
       </div>
-      <ChatComposer floor={floor} />
+      <ChatThreads floor={floor} active={active} />
+      <ChatComposer floor={floor} active={active} />
     </div>
   );
 }

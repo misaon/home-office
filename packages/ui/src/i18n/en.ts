@@ -130,6 +130,8 @@ export const en = {
     you: "You",
     label: "Message to the selected floor",
     placeholder: "Ask the floor for something…",
+    placeholderNew: "Ask the floor for something — this starts a new session…",
+    newThread: "New session",
     sendHint: "Enter sends, Shift+Enter makes a new line",
     answerPlaceholder: "Your answer…",
     empty:

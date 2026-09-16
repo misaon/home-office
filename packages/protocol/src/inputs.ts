@@ -15,7 +15,7 @@ import {
   Usage,
   VerifyPolicy,
 } from "./domain.ts";
-import { AgentId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import { AgentId, ChatThreadId, ProjectId, SessionId, TaskId } from "./ids.ts";
 
 const ProjectFields = Project.pick({
   name: true,
@@ -127,8 +127,26 @@ export const TaskTransitionInput = z.object({
 export type TaskTransitionInput = z.infer<typeof TaskTransitionInput>;
 
 const ChatText = z.string().trim().min(1).max(20_000);
+
+export const ChatThreadTarget = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("latest") }),
+  z.object({ kind: z.literal("new") }),
+  z.object({ kind: z.literal("thread"), id: ChatThreadId }),
+]);
+export type ChatThreadTarget = z.infer<typeof ChatThreadTarget>;
+
+export const ChatClearInput = z.object({
+  projectId: ProjectId,
+  threadId: ChatThreadId.optional(),
+});
+
 export const ChatSendInput = z.union([
-  z.object({ text: ChatText, projectId: ProjectId, attachments: Attachments }),
+  z.object({
+    text: ChatText,
+    projectId: ProjectId,
+    attachments: Attachments,
+    thread: ChatThreadTarget.default({ kind: "latest" }),
+  }),
   z.object({ text: ChatText, taskId: TaskId, attachments: Attachments }),
 ]);
 export type ChatSendInput = z.infer<typeof ChatSendInput>;

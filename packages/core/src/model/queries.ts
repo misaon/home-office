@@ -3,6 +3,7 @@ import {
   type AgentId,
   type Attachment,
   type ChatMessage,
+  type ChatThreadId,
   isSessionActive,
   type MailConnector,
   type MailItem,
@@ -29,6 +30,32 @@ export const chatOf = (
   model: { chat: ReadonlyMap<ProjectId, readonly ChatMessage[]> },
   projectId: ProjectId,
 ): readonly ChatMessage[] => model.chat.get(projectId) ?? [];
+
+export const latestThread = (
+  model: { chat: ReadonlyMap<ProjectId, readonly ChatMessage[]> },
+  projectId: ProjectId,
+): ChatThreadId | undefined =>
+  chatOf(model, projectId).findLast((m) => m.threadId !== undefined)?.threadId;
+
+const THREAD_WALK_MAX = 8;
+
+export function threadOfTask(
+  model: Pick<ReadModel, "chat" | "tasks">,
+  task: Task,
+): ChatThreadId | undefined {
+  let current: Task | undefined = task;
+  for (let depth = 0; depth < THREAD_WALK_MAX && current !== undefined; depth += 1) {
+    const source: Task["source"] = current.source;
+    if (source.kind === "chat") {
+      return chatOf(model, current.projectId).find((m) => m.id === source.messageId)?.threadId;
+    }
+    if (source.kind !== "delegation" || source.parentTaskId === undefined) {
+      return undefined;
+    }
+    current = model.tasks.get(source.parentTaskId);
+  }
+  return undefined;
+}
 
 export const tasksOf = (
   model: Pick<ReadModel, "tasks" | "tasksByProject">,
@@ -72,6 +99,18 @@ export const resumableSession = (
   sessionsOfTask(model, taskId)
     .filter(
       (s) => s.agentId === agentId && !isSessionActive(s.state) && s.runtimeSessionId !== undefined,
+    )
+    .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
+
+export const resumableThreadSession = (
+  model: Pick<ReadModel, "sessions" | "sessionsByAgent">,
+  threadId: ChatThreadId,
+  agentId: AgentId,
+): Session | undefined =>
+  sessionsOfAgent(model, agentId)
+    .filter(
+      (s) =>
+        s.threadId === threadId && !isSessionActive(s.state) && s.runtimeSessionId !== undefined,
     )
     .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
 

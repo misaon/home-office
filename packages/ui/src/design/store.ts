@@ -7,7 +7,7 @@ import {
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { Ask } from "./confirm.tsx";
-import type { Lane, Member } from "./data.ts";
+import type { Lane, Member, ThreadPick } from "./data.ts";
 
 export type Tab = "Chat" | "Board" | "Team" | "Usage" | "Settings";
 type Sheet = { type: "task"; id: TaskId } | { type: "agent"; id: Member["id"] } | null;
@@ -30,6 +30,7 @@ export type Design = {
   floorQuery: string;
   editor: boolean;
   draft: string;
+  thread: ThreadPick | "new";
   toast: string | null;
   query: string;
   searchOpen: boolean;
@@ -57,6 +58,7 @@ const INITIAL = {
   floorQuery: "",
   editor: false,
   draft: "",
+  thread: "new",
   toast: null,
   query: "",
   searchOpen: false,
@@ -97,6 +99,7 @@ export const useDesign = create<Design>()(
       partialize: (state) => ({
         tab: state.tab,
         draft: state.draft,
+        thread: state.thread,
         boardFilter: state.boardFilter,
         teamFilter: state.teamFilter,
         usageView: state.usageView,

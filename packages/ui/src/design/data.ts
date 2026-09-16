@@ -4,6 +4,7 @@ import type {
   Gender,
   Attachment,
   ChatMessageId,
+  ChatThreadId,
   ProjectId,
   TaskId,
   TaskStatus,
@@ -49,7 +50,17 @@ export type Message = {
   who?: string;
   time: string;
   text: string;
+  threadId?: ChatThreadId;
   attachment?: Attachment;
+};
+
+export type ThreadPick = ChatThreadId | "main";
+
+export type Thread = {
+  id: ThreadPick;
+  title: string;
+  count: number;
+  at: string;
 };
 
 export type Floor = {
@@ -63,4 +74,5 @@ export type Floor = {
   team: Member[];
   cards: Card[];
   messages: Message[];
+  threads: Thread[];
 };

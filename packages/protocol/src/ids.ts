@@ -15,6 +15,9 @@ export type SessionId = z.infer<typeof SessionId>;
 export const ChatMessageId = z.uuidv7().brand<"ChatMessageId">();
 export type ChatMessageId = z.infer<typeof ChatMessageId>;
 
+export const ChatThreadId = z.uuidv7().brand<"ChatThreadId">();
+export type ChatThreadId = z.infer<typeof ChatThreadId>;
+
 export const MailItemId = z.uuidv7().brand<"MailItemId">();
 export type MailItemId = z.infer<typeof MailItemId>;
 

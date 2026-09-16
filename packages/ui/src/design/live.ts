@@ -13,7 +13,7 @@ import {
 } from "@ho/protocol";
 import { useEffect, useState } from "react";
 import { activeSessionOf, sortedFloors, useUi, type Snapshot } from "../store.ts";
-import type { Card, Floor, Lane, Member, Message } from "./data.ts";
+import type { Card, Floor, Lane, Member, Message, Thread, ThreadPick } from "./data.ts";
 
 function useNow(): number {
   const [now, setNow] = useState(() => Date.now());
@@ -107,11 +107,36 @@ function messageOf(message: ChatMessage, snapshot: Snapshot): Message {
     ...(who === undefined ? {} : { who }),
     time: clock(message.at, true),
     text: message.text,
+    ...(message.threadId === undefined ? {} : { threadId: message.threadId }),
     ...(first === undefined ? {} : { attachment: first }),
   };
 }
 
+const CHIP_TITLE_MAX = 26;
+
+const chipTitle = (text: string): string => {
+  const firstLine = text.split("\n").find((line) => line.trim() !== "") ?? text;
+  const trimmed = firstLine.trim();
+  return trimmed.length <= CHIP_TITLE_MAX ? trimmed : `${trimmed.slice(0, CHIP_TITLE_MAX - 1)}…`;
+};
+
+function threadsOfChat(messages: readonly ChatMessage[]): Thread[] {
+  const threads = new Map<ThreadPick, Thread>();
+  for (const message of messages) {
+    const id: ThreadPick = message.threadId ?? "main";
+    const known = threads.get(id);
+    threads.set(id, {
+      id,
+      title: known?.title ?? chipTitle(message.text),
+      count: (known?.count ?? 0) + 1,
+      at: message.at,
+    });
+  }
+  return [...threads.values()].toSorted((a, b) => b.at.localeCompare(a.at));
+}
+
 function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
+  const chat = chatOf({ chat: snapshot.chat }, project.id);
   return {
     id: project.id,
     name: project.name,
@@ -130,7 +155,8 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
       .filter((task) => task.projectId === project.id)
       .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map((task) => cardOf(task, snapshot)),
-    messages: chatOf({ chat: snapshot.chat }, project.id).map((m) => messageOf(m, snapshot)),
+    messages: chat.map((m) => messageOf(m, snapshot)),
+    threads: threadsOfChat(chat),
   };
 }
 

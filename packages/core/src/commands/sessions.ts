@@ -14,7 +14,13 @@ import {
   type Usage,
   ZERO_USAGE,
 } from "@ho/protocol";
-import { activeSessionOfTask, resumableSession, sessionsOfAgent } from "../model/queries.ts";
+import {
+  activeSessionOfTask,
+  resumableSession,
+  resumableThreadSession,
+  sessionsOfAgent,
+  threadOfTask,
+} from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, entity, err, ok } from "../result.ts";
 import { statusChange, withSession } from "./shared.ts";
@@ -63,14 +69,18 @@ export function startSession(
   if (activeSessionOfTask(model, task.id) !== undefined) {
     return err(conflict("task already has an active session"));
   }
-  const previous = resumableSession(model, task.id, input.agentId);
+  const threadId = threadOfTask(model, task);
+  const previous =
+    threadId === undefined
+      ? resumableSession(model, task.id, input.agentId)
+      : resumableThreadSession(model, threadId, input.agentId);
   const session: Session = {
     id: ctx.ids.session(),
     taskId: task.id,
     agentId: input.agentId,
     mode: input.mode,
     state: "starting",
-    ...compact({ resumedFrom: previous?.id }),
+    ...compact({ threadId, resumedFrom: previous?.id }),
     usage: ZERO_USAGE,
     startedAt: ctx.now,
   };
