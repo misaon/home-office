@@ -126,7 +126,7 @@ const chipTitle = (text: string): string => {
   return trimmed.length <= CHIP_TITLE_MAX ? trimmed : `${trimmed.slice(0, CHIP_TITLE_MAX - 1)}…`;
 };
 
-function threadsOfChat(messages: readonly ChatMessage[]): Thread[] {
+function threadsOfChat(messages: readonly ChatMessage[], now: number): Thread[] {
   const threads = new Map<ThreadPick, Thread>();
   for (const message of messages) {
     const id: ThreadPick = message.threadId ?? "main";
@@ -136,6 +136,7 @@ function threadsOfChat(messages: readonly ChatMessage[]): Thread[] {
       title: known?.title ?? chipTitle(message.text),
       count: (known?.count ?? 0) + 1,
       at: message.at,
+      when: ago(message.at, now),
     });
   }
   return [...threads.values()].toSorted((a, b) => b.at.localeCompare(a.at));
@@ -162,7 +163,7 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
       .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map((task) => cardOf(task, snapshot)),
     messages: chat.map((m) => messageOf(m, snapshot)),
-    threads: threadsOfChat(chat),
+    threads: threadsOfChat(chat, now),
   };
 }
 

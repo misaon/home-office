@@ -517,6 +517,14 @@ button:disabled:hover,
 }
 
 @layer components {
+  .ho-strip {
+    scrollbar-width: none;
+  }
+
+  .ho-strip::-webkit-scrollbar {
+    display: none;
+  }
+
   .ho-md > :first-child {
     margin-top: 0;
   }

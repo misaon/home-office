@@ -62,6 +62,7 @@ export type Thread = {
   title: string;
   count: number;
   at: string;
+  when: string;
 };
 
 export type Floor = {
