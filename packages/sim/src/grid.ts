@@ -16,7 +16,6 @@ export const facingTowards = (from: Point, to: Point): Facing => {
   return dy >= 0 ? "s" : "n";
 };
 
-/** The four cell neighbours, in the order the path search tries them. */
 export const NEIGHBOURS: readonly Point[] = [
   { x: 1, y: 0 },
   { x: -1, y: 0 },
@@ -27,7 +26,6 @@ export const NEIGHBOURS: readonly Point[] = [
 export const neighboursOf = (p: Point): Point[] =>
   NEIGHBOURS.map((d) => ({ x: p.x + d.x, y: p.y + d.y }));
 
-/** Walkability per cell, fixed for a floor's lifetime; actors are kept apart by reservations, not by the grid. */
 export class Grid {
   readonly width: number;
   readonly height: number;
@@ -48,14 +46,12 @@ export class Grid {
     return this.inBounds(p) && this.#walkable[p.y * this.width + p.x] === 1;
   }
 
-  /** Prefer space around walls/furniture without making narrow doors or edge targets unreachable. */
   stepCost(p: Point): number {
     this.#clearance ??= this.#buildClearance();
     const distance = this.#clearance[p.y * this.width + p.x] ?? 0;
     return distance <= 1 ? 4 : distance === 2 ? 1.5 : 1;
   }
 
-  /** Two-pass Manhattan distance to static obstacles or the map edge, capped at three cells. */
   #buildClearance(): Uint8Array {
     const distances = new Uint8Array(this.width * this.height).fill(3);
     for (let y = 0; y < this.height; y += 1) {
@@ -85,15 +81,9 @@ export class Grid {
   }
 }
 
-// A turn costs six clear-floor steps: avoid staircases for small clearance gains.
 const TURN_COST = 6;
 type RouteNode = { order: number; p: Point; direction: number; id: number; g: number; f: number };
 
-/**
- * Clearance/turn-weighted A*: excludes `from`, includes `to`; empty when unreachable or trivial.
- * A destination somebody is standing on is reachable — that is what a meeting point is — while every
- * other occupied cell is walked around.
- */
 export function findPath(
   grid: Grid,
   from: Point,
@@ -106,7 +96,6 @@ export function findPath(
   if (!grid.isWalkable(to)) {
     return [];
   }
-  // Arrival direction is part of the state: it determines the cost of the next turn.
   let order = 0;
   const start: RouteNode = {
     order: order++,
@@ -141,7 +130,6 @@ export function findPath(
     for (const [direction, d] of NEIGHBOURS.entries()) {
       const next = { x: current.p.x + d.x, y: current.p.y + d.y };
       const id = key(next) * 5 + direction;
-      // Cells occupied by standing actors are avoided, except the destination itself (meeting points).
       if (closed.has(id) || !grid.isWalkable(next) || (blocked(next) && !samePoint(next, to))) {
         continue;
       }

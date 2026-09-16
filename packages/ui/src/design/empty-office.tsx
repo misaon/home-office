@@ -13,7 +13,6 @@ const PRIMARY =
 const SECONDARY =
   "py-13 px-18 rounded-13 border border-border-strong bg-transparent text-13h text-ink-quiet cursor-pointer transition-all duration-200";
 
-/** The gold house with its slow halo: the office's own mark, at rest. */
 function EmptyMark(): React.JSX.Element {
   return (
     <div className="relative w-96 h-96 m-[0_auto_26px]">
@@ -37,7 +36,6 @@ function EmptyMark(): React.JSX.Element {
   );
 }
 
-/** The only two things worth doing before the first floor exists. */
 function EmptyActions(): React.JSX.Element {
   const { t } = useTranslation();
   const setAddProjectOpen = useUi((s) => s.setAddProjectOpen);
@@ -67,7 +65,6 @@ function EmptyActions(): React.JSX.Element {
   );
 }
 
-/** Three cards that say what happens after the first floor. */
 function EmptySteps(): React.JSX.Element {
   const { t } = useTranslation();
   return (
@@ -89,7 +86,6 @@ function EmptySteps(): React.JSX.Element {
   );
 }
 
-/** Before the first project: the office says what it is for and offers the one thing worth doing. */
 export function EmptyOffice(): React.JSX.Element {
   const { t } = useTranslation();
 

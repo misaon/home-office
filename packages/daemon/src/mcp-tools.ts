@@ -1,4 +1,3 @@
-// The office's own tools, as the MCP gateway registers them: one table, one handler each.
 import {
   askHuman,
   delegateTask,
@@ -36,7 +35,6 @@ import type { SkillLibrary } from "./skills.ts";
 
 export type McpSessionContext = {
   sessionId: SessionId;
-  /** Which pack this agent's skills come from; "none" means it was hired without one. */
   skillPack: string;
   taskId: TaskId;
   agentId: AgentId;
@@ -64,7 +62,6 @@ type Tool<S extends z.ZodRawShape> = {
     actor: Actor,
   ) => Promise<unknown>;
 };
-/** A tool as the registration loop sees it: the shape for the SDK, and a handler that types its own input. */
 export type AnyTool = {
   name: string;
   description: string;
@@ -211,11 +208,6 @@ const reply = define({
   },
 });
 
-/**
- * Skills, served the way the Agent Skills format loads them from disk: an index of names and
- * descriptions, then one body, then a bundled file. Claude Code reads the same directories through
- * `--plugin-dir`; every other provider reads them here, so a skill stays one artifact.
- */
 const listSkills = define({
   name: "ho_list_skills",
   description:
@@ -262,9 +254,3 @@ export const text = (value: unknown): ToolResult => ({
     { type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) },
   ],
 });
-
-/**
- * The daemon's MCP tool server for agents. Each sandbox session gets a bearer token; every request builds a
- * small `McpServer` bound to that session, so tools can never act on another task, and the server is
- * dropped with the request — the SDK allows one transport per server, and agents call tools in parallel.
- */

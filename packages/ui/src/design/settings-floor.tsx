@@ -21,7 +21,6 @@ const PATH = `${MONO} text-10h text-ink-meta mb-14 overflow-hidden text-ellipsis
 const REMOVE =
   "py-7 px-12 rounded-9 border border-bad-a30 bg-bad-a10 text-bad-soft text-11h cursor-pointer transition-all duration-200";
 
-/** One floor in Settings: where it lives, how finished work leaves it, and what feeds it. */
 export function SettingsFloor({
   floor,
   index,

@@ -9,7 +9,6 @@ import { MONO } from "./tokens.ts";
 
 const LINE = `${MONO} text-10h leading-prose overflow-hidden text-ellipsis`;
 
-/** The diff the daemon reported, in the order it planned it: what moved, then what it could not do. */
 function Report({ sync }: { sync: OfficeFileSync }): React.JSX.Element {
   const { t } = useTranslation();
   const quiet = sync.changes.length === 0 && sync.problems.length === 0;
@@ -33,11 +32,6 @@ function Report({ sync }: { sync: OfficeFileSync }): React.JSX.Element {
   );
 }
 
-/**
- * The floor and its repository, in both directions: apply what `.ho/config.json` says, or write the
- * floor as it stands into that file. Applying is what the daemon does by itself on start and on every
- * change of the file; this button is for saying "now".
- */
 export function FloorConfigFile({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const flash = useDesign((s) => s.flash);

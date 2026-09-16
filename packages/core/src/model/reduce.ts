@@ -134,7 +134,6 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
   }
 }
 
-/** Everything one task owns in the projection: the task, its place on a floor, and its sessions. */
 function removeTask(model: ReadModel, taskId: TaskId, projectId: ProjectId): void {
   for (const sessionId of model.sessionsByTask.get(taskId) ?? []) {
     const session = model.sessions.get(sessionId);
@@ -149,14 +148,9 @@ function removeTask(model: ReadModel, taskId: TaskId, projectId: ProjectId): voi
   dropFrom(model.tasksByProject, projectId, taskId);
 }
 
-/**
- * The floor is gone: its staff left with `agent.removed`, and its tasks, their sessions, its chat and
- * its mail go with it. Sessions are keyed by task, so nothing else would ever clean them up.
- */
 function removeProject(model: ReadModel, projectId: ProjectId): void {
   model.projects.delete(projectId);
   model.agentsByProject.delete(projectId);
-  // A copy, because removing a task drops it from the very set this walks.
   const owned = new Set(model.tasksByProject.get(projectId));
   for (const taskId of owned) {
     removeTask(model, taskId, projectId);
@@ -171,7 +165,6 @@ function removeProject(model: ReadModel, projectId: ProjectId): void {
   }
 }
 
-/** Which collection each event touches, so `revisions` tells readers what to copy. */
 const TOUCHES: Readonly<Record<StoredEvent["type"], Collection | null>> = {
   "project.created": "projects",
   "project.updated": "projects",
@@ -198,7 +191,6 @@ const TOUCHES: Readonly<Record<StoredEvent["type"], Collection | null>> = {
   "session.ended": "sessions",
 };
 
-/** Folds one stored event into the model. Unknown ids are ignored so a partial log never throws. */
 export function applyEvent(model: ReadModel, event: StoredEvent): void {
   if (event.seq <= model.lastSeq) {
     return;

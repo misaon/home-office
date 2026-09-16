@@ -21,7 +21,6 @@ const COUNT = `${DISPLAY} font-bold text-30 tracking-display leading-flat whites
 
 const LABEL = "text-11h text-ink-label overflow-hidden text-ellipsis whitespace-nowrap";
 
-/** How many people are on the floor, the button that hires another, and the three filters. */
 function TeamHeader({ floor, onHire }: { floor: Floor; onHire: () => void }): React.JSX.Element {
   const { t } = useTranslation();
   const teamFilter = useDesign((s) => s.teamFilter);
@@ -68,7 +67,6 @@ const LIST = "rounded-14 bg-card border border-edge overflow-hidden mb-12";
 const HIRE =
   "w-full flex items-center justify-center gap-8 p-11 rounded-12 border border-dashed border-accent-a40 bg-accent-a07 text-accent-soft text-12h font-medium cursor-pointer mb-14 transition-all duration-220";
 
-/** Who is on this floor, what each of them is doing, and the door to hiring another. */
 export function Team({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const teamFilter = useDesign((s) => s.teamFilter);

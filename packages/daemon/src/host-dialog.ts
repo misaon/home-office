@@ -2,22 +2,15 @@ import type { DirectoryPick, DirectoryPickInput } from "@ho/protocol";
 import { stat } from "node:fs/promises";
 import { exec, type Exec } from "./host-exec.ts";
 
-/** Shows the host's directory dialog. The desktop app injects a native panel; osascript is the fallback. */
 export type DirectoryPicker = (input: DirectoryPickInput) => Promise<DirectoryPick>;
 
 const PROMPT = "Choose the repository folder";
-/** The dialog waits for a person, so the deadline only covers one that was abandoned. */
 const DIALOG_TIMEOUT_MS = 10 * 60_000;
-/** AppleScript's "User canceled": a cancelled dialog is an answer, not a failure. */
 const CANCELLED = /-128/u;
 
 const CHOOSE = "set chosen to choose folder with prompt (item 1 of argv)";
 const CHOOSE_FROM = `${CHOOSE} default location ((item 2 of argv) as POSIX file)`;
 
-/**
- * The prompt and the starting directory arrive as `run argv` arguments, never as script source, so no
- * path can become AppleScript.
- */
 const osascript = (choose: string, args: readonly string[]): Promise<Exec> =>
   exec(
     [
@@ -41,13 +34,8 @@ const isDirectory = async (path: string): Promise<boolean> => {
   }
 };
 
-/** `choose folder` answers with a trailing slash; the rest of the office stores plain paths. */
 const trimmed = (path: string): string => path.replace(/(?!^)\/+$/u, "");
 
-/**
- * macOS `choose folder` through osascript: the directory dialog a daemon started from a terminal can
- * still show. Other platforms report `unavailable`, which the office turns into "type the path".
- */
 export const osascriptDirectoryPicker: DirectoryPicker = async ({ startIn }) => {
   if (process.platform !== "darwin") {
     return {
@@ -60,7 +48,6 @@ export const osascriptDirectoryPicker: DirectoryPicker = async ({ startIn }) => 
     from === null
       ? await osascript(CHOOSE, [PROMPT])
       : await osascript(CHOOSE_FROM, [PROMPT, from]);
-  // A starting directory git accepts can still be one the dialog refuses; the plain dialog is not lost.
   const result =
     first.code === 0 || from === null || CANCELLED.test(first.stderr)
       ? first

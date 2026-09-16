@@ -8,7 +8,6 @@ const INTERVAL_MS = 30 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 const VOLUME_KINDS = ["task-volume", "provider-state", "engine-cache"] as const;
 const LEGACY_VOLUME_KINDS = ["claude-config"] as const;
-/** Runtime state of one session's engine: worth nothing once its containers are gone. */
 const TRANSIENT_VOLUME_KINDS = ["engine-socket"] as const;
 
 const merge = (a: PruneReport, b: PruneReport): PruneReport => ({
@@ -17,7 +16,6 @@ const merge = (a: PruneReport, b: PruneReport): PruneReport => ({
   images: [...a.images, ...b.images],
 });
 
-/** Removes what sessions leave behind: stopped sandboxes now, task volumes after retention, dangling images. */
 async function collectGarbage(
   provider: SandboxProvider,
   config: DaemonConfig,

@@ -9,18 +9,15 @@ import type { RuntimeEvent } from "@ho/protocol";
 
 export type OfficeConnection = {
   conn: ClientConnection;
-  /** Receives every `session/update`, and the permission requests the office answers, while a prompt runs. */
   listen: (listener: ((update: SessionUpdate) => void) | null) => void;
   onPermission: (listener: ((event: RuntimeEvent) => void) | null) => void;
 };
 
-/** Permission prompts get the most permissive option: the sandbox, not the prompt, limits the agent. */
 const pickOption = (options: readonly PermissionOption[]): PermissionOption | undefined =>
   options.find((o) => o.kind === "allow_always") ??
   options.find((o) => o.kind === "allow_once") ??
   options[0];
 
-/** The office's side of an ACP connection: auto-approving permissions and forwarding session updates. */
 export function openConnection(stream: Stream): OfficeConnection {
   let listener: ((update: SessionUpdate) => void) | null = null;
   let permission: ((event: RuntimeEvent) => void) | null = null;

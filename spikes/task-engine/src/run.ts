@@ -1,6 +1,3 @@
-// Verification harness for a task's private container engine: the real Docker adapter and a real
-// engine, with a hardened stand-in for the agent container (the agent image when it is built, the
-// upstream CLI image otherwise). Run it with `bun run spike:task-engine [--testcontainers]`.
 import { $ } from "bun";
 import { DaemonConfig } from "@ho/daemon";
 import { startTaskEngine } from "@ho/daemon/task-engine";
@@ -60,7 +57,6 @@ async function checkCompose(task: Task): Promise<boolean[]> {
   return results;
 }
 
-/** The second session of a task reuses the cache volume, so nothing is pulled again. */
 async function checkWarmStart(task: Task): Promise<boolean> {
   await inSandbox(task, "docker compose -p spike down --timeout 20");
   const started = Date.now();
@@ -86,7 +82,6 @@ async function checkIsolation(first: Task, second: Task): Promise<boolean[]> {
   ];
 }
 
-/** An engine that cannot start must fail with a message that says why, and not hang the session. */
 async function checkFailSoft(
   provider: Provider,
   config: DaemonConfig,
@@ -97,7 +92,6 @@ async function checkFailSoft(
     services: { ...config.services, image: "docker:no-such-tag-29.8.0-dind-rootless" },
   };
   const request = requestFor(task.id, task.volume);
-  // A pull that fails creates no container, so there is nothing to clean up here.
   const failure = await startTaskEngine(provider, broken, request, task.plan, task.sandbox).then(
     () => "started, which it must not",
     (error: unknown) => (error instanceof Error ? error.message : String(error)),

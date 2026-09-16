@@ -1,17 +1,9 @@
 import { CELL_PX } from "@ho/sim";
 
-/**
- * How close the map can be pulled, in pixels per cell. There is no lower bound of its own: zooming out
- * stops with the whole floor in view, because the floor is sized to fit the pane in the first place.
- */
 const ZOOM_IN_MAX = 64;
 
 type Size = { width: number; height: number };
 
-/**
- * Where the map is looked at from. `offset` is the world pixel at the canvas' top-left corner; a map
- * smaller than the canvas is centred instead of clamped, so it can never be lost off-screen.
- */
 export class Camera {
   #zoom = ZOOM_IN_MAX;
   #x = 0;
@@ -19,7 +11,6 @@ export class Camera {
   #view: Size = { width: 1, height: 1 };
   #world: Size = { width: 1, height: 1 };
 
-  /** World pixels to canvas pixels. */
   get scale(): number {
     return this.#zoom / CELL_PX;
   }
@@ -37,32 +28,24 @@ export class Camera {
     this.#clamp();
   }
 
-  /** The map's size in cells; the camera works in world pixels (`CELL_PX` per cell). */
   setMap(cellsWide: number, cellsHigh: number): void {
     this.#world = { width: cellsWide * CELL_PX, height: cellsHigh * CELL_PX };
     this.#clamp();
   }
 
-  /** Fits the whole map in view and centres it: where a floor starts before anybody touches the camera. */
   fit(): void {
     this.#zoom = this.#fitZoom();
     this.#clamp();
   }
 
-  /**
-   * How close the floor is, as a percentage of the zoom that fits it: 100 % is the whole floor in view,
-   * and it is the number the camera bar reads out.
-   */
   get percent(): number {
     return Math.round((this.#zoom / this.#fitZoom()) * 100);
   }
 
-  /** Zooms about the middle of the view, which is what a button press means. */
   zoomStep(factor: number): void {
     this.zoomBy(factor, this.#view.width / 2, this.#view.height / 2);
   }
 
-  /** The cell under a canvas pixel (may be off the map). */
   cellAt(canvasX: number, canvasY: number): { x: number; y: number } {
     return {
       x: Math.floor((this.#x + canvasX / this.scale) / CELL_PX),
@@ -70,28 +53,24 @@ export class Camera {
     };
   }
 
-  /** The zoom at which the whole floor is visible; also the furthest the camera can be pulled back. */
   #fitZoom(): number {
     const byWidth = this.#view.width / this.#world.width;
     const byHeight = this.#view.height / this.#world.height;
     return Math.min(byWidth, byHeight) * CELL_PX;
   }
 
-  /** Puts a world point in the middle of the view, which is what following someone means. */
   centreOn(worldX: number, worldY: number): void {
     this.#x = worldX - this.#view.width / this.scale / 2;
     this.#y = worldY - this.#view.height / this.scale / 2;
     this.#clamp();
   }
 
-  /** Drag: the map follows the pointer, so the offset moves against it. */
   panBy(dxCanvas: number, dyCanvas: number): void {
     this.#x -= dxCanvas / this.scale;
     this.#y -= dyCanvas / this.scale;
     this.#clamp();
   }
 
-  /** Wheel: the world point under the cursor stays under the cursor. */
   zoomBy(factor: number, canvasX: number, canvasY: number): void {
     const floor = this.#fitZoom();
     const next = clamp(this.#zoom * factor, floor, Math.max(ZOOM_IN_MAX, floor));
@@ -117,6 +96,5 @@ export class Camera {
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);
 
-/** Inside the map, or centred when the map is smaller than the view. */
 const clampAxis = (offset: number, view: number, world: number): number =>
   world <= view ? (world - view) / 2 : clamp(offset, 0, world - view);

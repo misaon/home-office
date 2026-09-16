@@ -1,5 +1,3 @@
-// Czech: the office's own vocabulary is translated, while the words a developer reads in git, Docker
-// and the provider CLIs stay as they are — commit, branch, pull request, token, session, prune.
 import { csEditor } from "./cs-editor.ts";
 import { csOffice } from "./cs-office.ts";
 import { csStaff } from "./cs-staff.ts";

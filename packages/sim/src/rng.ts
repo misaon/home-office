@@ -1,4 +1,3 @@
-/** mulberry32: tiny, seedable, deterministic. The office must replay identically for a given seed. */
 export type Rng = {
   next: () => number;
   int: (maxExclusive: number) => number;
@@ -23,7 +22,6 @@ export const createRng = (seed: number): Rng => {
   };
 };
 
-/** Stable 32-bit hash of a string (FNV-1a) to derive seeds from ids. */
 export const hashSeed = (text: string): number => {
   let h = 0x811c9dc5;
   for (let i = 0; i < text.length; i += 1) {

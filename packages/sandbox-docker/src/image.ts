@@ -12,7 +12,6 @@ export async function imageHash(api: DockerApi, ref: string): Promise<string | n
   return ImageInspect.parse(await res.json()).Config?.Labels?.[HASH_LABEL] ?? "";
 }
 
-/** Whole lines of a build's output, however the chunks fell; the tail is kept for the failure text. */
 async function pump(
   stream: ReadableStream<Uint8Array>,
   onLine: (line: string) => void,
@@ -39,7 +38,6 @@ async function pump(
   return all;
 }
 
-/** Builds via the docker CLI (buildx handles context tarballs and cache); everything else uses the Engine API. */
 export async function buildImage(
   spec: ImageSpec,
   platform: string | undefined,
@@ -72,7 +70,6 @@ export async function buildImage(
   }
   args.push(spec.contextDir);
   const proc = Bun.spawn(args, { stdout: "pipe", stderr: "pipe", timeout: BUILD_TIMEOUT_MS });
-  // A cancelled request must stop the build itself, not just stop reading its output.
   const cancel = (): void => {
     proc.kill();
   };

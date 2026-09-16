@@ -14,7 +14,6 @@ import { serveStatic } from "./static.ts";
 export type ServerOptions = {
   host: string;
   port: number;
-  /** Directory with the built office UI; null means this build serves none. */
   uiDir: string | null;
   context: RpcContext;
   gateway: RunnerGateway;
@@ -26,7 +25,6 @@ type SocketData = { kind: "rpc" } | RunnerSocketData;
 
 const PROTOCOL_PREFIX = "ho.bearer.";
 
-/** Browsers cannot set headers on WebSocket upgrades, so the token may also ride in a subprotocol. */
 const presentedToken = (req: Request): { token: string; viaProtocol: boolean } | null => {
   const header = bearerToken(req);
   if (header !== null) {
@@ -45,7 +43,6 @@ const presentedToken = (req: Request): { token: string; viaProtocol: boolean } |
 
 const encoder = new TextEncoder();
 
-/** Constant-time comparison: the daemon token is the one credential that grants full RPC access. */
 const sameToken = (presented: string, expected: string): boolean => {
   const a = encoder.encode(presented);
   const b = encoder.encode(expected);
@@ -53,14 +50,8 @@ const sameToken = (presented: string, expected: string): boolean => {
 };
 
 const ATTACHMENTS_PATH = "/attachments";
-/** The name of an uploaded file, base64url so any name survives a header. */
 const FILENAME_HEADER = "x-ho-filename";
 
-/**
- * The chat's files. An upload is the raw body with its name in a header; a download always answers with
- * opaque bytes, never with a type, so nothing served from the office's own origin can be rendered as a
- * document. The office knows each file's type from the message that names it and builds the blob there.
- */
 async function serveAttachment(req: Request, url: URL, store: AttachmentStore): Promise<Response> {
   if (req.method === "POST" && url.pathname === ATTACHMENTS_PATH) {
     const encoded = req.headers.get(FILENAME_HEADER);
@@ -86,13 +77,11 @@ async function serveAttachment(req: Request, url: URL, store: AttachmentStore): 
       "content-security-policy": "default-src 'none'",
       "x-content-type-options": "nosniff",
       "content-disposition": "attachment",
-      // The name is the content's own hash, so a stored file never changes under its id.
       "cache-control": "private, max-age=31536000, immutable",
     },
   });
 }
 
-/** The office UI bundle at `/`: read-only and unauthenticated (it carries no data). */
 const serveUi = (uiDir: string | null, pathname: string): Promise<Response> | Response =>
   uiDir === null
     ? new Response(
@@ -106,7 +95,6 @@ export function startServer(options: ServerOptions): {
   token: string;
   stop: () => Promise<void>;
 } {
-  // One token per launch: the office page carries it in its URL fragment and every RPC presents it.
   const token = mintToken();
   const handler = new RPCHandler(router, {
     interceptors: [
@@ -157,8 +145,6 @@ export function startServer(options: ServerOptions): {
         options.log.warn({ ip: srv.requestIP(req)?.address }, "rejected rpc connection");
         return new Response("unauthorized", { status: 401 });
       }
-      // The handshake requires echoing the selected subprotocol when the client offered one.
-      // Bun 1.4.2 rejects `headers: {}`, so pass headers only when there is something to send.
       const upgraded = presented.viaProtocol
         ? srv.upgrade(req, {
             data: { kind: "rpc" },

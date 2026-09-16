@@ -1,5 +1,3 @@
-// Podlaží a lidé na nich: dva dialogy, které je vytvářejí, a slova, ze kterých jsou.
-
 import type { enStaff } from "./en-staff.ts";
 
 export const csStaff: typeof enStaff = {

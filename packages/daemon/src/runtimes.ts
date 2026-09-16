@@ -5,7 +5,6 @@ import { createClaudeCodeRuntime } from "@ho/runtime-claude-code";
 import type { Logger } from "./logger.ts";
 import { VERSION } from "./version.ts";
 
-/** One runtime per provider in the catalog: Claude Code speaks stream-json, the rest ACP. */
 export function createRuntimes(
   log: Logger,
   clock: Clock,

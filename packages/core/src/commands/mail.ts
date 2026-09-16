@@ -18,7 +18,6 @@ import { newTask, readTask } from "./tasks.ts";
 
 const BODY_MAX = 12_000;
 
-/** The task brief: everything the boss (or a worker) needs to act on the issue without opening GitHub. */
 const formatMailBrief = (project: Project, item: IntakeItem): string => {
   const body = item.body.trim();
   const clipped = body.length > BODY_MAX ? `${body.slice(0, BODY_MAX)}\n\n[… truncated]` : body;
@@ -33,11 +32,6 @@ const formatMailBrief = (project: Project, item: IntakeItem): string => {
 
 export type ReceivedMail = { mail: MailItem; task: Task | null; duplicate: boolean };
 
-/**
- * A connector item becomes a mail item plus its task: a triage task for the floor's boss (Lola carries it
- * from the reception to his office), or a work task in the project's inbox when the floor has no boss.
- * Items already received (same project, connector and external id) return unchanged with `duplicate: true`.
- */
 export function receiveMail(
   model: ReadModel,
   projectId: ProjectId,

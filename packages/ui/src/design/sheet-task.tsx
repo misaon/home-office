@@ -8,12 +8,6 @@ import { useDesign, useOfficeMutation } from "./store.ts";
 
 const TAG = `${MONO} text-9h py-4 px-9 rounded-6`;
 
-/**
- * One task, opened up: what it is, who has it, and the ways it can actually leave this state. Only
- * two of the state machine's edges are drawn here, and a task is rarely standing on both: `done` is
- * reachable from `in_progress` and `review`, nothing else. Offering the other move anyway is how the
- * sheet used to answer a click with an error the office had already ruled out.
- */
 export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);

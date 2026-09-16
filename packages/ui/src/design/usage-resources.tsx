@@ -12,7 +12,6 @@ const NAME = `${MONO} text-12 overflow-hidden text-ellipsis whitespace-nowrap`;
 
 const gb = (bytes: number): string => `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 
-/** A rule with its count on the right. */
 function Rule({ name, count }: { name: string; count: string }): React.JSX.Element {
   return (
     <div className="flex items-center gap-8 mt-0 mx-2 mb-9">
@@ -23,7 +22,6 @@ function Rule({ name, count }: { name: string; count: string }): React.JSX.Eleme
   );
 }
 
-/** What the office is actually running on: the sandboxes that exist and the disk they hold. */
 export function UsageResources({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const query = useQuery({ ...resourcesQuery, refetchInterval: 20_000 });

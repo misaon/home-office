@@ -54,13 +54,15 @@ reason in a scoped suppression), `typescript/no-deprecated`, `switch-exhaustiven
 `strict-boolean-expressions`, `import/no-cycle`, `import/max-dependencies` at 20 per module,
 `eslint/max-lines-per-function` at 120, `unicorn/filename-case` kebab-case, and `eslint/no-console`
 (the daemon logs through Pino; the CLI writes through `apps/cli/src/output.ts`). Every suppression that
-survives is listed with its reason in [audit/SUPPRESSIONS.md](../audit/SUPPRESSIONS.md); there are three
+survives is listed with its reason in [audit/SUPPRESSIONS.md](../audit/SUPPRESSIONS.md); there are seven
 in the source and one scoped rule override in `.oxlintrc.json`.
 
 Use `bun run fmt` to format. Validate affected builds and actual runtime behavior when a static check
 cannot establish correctness. Do not invent passing checks, coverage or benchmark numbers. Tests and code
 comments are the owner's decision — the September 2026 audits were run under "no tests, no code comments",
 and that instruction is per task, not a property of the repository. Existing verification spikes can run.
+On 2026-09-16 the owner had all 1232 comments removed from the source. The seven suppressions above
+stayed: a suppression is an instruction to the linter, not prose.
 
 ## Resources and secrets
 

@@ -17,7 +17,6 @@ import {
 } from "./system.ts";
 import { taskCommand } from "./task.ts";
 
-/** Every command, in the order `ho help` lists them; the help text is generated from this table. */
 export const COMMANDS: readonly Command[] = [
   daemonCommand,
   healthCommand,

@@ -18,7 +18,6 @@ import type { AgentDraft } from "./store.ts";
 
 const GRID = "grid grid-cols-2 gap-12 mb-18";
 
-/** A provider's own models, plus the door out of the list when it takes any id at all. */
 const modelOptions = (provider: ProviderId, t: (key: "common.custom") => string): string[] => {
   const catalogue = PROVIDERS[provider];
   const labels = catalogue.models.map((m) => m.label);
@@ -28,7 +27,6 @@ const modelOptions = (provider: ProviderId, t: (key: "common.custom") => string)
 const labelOfModel = (provider: ProviderId, id: string): string =>
   PROVIDERS[provider].models.find((m) => m.id === id)?.label ?? id;
 
-/** A name, and the choices the chosen provider actually offers. */
 export function AgentDialogFields({
   draft,
   patch,
@@ -148,7 +146,6 @@ export function AgentDialogFields({
   );
 }
 
-/** How they work, not what they work on. */
 export function AgentPrompt({
   value,
   onChange,

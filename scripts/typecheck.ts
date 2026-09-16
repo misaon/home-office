@@ -1,11 +1,6 @@
 import { $, Glob } from "bun";
 import { existsSync } from "node:fs";
 
-/**
- * One program per distinct compiler setting: the root program (Bun globals) covers the scripts, the CLI,
- * the daemon with its adapters and the spikes; core, sim and protocol compile without Bun or DOM globals;
- * the UI adds the DOM and JSX; the desktop app compiles the Electrobun devkit as source.
- */
 const configs = [...new Glob("{apps,packages}/*/tsconfig.json").scanSync(".")].toSorted();
 for (const config of new Glob("apps/*/hutch.config.ts").scanSync(".")) {
   if (!existsSync(`${config.slice(0, config.lastIndexOf("/"))}/.hutch/devkit`)) {
@@ -13,7 +8,6 @@ for (const config of new Glob("apps/*/hutch.config.ts").scanSync(".")) {
   }
 }
 
-/** Native `tsc` is a whole process per program; four at a time keeps a small CI runner usable. */
 const MAX_PARALLEL = 4;
 type Result = { config: string; code: number; out: string };
 const queue = ["tsconfig.json", ...configs];

@@ -3,11 +3,6 @@ import { Glob } from "bun";
 import { readFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 
-/**
- * Validates every shipped `SKILL.md` against the published Agent Skills format
- * (agentskills.io/specification, read 2026-09-15), so a pack that no runtime would load fails here
- * rather than in a session. The body limit is the specification's own recommendation.
- */
 const BODY_LINES_MAX = 500;
 const root = resolve(import.meta.dir, "../images/agent/plugins");
 

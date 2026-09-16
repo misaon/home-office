@@ -5,7 +5,6 @@ import { useAttachmentUrl } from "../attachments.ts";
 import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
-/** The strip under the picture: what the file is, and the way out. */
 function LightboxBar({
   attachment,
   onClose,
@@ -32,7 +31,6 @@ function LightboxBar({
   );
 }
 
-/** An attachment at full size, over everything, closed by clicking anywhere. */
 export function Lightbox({ attachment }: { attachment: Attachment }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);

@@ -1,6 +1,5 @@
 import type { Task } from "@ho/protocol";
 
-/** What a finished, paused or failed task leaves behind, for the boss's chat line and the issue comment. */
 export const describeOutcome = (task: Task, reason: string | undefined, max: number): string =>
   [
     task.artifacts.report ?? null,

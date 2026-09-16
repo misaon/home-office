@@ -22,7 +22,6 @@ const readAgent =
   (model: ReadModel): Agent =>
     entity(model.agents, id);
 
-/** Names are unique per floor: Andrew runs every floor, Pam may work on two. */
 const nameTaken = (
   model: ReadModel,
   projectId: ProjectId,
@@ -81,7 +80,6 @@ export function updateAgent(
         return err(conflict("this floor already has a boss"));
       }
     }
-    // A provider switch starts from the new provider's defaults for the role; the patch wins where it speaks.
     const base =
       patch.provider !== undefined && patch.provider !== current.provider
         ? { ...current, ...defaultChoice(patch.provider, patch.role ?? current.role) }
@@ -98,7 +96,6 @@ export function updateAgent(
   });
 }
 
-/** Puts a copy of a character onto another floor (the import of D23). Bosses stay where they are. */
 export function copyAgent(
   model: ReadModel,
   input: AgentCopyInput,

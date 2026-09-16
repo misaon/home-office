@@ -1,4 +1,3 @@
-// What a session needs before it can run: its volumes, its repository, its sandbox and its own engine.
 import { attachmentsOfTask, needsEngine, type SandboxHandle, type SandboxSpec } from "@ho/core";
 import {
   type Agent,
@@ -40,18 +39,15 @@ export type SessionContext = {
 
 export type Provisioned = {
   sandbox: SandboxHandle;
-  /** The task's own container engine, when its project asked for one and it started. */
   services: Services;
   connection: RunnerConnection;
   volume: string;
   branch: string;
   sourcePath: string;
   mcpToken: string;
-  /** Tears everything down in reverse order: the engine first, so dockerd signals the repository's services. */
   dispose: () => Promise<void>;
 };
 
-/** Absent means the project asks for no services; the brief and the session record share this answer. */
 export const sessionServicesOf = (services: Services): SessionServices | undefined =>
   services.kind === "off" ? undefined : services.kind;
 
@@ -86,19 +82,15 @@ const sandboxSpec = (
   network: config.docker.network,
   volumes: [
     { name: volume, target: "/work" },
-    // The CLI's conversation state; survives between sessions of the same task and agent (resume).
     { name: stateVolume, target: PROVIDERS[ctx.agent.provider].stateDir },
-    // The directory the task's engine puts its API socket in; `DOCKER_HOST` points inside it.
     ...(engine === null ? [] : [{ name: engine.socketVolume, target: engine.socketDir }]),
   ],
   binds: [
-    // The two ways a file crosses the sandbox wall: what the human attached, and what a reply can carry.
     { source: chat.inbox, target: CHAT_INBOX_DIR, readonly: true },
     { source: chat.outbox, target: CHAT_OUTBOX_DIR, readonly: false },
   ],
   tmpfs: {
     "/tmp": "rw,nosuid,size=256m",
-    // Docker mounts tmpfs as root 0755; the sandbox user must own its scratch directories.
     ...Object.fromEntries(
       PROVIDERS[ctx.agent.provider].scratchDirs.map((dir) => [
         dir,
@@ -114,7 +106,6 @@ const sandboxSpec = (
   readonlyRootfs: true,
 });
 
-/** Network, task volume with the floor's repository, sandbox with the runner, its engine, runner connection. */
 export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {
   const { provider, config, gateway, mcp, home, log } = deps;
   ctx.signal.throwIfAborted();
@@ -179,7 +170,6 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     });
     let services: Services = { kind: "off" };
     if (engineRequest !== null && plan !== null) {
-      // Fail soft: a session without its services still runs, and the brief says they are missing.
       try {
         const engine = await startTaskEngine(provider, config, engineRequest, plan, sandbox);
         stack.defer(async () => {

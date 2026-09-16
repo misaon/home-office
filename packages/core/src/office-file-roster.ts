@@ -15,7 +15,6 @@ import { jsonEqual } from "./office-file.ts";
 import { defaultChoice, validateChoice } from "./providers.ts";
 import type { CommandContext } from "./result.ts";
 
-/** What one apply has decided so far: the events to append, the diff to show, what it could not do. */
 export type Plan = { events: NewEvent[]; changes: string[]; problems: string[] };
 
 const budgetsFor = (
@@ -24,7 +23,6 @@ const budgetsFor = (
   current: Agent | undefined,
 ): Budgets => entry.budgets ?? floor ?? current?.budgets ?? Budgets.parse({});
 
-/** A colleague the floor does not have yet, with the catalogue's defaults for whatever the file omits. */
 const hire = (
   entry: OfficeFileAgent,
   projectId: ProjectId,
@@ -50,11 +48,6 @@ const hire = (
   };
 };
 
-/**
- * An existing colleague as the file would have them. A provider switch starts from the new provider's
- * defaults for the role, the way `updateAgent` does it; `updatedAt` is left alone so the caller can
- * tell whether anything actually moved.
- */
 const reshape = (current: Agent, entry: OfficeFileAgent, budgets: Budgets): Agent => {
   const base =
     entry.provider === current.provider
@@ -121,7 +114,6 @@ const emitHire = (agent: Agent, ctx: CommandContext, plan: Plan): void => {
   plan.events.push({ type: "agent.created", actor: ctx.actor, payload: { agent } });
 };
 
-/** A colleague the file no longer names. Mid-session or mid-task they stay, and the report says so. */
 function release(model: ReadModel, agent: Agent, ctx: CommandContext, plan: Plan): boolean {
   if (sessionsOfAgent(model, agent.id).some((s) => isSessionActive(s.state))) {
     plan.problems.push(`${agent.name} is not in the file but is mid-session; left on the floor`);
@@ -156,7 +148,6 @@ const withoutRepeats = (entries: readonly OfficeFileAgent[], plan: Plan): Office
   return kept;
 };
 
-/** The one boss the file may describe, and the complaint when it describes more than one. */
 const bossEntryOf = (
   wanted: readonly OfficeFileAgent[],
   plan: Plan,
@@ -171,7 +162,6 @@ const bossEntryOf = (
   return first;
 };
 
-/** Renames and reshapes the floor's own boss, and reports the name the floor ends up calling them. */
 function planBoss(
   boss: Agent,
   entry: OfficeFileAgent,
@@ -193,11 +183,6 @@ function planBoss(
   return next.name;
 }
 
-/**
- * The floor's staff as the file lists them. Colleagues are matched by name, case-insensitively, which
- * is the floor's own uniqueness rule — except the boss, who is matched by role, so the file can rename
- * the one boss a floor is guaranteed instead of trying to replace them.
- */
 export function planRoster(
   model: ReadModel,
   project: Project,

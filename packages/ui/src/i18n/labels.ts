@@ -1,6 +1,5 @@
 import type { AgentRole, Gender } from "@ho/protocol";
 
-/** Dictionary keys for the closed lists the panels show as choices, so no raw enum value reaches the screen. */
 export const ROLE_KEY = {
   boss: "roles.boss",
   worker: "roles.worker",

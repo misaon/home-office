@@ -1,12 +1,6 @@
 import { realpath, stat } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 
-/**
- * The office's three typefaces are served as files beside the bundle, so `font-src 'self'` covers them
- * and no `data:` source is needed. They were inlined as `data:` URLs until the build learned to lift
- * the `@font-face` rules out of the bundle; if that ever regresses, every face silently falls back to
- * the system font rather than failing loudly.
- */
 const HEADERS = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
@@ -14,11 +8,6 @@ const HEADERS = {
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
 };
 
-/**
- * The bundle's file names carry a content hash, so they can be cached forever. Everything else — the
- * HTML entry above all — must not be cached at all: a stale `index.html` points at a bundle that is no
- * longer there, which is how a rebuilt UI can keep serving the previous one.
- */
 const IMMUTABLE = "public, max-age=31536000, immutable";
 const NEVER = "no-store";
 const HASHED = /-[a-z\d]{6,}\.(?:js|css|woff2)$/u;

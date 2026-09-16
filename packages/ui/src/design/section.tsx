@@ -1,4 +1,3 @@
-/** A titled block inside the internal office editor's drawer. */
 export function Section({
   title,
   children,

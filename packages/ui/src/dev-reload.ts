@@ -3,10 +3,6 @@ import { useEffect } from "react";
 const REVISION_URL = "/dev-revision.txt";
 const POLL_MS = 1000;
 
-/**
- * Development only: `bun run ui:watch` writes a revision file after every rebuild and the page reloads when
- * it changes. The check is compiled out of production bundles (NODE_ENV is defined at build time).
- */
 export function useDevReload(): void {
   useEffect(() => {
     if (process.env.NODE_ENV === "production") {
@@ -30,9 +26,7 @@ export function useDevReload(): void {
           }
           previous = revision;
         }
-      } catch {
-        // The daemon may be restarting; keep the current page.
-      }
+      } catch {}
       if (!controller.signal.aborted) {
         timer = setTimeout(() => {
           void poll();

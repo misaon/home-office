@@ -1,7 +1,6 @@
 import type { Variant } from "./fault-body.tsx";
 import { DISPLAY, MONO } from "./tokens.ts";
 
-/** The fault screen's fixed surfaces: the three variant marks, and the shapes they sit in. */
 export const ICONS: Record<Variant, React.JSX.Element> = {
   crash: (
     <svg

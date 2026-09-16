@@ -12,7 +12,6 @@ export type { DaemonHandle, DaemonOptions } from "./launch.ts";
 export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHandle> {
   const home = options.home ?? resolveHome();
   await mkdir(home, { recursive: true, mode: 0o700 });
-  // `mkdir` leaves the mode of an existing directory alone; a home from an older build may be readable.
   await chmod(home, 0o700).catch(() => undefined);
   const release = await acquireSingleInstanceLock(join(home, "daemon.lock"));
   if (release === null) {

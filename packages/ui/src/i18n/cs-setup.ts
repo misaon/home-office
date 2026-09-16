@@ -1,4 +1,3 @@
-// Czech for the first-run checklist.
 import type { enSetup } from "./en-setup.ts";
 
 export const csSetup: typeof enSetup = {

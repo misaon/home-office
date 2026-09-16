@@ -6,7 +6,6 @@ type AnyMessage = Stream["readable"] extends ReadableStream<infer T> ? T : never
 const isMessage = (value: unknown): value is AnyMessage =>
   typeof value === "object" && value !== null && "jsonrpc" in value;
 
-/** A stdout line as a JSON-RPC message, or null for anything that is not one (banners, logs). */
 const parseMessage = (line: string): AnyMessage | null => {
   try {
     const value: unknown = JSON.parse(line);
@@ -16,12 +15,6 @@ const parseMessage = (line: string): AnyMessage | null => {
   }
 };
 
-/**
- * Adapts the runner relay (stdin/stdout lines of the agent process inside the sandbox) to the SDK's
- * bidirectional message stream: outbound JSON-RPC messages become stdin lines, stdout lines that parse as
- * JSON become inbound messages, everything else (banners, logs) goes to `onStderr`. `exited` resolves with
- * the child's exit code once the relay reports it (null when the relay closed first).
- */
 export function channelStream(
   channel: RunnerChannel,
   onStderr: (text: string) => void,

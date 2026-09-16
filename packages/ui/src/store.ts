@@ -17,7 +17,6 @@ import { create } from "zustand";
 
 export type Connection = "connecting" | "online" | "offline" | "unauthorized" | "rejected";
 
-/** What each connection state says to the viewer, as a dictionary key. */
 export const CONNECTION_KEY = {
   connecting: "app.connecting",
   online: "app.connected",
@@ -26,7 +25,6 @@ export const CONNECTION_KEY = {
   rejected: "app.rejected",
 } as const satisfies Record<Connection, string>;
 
-/** Immutable view of the read model for React: a collection keeps its identity until an event touches it. */
 export type Snapshot = {
   projects: ReadonlyMap<ProjectId, Project>;
   agents: ReadonlyMap<AgentId, Agent>;
@@ -34,11 +32,9 @@ export type Snapshot = {
   sessions: ReadonlyMap<SessionId, Session>;
   chat: ReadonlyMap<ProjectId, readonly ChatMessage[]>;
   mail: ReadonlyMap<MailItemId, MailItem>;
-  /** The session each colleague is in right now. See `activeSessionOf` for why this is carried. */
   activeByAgent: ReadonlyMap<AgentId, Session>;
 };
 
-/** The event-sourced read model, mutated in place by `applyEvent`; the simulation bridge reads it directly. */
 export const model: ReadModel = createReadModel();
 
 const copied: Record<Collection, number> = {
@@ -56,10 +52,6 @@ const changed = (name: Collection): boolean => {
   return moved;
 };
 
-/**
- * Who is working, keyed by colleague. Built from `activeSessions`, which holds only the live ones, so
- * this walks two or three entries rather than the whole history — and only when sessions moved.
- */
 const activeByAgent = (): Map<AgentId, Session> => {
   const index = new Map<AgentId, Session>();
   for (const id of model.activeSessions) {
@@ -85,15 +77,9 @@ const takeSnapshot = (previous: Snapshot | null): Snapshot => {
   };
 };
 
-/**
- * The session this colleague is in right now, if any. The office asks it for every visible character on
- * every frame, so it is a lookup rather than a scan: measured at ten thousand sessions the scan it
- * replaced cost 0.808 ms per frame — 24 ms of every second at 30 fps — against 0.035 ms indexed.
- */
 export const activeSessionOf = (snapshot: Snapshot, agentId: AgentId): Session | undefined =>
   snapshot.activeByAgent.get(agentId);
 
-/** Floors in the order they were built: the first project is floor 1. */
 export const sortedFloors = (projects: ReadonlyMap<ProjectId, Project>): Project[] =>
   [...projects.values()].toSorted(
     (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
@@ -101,21 +87,13 @@ export const sortedFloors = (projects: ReadonlyMap<ProjectId, Project>): Project
 
 type UiState = {
   connection: Connection;
-  /** True once the stored events were replayed; before that the office does not know whether floors exist. */
   replayed: boolean;
-  /**
-   * When the office first failed to reach the daemon, and still has not. The reconnect loop flips between
-   * `offline` and `connecting` every couple of seconds, so a screen that reacts to `offline` alone would
-   * flash; this is what "gone for a while" is measured from.
-   */
   offlineSince: number | null;
   snapshot: Snapshot;
   live: ReadonlyMap<SessionId, readonly LiveEvent[]>;
   selectedAgentId: AgentId | null;
-  /** The floor (project) shown in the office and the side panels; null until the first project exists. */
   floorId: ProjectId | null;
   addProjectOpen: boolean;
-  /** The first-run checklist (Docker, images, token). */
   setupOpen: boolean;
   setConnection: (connection: Connection) => void;
   setReplayed: (replayed: boolean) => void;
@@ -163,16 +141,10 @@ export const useUi = create<UiState>()((set) => ({
   },
 }));
 
-/** Whether the daemon is reachable right now; queries and mutations are enabled by it. */
 export const useOnline = (): boolean => useUi((s) => s.connection === "online");
 
 const BUMP_MS = 200;
 
-/**
- * Coalesces changes into one React update per frame. A frame callback never runs while the document is
- * hidden — and the page can be hidden between scheduling one and its firing — so both paths are armed
- * and whichever comes first wins.
- */
 export const nextBump = (run: () => void): void => {
   let done = false;
   const once = (): void => {
@@ -186,10 +158,6 @@ export const nextBump = (run: () => void): void => {
 };
 
 let modelBumpScheduled = false;
-/**
- * Coalesces model changes into one React update per frame (the replay can be thousands of events) and keeps the
- * selected floor valid: the first floor when none is selected or the selected one was removed.
- */
 export function scheduleModelBump(): void {
   if (!modelBumpScheduled) {
     modelBumpScheduled = true;

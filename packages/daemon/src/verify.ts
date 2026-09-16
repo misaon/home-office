@@ -4,23 +4,13 @@ import type { DaemonConfig } from "./config.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import { LABELS } from "./labels.ts";
 
-/** How much of a failing run travels back to the agent; the tail is where the failure usually is. */
 const OUTPUT_MAX = 6000;
 
-/** The last `OUTPUT_MAX` characters of what the command said, marked when anything was dropped. */
 const tail = (result: { stdout: string; stderr: string }): string => {
   const text = `${result.stdout}\n${result.stderr}`.trim();
   return text.length <= OUTPUT_MAX ? text : `…\n${text.slice(-OUTPUT_MAX)}`;
 };
 
-/**
- * Runs the floor's own checks against the task's working tree, in a throwaway container built from the
- * agent image with only the task volume attached and no network.
- *
- * The command is repository-supplied and runs through a shell, which is safe for exactly one reason:
- * it runs *inside the sandbox*, where the repository's own code and its own agent already run. It must
- * never gain a path to the host — that is the invariant this module exists to hold.
- */
 export async function runVerify(
   provider: SandboxProvider,
   config: DaemonConfig,

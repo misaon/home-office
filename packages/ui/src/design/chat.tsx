@@ -15,7 +15,6 @@ const BUBBLE =
 
 const DOT = "w-5 h-5 rounded-half bg-accent";
 
-/** Three dots and a name, for as long as somebody on this floor is actually working. */
 function Working({ name }: { name: string }): React.JSX.Element {
   const { t } = useTranslation();
   return (
@@ -28,7 +27,6 @@ function Working({ name }: { name: string }): React.JSX.Element {
   );
 }
 
-/** The conversation with the floor's boss: who you are talking to, what was said, and the composer. */
 export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const query = useDesign((s) => s.query);

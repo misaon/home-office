@@ -11,14 +11,12 @@ import { simpleGit, type SimpleGit } from "simple-git";
 
 const GIT_TIMEOUT_MS = 15_000;
 
-/** One git, bounded, either inside a checkout or with no working directory at all for `ls-remote`. */
 const gitIn = (baseDir?: string): SimpleGit =>
   simpleGit({
     ...(baseDir === undefined ? {} : { baseDir }),
     timeout: { block: GIT_TIMEOUT_MS },
   });
 
-/** simple-git throws where the old exit-code check returned a code; this inspection never throws. */
 const tried = async (run: () => Promise<string>): Promise<string | null> => {
   try {
     const out = await run();
@@ -33,7 +31,6 @@ const nameFromUrl = (url: string): string => {
   return last.replace(/\.git$/u, "") || "project";
 };
 
-/** The default branch first, then every other name git reported once, without `origin/` or `HEAD`. */
 const ordered = (defaultBranch: string, names: readonly string[]): string[] => {
   const cleaned = names
     .map((name) => name.trim().replace(/^origin\//u, ""))
@@ -42,7 +39,6 @@ const ordered = (defaultBranch: string, names: readonly string[]): string[] => {
   return [...new Set([defaultBranch, ...cleaned])].slice(0, REPO_BRANCH_LIMIT);
 };
 
-/** `origin/HEAD` when the checkout tracks a remote, else the current branch, else `main`. */
 async function localDefaultBranch(path: string): Promise<string> {
   const git = gitIn(path);
   const remote = await tried(() =>
@@ -96,7 +92,6 @@ async function inspectLocal(path: string): Promise<RepoInspection> {
   };
 }
 
-/** One `ls-remote` reports both the symbolic HEAD and every head, so the branch list costs no extra round trip. */
 async function inspectRemote(url: string): Promise<RepoInspection> {
   let probe: string;
   try {
@@ -118,6 +113,5 @@ async function inspectRemote(url: string): Promise<RepoInspection> {
   };
 }
 
-/** What a repository would be as a floor: whether git knows it, its name and default branch. Never throws. */
 export const inspectRepo = (input: RepoInspectInput): Promise<RepoInspection> =>
   input.repo.kind === "local" ? inspectLocal(input.repo.path) : inspectRemote(input.repo.url);

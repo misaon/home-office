@@ -34,7 +34,6 @@ const contextPatterns = (resources: Resources, name: "agent" | "git-bridge"): st
   ];
 };
 
-/** What an image is built from, hashed, so a rebuilt context is noticed and an unchanged one is not rebuilt. */
 export async function contextHash(
   resources: Resources,
   name: "agent" | "git-bridge",

@@ -1,6 +1,3 @@
-// Drives @ho/runtime-acp against the mock agent through a local stand-in for the runner relay: the same
-// RunnerChannel contract the daemon uses, but the child is a Bun subprocess on this machine instead of a
-// process inside a sandbox. Prints every runtime event and checks the ones that matter.
 import { createChannel, type RunnerChannel, type RunnerLine } from "@ho/core";
 import { AgentId, compact, type RuntimeEvent, SessionId, TaskId } from "@ho/protocol";
 import { pumpLines, pumpText } from "@ho/runner/pump";
@@ -8,7 +5,6 @@ import { createAcpRuntime } from "@ho/runtime-acp";
 
 const here = import.meta.dir;
 
-/** A RunnerChannel whose child runs locally; `lines()` is the same async channel the daemon's gateway uses. */
 function localChannel(): RunnerChannel & { exited: Promise<number | null> } {
   let child: Bun.Subprocess<"pipe", "pipe", "pipe"> | undefined;
   const lines = createChannel<RunnerLine>();

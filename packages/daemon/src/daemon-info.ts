@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { z } from "zod";
 import { DaemonConfig } from "./config.ts";
 
-/** Written next to the database so local clients (CLI, desktop shell) can find and authenticate to the daemon. */
 export const DaemonInfo = z.object({
   host: DaemonConfig.shape.host,
   port: z.int().positive(),
@@ -12,7 +11,6 @@ export const DaemonInfo = z.object({
   pid: z.int().positive(),
   startedAt: z.iso.datetime(),
   version: z.string(),
-  /** What this build carries. */
   serves: z.object({ ui: z.boolean(), images: z.boolean() }),
 });
 export type DaemonInfo = z.infer<typeof DaemonInfo>;
@@ -24,7 +22,6 @@ export async function readDaemonInfo(home: string): Promise<DaemonInfo | null> {
   return (await file.exists()) ? DaemonInfo.parse(await file.json()) : null;
 }
 
-/** The file carries the bearer token, so it is readable by the owner only. */
 export async function writeDaemonInfo(home: string, info: DaemonInfo): Promise<void> {
   await writePrivateFile(infoPath(home), `${JSON.stringify(info, null, 2)}\n`);
 }
@@ -38,10 +35,8 @@ export const daemonUrl = (
 ): string =>
   `${protocol}://${info.host.includes(":") ? `[${info.host}]` : info.host}:${String(info.port)}`;
 
-/** The office UI with the launch token in the fragment, which browsers never send to the server. */
 export const officeUrl = (info: DaemonInfo): string => `${daemonUrl(info)}/#token=${info.token}`;
 
-/** Whether the daemon `daemon.json` describes still answers, so a stale file after a crash is not trusted. */
 export const daemonAnswers = async (info: DaemonInfo): Promise<boolean> => {
   try {
     const answered = await fetch(`${daemonUrl(info)}/health`, {

@@ -1,18 +1,12 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 
-/**
- * A row of choices where exactly one is on, drawn the way the design draws its tool picker. Base UI's
- * toggle group brings the arrow keys and the roving focus; what it also brings is the ability to press
- * the one that is already on, which this row does not want, so an empty answer keeps what was there.
- */
 export function Segmented<T extends string>({
   label,
   value,
   options,
   onChange,
 }: {
-  /** What the row of choices is for; a toggle group carries its own name (Base UI's own example does). */
   label: string;
   value: T;
   options: readonly { value: T; label: string }[];

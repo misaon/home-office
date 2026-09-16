@@ -49,7 +49,10 @@ runner bundle and release binaries.
 - Validate every boundary with Zod; never let agent output become a shell command in the daemon.
 - Secrets never appear in images, container config, labels, logs, events, or this conversation.
 - Tests and code comments are the owner's call. The September 2026 audit ran under "no tests, no code
-  comments"; do not add either without an explicit instruction for the task at hand.
+  comments", and on 2026-09-16 the owner had every comment removed from the source. What is left in
+  the code is only what a tool reads — `oxlint-disable-*` directives and the two shebangs — so a `//`
+  or `/* */` in a diff is a new comment, not an edit to an existing one. Do not add tests or comments
+  without an explicit instruction for the task at hand.
 - Verify external facts (CLI flags, APIs, versions) online instead of guessing, and write the source and
   the date next to the claim.
 - A number in documentation is a claim: measure it or drop it. `audit/VERIFICATION.md` is the format —

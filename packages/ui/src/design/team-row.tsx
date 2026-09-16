@@ -16,7 +16,6 @@ const META = `flex items-center gap-7 mt-6 ${MONO} text-10 text-ink-meta flex-wr
 
 const DOT = "w-5 h-5 rounded-half";
 
-/** One colleague as a row: who they are, what they are on, and the arrow into their sheet. */
 export function TeamRow({
   person,
   first,
@@ -33,7 +32,6 @@ export function TeamRow({
 
   return (
     <div
-      // Kept the same element as the board's rows, which cannot be a button.
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="button"
       aria-label={person.name}

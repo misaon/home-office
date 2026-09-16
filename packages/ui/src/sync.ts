@@ -21,7 +21,6 @@ const nextLaunchUrl = (): Promise<void> =>
     );
   });
 
-/** A browser cannot read the status of a failed websocket handshake, so the daemon is asked separately. */
 const daemonAnswers = async (): Promise<boolean> => {
   try {
     const answered = await fetch("/health", { cache: "no-store" });
@@ -31,7 +30,6 @@ const daemonAnswers = async (): Promise<boolean> => {
   }
 };
 
-/** The log this page replayed; a different one (a daemon restarted on a fresh database) means reload. */
 let followedLog: string | null = null;
 
 async function runEvents(client: Client, bridge: Bridge, signal: AbortSignal): Promise<void> {
@@ -74,7 +72,6 @@ async function runPresence(client: Client, signal: AbortSignal): Promise<void> {
   }
 }
 
-/** Keeps one authenticated connection alive: replays the log, follows live events, reconnects on loss. */
 export async function startSync(bridge: Bridge): Promise<void> {
   let token = resolveToken();
   while (token === null) {
@@ -85,7 +82,6 @@ export async function startSync(bridge: Bridge): Promise<void> {
   for (;;) {
     useUi.getState().setConnection("connecting");
     useUi.getState().setReplayed(false);
-    // A fresh launch URL (`ho ui` after a daemon restart) supersedes the remembered token.
     token = resolveToken() ?? token;
     try {
       const { client, socket } = await connect(token);

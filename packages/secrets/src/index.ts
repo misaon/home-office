@@ -8,11 +8,6 @@ export type SecretStoreKind = "auto" | "os" | "file";
 
 type Operation<T> = (store: SecretStore) => Promise<T>;
 
-/**
- * `auto` uses the OS credential store and falls back to the file store when the host has none — which
- * platform this is does not decide it, whether the store answers does. A timeout is not an absent store:
- * it means the store is there and waiting for the user, so it propagates instead of downgrading silently.
- */
 const withFileFallback = (
   os: SecretStore,
   file: SecretStore,

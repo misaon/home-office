@@ -8,7 +8,6 @@ import { useState } from "react";
 import { FloorMenu } from "./floor-menu.tsx";
 import { useFloor, useFloors } from "./live.ts";
 
-/** The office's mark and its name. */
 function HeaderBrand(): React.JSX.Element {
   return (
     <div className="flex items-center gap-10 flex-[0_0_auto]">
@@ -20,7 +19,6 @@ function HeaderBrand(): React.JSX.Element {
   );
 }
 
-/** Online, connecting or gone, in the pill the design puts next to the office's name. */
 function Connection(): React.JSX.Element {
   const { t } = useTranslation();
   const connection = useUi((s) => s.connection);
@@ -53,7 +51,6 @@ const TABS = [
 
 const MARKER = "absolute bottom-0 left-0 w-1/5 transition-transform duration-500 ease-spring";
 
-/** The five panels, and the lit bar that slides to whichever one is open. */
 function HeaderTabs(): React.JSX.Element {
   const { t } = useTranslation();
   const tab = useDesign((s) => s.tab);
@@ -95,7 +92,6 @@ function HeaderTabs(): React.JSX.Element {
   );
 }
 
-/** Which floor you are on, and the door to all the others. */
 function HeaderFloor(): React.JSX.Element | null {
   const { t } = useTranslation();
   const floors = useFloors();
@@ -160,7 +156,6 @@ const BAR =
 const TOOL =
   "flex items-center gap-7 py-7 px-12 rounded-10 border border-border-strong bg-transparent cursor-pointer text-12h text-ink-quiet whitespace-nowrap flex-[0_0_auto] transition-all duration-200";
 
-/** The office's own top bar: who you are looking at, and which of the five panels is open. */
 export function Header({
   internal,
   hasFloors,

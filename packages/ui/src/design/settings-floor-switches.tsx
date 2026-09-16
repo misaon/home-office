@@ -11,7 +11,6 @@ const KNOB = "w-16 h-16 rounded-half transition-transform duration-340 ease-spri
 
 const ROW = "flex flex-col gap-4 mb-14";
 
-/** A switch drawn the way the design draws one, with its consequence written beside it. */
 function Switch({
   on,
   title,
@@ -44,7 +43,6 @@ function Switch({
   );
 }
 
-/** The three things a floor decides for itself: how work leaves it, what feeds it, what it may start. */
 export function FloorSwitches({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const update = useOfficeMutation({

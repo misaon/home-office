@@ -3,7 +3,6 @@ import { CELL_PX } from "@ho/sim";
 import { Graphics } from "pixi.js";
 import type { OfficeDraft } from "./draft.ts";
 
-/** An arrow through the middle of a shape, in cell coordinates, pointing the way it is turned. */
 type Arrow = { x: number; y: number; dx: number; dy: number };
 
 const STEP: Readonly<Record<Facing, { dx: number; dy: number }>> = {
@@ -13,7 +12,6 @@ const STEP: Readonly<Record<Facing, { dx: number; dy: number }>> = {
   w: { dx: -1, dy: 0 },
 };
 
-/** The arrow through the middle of a rectangle, pointing the way it is turned. */
 export const arrowFor = (
   shape: { x: number; y: number; w: number; h: number },
   facing: Facing,
@@ -27,7 +25,6 @@ export const arrowFor = (
   };
 };
 
-/** Doorways always show which way they open; furniture only where its direction means something. */
 export const arrowsOf = (draft: OfficeDraft): Arrow[] => [
   ...draft.doors.map((door) => arrowFor(door, door.facing)),
   ...draft.objects
@@ -35,10 +32,6 @@ export const arrowsOf = (draft: OfficeDraft): Arrow[] => [
     .map((object) => arrowFor(object, object.facing)),
 ];
 
-/**
- * One arrow, as its own display object: a stem and a head. Drawing them into a Graphics that already
- * holds other shapes made Pixi join the polygons into large filled triangles across the map.
- */
 export function arrowGraphic(arrow: Arrow, colour: number): Graphics {
   const graphics = new Graphics();
   const length = CELL_PX * 0.9;

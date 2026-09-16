@@ -21,7 +21,6 @@ import type { Office } from "./office.ts";
 
 const GIT_TIMEOUT_MS = 15_000;
 
-/** A parsed file, the path it was read from, and the reason the office could not use it. */
 type Loaded = { file: OfficeFile | null; source: string | null; problem: string | null };
 
 const NONE: Loaded = { file: null, source: null, problem: null };
@@ -43,17 +42,12 @@ const parse = (text: string, where: string): Loaded => {
       };
 };
 
-/** A file that is not there is not a failure: a repository may say nothing about its floor. */
 const readWorkingTree = async (root: string, name: string): Promise<Loaded> => {
   const path = join(root, OFFICE_DIR, name);
   const text = await readFile(path, "utf8").catch(() => null);
   return text === null ? NONE : parse(text, path);
 };
 
-/**
- * The committed file as the default branch has it. A task branch is never read, so a running task
- * cannot change its own budget halfway through itself; the security effect of that is a side benefit.
- */
 async function readMirror(mirror: string, branch: string, name: string): Promise<Loaded> {
   const where = `${branch}:${OFFICE_DIR}/${name}`;
   const shown = await exec(["git", "-C", mirror, "show", where], { timeoutMs: GIT_TIMEOUT_MS });
@@ -71,12 +65,6 @@ const layered = (committed: Loaded, local: Loaded): Loaded => {
   };
 };
 
-/**
- * The floor's own configuration: `.ho/config.json` with `.ho/config.local.json` layered over it. A
- * local checkout is read from its working tree, so editing the file feels immediate — including on a
- * feature branch, which is what reading a working tree means. A mirrored repository is fetched first
- * and read from its default branch, where there is no untracked overlay to find.
- */
 async function readOfficeFile(home: string, project: Project): Promise<Loaded> {
   if (project.repo.kind !== "local") {
     const mirror = await sourcePathFor(home, project);
@@ -109,10 +97,6 @@ const mustFind = (office: Office, projectId: ProjectId): Project => {
   return project;
 };
 
-/**
- * Reads the floor's file and applies it as `system`, so everything it changes is in the log like any
- * other change. `dryRun` plans the same diff and appends nothing.
- */
 export async function syncProject(
   office: Office,
   home: string,
@@ -134,10 +118,6 @@ export async function syncProject(
   );
 }
 
-/**
- * Writes the floor into its repository. A mirrored repository has no working tree to write into, so
- * the export needs a local checkout and says so rather than writing somewhere invisible.
- */
 export async function exportProject(
   office: Office,
   projectId: ProjectId,

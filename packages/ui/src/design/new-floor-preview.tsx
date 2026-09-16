@@ -10,7 +10,6 @@ const BADGE = `w-26 h-26 flex-[0_0_26px] rounded-8 grid place-items-center ${MON
 
 const ELLIPSIS = "overflow-hidden text-ellipsis whitespace-nowrap";
 
-/** The floor's own name and the branch work starts from. */
 export function FloorDetails({
   draft,
   setDraft,
@@ -51,7 +50,6 @@ export function FloorDetails({
   );
 }
 
-/** What pressing Create would actually make, said before it is made. */
 export function FloorPreview({
   number,
   name,

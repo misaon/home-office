@@ -39,14 +39,8 @@ export const contract = {
   system: {
     health: base.output(Health),
     doctor: base.output(Doctor),
-    /** Builds (or refreshes) the agent and git-bridge images, streaming build output. */
     buildImages: base.output(eventIterator(z.object({ line: z.string() }))),
-    /**
-     * Opens the host's native directory dialog and reports what was chosen. The office UI is served over
-     * HTTP to both the desktop window and a browser, so the dialog belongs to the host side of the RPC.
-     */
     pickDirectory: base.input(DirectoryPickInput).output(DirectoryPick),
-    /** Removes stopped sandboxes, expired task volumes and dangling images. */
     gc: base.output(
       z.object({
         containers: z.array(z.string()),
@@ -57,27 +51,15 @@ export const contract = {
   },
   projects: {
     list: base.output(z.array(Project)),
-    /** Checks a repository before it becomes a floor: is it git, what is it called, which branch is its default. */
     inspect: base.input(RepoInspectInput).output(RepoInspection),
     create: base.input(ProjectCreateInput).output(Project),
     update: base.input(ProjectUpdateInput).output(Project),
     remove: base.input(z.object({ id: ProjectId })).output(z.object({ id: ProjectId })),
-    /**
-     * Applies the floor's own `.ho/config.json`, read from the working tree of a local checkout or
-     * from the default branch of a mirrored git repository — never from a task branch, so a task
-     * cannot raise its own budget halfway through its run. `dryRun` reports the diff and appends
-     * nothing.
-     */
     sync: base
       .input(z.object({ id: ProjectId, dryRun: z.boolean().default(false) }))
       .output(OfficeFileSync),
-    /** Writes the floor as it stands into `.ho/config.json`; the repository must be a local checkout. */
     export: base.input(z.object({ id: ProjectId })).output(OfficeFileExport),
   },
-  /**
-   * The internal office editor's store: offices drawn by hand, kept as JSON in the repository. A daemon
-   * with no repository to write into reports `available: false` rather than failing.
-   */
   layouts: {
     list: base.output(LayoutStore),
     save: base.input(OfficeLayout).output(LayoutSaved),
@@ -95,9 +77,7 @@ export const contract = {
     create: base.input(TaskCreateInput).output(Task),
     assign: base.input(TaskAssignInput).output(Task),
     transition: base.input(TaskTransitionInput).output(Task),
-    /** Takes one task off the board, whatever state it reached; the log keeps every event of it. */
     remove: base.input(z.object({ id: TaskId })).output(z.object({ id: TaskId })),
-    /** Takes a floor's finished work off the board; the log keeps every event of it. */
     clear: base
       .input(z.object({ projectId: ProjectId }))
       .output(z.object({ removed: z.int().nonnegative() })),
@@ -109,12 +89,7 @@ export const contract = {
   },
   sessions: {
     list: base.input(SessionListInput).output(z.array(Session)),
-    /** Live, provider-agnostic runtime events of one or all sessions (not persisted). */
     stream: base.input(SessionStreamInput).output(eventIterator(LiveEvent)),
-    /**
-     * Cuts a running session off where it is; its task is blocked so nothing picks it up again by
-     * itself. `stopped` is false when this daemon was not the one running it.
-     */
     stop: base.input(z.object({ id: SessionId })).output(z.object({ stopped: z.boolean() })),
   },
   usage: {
@@ -134,37 +109,25 @@ export const contract = {
     list: base.input(z.object({ projectId: ProjectId.optional() })).output(z.array(MailItem)),
   },
   intake: {
-    /** Polls the enabled connectors now (one project or all); returns what arrived. */
     poll: base
       .input(z.object({ projectId: ProjectId.optional() }))
       .output(z.array(IntakePollResult)),
     status: base.output(z.array(IntakeStatus)),
   },
   events: {
-    /** Replays stored events after `afterSeq`, then stays open for live events. */
     subscribe: base.input(EventsSubscribeInput).output(eventIterator(StoredEvent)),
-    /** Sequence number of the newest stored event (-1 when the log is empty). */
     head: base.output(
       z.object({
         seq: z.int().min(-1),
-        /** Which log this is; a page that replayed another one starts over. */
         logId: z.string().nullable(),
       }),
     ),
   },
   office: {
-    /**
-     * Long-lived stream an office UI keeps open while it is showing the simulation. While at least one
-     * viewer is present, the daemon waits for `delivered` (bounded by a timeout) before it acts on an envelope:
-     * the recipient's session of a handoff, the boss's triage of a chat message or mail Lola carries to him,
-     * the boss's status post when finished work walks back to him.
-     */
     presence: base.output(eventIterator(z.object({ at: IsoDateTime }))),
-    /** The envelope for this task reached its recipient in the animation. */
     delivered: base.input(z.object({ taskId: TaskId })).output(z.object({ ok: z.literal(true) })),
   },
 };
 export type Contract = typeof contract;
 
-/** Where the office UI keeps the daemon token in the browser; the desktop preload and `ho ui` both put it there. */
 export const TOKEN_STORAGE_KEY = "ho.token";

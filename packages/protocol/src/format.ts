@@ -1,9 +1,5 @@
 const UNITS = ["B", "KiB", "MiB", "GiB", "TiB"] as const;
 
-/**
- * Binary units with one decimal below 10 and none above, so sizes line up in a column: `512 B`, `1.4 MiB`,
- * `1.7 GiB`. Both clients format the same daemon numbers the same way.
- */
 export const formatBytes = (bytes: number | null): string => {
   if (bytes === null) {
     return "–";

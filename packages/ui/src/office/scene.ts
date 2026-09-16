@@ -9,13 +9,7 @@ import { bridge } from "./bridge.ts";
 import { DOT, DOT_EDGE, DOT_SELECTED } from "./colours.ts";
 import { MapView } from "./map-view.ts";
 
-/**
- * An employee is two cells across — 50 cm at roughly 25 cm per cell, the same as the chair they sit on
- * and the doorway they walk through. Movement itself is still one cell at a time: a two-by-two body is
- * not yet what the path search reserves.
- */
 const DOT_RADIUS = CELL_PX;
-/** How far the pointer may travel before a click counts as a drag instead of a selection. */
 const DRAG_SLOP_PX = 4;
 
 type DotView = { root: Container; shape: Graphics; badge: Badge; selected: boolean };
@@ -28,10 +22,6 @@ const paint = (shape: Graphics, selected: boolean): void => {
     .stroke({ color: DOT_EDGE, width: 1 });
 };
 
-/**
- * PixiJS view of the office: the compiled floor, and one dot per character. Zoom with the wheel, drag to
- * pan, tap a dot to select its agent; nothing here places anything — layouts are written in code.
- */
 class OfficeScene extends MapView {
   readonly #dots = new Map<AgentId, DotView>();
   #drag: { x: number; y: number; moved: boolean } | null = null;
@@ -55,7 +45,6 @@ class OfficeScene extends MapView {
     super.destroy();
   }
 
-  /** Dragging pans. Native listeners: the map is one surface, not widgets. */
   #listen(canvas: HTMLCanvasElement): void {
     canvas.addEventListener("pointerdown", (event) => {
       this.#drag = { x: event.clientX, y: event.clientY, moved: false };
@@ -81,7 +70,6 @@ class OfficeScene extends MapView {
     for (const kind of ["pointerup", "pointercancel"]) {
       canvas.addEventListener(kind, () => {
         canvas.style.cursor = "";
-        // The tap handler runs after this, so the flag has to outlive the release for one turn.
         setTimeout(() => {
           this.#drag = null;
         }, 0);
@@ -89,7 +77,6 @@ class OfficeScene extends MapView {
     }
   }
 
-  /** Which floor's map and characters are shown; a new floor is built and fitted, the same one is kept. */
   showFloor(floorId: string | null): void {
     const template = floorId === null ? undefined : bridge.world.floors.get(floorId)?.template;
     if (template === undefined || template === this.template) {
@@ -120,7 +107,6 @@ class OfficeScene extends MapView {
     return view;
   }
 
-  /** Called every frame with the current world: one dot per visible character of the shown floor. */
   update(world: World, selected: AgentId | null, elapsedMs: number): void {
     const floorId = this.template?.id ?? null;
     for (const actor of world.actors.values()) {
@@ -154,31 +140,21 @@ class OfficeScene extends MapView {
   }
 }
 
-/**
- * Runs the office in `host` until the returned function is called: the scene, the simulation tick on the
- * Pixi ticker (stopped while the document is hidden, where a still frame is drawn on every store change
- * instead), the visibility watch and the dev console handle.
- */
-/** One press of the camera bar's + or −. */
 const ZOOM_STEP = 1.3;
 
-/** What React can do to the office once it is running: the camera, and stopping it. */
 export type OfficeHandle = {
   stop: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
   fit: () => void;
-  /** Keeps the camera on one colleague until it is called with null. */
   follow: (agentId: AgentId | null) => void;
   following: () => AgentId | null;
-  /** How close the floor is, for the camera bar's read-out. */
   percent: () => number;
 };
 
 export function startOffice(host: HTMLElement): OfficeHandle {
   const scene = new OfficeScene();
   let disposed = false;
-  /** A frame that throws throws again on the next one, so the office says it once, out loud. */
   let toldTheHuman = false;
   const report = (error: unknown): void => {
     if (!toldTheHuman) {
@@ -188,7 +164,6 @@ export function startOffice(host: HTMLElement): OfficeHandle {
   };
   let followed: AgentId | null = null;
   let unsubscribe: (() => void) | null = null;
-  // The ring under a working colleague runs on the office's own clock, not the document's.
   let elapsedMs = 0;
   const drawFrame = (dtMs: number): void => {
     try {
@@ -242,7 +217,6 @@ export function startOffice(host: HTMLElement): OfficeHandle {
       onVisibility();
     })
     .catch((error: unknown) => {
-      // No office to watch: the daemon must not wait for walks that will never be drawn.
       bridge.setWatching(false);
       if (!disposed) {
         report(error);

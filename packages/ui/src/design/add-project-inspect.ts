@@ -24,11 +24,9 @@ export type RepoDraft = {
   imports: Set<AgentId>;
 };
 
-/** What the user typed for the source that is currently selected. */
 export const typedIn = (draft: RepoDraft): string =>
   (draft.kind === "local" ? draft.path : draft.url).trim();
 
-/** What the daemon would be asked about, or null while the field is empty or not yet a repository URL. */
 const repoFrom = (kind: Source, text: string): RepoSource | null => {
   if (text === "") {
     return null;
@@ -39,7 +37,6 @@ const repoFrom = (kind: Source, text: string): RepoSource | null => {
   return parsed.success ? parsed.data : null;
 };
 
-/** The value once it has stopped changing for `ms`. */
 function useDebounced<T>(value: T, ms: number): T {
   const [settled, setSettled] = useState(value);
   useEffect(() => {
@@ -56,7 +53,6 @@ function useDebounced<T>(value: T, ms: number): T {
 export type Found = Extract<RepoInspection, { ok: true }>;
 export type Inspecting = { result: RepoInspection | null; busy: boolean };
 
-/** Asks the daemon about the typed repository once the typing pauses. */
 export function useRepoInspection(kind: Source, text: string): Inspecting {
   const online = useOnline();
   const settled = useDebounced(text, INSPECT_DEBOUNCE_MS);
@@ -110,11 +106,6 @@ export const hintFor = (
     : { text: result.message, tone: "error" };
 };
 
-/**
- * A daemon older than the UI bundle it serves has no `system.pickDirectory`, and oRPC answers a bare
- * "Not Found" that explains nothing. Checked structurally, not with `instanceof`: the error crosses a
- * WebSocket and its class need not be the one this bundle imported.
- */
 const isOldDaemon = (error: unknown): boolean =>
   typeof error === "object" && error !== null && "code" in error && error.code === "NOT_FOUND";
 export const pickFailure = (error: unknown, t: TFunction): string =>

@@ -8,7 +8,6 @@ export const PRIMARY =
 
 export const CAPS = "font-mono text-10 tracking-caps uppercase text-ink-label";
 
-/** A sheet slides over the panel it came from: a back arrow, a title, and the body under it. */
 export function SheetShell({
   title,
   subtitle,

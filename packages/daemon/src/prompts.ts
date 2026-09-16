@@ -13,7 +13,6 @@ import {
 import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 
-/** Whether this session got the private container engine its project asks for. */
 export type Services = { kind: "off" } | { kind: "ready" } | { kind: "failed"; message: string };
 
 const browserGuide = (enabled: boolean): string =>
@@ -31,16 +30,11 @@ const servicesGuide = (services: Services): string => {
   return `Services: this task has its own Docker engine — \`docker\`, \`docker compose\` and \`docker buildx\` reach only it, never the host. Run the repository's own compose file from ${REPO_IN_VOLUME} as written; published ports answer on 127.0.0.1 inside this sandbox. Per-service limits such as mem_limit are accepted but not enforced: the engine has one memory limit for the whole environment, and passing it kills every service at once. Images, build cache and service volumes survive for the next session of this task.`;
 };
 
-/** What the human attached to this task, as the session sees it. */
 const filesGuide = (files: readonly Attachment[]): string =>
   files.length === 0
     ? ""
     : `Files from the human, read-only in ${CHAT_INBOX_DIR}: ${files.map((f) => f.name).join(", ")}.`;
 
-/**
- * Claude Code loads the packs itself through `--plugin-dir`, so naming the tools there would offer two
- * routes to one thing. Every other provider only has the tools, and has to be told they exist.
- */
 const skillsGuide = (agent: Agent): string =>
   agent.provider === "claude-code" || agent.skillPack === "none"
     ? ""
@@ -53,24 +47,14 @@ const common = (agent: Agent, project: Project): string[] => [
   skillsGuide(agent),
 ];
 
-/**
- * The floor's own checks, named in the prompt so finishing has a definition the agent can act on rather
- * than judge. MAST attributes 23.5 % of multi-agent failures to verification, premature termination
- * among them (arXiv 2503.13657, read 2026-09-15).
- */
 const verifyGuide = (project: Project): string =>
   project.verify.command === ""
     ? ""
     : `Done means \`${project.verify.command}\` passes. Run it yourself before you report; the office runs it again on your commits and sends the work back to you with the output if it fails.`;
 
-/**
- * What a delegation has to say. Acceptance criteria are the contract the reviewer checks, so a vague one
- * costs a round trip; the worker never sees this text, only the brief it produces.
- */
 const DELEGATE_FIELDS =
   'Each call needs a goal in one sentence and acceptance criteria that can be checked independently — write them as "When <condition>, the system shall <behaviour>" and keep them to what this one task delivers. Add constraints for what must not change, outOfScope for nearby work you are deliberately leaving out, and context only for what the repository does not already say. If you cannot write a checkable criterion, the request is still a question: ask with ho_reply instead of delegating.';
 
-/** The criteria the task is measured against, restated so they are not buried in the opening message. */
 const criteriaGuide = (task: Task): string =>
   task.spec === undefined
     ? ""
@@ -87,7 +71,6 @@ type SessionFacts = {
   agent: Agent;
   project: Project;
   task: Task;
-  /** What the human attached to this task's messages; the sandbox has them read-only. */
   files: readonly Attachment[];
   mode: Session["mode"];
   branch: string;
@@ -120,7 +103,6 @@ const reviewPrompt = (f: SessionFacts): string[] => [
   "Protocol: call the MCP tool ho_review exactly once with verdict approve or request_changes and numbered findings (file:line), then stop.",
 ];
 
-/** The boss plans a chat message or a mail item for his floor: the roster is this floor's staff, nobody else. */
 const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
   const staff = membersOf(model, f.project.id).filter((a) => a.id !== f.agent.id);
   const roster = staff.map(
@@ -144,7 +126,6 @@ const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
   ];
 };
 
-/** The system prompt appendix of a session: who the agent is, where the repository is, how to finish. */
 export const systemPrompt = (facts: SessionFacts, model: ReadModel): string => {
   const body =
     facts.mode === "review"
@@ -160,7 +141,6 @@ const taskBrief = (task: Task): string =>
 
 const formatNote = (note: TaskNote): string => `- [${note.kind}] ${note.text}`;
 
-/** First message of a session: the brief the first time, otherwise what happened since the agent last saw the task. */
 export const openingMessage = (
   task: Task,
   mode: Session["mode"],

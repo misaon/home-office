@@ -2,7 +2,6 @@ import type { SessionUpdate, StopReason, ToolCallContent } from "@agentclientpro
 import type { RuntimeEvent } from "@ho/protocol";
 
 const SUMMARY_MAX = 200;
-/** Titles remembered for running tool calls; the oldest is forgotten past this many. */
 const TOOL_TITLES_MAX = 1024;
 
 const clip = (text: string): string =>
@@ -16,7 +15,6 @@ const contentText = (blocks: readonly ToolCallContent[] | undefined): string =>
     .filter((text) => text !== "")
     .join(" ");
 
-/** Per-prompt bookkeeping: the text the agent produced and the titles of tool calls still running. */
 export type TurnState = { text: string; tools: Map<string, string> };
 
 export const newTurn = (): TurnState => ({ text: "", tools: new Map() });
@@ -36,7 +34,6 @@ const finished = (
   };
 };
 
-/** Maps one `session/update` notification onto the office's runtime events; plans and thoughts stay internal. */
 export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeEvent[] {
   if (update.sessionUpdate === "agent_message_chunk") {
     if (update.content.type !== "text") {
@@ -87,7 +84,6 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
   return [];
 }
 
-/** The prompt's stop reason as the office sees it: a result, or an error the daemon maps to a status. */
 export function stopToEvent(stop: StopReason, turn: TurnState, sessionId: string): RuntimeEvent {
   if (stop === "max_turn_requests") {
     return { kind: "error", code: "max_turns", message: "the agent hit its turn limit" };

@@ -134,9 +134,25 @@ Verified:
 ```
 $ git ls-files "*.ts" "*.tsx" | xargs grep -n "oxlint-disable\|eslint-disable"
 packages/protocol/src/patch.ts:5:  /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.fromEntries cannot express the mapped type */
-packages/store/src/index.ts:156:    // oxlint-disable-next-line typescript/require-await -- bun:sqlite is synchronous; the port is async for remote backends
-packages/ui/src/i18n/index.ts:50:  // oxlint-disable-next-line typescript/consistent-type-definitions
+packages/store/src/index.ts:147:    // oxlint-disable-next-line typescript/require-await -- bun:sqlite is synchronous; the port is async for remote backends
+packages/ui/src/design/board-card.tsx:45:      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+packages/ui/src/design/team-row.tsx:35:      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+packages/ui/src/design/tokens.ts:28:  // oxlint-disable-next-line typescript/consistent-type-definitions
+packages/ui/src/design/tokens.ts:30:    // oxlint-disable-next-line typescript/consistent-indexed-object-style
+packages/ui/src/i18n/index.ts:40:  // oxlint-disable-next-line typescript/consistent-type-definitions
 ```
+
+Re-measured 2026-09-16, after the comments were removed and the line numbers moved. The block above had
+listed three; entries 8, 9 and 10 had been added to the ledger on 2026-09-14 without it being re-run.
 
 No `any`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`, non-null assertion or whole-file disable exists
 anywhere in the tracked source.
+
+## Removed 2026-09-16
+
+Entry 11 is not in `packages/ui/src/design/app.css` and has not been since 2026-09-15. It was taken out
+the same day it was added: the modal's scrim became a real element rendered by Base UI, so the office
+writes those utilities for real, and the exclusion would have quietly dropped the dialog's blur from the
+build. Measured then: with the line, the stylesheet has no `.backdrop-blur-[10px]` rule at all. Until
+today that reasoning survived only as a comment in `app.css`, which is why it is written here now —
+removing the comments is what revealed that the ledger had never been corrected.

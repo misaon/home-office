@@ -6,11 +6,6 @@ import { floorTiles, gridLines } from "./tiles.ts";
 
 const WHEEL_STEP = 1.15;
 
-/**
- * What the office view and the editor's canvas share: a Pixi application in a host element, a camera the
- * wheel zooms around the cursor, the compiled floor's tiles with the grid drawn over them at the current
- * zoom, and a resize observer. Subclasses add characters or editing on top of `world`.
- */
 export class MapView {
   readonly app = new Application();
   readonly camera = new Camera();
@@ -65,10 +60,6 @@ export class MapView {
     this.#observer.observe(host);
   }
 
-  /**
-   * Idempotent, and safe before `init` has resolved: a Pixi application has no renderer to destroy until
-   * then, so destruction waits for the start to settle rather than throwing out of React's cleanup.
-   */
   destroy(): void {
     if (this.#destroyed) {
       return;
@@ -84,7 +75,6 @@ export class MapView {
     return this.#template;
   }
 
-  /** Shows a compiled floor; `fit` puts the whole of it in view (a new floor), otherwise the camera stays. */
   protected setTemplate(template: FloorTemplate, fit: boolean): void {
     this.#template = template;
     for (const child of this.#tiles.removeChildren()) {
@@ -99,11 +89,6 @@ export class MapView {
     this.applyCamera();
   }
 
-  /**
-   * Zooming and fitting from outside the canvas — the camera bar's buttons. The wheel handler above does
-   * the same thing about the pointer; these go about the middle of the view, and both have to push the
-   * result into the scene, which is what `applyCamera` is for.
-   */
   zoomView(factor: number): void {
     this.camera.zoomStep(factor);
     this.applyCamera();
@@ -114,13 +99,11 @@ export class MapView {
     this.applyCamera();
   }
 
-  /** Keeps a world point in the middle of the view; the camera bar's follow uses it every frame. */
   centreOnWorld(worldX: number, worldY: number): void {
     this.camera.centreOn(worldX, worldY);
     this.applyCamera();
   }
 
-  /** The cell under a pointer, or null off the map. */
   protected cellAt(event: { clientX: number; clientY: number }): { x: number; y: number } | null {
     const template = this.#template;
     if (template === null) {
@@ -133,7 +116,6 @@ export class MapView {
       : cell;
   }
 
-  /** Moves the world under the camera and redraws the grid's hairlines at the zoom they are seen at. */
   protected applyCamera(): void {
     const { scale } = this.camera;
     this.world.scale.set(scale);
@@ -146,16 +128,12 @@ export class MapView {
       const next = gridLines(this.#template.map, scale);
       this.#grid.destroy();
       this.#grid = next;
-      // Right above the tiles: characters and previews the subclasses add stay on top of the grid.
       this.world.addChildAt(next, 1);
     }
     this.afterCamera();
   }
 
-  /** For subclasses: the camera moved or zoomed. */
-  protected afterCamera(): void {
-    // Nothing by default.
-  }
+  protected afterCamera(): void {}
 
   #resize(): void {
     const host = this.#host;

@@ -8,7 +8,6 @@ const AVATAR = `w-44 h-44 flex-[0_0_44px] rounded-14 grid place-items-center ${D
 
 const PILL = "flex items-center gap-6 pt-3 pr-9 pb-3 pl-7 rounded-pill";
 
-/** Who is being hired or changed, and — when they already work here — what they are at. */
 export function AgentDialogHead({
   draft,
   working,
@@ -63,7 +62,6 @@ export function AgentDialogHead({
   );
 }
 
-/** The one line that says what this colleague is doing right now, above everything you can change. */
 export function AgentDoing({
   working,
   doing,

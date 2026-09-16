@@ -11,7 +11,6 @@ import {
 const members = (value: object): Map<string, unknown> =>
   new Map(Object.entries(value).filter(([, v]) => v !== undefined));
 
-/** Structural equality over parsed JSON, so an absent key and an `undefined` one compare the same. */
 export const jsonEqual = (a: unknown, b: unknown): boolean => {
   if (a === b) {
     return true;
@@ -32,15 +31,11 @@ export const jsonEqual = (a: unknown, b: unknown): boolean => {
   return true;
 };
 
-// ---- export -------------------------------------------------------------------------------------
-
-/** The boss opens the file, the staff follow in name order, so two exports of one floor agree. */
 const inFileOrder = (a: Agent, b: Agent): number =>
   a.role === b.role
     ? a.name.localeCompare(b.name)
     : Number(b.role === "boss") - Number(a.role === "boss");
 
-/** The budgets every colleague shares, which the file then states once; none when they differ. */
 const sharedBudgets = (agents: readonly Agent[]): Budgets | undefined => {
   const [first] = agents;
   return first !== undefined && agents.every((a) => jsonEqual(a.budgets, first.budgets))
@@ -63,11 +58,6 @@ const entryFrom = (agent: Agent, shared: Budgets | undefined): OfficeFileAgent =
   }),
 });
 
-/**
- * The floor written out as its repository would carry it. Nothing derived from the event log travels:
- * no ids, no timestamps, no repository (the file is inside the repository it describes).
- * `applyOfficeFile` of an exported file produces no events, which is what makes the round trip safe.
- */
 export function officeFileFrom(project: Project, agents: readonly Agent[]): OfficeFile {
   const roster = [...agents].toSorted(inFileOrder);
   const shared = sharedBudgets(roster);
@@ -84,8 +74,6 @@ export function officeFileFrom(project: Project, agents: readonly Agent[]): Offi
     agents: roster.map((agent) => entryFrom(agent, shared)),
   };
 }
-
-// ---- the machine-local overlay ------------------------------------------------------------------
 
 const mergeAgents = (
   base: readonly OfficeFileAgent[] | undefined,
@@ -106,11 +94,6 @@ const mergeAgents = (
   return [...byName.values()];
 };
 
-/**
- * `.ho/config.local.json` layered over the committed `.ho/config.json`: the overlay wins where it
- * speaks, and its colleagues are matched into the committed ones by name so one machine can change a
- * single agent's provider without restating the floor.
- */
 export function mergeOfficeFile(base: OfficeFile, overlay: OfficeFile): OfficeFile {
   const merged: OfficeFile = { ...base, ...compact(overlay) };
   const agents = mergeAgents(base.agents, overlay.agents);

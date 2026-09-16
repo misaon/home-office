@@ -6,24 +6,14 @@ export type SessionStart = { taskId: TaskId; agentId: AgentId; mode: SessionMode
 
 const PRIORITY_RANK = { high: 0, normal: 1, low: 2 } as const;
 
-/**
- * A session whose project runs its own container engine occupies two slots: measured, the engine needs
- * 2 GiB beside the sandbox's 3 GiB, and the supported host is one Docker VM with 7.75 GiB.
- */
 const SERVICES_COST = 2;
 
-/**
- * Whether a session gets its own container engine: the daemon's switch, the floor's setting, and the work
- * itself — triage is the boss planning a message, so it touches no code. The provisioner asks the same
- * question, so the two cannot drift.
- */
 export const needsEngine = (
   daemonEnabled: boolean,
   project: Pick<Project, "services">,
   mode: SessionMode,
 ): boolean => daemonEnabled && project.services.enabled && mode !== "triage";
 
-/** What a session of this task and mode occupies: two slots when it gets an engine, one otherwise. */
 const costOf = (
   model: ReadModel,
   session: { taskId: TaskId; mode: SessionMode },
@@ -50,10 +40,6 @@ const candidateOf = (task: Task): SessionStart | null => {
   return null;
 };
 
-/**
- * Decides which tasks get a session now: assigned tasks (work or triage) and tasks awaiting their reviewer.
- * Pure: the daemon applies the decisions. Order: priority, then age. Respects the global cap and each agent's budget.
- */
 export function planSessionStarts(
   model: ReadModel,
   maxConcurrentSessions: number,
@@ -83,7 +69,6 @@ export function planSessionStarts(
     if (start === null) {
       continue;
     }
-    // A task that needs an engine waits for a free slot pair instead of blocking cheaper work behind it.
     const cost = costOf(model, start, servicesEnabled);
     if (cost > capacity) {
       continue;

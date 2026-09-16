@@ -8,7 +8,6 @@ type Formatter<K extends RuntimeEvent["kind"]> = (
   tag: string,
 ) => string | null;
 
-/** One line per live event; `text_delta` streams as it comes and returns nothing to print separately. */
 const FORMAT: { [K in RuntimeEvent["kind"]]: Formatter<K> } = {
   text_delta: (e) => {
     process.stdout.write(e.text);
@@ -27,7 +26,6 @@ const FORMAT: { [K in RuntimeEvent["kind"]]: Formatter<K> } = {
     `${tag} init model=${e.model} tools=${String(e.tools)} plugins=[${e.plugins.join(", ")}] mcp=[${e.mcpServers.join(", ")}]${e.pluginErrors.length > 0 ? ` plugin-errors=${e.pluginErrors.join("; ")}` : ""}`,
 };
 
-/** The table is keyed by the event's own discriminant, so a new kind is a compile error, not a silence. */
 const describe = <K extends RuntimeEvent["kind"]>(
   live: LiveEvent & {
     event: Extract<RuntimeEvent, { kind: K }>;

@@ -2,10 +2,6 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join } from "node:path";
 
-/**
- * Apps launched from Finder inherit a minimal PATH without `docker`, `gh` or Homebrew tools. The daemon
- * spawns `docker buildx build`, `git` and `gh` on the host, so the usual install locations are appended.
- */
 export function widenPath(): void {
   const home = homedir();
   const candidates = [

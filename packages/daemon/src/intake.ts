@@ -33,11 +33,6 @@ const fresh = (): ProjectState => ({
   polling: false,
 });
 
-/**
- * Intake service: polls every enabled project's connector on its own interval, turns new items into mail
- * and tasks, and reports back to the source when the office received, delegated and finished them.
- * Dry-run projects only record what would arrive.
- */
 export class IntakeService {
   readonly #office: Office;
   readonly #connector: IntakeConnector;
@@ -82,7 +77,6 @@ export class IntakeService {
 
   async stop(): Promise<void> {
     this.#controller.abort();
-    // The subscription drains first: a handler still in flight would otherwise arm a fresh timer.
     await this.#following?.stop();
     for (const state of this.#state.values()) {
       if (state.timer !== null) {
@@ -107,7 +101,6 @@ export class IntakeService {
     });
   }
 
-  /** Polls now: one project, or every project with intake enabled. */
   async pollNow(projectId?: ProjectId): Promise<IntakePollResult[]> {
     const projects = [...this.#office.model.projects.values()].filter((p) =>
       projectId === undefined ? p.intake.enabled : p.id === projectId,
@@ -128,7 +121,6 @@ export class IntakeService {
     return state;
   }
 
-  /** Re-arms every enabled project's timer from its current settings and disarms the rest. */
   #reschedule(): void {
     if (this.#controller.signal.aborted) {
       return;
@@ -248,7 +240,6 @@ export class IntakeService {
     return result;
   }
 
-  /** Records the acknowledgement and tells the source; a failing `gh` never affects the task. */
   async #tell(source: SourceAck | null): Promise<void> {
     if (source === null || this.#controller.signal.aborted) {
       return;

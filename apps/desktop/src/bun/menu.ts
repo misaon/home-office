@@ -67,7 +67,6 @@ const MENU: ApplicationMenuItemConfig[] = [
 
 const MenuClicked = z.object({ data: z.object({ action: z.string() }) });
 
-/** Native application menu; roles are handled by macOS, actions come back as `application-menu-clicked`. */
 export function installMenu(actions: MenuActions): void {
   ApplicationMenu.setApplicationMenu(MENU);
   const handlers: Record<string, () => void> = {

@@ -6,10 +6,6 @@ import { followEvents, type Office } from "./office.ts";
 import type { OfficeGate } from "./office-gate.ts";
 import type { SessionManager } from "./sessions.ts";
 
-/**
- * Starts sessions for assigned tasks whenever the model changes and whenever the office gate releases a
- * wait. One tick runs at a time; a change during a tick queues one more.
- */
 export function startScheduler(
   office: Office,
   sessions: SessionManager,

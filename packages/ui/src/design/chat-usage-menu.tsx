@@ -13,7 +13,6 @@ const CAPS = "font-mono text-9h tracking-caps-wide uppercase text-ink-label";
 
 const ROW = "flex items-center justify-between gap-9";
 
-/** The last thing a running session said about how full its context window is. */
 const contextOf = (events: readonly LiveEvent[] | undefined): number | null => {
   const last = events?.findLast((l) => l.event.kind === "context");
   return last?.event.kind !== "context" || last.event.windowTokens === 0
@@ -21,7 +20,6 @@ const contextOf = (events: readonly LiveEvent[] | undefined): number | null => {
     : last.event.usedTokens / last.event.windowTokens;
 };
 
-/** How full the fullest running context window on this floor is, or null when nothing is running. */
 export function useContextFill(floorId: ProjectId): number | null {
   const sessions = useUi((s) => s.snapshot.sessions);
   const tasks = useUi((s) => s.snapshot.tasks);
@@ -62,10 +60,6 @@ function Meter({
   );
 }
 
-/**
- * What this floor is spending. The office reports what its own sessions told it and nothing more: no
- * provider hands out a plan's quota, so there is no percentage of one here.
- */
 export function UsageMenu({
   floorId,
   onOpenFull,

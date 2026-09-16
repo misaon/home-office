@@ -4,14 +4,8 @@ export type Exec = { code: number; stdout: string; stderr: string };
 
 type ExecOptions = { cwd?: string | undefined; timeoutMs: number; env?: Record<string, string> };
 
-/** `https://user:token@host` → `https://***@host`: git and gh echo the remote they failed on. */
 const redact = (text: string): string => text.replaceAll(/\/\/[^\s/@]+@/gu, "//***@");
 
-/**
- * How the daemon runs a host program: an argv array (never a shell), no terminal prompts, a deadline,
- * and both streams collected. `git`, `gh` and `osascript` go through here; image builds drive the Docker
- * CLI and Bun's bundler directly.
- */
 export async function exec(argv: readonly string[], options: ExecOptions): Promise<Exec> {
   const proc = Bun.spawn([...argv], {
     stdout: "pipe",
@@ -28,7 +22,6 @@ export async function exec(argv: readonly string[], options: ExecOptions): Promi
   return { code, stdout: stdout.trim(), stderr: redact(stderr.trim()) };
 }
 
-/** `exec` for steps that must succeed: a non-zero exit becomes an error naming the step and its output. */
 export async function mustExec(
   argv: readonly string[],
   options: ExecOptions,

@@ -60,7 +60,6 @@ const openRuntime = (
     secrets,
   );
 
-/** Drives one prompt to its result, forwarding every event to `onEvent` (live fan-out + persistence). */
 async function consume(
   runtimeSession: RuntimeSession,
   ctx: SessionContext,
@@ -92,11 +91,6 @@ async function consume(
   return outcome;
 }
 
-/**
- * Runs the session's single prompt, resuming the agent's earlier conversation when one exists. A resume that
- * dies before `init` (the conversation is gone) is retried once as a fresh conversation. The agent process
- * is terminated before this returns; the sandbox itself outlives it until the session is settled.
- */
 export async function runPrompt(
   deps: SessionDeps,
   ctx: SessionContext,

@@ -15,7 +15,6 @@ export async function pumpLines(
       buffer = buffer.slice(newline + 1);
       newline = buffer.indexOf("\n");
     }
-    // What is left is one unterminated line; a child that never breaks its output is the failure here.
     if (buffer.length > MAX_LINE_CHARS) {
       onOverflow?.();
       throw new Error("agent output line exceeds 1 MiB");

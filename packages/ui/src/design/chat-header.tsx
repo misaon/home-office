@@ -15,7 +15,6 @@ const SEARCH =
 
 const SPEC = `${MONO} text-10h text-ink-label mt-2 overflow-hidden text-ellipsis whitespace-nowrap`;
 
-/** Who you are talking to — or, once you ask for it, the search over what was said. */
 export function ChatHeader({
   floor,
   boss,

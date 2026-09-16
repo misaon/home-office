@@ -1,5 +1,3 @@
-// The office's own vocabulary: what a task is, what state it is in, and what the camera does.
-
 export const enOffice = {
   priority: {
     high: "high",

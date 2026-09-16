@@ -16,14 +16,9 @@ const SHEET =
 
 const FOOT = "flex items-center justify-end gap-9 py-14 px-24 border-t border-line bg-foot";
 
-/**
- * This dialog dims a shade further and settles a little sooner than the office's other sheets, because
- * it is asking rather than showing.
- */
 const BACKDROP =
   "fixed inset-0 z-60 bg-scrim-a78 backdrop-blur-[12px] transition-opacity duration-240 data-starting-style:opacity-0 data-ending-style:opacity-0";
 
-/** How bad this is, as one mark: a warning triangle, or a circle that only wants to be sure. */
 function AskMark({ danger }: { danger: boolean }): React.JSX.Element {
   return (
     <div
@@ -62,7 +57,6 @@ function AskMark({ danger }: { danger: boolean }): React.JSX.Element {
   );
 }
 
-/** Keep it, or go through with it. */
 function AskFoot({
   ask,
   danger,
@@ -96,10 +90,6 @@ function AskFoot({
   );
 }
 
-/**
- * Asking before something cannot be undone. An alert dialog rather than a plain one, so a press in the
- * room outside it does not count as an answer; what this adds is the icon that says how bad this is.
- */
 export function Confirm({
   ask,
   onClose,

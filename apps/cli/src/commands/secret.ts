@@ -7,14 +7,12 @@ const restoreEcho = (): void => {
   process.stderr.write("\n");
 };
 
-/** Reads the secret from a pipe, or from the terminal with echo disabled. Never from argv. */
 async function readSecret(): Promise<string> {
   if (!process.stdin.isTTY) {
     const piped = await Bun.stdin.text();
     return piped.trim();
   }
   process.stderr.write("secret value (input hidden, press Enter): ");
-  // Ctrl-C mid-prompt would otherwise leave the terminal without echo.
   const interrupted = (): void => {
     restoreEcho();
     process.exit(130);
@@ -22,7 +20,6 @@ async function readSecret(): Promise<string> {
   process.once("SIGINT", interrupted);
   await $`stty -echo`.quiet().nothrow();
   try {
-    // One line is what the prompt asks for, so it takes one and stops rather than looping over stdin.
     const typed = await console[Symbol.asyncIterator]().next();
     return typed.done === true ? "" : typed.value.trim();
   } finally {

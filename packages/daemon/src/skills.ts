@@ -1,23 +1,11 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, normalize } from "node:path";
 
-/**
- * The floor's skill packs, read as the published Agent Skills format
- * (agentskills.io/specification, read 2026-09-15) and served to any runtime over MCP.
- *
- * Claude Code loads the same directories itself through `--plugin-dir`; every other provider gets them
- * through the three tools in mcp-tools.ts, which is what makes a skill one artifact instead of two.
- * Progressive disclosure is the point: the index is name and description only, the body arrives on
- * activation, bundled files only when the work asks for them.
- */
-
-/** Frontmatter limits the specification states; a pack that breaks them is reported, not served. */
 const SKILL_NAME_MAX = 64;
 const SKILL_DESCRIPTION_MAX = 1024;
 const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const BODY_MAX = 64_000;
 const FILE_MAX = 256_000;
-/** Where a skill may keep bundled files, per the specification. */
 const BUNDLED_DIRS = ["scripts", "references", "assets"];
 
 export type SkillIndexEntry = { name: string; description: string };
@@ -31,7 +19,6 @@ const stringField = (parsed: object, key: string): string | null => {
   return typeof found === "string" ? found : null;
 };
 
-/** A `SKILL.md` split into its frontmatter and its body, or the reason it is not one. */
 export function parseSkill(
   text: string,
   directory: string,
@@ -74,7 +61,6 @@ export function parseSkill(
   return { ok: true, value: { name, description, body: body.trim(), files: [] } };
 }
 
-/** Rejects anything that is not a plain relative path inside one of the specification's directories. */
 const bundledPath = (path: string): string | null => {
   const clean = normalize(path).replaceAll("\\", "/");
   const [head] = clean.split("/");
@@ -89,7 +75,6 @@ const bundledPath = (path: string): string | null => {
 export class SkillLibrary {
   readonly #root: string | null;
 
-  /** `<images/agent>/plugins`, or null in a build that carries no image context (the compiled CLI). */
   constructor(root: string | null) {
     this.#root = root;
   }
@@ -104,7 +89,6 @@ export class SkillLibrary {
       : join(this.#root, pack, "skills");
   }
 
-  /** Name and description of every skill in a pack: roughly a hundred tokens each, and nothing more. */
   async index(pack: string): Promise<SkillIndexEntry[]> {
     const dir = this.#packDir(pack);
     if (dir === null) {
@@ -122,7 +106,6 @@ export class SkillLibrary {
     return found.toSorted((a, b) => a.name.localeCompare(b.name));
   }
 
-  /** The full instructions of one skill, plus the bundled files it may ask for next. */
   async read(pack: string, name: string): Promise<SkillBody> {
     const dir = this.#packDir(pack);
     if (dir === null || !SKILL_NAME.test(name)) {
@@ -141,7 +124,6 @@ export class SkillLibrary {
     return { ...parsed.value, body: parsed.value.body.slice(0, BODY_MAX), files: files.toSorted() };
   }
 
-  /** One bundled file, read only when the skill's body sent the agent looking for it. */
   async file(pack: string, name: string, path: string): Promise<string> {
     const dir = this.#packDir(pack);
     const relative = bundledPath(path);

@@ -13,7 +13,6 @@ import type {
   TaskId,
 } from "@ho/protocol";
 
-/** In-memory projection of the event log. Mutated only by `applyEvent`. */
 export type ReadModel = {
   projects: Map<ProjectId, Project>;
   agents: Map<AgentId, Agent>;
@@ -27,12 +26,9 @@ export type ReadModel = {
   sessionsByTask: Map<TaskId, Set<SessionId>>;
   sessionsByAgent: Map<AgentId, Set<SessionId>>;
   activeSessions: Set<SessionId>;
-  /** Mail by floor, connector and the source's own id — the triple `findMail` looks up. */
   mailBySource: Map<string, MailItemId>;
-  /** Times of the most recent rate-limit incidents, oldest first, bounded by `RATE_LIMIT_TAIL`. */
   rateLimits: string[];
   rateLimitsSeen: number;
-  /** Bumped by `applyEvent` for the collection an event touched, so readers can copy only what changed. */
   revisions: Record<Collection, number>;
 };
 
@@ -59,13 +55,11 @@ export const createReadModel = (): ReadModel => ({
 
 export const RATE_LIMIT_TAIL = 1000;
 
-/** Prefix of the `session.state_changed` reason the projection counts as a rate-limit incident. */
 export const RATE_LIMITED = "rate limited";
 
 export const rateLimitedReason = (retryAt: string | null | undefined): string =>
   `${RATE_LIMITED} until ${retryAt ?? "unknown"}`;
 
-/** Messages kept per floor in the projection; the whole history stays in the event log. */
 export const CHAT_TAIL = 500;
 
 export const mailSourceKey = (
@@ -94,7 +88,6 @@ export const dropFrom = <K, V>(index: Map<K, Set<V>>, key: K, value: V): void =>
   }
 };
 
-/** Entities of an index bucket, in insertion order, skipping ids the maps no longer hold. */
 export const resolve = <K, V>(
   entities: ReadonlyMap<K, V>,
   ids: ReadonlySet<K> | undefined,

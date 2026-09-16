@@ -3,10 +3,6 @@ import { ATTACHMENTS_MAX, AttachmentName, CHAT_OUTBOX_DIR } from "./attachments.
 import { CRITERIA_MAX, TaskPriority } from "./domain.ts";
 import { TaskId } from "./ids.ts";
 
-/**
- * Tools the daemon exposes to agents over MCP. Inputs are deliberately small: the boss receives summaries,
- * never transcripts. Every call becomes domain events; nothing here touches a shell.
- */
 export const HoReportInput = z.object({
   status: z
     .enum(["review", "done", "blocked"])
@@ -48,7 +44,6 @@ export const HoAskHumanInput = z.object({
 });
 export type HoAskHumanInput = z.infer<typeof HoAskHumanInput>;
 
-/** The boss creates work on his own floor; `assignee` may be himself when nobody else is around. */
 export const HoDelegateInput = z.object({
   title: z.string().min(1).max(200),
   goal: z.string().min(1).max(500).describe("One sentence: what this task achieves and for whom"),
@@ -104,7 +99,6 @@ export const HoReplyInput = z.object({
 });
 export type HoReplyInput = z.infer<typeof HoReplyInput>;
 
-/** A skill is addressed by its own name, which the Agent Skills format keeps equal to its directory. */
 export const HoGetSkillInput = z.object({
   name: z.string().min(1).max(64).describe("Skill name exactly as ho_list_skills reported it"),
 });

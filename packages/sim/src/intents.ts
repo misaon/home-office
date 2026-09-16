@@ -24,14 +24,12 @@ const HANDOVER_MS = 1200;
 const CELEBRATE_MS = 1800;
 const RECEIVED_BUBBLE_MS = 3000;
 
-/** Seat zones per role: the boss has an office, reviewers sit in QA, clerks with the analysts, workers in dev. */
 const SEAT_GROUP: Partial<Record<AgentRole, string>> = {
   worker: "dev",
   reviewer: "qa",
   clerk: "analyst",
 };
 
-/** A free seat for the role: its own zone first, any free desk otherwise (overflow shares the open office). */
 function seatFor(world: World, actor: Actor, role: AgentRole): Anchor | undefined {
   if (role === "boss") {
     const own =
@@ -50,10 +48,6 @@ function seatFor(world: World, actor: Actor, role: AgentRole): Anchor | undefine
   );
 }
 
-/**
- * Send an agent to a free seat for its role and keep it typing there. Somebody who is off the floor comes
- * back by the next car and walks straight to the desk.
- */
 export function assignWork(
   world: World,
   agentId: AgentId,
@@ -81,7 +75,6 @@ export function assignWork(
   return true;
 }
 
-/** Work ended: celebrate on success, then go home (the boss) or idle around (the staff). */
 export function releaseWork(world: World, agentId: AgentId, ok: boolean): void {
   const actor = world.actors.get(agentId);
   if (actor === undefined) {
@@ -96,16 +89,11 @@ export function releaseWork(world: World, agentId: AgentId, ok: boolean): void {
   actor.idleUntil = world.time + CELEBRATE_MS;
 }
 
-/** A free cell next to `at` on that floor, else `fallback`. */
 const adjacentFree = (world: World, floorId: string, at: Point, fallback: Point): Point => {
   const floor = world.floors.get(floorId);
   return neighboursOf(at).find((p) => floor?.grid.isWalkable(p) === true) ?? fallback;
 };
 
-/**
- * Where a carrier meets somebody: beside them when they are on the floor; when they are away, beside their
- * desk, their home or the elevator entrance — the recipient is summoned and steps out of the next car.
- */
 const meetingPoint = (world: World, source: Actor, target: Actor): Point => {
   if (!target.hidden) {
     return adjacentFree(world, target.floorId, target.tile, source.tile);
@@ -119,11 +107,6 @@ const meetingPoint = (world: World, source: Actor, target: Actor): Point => {
     : adjacentFree(world, source.floorId, spot.at, source.tile);
 };
 
-/**
- * `from` carries an envelope to `to` — after `before` (fetching it from the counter, say) — hands it over
- * and emits `delivered` with `ref`, so the host can act (start the recipient's session, let the boss
- * speak). The carrier then returns to its desk or home.
- */
 export function carry(
   world: World,
   from: AgentId,
@@ -151,7 +134,6 @@ export function carry(
   return true;
 }
 
-/** The recipient turns to receive the envelope (called by the host on delivery); the carrier's bubble goes. */
 export function receive(world: World, agentId: AgentId, from: AgentId): void {
   const actor = world.actors.get(agentId);
   const source = world.actors.get(from);
@@ -173,7 +155,6 @@ export function receive(world: World, agentId: AgentId, from: AgentId): void {
   ]);
 }
 
-/** Rate limited or off hours: find a sleeping spot and stay there until woken. */
 export function sleep(world: World, agentId: AgentId): void {
   const actor = world.actors.get(agentId);
   if (actor === undefined) {
@@ -230,7 +211,6 @@ const STATIC_CUES: Partial<Record<RuntimeEvent["kind"], EmotionCue>> = {
   rate_limited: { kind: "sleepy", ttlMs: null },
 };
 
-/** How live runtime events show up above an agent's head. `null` ttl keeps the bubble until replaced. */
 export function emotionFor(event: RuntimeEvent): EmotionCue | null {
   if (event.kind === "tool_result") {
     return event.ok ? null : { kind: "frustrated", ttlMs: 6000 };

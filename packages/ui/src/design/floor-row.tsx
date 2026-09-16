@@ -11,16 +11,12 @@ const NAME = `block ${MONO} text-12 overflow-hidden text-ellipsis whitespace-now
 
 const PILL = "flex items-center gap-6 pt-3 pr-8 pb-3 pl-7 rounded-pill flex-[0_0_auto]";
 
-/** How busy a floor is, said in one pill: who is working, or what is stuck, or that it is quiet. */
 function busyOf(floor: Floor): {
   busy: boolean;
   working: number;
   blocked: number;
-  /** The dot in the pill. */
   mark: string;
-  /** The pill itself. */
   tone: string;
-  /** What the pill says. */
   ink: string;
 } {
   const working = floor.team.filter((p) => p.status === "working").length;
@@ -41,7 +37,6 @@ function busyOf(floor: Floor): {
   };
 }
 
-/** One floor in the picker: its number, its name, what it is carrying, and how busy it is. */
 export function FloorRow({
   floor,
   index,

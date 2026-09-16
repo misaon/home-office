@@ -15,7 +15,6 @@ import { useDesign } from "./store.ts";
 import { AgentDialog } from "./agent-dialog.tsx";
 import { useFloor } from "./live.ts";
 
-/** The dialogs that belong to a floor but stand over the whole office. */
 function FloorOverlays(): React.JSX.Element | null {
   const floor = useFloor();
   if (floor === null) {
@@ -24,7 +23,6 @@ function FloorOverlays(): React.JSX.Element | null {
   return <AgentDialog floor={floor} />;
 }
 
-/** What just happened, said once and then gone. */
 function Toast(): React.JSX.Element | null {
   const toast = useDesign((s) => s.toast);
   if (toast === null) {
@@ -38,7 +36,6 @@ function Toast(): React.JSX.Element | null {
   );
 }
 
-/** The office editor is internal: a production bundle carries neither the branch nor the import. */
 const DEV = process.env.NODE_ENV === "development";
 
 const SHELL = "h-screen flex flex-col bg-ground text-ink relative overflow-hidden";
@@ -49,14 +46,11 @@ const GLOW_A =
 const GLOW_B =
   "absolute -bottom-300 right-[22%] w-560 h-560 rounded-half bg-[radial-gradient(circle,var(--color-accent-a07),var(--color-accent-a00)_68%)] animate-drift-slow";
 
-/** The office: a lit floor on the left and the five panels on the right. */
 export function App(): React.JSX.Element {
   const [editorFromUrl] = useState(
     () => DEV && new URLSearchParams(window.location.search).has("editor"),
   );
   const hasFloors = useUi((s) => s.snapshot.projects.size > 0);
-  // Until the log has been replayed the office does not yet know whether it has floors; showing the
-  // empty office in that gap would flash the wrong screen at every reload.
   const empty = useUi((s) => s.replayed && s.snapshot.projects.size === 0);
   const lightbox = useDesign((s) => s.lightbox);
   const editor = useDesign((s) => s.editor);

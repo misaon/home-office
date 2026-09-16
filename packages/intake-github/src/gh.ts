@@ -3,7 +3,6 @@ import { compact, githubRepoFromUrl, type Project } from "@ho/protocol";
 
 type GhTarget = { args: string[]; cwd: string | undefined };
 
-/** Where `gh` should look: the local checkout's own remote, or `--repo owner/name` for URL projects. */
 export function ghTarget(project: Project): GhTarget {
   if (project.repo.kind === "local") {
     return { args: [], cwd: project.repo.path };
@@ -15,10 +14,6 @@ export function ghTarget(project: Project): GhTarget {
   return { args: ["--repo", repo], cwd: undefined };
 }
 
-/**
- * Runs the host's `gh` (already authenticated by the owner). Arguments may carry text the agent wrote —
- * a report, a title — which is why they are argv entries and never part of a command string.
- */
 export async function gh(
   args: readonly string[],
   cwd: string | undefined,

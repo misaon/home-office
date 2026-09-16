@@ -32,7 +32,6 @@ export class McpGateway {
     this.#entries.delete(token);
   }
 
-  /** Whether the agent already spoke in chat during this session (avoids a duplicate final reply). */
   replied(token: string): boolean {
     return this.#entries.get(token)?.replied ?? false;
   }

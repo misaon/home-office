@@ -9,7 +9,6 @@ import type { Office } from "../office.ts";
 import type { Resources } from "../paths.ts";
 import type { SessionManager } from "../sessions.ts";
 
-/** The daemon's services as the RPC handlers see them; the router calls the modules directly. */
 export type RpcContext = {
   office: Office;
   sessions: SessionManager;
@@ -19,13 +18,11 @@ export type RpcContext = {
   provider: SandboxProvider;
   secrets: SecretStore;
   config: DaemonConfig;
-  /** The daemon's state directory; `.ho` sync reads mirrors from under it. */
   home: string;
   resources: Resources;
   version: string;
   startedAt: string;
   gc: () => Promise<{ containers: string[]; volumes: string[]; images: string[] }>;
-  /** The host's directory dialog: a native panel in the desktop app, osascript for a daemon on its own. */
   pickDirectory: DirectoryPicker;
   log: Logger;
 };

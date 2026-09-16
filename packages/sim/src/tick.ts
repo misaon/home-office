@@ -13,20 +13,16 @@ import {
   type World,
 } from "./world.ts";
 
-/** Pause on the threshold before walking off, and the pause with closed doors before the next car. */
 const STEP_OUT_MS = 300;
 const CAR_GAP_MS = 600;
-/** The boss keeps to his office: his needs build up this many times slower than the staff's. */
 const BOSS_NEED_SLOWDOWN = 4;
 
-/** The car interior and its threshold: while anybody visible stands here, the doors stay open. */
 const inCarZone = (actor: Actor, car: Point): boolean =>
   !actor.hidden &&
   Math.abs(actor.tile.x - car.x) <= 3 &&
   actor.tile.y >= car.y - 1 &&
   actor.tile.y <= car.y + 4;
 
-/** Advances one floor's elevator doors and delivers one queued passenger per car (see `Elevator`). */
 function runElevator(world: World, floorId: string, floor: Floor, dtMs: number): void {
   const e = floor.elevator;
   const car = anchorOf(world, floorId, "car")?.at;
@@ -40,7 +36,6 @@ function runElevator(world: World, floorId: string, floor: Floor, dtMs: number):
     case "closed": {
       const [next] = e.queue;
       if (next !== undefined && world.time >= e.nextAt) {
-        // The car arrives: the passenger stands behind the closed doors and shows through as they part.
         const passenger = world.actors.get(next);
         if (passenger !== undefined) {
           passenger.hidden = false;
@@ -51,7 +46,6 @@ function runElevator(world: World, floorId: string, floor: Floor, dtMs: number):
         e.passenger = next;
         e.phase = "opening";
       } else if (occupied) {
-        // Somebody walked up to the car from the office (a visitor leaving, staff off for a while).
         e.phase = "opening";
       }
       break;
@@ -91,7 +85,6 @@ function runElevator(world: World, floorId: string, floor: Floor, dtMs: number):
   }
 }
 
-/** Advances the world by `dtMs`: elevators, needs, emotions, idle decisions and one step of every plan. */
 export function tick(world: World, dtMs: number): void {
   world.time += dtMs;
   for (const [floorId, floor] of world.floors) {
@@ -101,11 +94,9 @@ export function tick(world: World, dtMs: number): void {
   for (const actor of world.actors.values()) {
     const elevator = world.floors.get(actor.floorId)?.elevator;
     if (elevator === undefined || elevator.queue.includes(actor.id)) {
-      // Waiting in the elevator car (hidden, or standing behind the doors as they open).
       continue;
     }
     if (actor.hidden) {
-      // Off the floor: the car brings them back when their time is up (or when somebody summons them).
       if (actor.awayUntil !== null && world.time >= actor.awayUntil) {
         actor.awayUntil = null;
         elevator.queue.push(actor.id);

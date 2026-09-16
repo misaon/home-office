@@ -5,7 +5,6 @@ import { os } from "./implement.ts";
 
 const base = os.use(guarded);
 
-/** Everything the board can ask of a task, in its own module because the router has a size limit. */
 export const taskRoutes = {
   list: base.tasks.list.handler(({ input, context }) =>
     [...context.office.model.tasks.values()].filter(

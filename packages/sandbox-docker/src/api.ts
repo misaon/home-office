@@ -1,4 +1,3 @@
-// Thin, typed Docker Engine API client over the unix socket. No SDK: Bun's fetch speaks unix sockets.
 import type { SandboxSpec, VolumeMount } from "@ho/core";
 import { z } from "zod";
 
@@ -20,7 +19,6 @@ export class DockerApiError extends Error {
 export type DockerApi = {
   raw: (method: Method, path: string, body?: unknown, signal?: AbortSignal) => Promise<Response>;
   json: <T>(schema: z.ZodType<T>, method: Method, path: string, body?: unknown) => Promise<T>;
-  /** Like `raw` but resolves to null on 404 instead of throwing. */
   maybe: (method: Method, path: string, body?: unknown) => Promise<Response | null>;
 };
 
@@ -65,8 +63,6 @@ export function createDockerApi(socket: string): DockerApi {
   };
 }
 
-// ---- response schemas (only the fields we read) -------------------------------------------------
-
 export const Version = z.object({
   Version: z.string(),
   ApiVersion: z.string(),
@@ -75,7 +71,6 @@ export const Version = z.object({
 });
 export const Created = z.object({ Id: z.string() });
 export const Wait = z.object({ StatusCode: z.int() });
-/** Only what the engine readiness wait reads; `Health` is absent on containers without a healthcheck. */
 export const ContainerInspect = z.object({
   State: z.object({
     Running: z.boolean(),
@@ -137,11 +132,9 @@ export const labelFilter = (
     JSON.stringify({ label: Object.entries(labels).map(([k, v]) => `${k}=${v}`), ...extra }),
   );
 
-/** Docker reports `/name`; the office says `name`. */
 export const nameOf = (summary: ContainerSummary): string =>
   (summary.Names[0] ?? summary.Id).replace(/^\//u, "");
 
-/** Docker multiplexed stream (TTY off): 8-byte header per frame — type, padding, big-endian length. */
 export function demux(buffer: Uint8Array): { stdout: string; stderr: string } {
   const decoder = new TextDecoder();
   const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
@@ -162,9 +155,6 @@ export function demux(buffer: Uint8Array): { stdout: string; stderr: string } {
   return { stdout, stderr };
 }
 
-// ---- container primitives shared by sandboxes and engines ---------------------------------------
-
-/** The cgroup and log bounds every Home Office container gets; swap is capped at the memory limit. */
 export const hostLimits = (
   limits: SandboxSpec["limits"],
 ): {
@@ -206,7 +196,6 @@ export const startContainer = async (api: DockerApi, id: string): Promise<void> 
   await api.raw("POST", `${container(id)}/start`);
 };
 
-/** 304 (already stopped) and 404 (already gone) are the outcome, not failures. */
 export async function stopContainer(
   api: DockerApi,
   id: string,

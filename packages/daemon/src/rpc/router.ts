@@ -26,7 +26,6 @@ import { guarded } from "./guarded.ts";
 const base = os.use(guarded);
 const PRESENCE_BEAT_MS = 15_000;
 
-/** Bridges a callback-style producer into an async generator without dropping lines. */
 async function* linesFrom(
   run: (onLine: (line: string) => void) => Promise<void>,
   signal: AbortSignal | undefined,
@@ -48,7 +47,6 @@ async function* linesFrom(
   }
 }
 
-/** Resolves after `ms` with false, or as soon as `signal` aborts with true. */
 const sleepUntilAbort = (ms: number, signal: AbortSignal | undefined): Promise<boolean> =>
   new Promise((resolve) => {
     const timer = setTimeout(() => {
@@ -206,7 +204,6 @@ export const router = base.router({
     })),
   },
   chat: {
-    /** With `taskId` the human answers a colleague's question; with `projectId` the floor's boss triages it. */
     send: base.chat.send.handler(({ input, context }) =>
       "taskId" in input
         ? context.office.execute(HUMAN_ACTOR, (m, ctx) =>
@@ -234,7 +231,6 @@ export const router = base.router({
       logId: await context.office.store.firstId(),
     })),
     subscribe: base.events.subscribe.handler(async function* ({ input, context, signal }) {
-      // Subscribe before replaying so nothing appended in between is lost; dedupe on seq.
       const live = context.office.store.subscribe(undefined, signal);
       let last = input.afterSeq ?? -1;
       for await (const event of context.office.store.read(last)) {

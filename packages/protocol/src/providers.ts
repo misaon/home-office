@@ -12,27 +12,18 @@ export type SecretKeyName = z.infer<typeof SecretKeyName>;
 
 type ModelDescriptor = { id: string; label: string };
 
-/**
- * What the agent editor, the CLI and the daemon need to know about a provider. Static data: providers
- * change with releases, not at runtime. `models` are suggestions; `freeFormModels` allows any id.
- */
 type ProviderDescriptor = {
   id: ProviderId;
   name: string;
-  /** stream-json: Claude Code's own headless protocol; acp: Agent Client Protocol over stdio. */
   protocol: "stream-json" | "acp";
   authKinds: readonly AuthKind[];
   defaultAuth: AuthKind;
   models: readonly ModelDescriptor[];
   defaultModel: string;
   freeFormModels: boolean;
-  /** Empty when the provider has no effort/reasoning knob the office can set. */
   effortLevels: readonly EffortLevel[];
-  /** The agent's conversation state inside the sandbox; persisted per task and agent so sessions can resume. */
   stateDir: string;
-  /** Directories the CLI writes besides its state (caches, config); mounted as tmpfs on the read-only rootfs. */
   scratchDirs: readonly string[];
-  /** Build target and image suffix in images/agent/Dockerfile. */
   image: ProviderId;
   notes: string;
 };
@@ -127,7 +118,6 @@ const OPENCODE_PREFIX_KEYS: Readonly<Record<string, SecretKeyName>> = {
   google: "gemini-api-key",
 };
 
-/** Secret store keys a provider/model combination signs in with; empty for local models. */
 export function secretKeysFor(
   provider: ProviderId,
   auth: AuthKind,
@@ -149,7 +139,6 @@ export function secretKeysFor(
   return key === undefined ? [] : [key];
 }
 
-/** Environment variable each secret travels in; GitHub tokens never enter a sandbox. */
 export const SECRET_ENV: Readonly<Record<SecretKeyName, string | null>> = {
   "anthropic-oauth-token": "CLAUDE_CODE_OAUTH_TOKEN",
   "anthropic-api-key": "ANTHROPIC_API_KEY",
@@ -158,7 +147,6 @@ export const SECRET_ENV: Readonly<Record<SecretKeyName, string | null>> = {
   "github-token": null,
 };
 
-/** Image reference of a provider variant: `ho/agent:dev` → `ho/agent-opencode:dev`; Claude Code keeps the base ref. */
 export function imageRefFor(base: string, variant: ProviderId): string {
   if (variant === "claude-code") {
     return base;

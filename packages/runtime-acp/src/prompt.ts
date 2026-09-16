@@ -5,11 +5,6 @@ import { newTurn, stopToEvent, updateToEvents } from "./events.ts";
 import { isAuthRequired, type Negotiated, raceExit } from "./negotiate.ts";
 import type { AcpPreset } from "./presets.ts";
 
-/**
- * One `session/prompt` per call: the office's appendix rides on the first prompt of a new conversation
- * (a resumed one already has it), the agent's notifications become runtime events, and its answer or its
- * exit ends the stream.
- */
 export function createPrompt(
   office: OfficeConnection,
   spec: { systemPromptAppendix: string; model: string },
@@ -18,7 +13,6 @@ export function createPrompt(
   exited: Promise<number | null>,
 ): RuntimeSession["prompt"] {
   const { sessionId, resumed, servers } = negotiated;
-  // A resumed conversation already carries the office's appendix; the `init` event is about the process.
   let appendixSent = resumed;
 
   return async function* prompt(

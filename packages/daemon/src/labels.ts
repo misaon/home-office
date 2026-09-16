@@ -1,4 +1,3 @@
-/** Docker labels every container, volume, network and image the office owns carries. */
 export const LABELS = {
   managed: "ho.managed",
   kind: "ho.kind",

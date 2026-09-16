@@ -1,5 +1,3 @@
-// What a floor spends and what it is allowed to spend. Neither depends on anything else in the domain,
-// which is why they live here: domain.ts stays about the entities.
 import { z } from "zod";
 
 export const Budgets = z.object({
@@ -7,7 +5,6 @@ export const Budgets = z.object({
   maxConcurrentSessions: z.int().positive().default(1),
   maxWallMinutes: z.int().positive().default(60),
   maxReviewRounds: z.int().nonnegative().default(2),
-  /** API-key sessions only (Claude Code `--max-budget-usd`); subscriptions have no per-task price. */
   maxUsdPerTask: z.number().positive().optional(),
 });
 export type Budgets = z.infer<typeof Budgets>;

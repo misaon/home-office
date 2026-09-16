@@ -63,7 +63,6 @@ export const agentCommand: Command = {
           provider,
           model: str(parsed, "model") ?? defaults.model,
           effort: EffortLevel.optional().parse(str(parsed, "effort")) ?? defaults.effort,
-          // Skill packs ship in the agent image per role; `--skills none` opts out.
           skillPack: str(parsed, "skills") ?? (role === "clerk" ? "none" : role),
           ...compact({
             auth: AuthKind.optional().parse(str(parsed, "auth")),

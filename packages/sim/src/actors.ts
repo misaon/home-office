@@ -11,7 +11,6 @@ import {
   type World,
 } from "./world.ts";
 
-/** How long the boss sits at his desk between two idle decisions. */
 const HOME_MS = 25_000;
 
 const JITTER_SPREAD_MS = 400;
@@ -35,7 +34,6 @@ export function spawnActor(
     anchorOf(world, floorId, "car")?.at ??
     anchorOf(world, floorId, "elevator")?.at ?? { x: 3, y: 10 };
   const at = nearestWalkable(world, floorId, spawn);
-  // Without an explicit place the newcomer arrives by elevator: hidden in the car until it is their turn.
   const arriving = options.at === undefined;
   const actor: Actor = {
     id,
@@ -93,7 +91,6 @@ export function removeActor(world: World, id: AgentId): void {
   }
 }
 
-/** Brings an actor who is away back at once: the next car carries them in. Nothing happens otherwise. */
 export function summon(world: World, actor: Actor): void {
   const elevator = world.floors.get(actor.floorId)?.elevator;
   if (elevator === undefined || !actor.hidden || elevator.queue.includes(actor.id)) {
@@ -103,7 +100,6 @@ export function summon(world: World, actor: Actor): void {
   elevator.queue.push(actor.id);
 }
 
-/** Gives an actor its place on the floor (reserved for as long as the actor exists). */
 export function settleAt(world: World, actor: Actor, anchorId: string): boolean {
   if (!reserve(world, actor, actor.floorId, anchorId)) {
     return false;
@@ -112,11 +108,6 @@ export function settleAt(world: World, actor: Actor, anchorId: string): boolean 
   return true;
 }
 
-/**
- * Cells actors hold on one floor, counted once per tick: `standing` for actors who are not walking,
- * `claimed` for walkers' current and next cell. Counts rather than sets, so one actor's own contribution can
- * be taken back out without rebuilding anything.
- */
 type Occupancy = { standing: Map<number, number>; claimed: Map<number, number> };
 
 const NO_CELL = -1;
@@ -149,7 +140,6 @@ const occupancyOf = (world: World): Map<string, Occupancy> => {
   return floors;
 };
 
-/** The tick's index, built on first read: a tick in which nobody walks builds nothing. */
 export type OccupancyIndex = () => Map<string, Occupancy>;
 
 export const lazyOccupancy = (world: World): OccupancyIndex => {
@@ -163,11 +153,6 @@ export const lazyOccupancy = (world: World): OccupancyIndex => {
 const without = (counts: Map<number, number>, at: number, own: number, alsoOwn: number): number =>
   (counts.get(at) ?? 0) - (own === at ? 1 : 0) - (alsoOwn === at ? 1 : 0);
 
-/**
- * Cells other actors hold, read from the tick's index: where they stand, and — with `includeMoving` — the
- * cells they are stepping into, so two walkers never enter one cell together. Planning ignores walkers (they
- * move on); stepping does not.
- */
 export const occupied = (
   index: OccupancyIndex,
   self: Actor,
@@ -215,12 +200,10 @@ export function nearestWalkable(world: World, floorId: string, target: Point): P
   return target;
 }
 
-/** A walk to a point on the actor's floor. */
 export const walkSteps = (floorId: string, to: Point): Step[] => [
   { kind: "walk", floorId, to, path: null },
 ];
 
-/** Steps that bring a working actor back to its desk and keep it typing; an idle actor goes home instead. */
 export function resumeSteps(world: World, actor: Actor): Step[] {
   if (actor.work === null) {
     return homeSteps(world, actor);
@@ -234,11 +217,6 @@ export function resumeSteps(world: World, actor: Actor): Step[] {
       ];
 }
 
-/**
- * Steps back to the actor's home spot: the receptionist stands behind her counter for good, the boss sits at
- * his desk for a while before he considers a coffee. Staff have no home: they walk to a stroll spot they may
- * use, which also takes a courier out of the boss's office after a handover.
- */
 export function homeSteps(world: World, actor: Actor): Step[] {
   if (actor.home === null) {
     const spot = world.rng.pick(freeAnchors(world, actor.floorId, "wander", actor.kind));
@@ -258,7 +236,6 @@ export const setSteps = (actor: Actor, steps: Step[]): void => {
   actor.steps = steps;
 };
 
-/** Whatever the actor still has to deliver stays ahead of any new plan: an envelope is never dropped. */
 export const pendingDeliveries = (actor: Actor): Step[] => {
   const index = actor.steps.findLastIndex(
     (step) => step.kind === "emit" && step.event.kind === "delivered",
