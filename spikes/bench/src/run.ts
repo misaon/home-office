@@ -64,6 +64,7 @@ function seed(agents: number, tasks: number): StoredEvent[] {
           ackLabel: "ho",
           comment: true,
         },
+        preview: { enabled: false, port: 8788 },
         services: { enabled: false, mode: "rootless" },
         verify: { command: "", timeoutSeconds: 900, maxAttempts: 2 },
         createdAt: AT,

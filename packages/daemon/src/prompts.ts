@@ -15,6 +15,11 @@ import { REPO_IN_VOLUME } from "./git-bridge.ts";
 
 export type Services = { kind: "off" } | { kind: "ready" } | { kind: "failed"; message: string };
 
+const previewGuide = (preview: { enabled: boolean; port: number }): string =>
+  preview.enabled
+    ? `Preview: a server you start on 0.0.0.0:${String(preview.port)} inside the sandbox is reachable from the human's own browser at http://127.0.0.1:${String(preview.port)}. Bind it to 0.0.0.0, not 127.0.0.1, or only you will see it. That port is the only one that leaves the sandbox; name it when you tell the human where to look.`
+    : "Preview: nothing you serve leaves this sandbox, so never tell the human to open a local URL — send a screenshot instead.";
+
 const browserGuide = (enabled: boolean): string =>
   enabled
     ? `Browser: this sandbox has headless Chromium with the Playwright MCP server (browser_* tools: navigate, click, type, snapshot, take_screenshot) and may expose Chrome DevTools MCP when enabled in daemon settings; only use tools actually available in this session. Bun, Node and npm are installed. Start dev servers on 127.0.0.1 inside the sandbox and open them at http://127.0.0.1:<port>; there is no display and no access to the host. Screenshots are written to ${BROWSER_OUTPUT_DIR}; copy the ones that belong in the repository into it before committing. Close pages you no longer need.`
@@ -75,6 +80,7 @@ type SessionFacts = {
   mode: Session["mode"];
   branch: string;
   browser: boolean;
+  preview: { enabled: boolean; port: number };
   services: Services;
 };
 
@@ -82,6 +88,7 @@ const workPrompt = (f: SessionFacts): string[] => [
   `The repository is checked out at ${REPO_IN_VOLUME} on branch ${f.branch}. Work only inside it.`,
   "Commit your changes with clear Conventional Commit messages.",
   browserGuide(f.browser),
+  previewGuide(f.preview),
   servicesGuide(f.services),
   `Task: ${f.task.title}`,
   criteriaGuide(f.task),
@@ -93,6 +100,7 @@ const workPrompt = (f: SessionFacts): string[] => [
 const reviewPrompt = (f: SessionFacts): string[] => [
   `You are reviewing branch ${f.branch} of the repository at ${REPO_IN_VOLUME} (base branch: ${f.project.defaultBranch}).`,
   browserGuide(f.browser),
+  previewGuide(f.preview),
   servicesGuide(f.services),
   `Start with \`git -C ${REPO_IN_VOLUME} diff ${f.project.defaultBranch}...HEAD --stat\` and then the full diff; read surrounding code only where needed.`,
   verifyGuide(f.project) === ""

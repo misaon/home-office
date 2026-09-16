@@ -26,6 +26,12 @@ export const ServicesPolicy = z.object({
 });
 export type ServicesPolicy = z.infer<typeof ServicesPolicy>;
 
+export const PreviewPolicy = z.object({
+  enabled: z.boolean().default(false),
+  port: z.int().min(1024).max(65_535).default(8788),
+});
+export type PreviewPolicy = z.infer<typeof PreviewPolicy>;
+
 export const VerifyPolicy = z.object({
   command: z.string().max(500).default(""),
   timeoutSeconds: z.int().min(10).max(3600).default(900),

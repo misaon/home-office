@@ -34,6 +34,14 @@ export const int = (parsed: Parsed, name: string): number | undefined => {
   return number;
 };
 
+export const positive = (parsed: Parsed, name: string): number | undefined => {
+  const number = int(parsed, name);
+  if (number !== undefined && number < 1) {
+    throw new RangeError(`--${name} expects a number above zero, got "${String(number)}"`);
+  }
+  return number;
+};
+
 export const onOff = (value: string | undefined): boolean | undefined => {
   if (value === undefined) {
     return undefined;

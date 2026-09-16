@@ -7,6 +7,7 @@ import {
   IntakePolicy,
   IsoDateTime,
   Project,
+  PreviewPolicy,
   PublishPolicy,
   RepoSource,
   ServicesPolicy,
@@ -23,6 +24,7 @@ const ProjectFields = Project.pick({
   defaultBranch: true,
   publish: true,
   intake: true,
+  preview: true,
   services: true,
   verify: true,
 });
@@ -59,6 +61,7 @@ const ProjectPatch = z
     defaultBranch: Project.shape.defaultBranch.unwrap(),
     publish: PublishPolicy,
     intake: IntakePolicy,
+    preview: PreviewPolicy,
     services: ServicesPolicy,
     verify: VerifyPolicy,
   })

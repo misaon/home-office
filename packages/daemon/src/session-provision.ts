@@ -86,6 +86,7 @@ const sandboxSpec = (
   committer: GitIdentity | null,
 ): SandboxSpec => ({
   name: `ho-session-${ctx.session.id.slice(-12)}`,
+  ports: ctx.project.preview.enabled ? [ctx.project.preview.port] : [],
   image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
   cmd: ["bun", "/usr/local/bin/ho-runner.js"],
   env: {

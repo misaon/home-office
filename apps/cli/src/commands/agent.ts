@@ -1,7 +1,15 @@
 import { defaultChoice } from "@ho/core";
-import { AgentRole, AuthKind, compact, EffortLevel, Gender, ProviderId } from "@ho/protocol";
-import { required, str } from "../flags.ts";
-import { type Command, output } from "../cli.ts";
+import {
+  AgentRole,
+  AuthKind,
+  type Budgets,
+  compact,
+  EffortLevel,
+  Gender,
+  ProviderId,
+} from "@ho/protocol";
+import { positive, required, str } from "../flags.ts";
+import { type Command, output, type Parsed } from "../cli.ts";
 import { colour } from "../output.ts";
 import { findAgent, findProject, projectFor, projectIdOf, projectNames } from "./lookup.ts";
 
@@ -13,6 +21,24 @@ const CHOICE = {
   prompt: "<text>",
   skills: "worker|reviewer|none",
   gender: "female|male|neutral",
+};
+
+const BUDGET = {
+  "max-turns": "<n> tool turns per task",
+  "max-minutes": "<n> wall-clock minutes per session",
+  "max-sessions": "<n> concurrent sessions",
+};
+
+const budgetPatch = (
+  parsed: Parsed,
+  current: { budgets: Budgets },
+): { budgets: Budgets } | Record<string, never> => {
+  const next = compact({
+    maxTurnsPerTask: positive(parsed, "max-turns"),
+    maxWallMinutes: positive(parsed, "max-minutes"),
+    maxConcurrentSessions: positive(parsed, "max-sessions"),
+  });
+  return Object.keys(next).length === 0 ? {} : { budgets: { ...current.budgets, ...next } };
 };
 
 export const agentCommand: Command = {
@@ -79,7 +105,7 @@ export const agentCommand: Command = {
     },
     set: {
       positionals: ["<agent>"],
-      strings: { project: "<floor>", name: "<name>", ...CHOICE },
+      strings: { project: "<floor>", name: "<name>", ...CHOICE, ...BUDGET },
       run: async (parsed, client) => {
         const rpc = await client();
         const current = await findAgent(
@@ -99,11 +125,13 @@ export const agentCommand: Command = {
             appearance: gender === undefined ? undefined : { gender },
             basePrompt: str(parsed, "prompt"),
             skillPack: str(parsed, "skills"),
+            ...budgetPatch(parsed, current),
           }),
         });
         return output(
           [
             `${colour.bold(updated.name)}: ${updated.provider}/${updated.model}@${updated.effort}, skills ${updated.skillPack}`,
+            `budgets: ${String(updated.budgets.maxTurnsPerTask)} turns/task, ${String(updated.budgets.maxWallMinutes)} min/session, ${String(updated.budgets.maxConcurrentSessions)} concurrent`,
           ],
           updated,
         );

@@ -38,6 +38,7 @@ const openRuntime = (
           mode: ctx.session.mode,
           branch: provisioned.branch,
           browser: deps.config.browser.enabled,
+          preview: ctx.project.preview,
           services: provisioned.services,
         },
         deps.office.model,

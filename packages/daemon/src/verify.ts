@@ -32,6 +32,7 @@ export async function runVerify(
     tmpfs: { "/tmp": "rw,nosuid,size=256m", "/home/agent": "rw,nosuid,size=256m" },
     limits: { memoryBytes: 3 * 1024 * 1024 * 1024, cpus: 2, pids: 1024 },
     readonlyRootfs: false,
+    ports: [],
   };
   const result = await provider.run(spec, timeoutSeconds * 1000);
   return { ok: result.exitCode === 0, output: tail(result) };

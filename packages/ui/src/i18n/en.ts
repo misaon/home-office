@@ -209,6 +209,9 @@ export const en = {
     intakeHint: "The postman brings matching issues to the reception and the boss triages them.",
     intakeDryHint: "Nothing is created; the log says what would have been taken.",
     intakeCommentHint: "The office replies on the issue when the work is done or blocked.",
+    previewLabel: "Local preview on port {{port}}",
+    previewHint:
+      "Publishes that one port from each sandbox to 127.0.0.1, so a dev server an agent starts opens in your browser. Off, nothing an agent serves can leave its container.",
     servicesLabel: "Own container engine",
     servicesHint:
       "The repository's docker compose runs inside the sandbox. A session with services takes two of the daemon's slots.",

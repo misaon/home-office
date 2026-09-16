@@ -56,6 +56,7 @@ const bridgeSpec = (
   tmpfs: { "/tmp": "rw,nosuid,size=64m" },
   limits: { memoryBytes: 512 * 1024 * 1024, cpus: 1, pids: 128 },
   readonlyRootfs: true,
+  ports: [],
 });
 
 const run = async (

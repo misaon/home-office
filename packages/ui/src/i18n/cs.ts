@@ -209,6 +209,9 @@ export const cs: typeof en = {
     intakeHint: "Pošťák nosí odpovídající issues na recepci a šéf je roztřídí.",
     intakeDryHint: "Nic se nevytvoří, jen se do logu zapíše, co by se vzalo.",
     intakeCommentHint: "Kancelář napíše k issue, až bude práce hotová nebo zablokovaná.",
+    previewLabel: "Lokální náhled na portu {{port}}",
+    previewHint:
+      "Vystaví tenhle jeden port z každého sandboxu na 127.0.0.1, takže dev server, který agent spustí, otevřete v prohlížeči. Vypnuto: nic, co agent servíruje, z kontejneru neodejde.",
     servicesLabel: "Vlastní kontejnerový engine",
     servicesHint:
       "Docker compose z repozitáře běží uvnitř sandboxu. Session se službami zabere dva sloty daemona.",

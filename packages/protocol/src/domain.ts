@@ -9,7 +9,13 @@ import {
   SessionId,
   TaskId,
 } from "./ids.ts";
-import { IntakePolicy, PublishPolicy, ServicesPolicy, VerifyPolicy } from "./policies.ts";
+import {
+  IntakePolicy,
+  PreviewPolicy,
+  PublishPolicy,
+  ServicesPolicy,
+  VerifyPolicy,
+} from "./policies.ts";
 import { Budgets, Usage } from "./usage.ts";
 
 export * from "./policies.ts";
@@ -148,6 +154,7 @@ export const Project = z.object({
   defaultBranch: z.string().min(1).default("main"),
   publish: PublishPolicy.prefault({}),
   intake: IntakePolicy.prefault({}),
+  preview: PreviewPolicy.prefault({}),
   services: ServicesPolicy.prefault({}),
   verify: VerifyPolicy.prefault({}),
   createdAt: IsoDateTime,
