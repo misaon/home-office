@@ -49,6 +49,7 @@
     "lint": "oxlint --deny-warnings",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
+    "arch:check": "bun run scripts/architecture-check.ts",
     "knip": "knip",
     "setup": "git config core.hooksPath .githooks",
     "ui:build": "bun run scripts/ui-build.ts",

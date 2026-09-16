@@ -67,6 +67,11 @@ The simulation is a visual projection. It controls envelope timing while a viewe
 | `packages/ui`                  | React panels, Zustand projection, TanStack Query requests and Pixi rendering        |
 | `scripts`                      | Typecheck, the office UI build, desktop resources and the pinned Hutch toolchain    |
 
+These rules are checked, not merely stated: `bun run arch:check` fails the build on a dependency that
+points upwards, a host global in a pure package, a second writer of the projection, a second appender of
+the log, an adapter reached from outside a composition root, or a core command imported into the office.
+See [the review](plans/2026-09-16-architecture-review.md) for what each one was measured against.
+
 `core` and `sim` have no I/O or Bun/DOM globals. The actual port definitions live in
 `packages/core/src/{ports,runtime,sandbox}.ts`; read those definitions rather than copying an
 approximate interface from documentation. Runtime TypeScript is executed directly; the UI and release
