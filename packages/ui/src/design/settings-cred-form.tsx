@@ -1,10 +1,10 @@
 import type { SecretKeyName } from "@ho/protocol";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { requireClient } from "../rpc.ts";
 import { MONO } from "./tokens.ts";
-import { useDesign } from "./store.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
 
 /** The dictionary names these by what they are, not by the store's key. */
 export const NAMED: Record<SecretKeyName, "claude" | "anthropic" | "openai" | "gemini" | "github"> =
@@ -39,22 +39,16 @@ export function CredForm({
     void queries.invalidateQueries({ queryKey: ["secrets-status"] });
     flash(message);
   };
-  const save = useMutation({
+  const save = useOfficeMutation({
     mutationFn: () => requireClient().secrets.set({ key: name, value: value.trim() }),
     onSuccess: () => {
       done(t("tokens.stored", { name: t(`tokens.${NAMED[name]}`) }));
     },
-    onError: (error: Error) => {
-      flash(error.message);
-    },
   });
-  const forget = useMutation({
+  const forget = useOfficeMutation({
     mutationFn: () => requireClient().secrets.delete({ key: name }),
     onSuccess: () => {
       done(t("tokens.forgotten", { name: t(`tokens.${NAMED[name]}`) }));
-    },
-    onError: (error: Error) => {
-      flash(error.message);
     },
   });
 

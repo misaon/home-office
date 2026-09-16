@@ -1,9 +1,8 @@
 import { Switch as BaseSwitch } from "@base-ui/react/switch";
-import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
-import { useDesign } from "./store.ts";
+import { useOfficeMutation } from "./store.ts";
 
 const TRACK =
   "flex-[0_0_38px] w-38 h-22 rounded-pill border-0 cursor-pointer p-3 flex transition-[background] duration-300";
@@ -48,16 +47,12 @@ function Switch({
 /** The three things a floor decides for itself: how work leaves it, what feeds it, what it may start. */
 export function FloorSwitches({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
-  const flash = useDesign((s) => s.flash);
-  const update = useMutation({
+  const update = useOfficeMutation({
     mutationFn: (patch: {
       publish?: { mode: "branch" | "pull-request" };
       intake?: { enabled: boolean };
       services?: { enabled: boolean };
     }) => requireClient().projects.update({ id: floor.id, patch }),
-    onError: (error: Error) => {
-      flash(error.message);
-    },
   });
 
   return (

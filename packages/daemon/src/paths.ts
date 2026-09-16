@@ -18,6 +18,8 @@ export type Resources = {
   uiDir: string | null;
   /** Where the internal editor keeps drawn offices (`<repo>/layouts`); null outside a source checkout. */
   layoutsDir: string | null;
+  /** The role skill packs (`<images/agent>/plugins`); null in a build that carries no image context. */
+  pluginsDir: string | null;
 };
 
 /** Repository root in development; `HO_REPO_ROOT` overrides it (used by the desktop dev loop). */
@@ -39,6 +41,7 @@ export function resolveResources(root: string = defaultResourcesRoot()): Resourc
     imageContext: (name) => whenPresent(at("images", name), "Dockerfile"),
     runnerEntry: existsSync(runnerEntry) ? runnerEntry : null,
     uiDir: whenPresent(at("packages/ui/dist"), "index.html"),
+    pluginsDir: whenPresent(at("images/agent/plugins"), "boss"),
     layoutsDir: whenPresent(root, "AGENTS.md") === null ? null : at("layouts"),
   };
 }

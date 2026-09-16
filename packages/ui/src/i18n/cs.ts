@@ -95,6 +95,7 @@ export const cs: typeof en = {
     emptyLane: "V této dráze nic není.",
     finished: "Hotovo {{done}} z {{total}} úkolů",
     handBack: "Vrátit zpět",
+    criteria: "Akceptační kritéria",
     moveToDone: "Označit za hotové",
     taskClosed: "Tenhle je uzavřený, dál se nikam neposune.",
     taskNotStarted: "Dokončit se dá, až na něm někdo začne pracovat.",

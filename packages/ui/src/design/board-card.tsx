@@ -1,10 +1,9 @@
-import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { Card, Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
 import { MONO, priorityDot, priorityInk, separator } from "./tokens.ts";
 import { bossOf } from "./live.ts";
-import { useDesign } from "./store.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
 
 const BODY = "flex-1 min-w-0 py-12 px-13";
 
@@ -31,13 +30,9 @@ export function BoardCard({
 }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);
-  const flash = useDesign((s) => s.flash);
   const confirm = useDesign((s) => s.confirm);
-  const remove = useMutation({
+  const remove = useOfficeMutation({
     mutationFn: () => requireClient().tasks.remove({ id: card.id }),
-    onError: (error: Error) => {
-      flash(error.message);
-    },
   });
   const mine = card.who === bossOf(floor)?.name;
   const ink = priorityInk(card.p);
