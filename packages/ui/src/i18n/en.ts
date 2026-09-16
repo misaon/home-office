@@ -209,6 +209,9 @@ export const en = {
     intakeHint: "The postman brings matching issues to the reception and the boss triages them.",
     intakeDryHint: "Nothing is created; the log says what would have been taken.",
     intakeCommentHint: "The office replies on the issue when the work is done or blocked.",
+    hiringLabel: "The boss may take on colleagues",
+    hiringHint:
+      "When nobody on this floor fits the work, the boss hires someone who stays and can take later work too. Off, it must do everything itself or wait for you to add someone in Team.",
     previewLabel: "Local preview on port {{port}}",
     previewHint:
       "Publishes that one port from each sandbox to 127.0.0.1, so a dev server an agent starts opens in your browser. Off, nothing an agent serves can leave its container.",

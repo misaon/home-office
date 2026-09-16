@@ -44,6 +44,22 @@ export const HoAskHumanInput = z.object({
 });
 export type HoAskHumanInput = z.infer<typeof HoAskHumanInput>;
 
+export const HoHireInput = z.object({
+  name: z.string().min(1).max(60).describe("A first name nobody on this floor uses yet"),
+  role: z.enum(["worker", "reviewer"]).describe("What they are for"),
+  model: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Provider model id; omit for the role's default. Pick a cheaper one for mechanical work",
+    ),
+  effort: z.string().min(1).optional().describe("Reasoning effort, when the provider takes one"),
+  basePrompt: z.string().max(4000).default("").describe("How they work, not what they work on"),
+  why: z.string().min(1).max(300).describe("One sentence: why nobody already here fits"),
+});
+export type HoHireInput = z.infer<typeof HoHireInput>;
+
 export const HoDelegateInput = z.object({
   title: z.string().min(1).max(200),
   goal: z.string().min(1).max(500).describe("One sentence: what this task achieves and for whom"),

@@ -10,6 +10,7 @@ import {
   TaskId,
 } from "./ids.ts";
 import {
+  HiringPolicy,
   IntakePolicy,
   PreviewPolicy,
   PublishPolicy,
@@ -154,6 +155,7 @@ export const Project = z.object({
   defaultBranch: z.string().min(1).default("main"),
   publish: PublishPolicy.prefault({}),
   intake: IntakePolicy.prefault({}),
+  hiring: HiringPolicy.prefault({}),
   preview: PreviewPolicy.prefault({}),
   services: ServicesPolicy.prefault({}),
   verify: VerifyPolicy.prefault({}),

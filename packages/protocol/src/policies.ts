@@ -26,6 +26,11 @@ export const ServicesPolicy = z.object({
 });
 export type ServicesPolicy = z.infer<typeof ServicesPolicy>;
 
+export const HiringPolicy = z.object({
+  enabled: z.boolean().default(true),
+});
+export type HiringPolicy = z.infer<typeof HiringPolicy>;
+
 export const PreviewPolicy = z.object({
   enabled: z.boolean().default(false),
   port: z.int().min(1024).max(65_535).default(8788),

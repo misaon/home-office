@@ -73,6 +73,7 @@ export type Floor = {
   issues: boolean;
   services: boolean;
   preview: { enabled: boolean; port: number };
+  hiring: boolean;
   verify: string;
   team: Member[];
   cards: Card[];

@@ -152,6 +152,7 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
     issues: project.intake.enabled,
     services: project.services.enabled,
     preview: project.preview,
+    hiring: project.hiring.enabled,
     verify: project.verify.command,
     team: [...snapshot.agents.values()]
       .filter((a) => a.projectId === project.id)

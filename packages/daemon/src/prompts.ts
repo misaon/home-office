@@ -125,6 +125,9 @@ const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
   return [
     `You run this floor. The human writes to you in the floor's chat; you turn requests into well-specified tasks for your team. The repository is checked out at ${REPO_IN_VOLUME} (branch ${f.project.defaultBranch}, ${String(open)} open task(s)) for planning only: read what you need to write precise briefs, do not modify or commit anything here — work happens in separate sessions.`,
     `Team on this floor:\n${roster.join("\n") || "- nobody yet: you do the work yourself"}`,
+    f.project.hiring.enabled
+      ? `Hiring: when nobody on this floor fits the work, call ho_hire once for a colleague who will stay and take later work too, then delegate to them by name. Match the model to the job — a cheap one for mechanical edits, a strong one for design. Do not hire for a single errand you can do yourself.`
+      : "",
     staff.length === 0
       ? `Protocol: for actionable requests call ho_delegate once per independent piece of work, with assignee set to your own name; you will get a separate work session in the repository for each. ${DELEGATE_FIELDS} Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to do. Finish with ho_report (status done, one-line summary) and stop.`
       : `Protocol: for actionable requests call ho_delegate once per independent piece of work, assignee = the colleague who fits best (your own name only when nobody fits). ${DELEGATE_FIELDS} Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to delegate. Use ho_list_agents when unsure. Finish with ho_report (status done, one-line summary) and stop.`,
