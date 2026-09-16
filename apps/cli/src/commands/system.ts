@@ -1,18 +1,52 @@
-import { LogLevel, officeUrl, startDaemon } from "@ho/daemon";
+import { LogLevel, officeUrl, resolveHome, startDaemon } from "@ho/daemon";
+import { join } from "node:path";
 import { compact, formatBytes } from "@ho/protocol";
 import { bool, str } from "../flags.ts";
 import { requireDaemon } from "../client.ts";
 import { type Command, output } from "../cli.ts";
 import { colour, line } from "../output.ts";
 
+const browserCommand = (url: string): string[] => {
+  if (process.platform === "darwin") {
+    return ["open", url];
+  }
+  if (process.platform === "win32") {
+    return ["cmd", "/c", "start", "", url];
+  }
+  return ["xdg-open", url];
+};
+
+const openInBrowser = async (url: string): Promise<boolean> => {
+  try {
+    const exited = await Bun.spawn(browserCommand(url), {
+      stdout: "ignore",
+      stderr: "ignore",
+    }).exited;
+    return exited === 0;
+  } catch {
+    return false;
+  }
+};
+
+const withoutToken = (url: string): string => url.split("#")[0] ?? url;
+
+const defaultLogFile = (): string =>
+  join(
+    resolveHome(),
+    "logs",
+    `daemon-${new Date().toISOString().slice(0, 19).replaceAll(":", "-")}.log`,
+  );
+
 export const daemonCommand: Command = {
   name: "daemon",
-  summary: "run the daemon in the foreground (--ui also says where the office is served)",
-  booleans: ["ui"],
+  summary:
+    "run the daemon in the foreground (--ui opens the office, --debug logs everything to a file)",
+  booleans: ["ui", "debug"],
   strings: { "log-level": "trace|debug|info|warn|error", "log-file": "<path>" },
   run: async (parsed) => {
-    const level = str(parsed, "log-level");
-    const logFile = str(parsed, "log-file");
+    const debug = bool(parsed, "debug");
+    const level = str(parsed, "log-level") ?? (debug ? "debug" : undefined);
+    const logFile = str(parsed, "log-file") ?? (debug ? defaultLogFile() : undefined);
     const handle = await startDaemon(
       compact({
         overrides: level === undefined ? undefined : { logLevel: LogLevel.parse(level) },
@@ -23,11 +57,17 @@ export const daemonCommand: Command = {
     line(`daemon ${version} listening on ${host}:${String(port)} (pid ${String(process.pid)})`);
     line(`logs: ${logFile ?? "stdout"} at level ${handle.config.logLevel}`);
     if (bool(parsed, "ui")) {
-      line(
-        handle.config.ui.dir === null
-          ? "office UI: not served (build it with `bun run ui:build`)"
-          : `office UI: served on ${host}:${String(port)}, but the page needs this launch's token — run \`ho ui\` to open it, or \`ho ui --print\` for the URL. Opening http://${host}:${String(port)}/ without the token shows an empty office.`,
-      );
+      if (handle.config.ui.dir === null) {
+        line("office UI: not served (build it with `bun run ui:build`)");
+      } else {
+        const url = officeUrl(handle.info);
+        const opened = await openInBrowser(url);
+        line(
+          opened
+            ? `office opened at ${withoutToken(url)} (token passed in the URL fragment)`
+            : `office UI: ${url}\n  a browser could not be opened; paste that URL, token and all`,
+        );
+      }
     }
     const shutdown = (): void => {
       process.once("SIGINT", () => process.exit(130));
@@ -62,22 +102,12 @@ export const uiCommand: Command = {
     if (bool(parsed, "print")) {
       return output([url], { url });
     }
-    const opener =
-      process.platform === "darwin"
-        ? ["open", url]
-        : process.platform === "win32"
-          ? ["cmd", "/c", "start", "", url]
-          : ["xdg-open", url];
-    const code = await Bun.spawn(opener, { stdout: "ignore", stderr: "ignore" }).exited;
-    if (code !== 0) {
-      throw new Error(`could not open a browser (${opener[0] ?? ""} exited with ${String(code)})`);
+    if (!(await openInBrowser(url))) {
+      throw new Error(`could not open a browser (${browserCommand(url)[0] ?? ""} failed)`);
     }
-    return output(
-      [`office opened at ${url.split("#")[0] ?? url} (token passed in the URL fragment)`],
-      {
-        url,
-      },
-    );
+    return output([`office opened at ${withoutToken(url)} (token passed in the URL fragment)`], {
+      url,
+    });
   },
 };
 
