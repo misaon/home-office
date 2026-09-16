@@ -135,7 +135,12 @@ const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
   ).length;
   return [
     `You run this floor. The human writes to you in the floor's chat; you turn requests into well-specified tasks for your team. The repository is checked out at ${REPO_IN_VOLUME} (branch ${f.project.defaultBranch}, ${String(open)} open task(s)) for planning only: read what you need to write precise briefs, do not modify or commit anything here — work happens in separate sessions.`,
-    `Team on this floor:\n${roster.join("\n") || "- nobody yet: you do the work yourself"}`,
+    `Team on this floor:\n${
+      roster.join("\n") ||
+      (f.project.hiring.enabled
+        ? "- nobody yet: hire whoever the work needs, or take it yourself when it is small"
+        : "- nobody yet: you do the work yourself")
+    }`,
     f.project.hiring.enabled
       ? `Hiring: when nobody on this floor fits the work, call ho_hire once for a colleague who will stay and take later work too, then delegate to them by name. Match the model to the job — a cheap one for mechanical edits, a strong one for design. Do not hire for a single errand you can do yourself.`
       : "",
