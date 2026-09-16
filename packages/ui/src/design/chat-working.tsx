@@ -1,9 +1,8 @@
-import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
 import { useBossSession } from "./live.ts";
 import { requireClient } from "../rpc.ts";
-import { useDesign } from "./store.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
 
 const BAR =
   "flex items-center gap-10 py-9 px-11 rounded-12 bg-accent-a07 border border-accent-a26 mb-10 animate-rise-300";
@@ -18,14 +17,11 @@ export function ChatWorking({ floor }: { floor: Floor }): React.JSX.Element | nu
   const confirm = useDesign((s) => s.confirm);
   const running = useBossSession(floor.id);
 
-  const stop = useMutation({
+  const stop = useOfficeMutation({
     mutationFn: (id: NonNullable<typeof running>["sessionId"]) =>
       requireClient().sessions.stop({ id }),
     onSuccess: () => {
       flash(t("chat.stopped", { name: running?.name ?? "" }));
-    },
-    onError: (error: Error) => {
-      flash(error.message);
     },
   });
 
