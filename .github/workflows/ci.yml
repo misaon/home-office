@@ -9,13 +9,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Concurrency groups are repository-wide, so the group has to carry the workflow name. A superseded pull
+  # request run is worth cancelling; a run on `main` is not, because it is the one that fills the shared
+  # BuildKit cache every pull request then reads.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -43,7 +46,8 @@ jobs:
       - run: bun run cli:build
       - name: Smoke test the daemon
         run: |
-          export HO_HOME="$(mktemp -d)"
+          HO_HOME="$(mktemp -d)"
+          export HO_HOME
           apps/cli/dist/ho daemon >"$HO_HOME/daemon.log" 2>&1 &
           for _ in $(seq 1 50); do
             if curl -fsS "http://127.0.0.1:47800/health" >/dev/null 2>&1; then break; fi
@@ -56,36 +60,88 @@ jobs:
 
   images:
     # The agent Dockerfile requires arm64 (`RUN test "$TARGETARCH" = arm64`); Linux arm64 hosted runners are
-    # free in public repositories. Only `base` and `claude-code` are built: the four provider targets share
-    # `base`, and the runner has 14 GB of disk.
+    # free in public repositories. Only `claude-code` is built: the four provider targets share `base`, which
+    # `mode=max` caches on the way past.
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 45
+    timeout-minutes: 30
+    env:
+      # Only `main` writes the shared BuildKit cache. A pull request can read the default branch's cache but
+      # writes to its own merge-ref scope, which nothing else can ever read, so letting pull requests export
+      # would spend the 10 GB repository quota on entries that do nothing but evict the useful ones.
+      PUBLISH_BUILD_CACHE: ${{ github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+          fetch-depth: 2
+      # Prose cannot reach an image, and this job is the slowest thing in the repository. Every other path is
+      # assumed to reach one, directly or through the relay bundled into the agent image — including Markdown
+      # under `images/`, which `COPY plugins/` ships into the sandbox. The comparison is deliberately shallow:
+      # on a pull request `HEAD^1` is the base of the merge commit, on a push it is the commit the branch
+      # moved from, and anything a depth of two cannot reach fails the diff and builds.
+      - name: Decide whether the images can be affected
+        id: scope
+        env:
+          PREVIOUS_COMMIT: ${{ github.event.before }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            base=HEAD^1
+          else
+            base="$PREVIOUS_COMMIT"
+          fi
+          if ! changed="$(git diff --name-only --no-renames "$base" HEAD 2>/dev/null)" || [ -z "$changed" ]; then
+            echo "build=true" >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s\n' "$changed"
+          inert='(^|/)[^/]+\.md$|^LICENSE$|^\.github/(CODEOWNERS|ISSUE_TEMPLATE/)'
+          if printf '%s\n' "$changed" | grep -qE '^images/'; then
+            echo "build=true" >>"$GITHUB_OUTPUT"
+          elif printf '%s\n' "$changed" | grep -qvE "$inert"; then
+            echo "build=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "build=false" >>"$GITHUB_OUTPUT"
+          fi
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        if: steps.scope.outputs.build == 'true'
         with:
           bun-version: 1.4.2
-      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
-      - run: bun install --frozen-lockfile
+      - uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003
+        if: steps.scope.outputs.build == 'true'
+      # `docker buildx build` runs from a shell step, and GitHub exposes ACTIONS_RUNTIME_TOKEN and
+      # ACTIONS_RESULTS_URL only to JavaScript actions. Without them BuildKit drops `type=gha` without
+      # reporting anything, which is why the pinned rtk stage was compiled from source on every run.
+      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487
+        if: steps.scope.outputs.build == 'true'
+      - name: Install dependencies
+        if: steps.scope.outputs.build == 'true'
+        run: bun install --frozen-lockfile
       - name: Assemble the agent build context
+        if: steps.scope.outputs.build == 'true'
         run: |
           bun build --target=bun --minify \
             packages/runner/src/main.ts --outfile images/agent/bin/ho-runner.js
       - name: Build the git-bridge image
+        if: steps.scope.outputs.build == 'true'
         run: |
-          docker buildx build --load -t ho/git-bridge:ci \
-            --cache-from type=gha,scope=git-bridge --cache-to type=gha,mode=max,scope=git-bridge \
-            images/git-bridge
-      - name: Build the agent image (base, then claude-code)
+          cache=(--cache-from "type=gha,scope=git-bridge")
+          if [ "$PUBLISH_BUILD_CACHE" = true ]; then
+            cache+=(--cache-to "type=gha,mode=max,scope=git-bridge")
+          fi
+          docker buildx build --load -t ho/git-bridge:ci "${cache[@]}" images/git-bridge
+      # `mode=max` exports the layers of every stage the build walked through, so building `claude-code`
+      # alone also caches `rtk` and `base` for the provider targets. Building `base` separately only loaded
+      # a tag that nothing read.
+      - name: Build the agent image
+        if: steps.scope.outputs.build == 'true'
         run: |
-          docker buildx build --load --target base -t ho/agent-base:ci \
-            --cache-from type=gha,scope=agent --cache-to type=gha,mode=max,scope=agent \
-            images/agent
-          docker buildx build --load --target claude-code -t ho/agent:ci \
-            --cache-from type=gha,scope=agent images/agent
+          cache=(--cache-from "type=gha,scope=agent")
+          if [ "$PUBLISH_BUILD_CACHE" = true ]; then
+            cache+=(--cache-to "type=gha,mode=max,scope=agent")
+          fi
+          docker buildx build --load --target claude-code -t ho/agent:ci "${cache[@]}" images/agent
       - name: Smoke test the images
+        if: steps.scope.outputs.build == 'true'
         run: |
           docker run --rm ho/agent:ci 2>&1 \
             | grep -q "HO_GATEWAY and HO_SESSION_TOKEN are required"
