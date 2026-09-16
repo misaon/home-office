@@ -30,6 +30,6 @@ export function resolveResources(root: string = defaultResourcesRoot()): Resourc
     runnerEntry: existsSync(runnerEntry) ? runnerEntry : null,
     uiDir: whenPresent(at("packages/ui/dist"), "index.html"),
     pluginsDir: whenPresent(at("images/agent/plugins"), "boss"),
-    layoutsDir: whenPresent(root, "AGENTS.md") === null ? null : at("layouts"),
+    layoutsDir: whenPresent(root, "bun.lock") === null ? null : at("layouts"),
   };
 }

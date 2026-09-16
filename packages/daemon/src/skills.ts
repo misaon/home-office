@@ -19,7 +19,7 @@ const stringField = (parsed: object, key: string): string | null => {
   return typeof found === "string" ? found : null;
 };
 
-export function parseSkill(
+function parseSkill(
   text: string,
   directory: string,
 ): { ok: true; value: SkillBody } | { ok: false; reason: string } {
