@@ -1,9 +1,9 @@
-import { compact, TaskId, TaskPriority, TaskStatus } from "@ho/protocol";
+import { compact, TaskPriority, TaskStatus } from "@ho/protocol";
 import { z } from "zod";
 import { required, str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
 import { colour, print } from "../output.ts";
-import { findAgent, findProject, projectIdOf } from "./lookup.ts";
+import { findAgent, findProject, findTask, projectIdOf } from "./lookup.ts";
 
 const statusColour = (status: TaskStatus): string => {
   if (status === "failed" || status === "blocked") {
@@ -11,8 +11,6 @@ const statusColour = (status: TaskStatus): string => {
   }
   return status === "done" ? colour.ok(status) : status;
 };
-
-const taskId = (ref: string | undefined): TaskId => TaskId.parse(ref);
 
 export const taskCommand: Command = {
   name: "task",
@@ -71,18 +69,19 @@ export const taskCommand: Command = {
       },
     },
     show: {
-      positionals: ["<task-id>"],
+      positionals: ["<task>"],
       run: async (parsed, client) => {
         const rpc = await client();
-        print(await rpc.tasks.get({ id: taskId(parsed.positionals[0]) }));
+        print(await findTask(rpc, parsed.positionals[0] ?? ""));
         return undefined;
       },
     },
     publish: {
-      positionals: ["<task-id>"],
+      positionals: ["<task>"],
       run: async (parsed, client) => {
         const rpc = await client();
-        const published = await rpc.tasks.publish({ id: taskId(parsed.positionals[0]) });
+        const task = await findTask(rpc, parsed.positionals[0] ?? "");
+        const published = await rpc.tasks.publish({ id: task.id });
         return output(
           [
             `pushed ${published.branch} to origin`,
@@ -94,11 +93,11 @@ export const taskCommand: Command = {
       },
     },
     assign: {
-      positionals: ["<task-id>", "<agent|none>"],
+      positionals: ["<task>", "<agent|none>"],
       run: async (parsed, client) => {
         const rpc = await client();
-        const [idRef, agentRef = ""] = parsed.positionals;
-        const current = await rpc.tasks.get({ id: taskId(idRef) });
+        const [taskRef = "", agentRef = ""] = parsed.positionals;
+        const current = await findTask(rpc, taskRef);
         const agent =
           agentRef === "none" ? null : await findAgent(rpc, agentRef, current.projectId);
         const agentId = agent === null ? null : agent.id;
@@ -114,14 +113,15 @@ export const taskCommand: Command = {
       },
     },
     move: {
-      positionals: ["<task-id>", "<status>"],
+      positionals: ["<task>", "<status>"],
       strings: { reason: "<text>" },
       run: async (parsed, client) => {
-        const [idRef, status] = parsed.positionals;
+        const [taskRef = "", status] = parsed.positionals;
         const reason = str(parsed, "reason");
         const rpc = await client();
+        const task = await findTask(rpc, taskRef);
         const moved = await rpc.tasks.transition({
-          id: taskId(idRef),
+          id: task.id,
           to: TaskStatus.parse(status),
           ...compact({ reason }),
         });

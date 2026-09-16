@@ -38,7 +38,7 @@ export function AgentSheet({ draft }: { draft: Member }): React.JSX.Element {
       <div className={`${CAPS} mb-10`}>{t("agent.recentWork")}</div>
       <div className={LIST}>
         {work.map((row, i) => (
-          <div key={row.x} className={`flex gap-11 py-12 px-13 ${separator(i === 0)}`}>
+          <div key={row.id} className={`flex gap-11 py-12 px-13 ${separator(i === 0)}`}>
             <span className={`${MONO} text-10 text-ink-meta flex-[0_0_auto]`}>{row.t}</span>
             <span className="text-12h text-ink-dim leading-body">{row.x}</span>
           </div>

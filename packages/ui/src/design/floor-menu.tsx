@@ -56,7 +56,7 @@ export function FloorMenu({ onPicked }: { onPicked: () => void }): React.JSX.Ele
           <div className="flex flex-col gap-4 max-h-250 overflow-y-auto">
             {rows.map(({ floor, index }) => (
               <FloorRow
-                key={floor.name}
+                key={floor.id}
                 floor={floor}
                 index={index}
                 current={floor.id === floorId}

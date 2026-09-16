@@ -250,7 +250,7 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
         projectId,
         floor.filter((message) => message.threadId !== threadId),
       );
-      return;
+      break;
     }
     case "chat.message_posted": {
       const { message } = event.payload;

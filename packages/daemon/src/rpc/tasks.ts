@@ -1,5 +1,6 @@
 import { assignTask, clearFinishedTasks, createTask, removeTask, transitionTask } from "@ho/core";
-import { HUMAN_ACTOR } from "@ho/protocol";
+import { HUMAN_ACTOR, notFound } from "@ho/protocol";
+import { DomainFailureError } from "../domain-failure.ts";
 import { publishTask } from "../publish.ts";
 import { guarded } from "./guarded.ts";
 import { os } from "./implement.ts";
@@ -14,10 +15,10 @@ export const taskRoutes = {
         (input.status === undefined || input.status.includes(task.status)),
     ),
   ),
-  get: base.tasks.get.handler(({ input, context, errors }) => {
+  get: base.tasks.get.handler(({ input, context }) => {
     const task = context.office.model.tasks.get(input.id);
     if (task === undefined) {
-      throw errors.NOT_FOUND({ data: { entity: "task", id: input.id } });
+      throw new DomainFailureError(notFound("task", input.id));
     }
     return task;
   }),

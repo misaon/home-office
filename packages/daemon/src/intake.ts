@@ -15,6 +15,7 @@ const FIRST_POLL_MS = 1000;
 
 type ProjectState = {
   timer: ReturnType<typeof setTimeout> | null;
+  armedMs: number | null;
   lastPollAt: string | null;
   nextPollAt: string | null;
   lastError: string | null;
@@ -25,6 +26,7 @@ type ProjectState = {
 
 const fresh = (): ProjectState => ({
   timer: null,
+  armedMs: null,
   lastPollAt: null,
   nextPollAt: null,
   lastError: null,
@@ -130,16 +132,19 @@ export class IntakeService {
       if (project.intake.enabled) {
         live.add(project.id);
         const state = this.#stateFor(project.id);
-        this.#arm(
-          project.id,
-          state.lastPollAt === null ? FIRST_POLL_MS : project.intake.intervalSeconds * 1000,
-        );
+        const interval = project.intake.intervalSeconds * 1000;
+        if (state.timer === null) {
+          this.#arm(project.id, state.lastPollAt === null ? FIRST_POLL_MS : interval);
+        } else if (state.armedMs !== interval && state.armedMs !== FIRST_POLL_MS) {
+          this.#arm(project.id, interval);
+        }
       }
     }
     for (const [projectId, state] of this.#state) {
       if (!live.has(projectId) && state.timer !== null) {
         clearTimeout(state.timer);
         state.timer = null;
+        state.armedMs = null;
         state.nextPollAt = null;
       }
     }
@@ -150,9 +155,11 @@ export class IntakeService {
     if (state.timer !== null) {
       clearTimeout(state.timer);
     }
+    state.armedMs = delayMs;
     state.nextPollAt = new Date(this.#office.clock.now().getTime() + delayMs).toISOString();
     state.timer = setTimeout(() => {
       state.timer = null;
+      state.armedMs = null;
       const project = this.#office.model.projects.get(projectId);
       if (project === undefined || !project.intake.enabled) {
         return;

@@ -1,4 +1,4 @@
-import { type Agent, compact, type Project, type ProjectId } from "@ho/protocol";
+import { type Agent, compact, type Project, type ProjectId, type Task } from "@ho/protocol";
 import type { HoClient } from "../client.ts";
 
 export const pick = <T extends { id: string; name?: string }>(
@@ -80,3 +80,6 @@ const onlyProject = async (client: HoClient): Promise<Project> => {
 
 export const projectFor = (client: HoClient, ref: string | undefined): Promise<Project> =>
   ref === undefined ? onlyProject(client) : findProject(client, ref);
+
+export const findTask = async (client: HoClient, ref: string): Promise<Task> =>
+  pick(await client.tasks.list({}), ref, "task");

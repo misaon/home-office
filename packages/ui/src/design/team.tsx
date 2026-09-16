@@ -94,7 +94,7 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
         <div className={LIST}>
           {rows.map((person, n) => (
             <TeamRow
-              key={person.name}
+              key={person.id}
               person={person}
               first={n === 0}
               onOpen={() => {

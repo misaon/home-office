@@ -4,6 +4,7 @@ import {
   conflict,
   type NewEvent,
   notFound,
+  patched,
   type Project,
   type ProjectCreateInput,
   type ProjectId,
@@ -84,13 +85,24 @@ export function updateProject(
   ctx: CommandContext,
 ): CommandResult<Project> {
   return withProject(model, input.id, (current) => {
-    if (input.patch.name !== undefined && nameTaken(model, input.patch.name, input.id)) {
-      return err(conflict(`project name "${input.patch.name}" is already used`));
+    const { patch } = input;
+    if (patch.name !== undefined && nameTaken(model, patch.name, input.id)) {
+      return err(conflict(`project name "${patch.name}" is already used`));
     }
-    if (input.patch.repo !== undefined && !sameRepo(current.repo, input.patch.repo)) {
+    if (patch.repo !== undefined && !sameRepo(current.repo, patch.repo)) {
       return err(conflict("a floor's repository cannot change; create a new floor"));
     }
-    const project: Project = { ...current, ...compact(input.patch), updatedAt: ctx.now };
+    const project: Project = {
+      ...current,
+      ...compact({ name: patch.name, repo: patch.repo, defaultBranch: patch.defaultBranch }),
+      publish: patched(current.publish, patch.publish),
+      intake: patched(current.intake, patch.intake),
+      hiring: patched(current.hiring, patch.hiring),
+      preview: patched(current.preview, patch.preview),
+      services: patched(current.services, patch.services),
+      verify: patched(current.verify, patch.verify),
+      updatedAt: ctx.now,
+    };
     return ok({
       events: [{ type: "project.updated", actor: ctx.actor, payload: { project } }],
       read: readProject(project.id),

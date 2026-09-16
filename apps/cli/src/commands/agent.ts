@@ -29,16 +29,13 @@ const BUDGET = {
   "max-sessions": "<n> concurrent sessions",
 };
 
-const budgetPatch = (
-  parsed: Parsed,
-  current: { budgets: Budgets },
-): { budgets: Budgets } | Record<string, never> => {
+const budgetPatch = (parsed: Parsed): { budgets: Partial<Budgets> } | Record<string, never> => {
   const next = compact({
     maxTurnsPerTask: positive(parsed, "max-turns"),
     maxWallMinutes: positive(parsed, "max-minutes"),
     maxConcurrentSessions: positive(parsed, "max-sessions"),
   });
-  return Object.keys(next).length === 0 ? {} : { budgets: { ...current.budgets, ...next } };
+  return Object.keys(next).length === 0 ? {} : { budgets: next };
 };
 
 export const agentCommand: Command = {
@@ -125,7 +122,7 @@ export const agentCommand: Command = {
             appearance: gender === undefined ? undefined : { gender },
             basePrompt: str(parsed, "prompt"),
             skillPack: str(parsed, "skills"),
-            ...budgetPatch(parsed, current),
+            ...budgetPatch(parsed),
           }),
         });
         return output(

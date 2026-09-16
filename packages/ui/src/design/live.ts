@@ -8,6 +8,7 @@ import {
   type ChatMessage,
   type Project,
   type Task,
+  type TaskId,
   type TaskStatus,
 } from "@ho/protocol";
 import { useEffect, useState } from "react";
@@ -231,14 +232,14 @@ export function useFloorActivity(floorId: ProjectId): Activity[] {
   });
 }
 
-export function useAgentWork(agentId: AgentId): { t: string; x: string }[] {
+export function useAgentWork(agentId: AgentId): { id: TaskId; t: string; x: string }[] {
   const snapshot = useUi((s) => s.snapshot);
   const now = useNow();
   return [...snapshot.tasks.values()]
     .filter((task) => task.assigneeId === agentId || task.reviewerId === agentId)
     .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 4)
-    .map((task) => ({ t: ago(task.updatedAt, now), x: task.title }));
+    .map((task) => ({ id: task.id, t: ago(task.updatedAt, now), x: task.title }));
 }
 
 export function useFloors(): Floor[] {

@@ -1,7 +1,7 @@
 import { createGithubIssuesConnector } from "@ho/intake-github";
 import { createDockerProvider } from "@ho/sandbox-docker";
 import { createSecretStore } from "@ho/secrets";
-import { DaemonConfig, loadConfig } from "./config.ts";
+import { type DaemonConfig, loadConfig } from "./config.ts";
 import { type DaemonInfo, removeDaemonInfo, writeDaemonInfo } from "./daemon-info.ts";
 import { startFloorJobs } from "./floor-jobs.ts";
 import { startGc } from "./gc.ts";
@@ -51,10 +51,7 @@ export async function launchDaemon(
   cleanup: AsyncDisposableStack,
 ): Promise<DaemonHandle> {
   const resources = resolveResources(options.resourcesRoot);
-  const config = DaemonConfig.parse({
-    ...(await loadConfig(home, resources)),
-    ...options.overrides,
-  });
+  const config = await loadConfig(home, resources, options.overrides ?? {});
   const { log, close: closeLog } = createLogger(config.logLevel, options.logFile);
   cleanup.defer(closeLog);
   const clock = { now: () => new Date() };

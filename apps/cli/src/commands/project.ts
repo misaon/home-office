@@ -28,44 +28,31 @@ const repoFrom = (path: string | undefined, url: string | undefined): RepoSource
   throw new Error("--path or --url is required");
 };
 
-const DEFAULT_PUBLISH: PublishPolicy = { mode: "branch", draft: true };
-
 const publishFrom = (
   pr: boolean | undefined,
   draft: boolean | undefined,
-  current: PublishPolicy,
-): PublishPolicy | undefined =>
+): Partial<PublishPolicy> | undefined =>
   pr === undefined && draft === undefined
     ? undefined
-    : {
-        mode: pr === undefined ? current.mode : pr ? "pull-request" : "branch",
-        draft: draft ?? current.draft,
-      };
+    : compact({ mode: pr === undefined ? undefined : pr ? "pull-request" : "branch", draft });
 
-const intakeFrom = (
-  flags: {
-    intake: boolean | undefined;
-    labels: string | undefined;
-    interval: number | undefined;
-    dryRun: boolean | undefined;
-  },
-  current: IntakePolicy,
-): IntakePolicy | undefined =>
+const intakeFrom = (flags: {
+  intake: boolean | undefined;
+  labels: string | undefined;
+  interval: number | undefined;
+  dryRun: boolean | undefined;
+}): Partial<IntakePolicy> | undefined =>
   Object.values(flags).every((value) => value === undefined)
     ? undefined
-    : {
-        ...current,
-        enabled: flags.intake ?? current.enabled,
-        labels:
-          flags.labels === undefined
-            ? current.labels
-            : flags.labels
-                .split(",")
-                .map((l) => l.trim())
-                .filter((l) => l !== ""),
-        intervalSeconds: flags.interval ?? current.intervalSeconds,
-        dryRun: flags.dryRun ?? current.dryRun,
-      };
+    : compact({
+        enabled: flags.intake,
+        labels: flags.labels
+          ?.split(",")
+          .map((label) => label.trim())
+          .filter((label) => label !== ""),
+        intervalSeconds: flags.interval,
+        dryRun: flags.dryRun,
+      });
 
 const inspect = async (
   client: HoClient,
@@ -122,11 +109,7 @@ export const projectCommand: Command = {
       run: async (parsed, client) => {
         const rpc = await client();
         const inspection = await inspect(rpc, repoFrom(str(parsed, "path"), str(parsed, "url")));
-        const publish = publishFrom(
-          onOff(str(parsed, "pr")),
-          onOff(str(parsed, "draft")),
-          DEFAULT_PUBLISH,
-        );
+        const publish = publishFrom(onOff(str(parsed, "pr")), onOff(str(parsed, "draft")));
         const importAgentIds = await Promise.all(
           list(parsed, "import").map(async (ref) => {
             const agent = await findAgent(rpc, ref);
@@ -163,28 +146,19 @@ export const projectCommand: Command = {
       run: async (parsed, client) => {
         const rpc = await client();
         const current = await findProject(rpc, parsed.positionals[0] ?? "");
+        const command = str(parsed, "verify");
         const updated = await rpc.projects.update({
           id: current.id,
           patch: compact({
             defaultBranch: str(parsed, "branch"),
-            verify:
-              str(parsed, "verify") === undefined
-                ? undefined
-                : { ...current.verify, command: str(parsed, "verify") ?? "" },
-            publish: publishFrom(
-              onOff(str(parsed, "pr")),
-              onOff(str(parsed, "draft")),
-              current.publish,
-            ),
-            intake: intakeFrom(
-              {
-                intake: onOff(str(parsed, "intake")),
-                labels: str(parsed, "labels"),
-                interval: int(parsed, "interval"),
-                dryRun: onOff(str(parsed, "dry-run")),
-              },
-              current.intake,
-            ),
+            verify: command === undefined ? undefined : { command },
+            publish: publishFrom(onOff(str(parsed, "pr")), onOff(str(parsed, "draft"))),
+            intake: intakeFrom({
+              intake: onOff(str(parsed, "intake")),
+              labels: str(parsed, "labels"),
+              interval: int(parsed, "interval"),
+              dryRun: onOff(str(parsed, "dry-run")),
+            }),
           }),
         });
         return output(
