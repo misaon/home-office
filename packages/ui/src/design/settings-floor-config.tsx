@@ -1,11 +1,10 @@
 import type { OfficeFileSync } from "@ho/protocol";
-import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./controls.tsx";
 import type { Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
-import { useDesign } from "./store.ts";
+import { useDesign, useOfficeMutation } from "./store.ts";
 import { MONO } from "./tokens.ts";
 
 const LINE = `${MONO} text-10h leading-prose overflow-hidden text-ellipsis`;
@@ -44,21 +43,15 @@ export function FloorConfigFile({ floor }: { floor: Floor }): React.JSX.Element 
   const flash = useDesign((s) => s.flash);
   const [report, setReport] = useState<OfficeFileSync | null>(null);
 
-  const sync = useMutation({
+  const sync = useOfficeMutation({
     mutationFn: () => requireClient().projects.sync({ id: floor.id, dryRun: false }),
     onSuccess: setReport,
-    onError: (error: Error) => {
-      flash(error.message);
-    },
   });
-  const write = useMutation({
+  const write = useOfficeMutation({
     mutationFn: () => requireClient().projects.export({ id: floor.id }),
     onSuccess: (written) => {
       setReport(null);
       flash(t("project.configWrote", { path: written.path }));
-    },
-    onError: (error: Error) => {
-      flash(error.message);
     },
   });
 
