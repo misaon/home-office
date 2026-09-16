@@ -15,6 +15,7 @@ import { buildsImages, resolveResources } from "./paths.ts";
 import { RunnerGateway } from "./runner-gateway.ts";
 import { createRuntimes } from "./runtimes.ts";
 import { startServer } from "./server.ts";
+import { SkillLibrary } from "./skills.ts";
 import { SessionManager } from "./sessions.ts";
 import { VERSION } from "./version.ts";
 
@@ -77,7 +78,7 @@ export async function launchDaemon(
     platform: config.docker.platform,
   });
   const gateway = new RunnerGateway(log);
-  const mcp = new McpGateway(office, log);
+  const mcp = new McpGateway(office, new SkillLibrary(resources.pluginsDir), log);
   const gate = new OfficeGate(log);
   // The port is known only after listening; sessions read the URLs lazily.
   let { port } = config;

@@ -6,6 +6,7 @@ import type {
   ProjectId,
   PublishPolicy,
   ServicesPolicy,
+  VerifyPolicy,
 } from "@ho/protocol";
 import { withProject } from "./commands/shared.ts";
 import type { ReadModel } from "./model/read-model.ts";
@@ -24,6 +25,11 @@ const intakeText = (p: IntakePolicy): string => {
 };
 
 const servicesText = (p: ServicesPolicy): string => (p.enabled ? p.mode : "off");
+
+const verifyText = (p: VerifyPolicy): string =>
+  p.command === ""
+    ? "off"
+    : `\`${p.command}\` (${String(p.timeoutSeconds)}s, ${String(p.maxAttempts)} attempts)`;
 
 const projectNameTaken = (model: ReadModel, name: string, except: ProjectId): boolean =>
   [...model.projects.values()].some(
@@ -64,6 +70,10 @@ function planProject(
     plan.changes.push(
       `services: ${servicesText(project.services)} → ${servicesText(file.services)}`,
     );
+  }
+  if (file.verify !== undefined && !jsonEqual(file.verify, project.verify)) {
+    patch.verify = file.verify;
+    plan.changes.push(`verify: ${verifyText(project.verify)} → ${verifyText(file.verify)}`);
   }
   if (Object.keys(patch).length === 0) {
     return;

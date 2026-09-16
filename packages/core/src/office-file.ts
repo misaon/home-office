@@ -79,6 +79,7 @@ export function officeFileFrom(project: Project, agents: readonly Agent[]): Offi
     publish: project.publish,
     intake: project.intake,
     services: project.services,
+    verify: project.verify,
     ...compact({ budgets: shared }),
     agents: roster.map((agent) => entryFrom(agent, shared)),
   };

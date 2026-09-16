@@ -66,6 +66,11 @@ export function FloorConfigFile({ floor }: { floor: Floor }): React.JSX.Element 
     <div className="mt-14">
       <div className="text-13">{t("project.configTitle")}</div>
       <div className="text-11h text-ink-meta leading-prose mt-4">{t("project.configHint")}</div>
+      <div className={`${LINE} text-ink-meta mt-7`}>
+        {floor.verify === ""
+          ? t("project.verifyNone")
+          : t("project.verifyCommand", { command: floor.verify })}
+      </div>
       <div className="flex gap-9 mt-10 flex-wrap">
         <Button
           disabled={sync.isPending || write.isPending}

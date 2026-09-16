@@ -50,6 +50,8 @@ export const enStaff = {
     configNone: "This repository carries no .ho/config.json.",
     configNothing: "Nothing to change.",
     configWrote: "Wrote {{path}}",
+    verifyNone: "No checks configured — work is published on the agent's word alone.",
+    verifyCommand: "Checks before publishing: {{command}}",
     pullRequests: "Open a pull request",
     pullRequestsHint:
       "On: finished work arrives as a pull request. Off: the branch is pushed and nothing else happens.",

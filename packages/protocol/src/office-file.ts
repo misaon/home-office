@@ -12,7 +12,7 @@ import {
   ProviderId,
 } from "./domain.ts";
 import { ProjectId } from "./ids.ts";
-import { IntakePolicy, PublishPolicy, ServicesPolicy } from "./policies.ts";
+import { IntakePolicy, PublishPolicy, ServicesPolicy, VerifyPolicy } from "./policies.ts";
 
 /** The directory in the repository root, and the two files the office reads out of it. */
 export const OFFICE_DIR = ".ho";
@@ -56,6 +56,8 @@ export const OfficeFile = z.strictObject({
   publish: PublishPolicy.optional(),
   intake: IntakePolicy.optional(),
   services: ServicesPolicy.optional(),
+  /** The checks that must pass before this floor's work is published. */
+  verify: VerifyPolicy.optional(),
   /** The floor's default for colleagues that carry no `budgets` of their own. */
   budgets: Budgets.optional(),
   agents: z.array(OfficeFileAgent).max(100).optional(),
