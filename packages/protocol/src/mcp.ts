@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ATTACHMENTS_MAX, AttachmentName, CHAT_OUTBOX_DIR } from "./attachments.ts";
-import { CRITERIA_MAX, TaskPriority } from "./domain.ts";
+import { PublishMode, REPORT_MAX, TaskPriority, TaskSpec } from "./domain.ts";
 import { TaskId } from "./ids.ts";
 
 export const HoReportInput = z.object({
@@ -12,7 +12,7 @@ export const HoReportInput = z.object({
   summary: z
     .string()
     .min(1)
-    .max(6000)
+    .max(REPORT_MAX)
     .describe(
       "What changed, how you verified it, open questions. Plain text; keep it under a page.",
     ),
@@ -62,24 +62,16 @@ export type HoHireInput = z.infer<typeof HoHireInput>;
 
 export const HoDelegateInput = z.object({
   title: z.string().min(1).max(200),
-  goal: z.string().min(1).max(2000).describe("One sentence: what this task achieves and for whom"),
-  acceptanceCriteria: z
-    .array(z.string().min(1).max(2000))
-    .min(1)
-    .max(CRITERIA_MAX)
-    .describe(
-      'Independently checkable conditions, each one "When <condition>, the system shall <behaviour>". The reviewer checks exactly these, so a criterion nobody can verify is not a criterion.',
-    ),
-  constraints: z
-    .array(z.string().min(1).max(2000))
-    .max(CRITERIA_MAX)
-    .prefault([])
-    .describe("What the worker must not change, must reuse, or must keep working"),
-  outOfScope: z
-    .array(z.string().min(1).max(2000))
-    .max(CRITERIA_MAX)
-    .prefault([])
-    .describe("Nearby work this task deliberately does not include"),
+  goal: TaskSpec.shape.goal.describe("One sentence: what this task achieves and for whom"),
+  acceptanceCriteria: TaskSpec.shape.acceptanceCriteria.describe(
+    'Independently checkable conditions, each one "When <condition>, the system shall <behaviour>". The reviewer checks exactly these, so a criterion nobody can verify is not a criterion.',
+  ),
+  constraints: TaskSpec.shape.constraints.describe(
+    "What the worker must not change, must reuse, or must keep working",
+  ),
+  outOfScope: TaskSpec.shape.outOfScope.describe(
+    "Nearby work this task deliberately does not include",
+  ),
   context: z
     .string()
     .max(4000)
@@ -94,12 +86,9 @@ export const HoDelegateInput = z.object({
     .describe(
       "Colleague name or id on this floor (your own name when you do it yourself); omit to leave the task in the inbox",
     ),
-  publish: z
-    .enum(["branch", "pull-request"])
-    .optional()
-    .describe(
-      "Set only when the human asked for a particular delivery — pull-request when they want a PR, branch when they explicitly do not. Omit to follow the floor's own setting.",
-    ),
+  publish: PublishMode.optional().describe(
+    "Set only when the human asked for a particular delivery — pull-request when they want a PR, branch when they explicitly do not. Omit to follow the floor's own setting.",
+  ),
   priority: TaskPriority.optional(),
 });
 export type HoDelegateInput = z.infer<typeof HoDelegateInput>;

@@ -9,7 +9,7 @@ import {
   type ProjectId,
 } from "@ho/protocol";
 import { isTerminal } from "./commands/tasks.ts";
-import { membersOf, sessionsOfAgent } from "./model/queries.ts";
+import { membersOf, sessionsOfAgent, tasksOf } from "./model/queries.ts";
 import type { ReadModel } from "./model/read-model.ts";
 import { jsonEqual } from "./office-file.ts";
 import { defaultChoice, validateChoice } from "./providers.ts";
@@ -119,7 +119,7 @@ function release(model: ReadModel, agent: Agent, ctx: CommandContext, plan: Plan
     plan.problems.push(`${agent.name} is not in the file but is mid-session; left on the floor`);
     return false;
   }
-  const busy = [...model.tasks.values()].filter(
+  const busy = tasksOf(model, agent.projectId).filter(
     (t) => (t.assigneeId === agent.id || t.reviewerId === agent.id) && !isTerminal(t.status),
   ).length;
   if (busy > 0) {
@@ -197,13 +197,14 @@ export function planRoster(
   const roster = membersOf(model, project.id);
   const boss = roster.find((agent) => agent.role === "boss");
   const staff = roster.filter((agent) => agent.id !== boss?.id);
-  const taken = new Set<string>();
+  const taken = new Set<string>(boss === undefined ? [] : [boss.name.toLowerCase()]);
   for (const agent of staff) {
     if (named.has(agent.name.toLowerCase()) || !release(model, agent, ctx, plan)) {
       taken.add(agent.name.toLowerCase());
     }
   }
   if (boss !== undefined && bossEntry !== undefined) {
+    taken.delete(boss.name.toLowerCase());
     taken.add(planBoss(boss, bossEntry, floorBudgets, taken, ctx, plan).toLowerCase());
   }
   const byName = new Map(staff.map((agent) => [agent.name.toLowerCase(), agent]));

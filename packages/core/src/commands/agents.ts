@@ -7,9 +7,10 @@ import {
   compact,
   conflict,
   isSessionActive,
+  patched,
   type ProjectId,
 } from "@ho/protocol";
-import { bossOf, membersOf, sessionsOfAgent } from "../model/queries.ts";
+import { bossOf, membersOf, sessionsOfAgent, tasksOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { defaultChoice, validateChoice } from "../providers.ts";
 import { type CommandContext, type CommandResult, entity, err, ok } from "../result.ts";
@@ -68,7 +69,7 @@ export function updateAgent(
   ctx: CommandContext,
 ): CommandResult<Agent> {
   return withAgent(model, input.id, (current) => {
-    const { patch } = input;
+    const { budgets, ...patch } = input.patch;
     if (patch.name !== undefined && nameTaken(model, current.projectId, patch.name, input.id)) {
       return err(conflict(`agent name "${patch.name}" is already used on this floor`));
     }
@@ -84,7 +85,12 @@ export function updateAgent(
       patch.provider !== undefined && patch.provider !== current.provider
         ? { ...current, ...defaultChoice(patch.provider, patch.role ?? current.role) }
         : current;
-    const agent: Agent = { ...base, ...compact(patch), updatedAt: ctx.now };
+    const agent: Agent = {
+      ...base,
+      ...compact(patch),
+      budgets: patched(current.budgets, budgets),
+      updatedAt: ctx.now,
+    };
     const choice = validateChoice(agent);
     if (!choice.ok) {
       return choice;
@@ -134,7 +140,7 @@ export function removeAgent(
     if (sessionsOfAgent(model, id).some((s) => isSessionActive(s.state))) {
       return err(conflict("agent has an active session"));
     }
-    const busy = [...model.tasks.values()].filter(
+    const busy = tasksOf(model, agent.projectId).filter(
       (t) => (t.assigneeId === id || t.reviewerId === id) && !isTerminal(t.status),
     ).length;
     if (busy > 0) {

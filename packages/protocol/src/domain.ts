@@ -13,6 +13,7 @@ import {
   HiringPolicy,
   IntakePolicy,
   PreviewPolicy,
+  PublishMode,
   PublishPolicy,
   ServicesPolicy,
   VerifyPolicy,
@@ -114,7 +115,7 @@ const TaskSource = z.discriminatedUnion("kind", [
 ]);
 type TaskSource = z.infer<typeof TaskSource>;
 
-export const CRITERIA_MAX = 12;
+const CRITERIA_MAX = 12;
 
 export const TaskSpec = z.object({
   goal: z.string().min(1).max(500),
@@ -124,16 +125,20 @@ export const TaskSpec = z.object({
 });
 export type TaskSpec = z.infer<typeof TaskSpec>;
 
+export const REPORT_MAX = 4000;
+
 export const TaskArtifacts = z.object({
   branch: z.string().min(1).optional(),
   prUrl: z.url().optional(),
-  report: z.string().max(4000).optional(),
+  report: z.string().max(REPORT_MAX).optional(),
 });
 export type TaskArtifacts = z.infer<typeof TaskArtifacts>;
 
 const TaskNoteKind = z.enum(["handoff", "review", "question", "answer", "report", "info"]);
 
 export const NOTE_MAX = 8000;
+
+const BRIEF_MAX = 24_000;
 
 export const TaskNote = z.object({
   at: IsoDateTime,
@@ -189,12 +194,12 @@ export const Task = z.object({
   projectId: ProjectId,
   kind: TaskKind.default("work"),
   title: z.string().min(1).max(200),
-  brief: z.string().max(20_000),
+  brief: z.string().max(BRIEF_MAX),
   spec: TaskSpec.optional(),
   status: TaskStatus,
   assigneeId: AgentId.optional(),
   reviewerId: AgentId.optional(),
-  publish: PublishPolicy.shape.mode.optional(),
+  publish: PublishMode.optional(),
   reviewRounds: z.int().nonnegative().default(0),
   notes: z.array(TaskNote).default([]),
   source: TaskSource,

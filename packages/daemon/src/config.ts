@@ -79,10 +79,14 @@ export type DaemonConfig = z.infer<typeof DaemonConfig>;
 export const resolveHome = (env: Record<string, string | undefined> = Bun.env): string =>
   env["HO_HOME"] ?? join(homedir(), ".config", "home-office");
 
-export async function loadConfig(home: string, resources: Resources): Promise<DaemonConfig> {
+export async function loadConfig(
+  home: string,
+  resources: Resources,
+  overrides: Partial<DaemonConfig>,
+): Promise<DaemonConfig> {
   const file = Bun.file(join(home, "config.json"));
-  const raw: unknown = (await file.exists()) ? await file.json() : {};
-  const config = DaemonConfig.parse(raw);
+  const stored = (await file.exists()) ? z.looseObject({}).parse(await file.json()) : {};
+  const config = DaemonConfig.parse({ ...stored, ...overrides });
   return {
     ...config,
     ui: {

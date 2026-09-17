@@ -21,12 +21,9 @@ const SCHEMA = [
     type text NOT NULL,
     at text NOT NULL,
     actor text NOT NULL,
-    correlation_id text,
-    causation_id text,
     payload text NOT NULL
   )`,
   "CREATE UNIQUE INDEX IF NOT EXISTS events_id_unique ON events (id)",
-  "DROP TABLE IF EXISTS __drizzle_migrations",
 ];
 
 const Row = z.object({

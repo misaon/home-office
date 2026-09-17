@@ -127,7 +127,9 @@ export function StageCamera({
       >
         {t("stage.fit")}
       </button>
-      {boss === undefined ? null : <FollowBoss id={boss.id} name={boss.name} office={office} />}
+      {boss === undefined ? null : (
+        <FollowBoss key={boss.id} id={boss.id} name={boss.name} office={office} />
+      )}
       {internal ? (
         <button
           type="button"

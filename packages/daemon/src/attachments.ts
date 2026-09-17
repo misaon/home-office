@@ -9,7 +9,7 @@ import {
   type DomainError,
   notFound,
 } from "@ho/protocol";
-import { mkdir, readdir, rm } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 export class AttachmentStore {
@@ -111,13 +111,5 @@ export class AttachmentStore {
       }
     }
     return collected;
-  }
-
-  async outboxFiles(sessionId: string): Promise<string[]> {
-    try {
-      return await readdir(this.outboxFor(sessionId));
-    } catch {
-      return [];
-    }
   }
 }

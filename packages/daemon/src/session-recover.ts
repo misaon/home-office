@@ -3,6 +3,9 @@ import { errorMessage, type SessionId, type TaskId } from "@ho/protocol";
 import { LABELS } from "./labels.ts";
 import type { SessionDeps } from "./sessions.ts";
 
+const RESTART_REASON =
+  "daemon restarted before the session finished; inspect the task branch and resume explicitly";
+
 export async function recoverSessions(
   deps: SessionDeps,
   end: (sessionId: SessionId, reason: string) => Promise<unknown>,
@@ -35,6 +38,3 @@ export async function recoverSessions(
     await block(session.taskId, RESTART_REASON);
   }
 }
-
-const RESTART_REASON =
-  "daemon restarted before the session finished; inspect the task branch and resume explicitly";

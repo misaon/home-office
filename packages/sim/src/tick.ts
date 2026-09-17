@@ -60,9 +60,11 @@ function runElevator(world: World, floorId: string, floor: Floor, dtMs: number):
         if (passenger !== undefined) {
           const spot = world.rng.pick(freeAnchors(world, floorId, "wander", passenger.kind))
             ?.at ?? { x: car.x, y: car.y + 5 };
+          const leaves = passenger.steps[0]?.kind === "walk";
           setSteps(passenger, [
             { kind: "dwell", activity: "idle", facing: "s", until: null, ms: STEP_OUT_MS },
-            ...(passenger.steps.length > 0 ? passenger.steps : walkSteps(floorId, spot)),
+            ...(leaves ? [] : walkSteps(floorId, spot)),
+            ...passenger.steps,
           ]);
         }
       }

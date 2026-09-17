@@ -5,7 +5,7 @@ import {
   recordVerificationFailure,
   transitionTask,
 } from "@ho/core";
-import { SYSTEM_ACTOR, type Task } from "@ho/protocol";
+import { type Project, SYSTEM_ACTOR, type Task } from "@ho/protocol";
 import { pushFromVolume } from "./git-bridge.ts";
 import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
 import { openPullRequest } from "./publish.ts";
@@ -17,9 +17,9 @@ import { runVerify } from "./verify.ts";
 async function verified(
   deps: SessionDeps,
   ctx: SessionContext,
+  project: Project,
   provisioned: Provisioned,
 ): Promise<boolean> {
-  const project = deps.office.model.projects.get(ctx.project.id) ?? ctx.project;
   if (project.verify.command === "") {
     return true;
   }
@@ -46,12 +46,11 @@ async function verified(
   return false;
 }
 
-async function publish(
+async function pushBranch(
   deps: SessionDeps,
-  ctx: SessionContext,
+  project: Project,
   provisioned: Provisioned,
-  report: string,
-): Promise<string | null> {
+): Promise<void> {
   const { provider, config, home } = deps;
   await pushFromVolume(
     provider,
@@ -60,16 +59,64 @@ async function publish(
     provisioned.volume,
     provisioned.branch,
   );
-  if (ctx.project.repo.kind === "git") {
-    await pushMirrorBranch(home, ctx.project, provisioned.branch);
+  if (project.repo.kind === "git") {
+    await pushMirrorBranch(home, project, provisioned.branch);
   }
-  if ((ctx.task.publish ?? ctx.project.publish.mode) !== "pull-request") {
+}
+
+async function pullRequest(
+  ctx: SessionContext,
+  project: Project,
+  provisioned: Provisioned,
+  report: string,
+): Promise<string | null> {
+  if ((ctx.task.publish ?? project.publish.mode) !== "pull-request") {
     return null;
   }
-  if (ctx.project.repo.kind === "local") {
-    await pushLocalBranch(ctx.project.repo.path, provisioned.branch);
+  if (project.repo.kind === "local") {
+    await pushLocalBranch(project.repo.path, provisioned.branch);
   }
-  return openPullRequest(ctx.project, ctx.task, provisioned.branch, report);
+  return openPullRequest(project, ctx.task, provisioned.branch, report);
+}
+
+async function settleWork(
+  deps: SessionDeps,
+  ctx: SessionContext,
+  provisioned: Provisioned,
+  outcome: Outcome,
+  current: Task,
+): Promise<void> {
+  const { office, mcp } = deps;
+  const project = office.model.projects.get(ctx.project.id) ?? ctx.project;
+  const actor = { kind: "agent", agentId: ctx.agent.id } as const;
+  const record = (artifacts: Task["artifacts"]): Promise<Task> =>
+    office.execute(SYSTEM_ACTOR, (m, c) => patchTaskArtifacts(m, ctx.task.id, artifacts, c));
+  if (current.status !== "in_progress") {
+    await pushBranch(deps, project, provisioned);
+    await record({ branch: provisioned.branch });
+    return;
+  }
+  const filed = mcp.report(provisioned.mcpToken);
+  const reported = outcome.report.trim();
+  const summary =
+    filed?.summary ?? (reported !== "" ? outcome.report : (outcome.failure ?? "(no report)"));
+  const status =
+    outcome.failure !== null || filed?.status === "blocked"
+      ? "blocked"
+      : (filed?.status ?? "review");
+  if (status !== "blocked" && !(await verified(deps, ctx, project, provisioned))) {
+    return;
+  }
+  await pushBranch(deps, project, provisioned);
+  const prUrl = status === "blocked" ? null : await pullRequest(ctx, project, provisioned, summary);
+  await record({
+    branch: provisioned.branch,
+    report: summary,
+    ...(prUrl === null ? {} : { prUrl }),
+  });
+  if (office.model.tasks.get(ctx.task.id)?.status === "in_progress") {
+    await office.execute(actor, (m, c) => fileReport(m, ctx.task.id, { status, summary }, c));
+  }
 }
 
 export async function settle(
@@ -80,8 +127,7 @@ export async function settle(
 ): Promise<void> {
   const { office, mcp } = deps;
   const actor = { kind: "agent", agentId: ctx.agent.id } as const;
-  const taskNow = (): Task | undefined => office.model.tasks.get(ctx.task.id);
-  const current = taskNow();
+  const current = office.model.tasks.get(ctx.task.id);
   if (current === undefined) {
     return;
   }
@@ -140,22 +186,7 @@ export async function settle(
       return;
     }
     case "work": {
-      const status = blocked ? "blocked" : (filed?.status ?? "review");
-      if (status !== "blocked" && !(await verified(deps, ctx, provisioned))) {
-        return;
-      }
-      const prUrl = await publish(deps, ctx, provisioned, summary);
-      await office.execute(SYSTEM_ACTOR, (m, c) =>
-        patchTaskArtifacts(
-          m,
-          ctx.task.id,
-          { branch: provisioned.branch, report: summary, ...(prUrl === null ? {} : { prUrl }) },
-          c,
-        ),
-      );
-      if (taskNow()?.status === "in_progress") {
-        await office.execute(actor, (m, c) => fileReport(m, ctx.task.id, { status, summary }, c));
-      }
+      await settleWork(deps, ctx, provisioned, outcome, current);
     }
   }
 }

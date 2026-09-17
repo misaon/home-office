@@ -1,12 +1,14 @@
-import { type ChatSendInput, type ChatThreadTarget } from "@ho/protocol";
+import { type ChatSendInput, type ChatThreadTarget, errorMessage } from "@ho/protocol";
+import type { TFunction } from "i18next";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { rejects, upload } from "../attachments.ts";
 import { requireClient } from "../rpc.ts";
 import { ChatAttachment } from "./chat-attachment.tsx";
+import { fitToText, onEnter, onTab } from "./chat-editing.ts";
 import { ChatToolbar } from "./chat-toolbar.tsx";
 import type { Floor, Message, ThreadPick } from "./data.ts";
-import { useDesign, useOfficeMutation } from "./store.ts";
+import { type Design, useDesign, useOfficeMutation } from "./store.ts";
 
 const BOX = "relative rounded-15 p-12 transition-[border-color,background,box-shadow] duration-250";
 
@@ -15,108 +17,6 @@ const DROP =
 
 const INPUT =
   "w-full block resize-none overflow-y-auto border-0 bg-transparent text-13h leading-text pt-2 px-2 pb-10";
-
-const MAX_INPUT_HEIGHT = 168;
-
-const MARKER = /^(?<indent>\s*)(?<bullet>[-*]|\d+[.)])\s+(?<rest>.*)$/u;
-
-type Continued = { value: string; caret: number };
-
-const INDENT = "  ";
-
-const reindent = (value: string, caret: number, deeper: boolean): Continued | null => {
-  const before = value.slice(0, caret);
-  const start = before.lastIndexOf("\n") + 1;
-  const breakAt = value.indexOf("\n", caret);
-  const line = value.slice(start, breakAt === -1 ? value.length : breakAt);
-  if (MARKER.exec(line) === null) {
-    return null;
-  }
-  if (deeper) {
-    return {
-      value: value.slice(0, start) + INDENT + value.slice(start),
-      caret: caret + INDENT.length,
-    };
-  }
-  if (!line.startsWith(INDENT)) {
-    return null;
-  }
-  return {
-    value: value.slice(0, start) + line.slice(INDENT.length) + value.slice(start + line.length),
-    caret: Math.max(start, caret - INDENT.length),
-  };
-};
-
-const onTab = (
-  event: React.KeyboardEvent<HTMLTextAreaElement>,
-  write: (draft: string) => void,
-): void => {
-  if (event.key !== "Tab") {
-    return;
-  }
-  const field = event.currentTarget;
-  const moved = reindent(field.value, field.selectionStart, !event.shiftKey);
-  if (moved === null) {
-    return;
-  }
-  event.preventDefault();
-  write(moved.value);
-  requestAnimationFrame(() => {
-    field.setSelectionRange(moved.caret, moved.caret);
-  });
-};
-
-const onEnter = (
-  event: React.KeyboardEvent<HTMLTextAreaElement>,
-  submit: () => void,
-  write: (draft: string) => void,
-): void => {
-  if (event.key !== "Enter" || event.nativeEvent.isComposing) {
-    return;
-  }
-  if (!event.shiftKey) {
-    event.preventDefault();
-    submit();
-    return;
-  }
-  const field = event.currentTarget;
-  const carried = continueList(field.value, field.selectionStart);
-  if (carried === null) {
-    return;
-  }
-  event.preventDefault();
-  write(carried.value);
-  requestAnimationFrame(() => {
-    field.setSelectionRange(carried.caret, carried.caret);
-  });
-};
-
-const continueList = (value: string, caret: number): Continued | null => {
-  const before = value.slice(0, caret);
-  const line = before.slice(before.lastIndexOf("\n") + 1);
-  const found = MARKER.exec(line)?.groups;
-  if (found === undefined) {
-    return null;
-  }
-  const { indent = "", bullet = "", rest = "" } = found;
-  if (rest.trim() === "") {
-    const start = before.length - line.length;
-    return { value: value.slice(0, start) + value.slice(caret), caret: start };
-  }
-  const next = /^\d/u.test(bullet)
-    ? `${String(Math.trunc(Number(bullet)) + 1)}${bullet.slice(-1)} `
-    : `${bullet} `;
-  const insert = `\n${indent}${next}`;
-  return { value: before + insert + value.slice(caret), caret: caret + insert.length };
-};
-
-const fitToText = (box: HTMLTextAreaElement | null): void => {
-  if (box === null) {
-    return;
-  }
-  box.style.height = "auto";
-  box.style.height = `${Math.min(box.scrollHeight, MAX_INPUT_HEIGHT)}px`;
-};
 
 function DropHint(): React.JSX.Element {
   const { t } = useTranslation();
@@ -139,6 +39,24 @@ function DropHint(): React.JSX.Element {
       <span className="text-12h text-accent-soft font-medium">{t("chat.dropHere")}</span>
     </div>
   );
+}
+
+async function attachFile(
+  chosen: File,
+  set: Design["set"],
+  flash: Design["flash"],
+  t: TFunction,
+): Promise<void> {
+  const refusal = rejects(chosen);
+  if (refusal !== null) {
+    flash(t("chat.attachRejected", { name: refusal }));
+    return;
+  }
+  try {
+    set({ attachment: await upload(chosen) });
+  } catch (error) {
+    flash(errorMessage(error));
+  }
 }
 
 const targetOf = (active: ThreadPick | "new"): ChatThreadTarget =>
@@ -195,6 +113,9 @@ export function ChatComposer({
         set({ thread: result.message.threadId });
       }
     },
+    onError: (_error, input) => {
+      set((s) => (s.draft === "" ? { draft: input.text } : {}));
+    },
   });
 
   const submit = (): void => {
@@ -213,20 +134,7 @@ export function ChatComposer({
   };
 
   const attach = (chosen: File): void => {
-    void attachNow(chosen);
-  };
-
-  const attachNow = async (chosen: File): Promise<void> => {
-    const refusal = rejects(chosen);
-    if (refusal !== null) {
-      flash(t("chat.attachRejected", { name: refusal }));
-      return;
-    }
-    try {
-      set({ attachment: await upload(chosen) });
-    } catch (error) {
-      flash(error instanceof Error ? error.message : String(error));
-    }
+    void attachFile(chosen, set, flash, t);
   };
 
   return (

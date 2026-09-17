@@ -1,4 +1,5 @@
 import { awaitsAnswer, chatOf } from "@ho/core";
+import { t } from "i18next";
 import {
   type Agent,
   type AgentId,
@@ -8,6 +9,7 @@ import {
   type ChatMessage,
   type Project,
   type Task,
+  type TaskId,
   type TaskStatus,
 } from "@ho/protocol";
 import { useEffect, useState } from "react";
@@ -76,8 +78,11 @@ function memberOf(agent: Agent, snapshot: Snapshot, now: number): Member {
     model: agent.model,
     effort: agent.effort,
     status: session === undefined ? "idle" : "working",
-    doing: task?.title ?? "Waiting for work",
-    since: session === undefined ? "idle" : `started ${since(session.startedAt, now)} ago`,
+    doing: task?.title ?? t("team.waiting"),
+    since:
+      session === undefined
+        ? t("team.idle")
+        : t("team.startedAgo", { since: since(session.startedAt, now) }),
     prompt: agent.basePrompt,
   };
 }
@@ -231,14 +236,14 @@ export function useFloorActivity(floorId: ProjectId): Activity[] {
   });
 }
 
-export function useAgentWork(agentId: AgentId): { t: string; x: string }[] {
+export function useAgentWork(agentId: AgentId): { id: TaskId; t: string; x: string }[] {
   const snapshot = useUi((s) => s.snapshot);
   const now = useNow();
   return [...snapshot.tasks.values()]
     .filter((task) => task.assigneeId === agentId || task.reviewerId === agentId)
     .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 4)
-    .map((task) => ({ t: ago(task.updatedAt, now), x: task.title }));
+    .map((task) => ({ id: task.id, t: ago(task.updatedAt, now), x: task.title }));
 }
 
 export function useFloors(): Floor[] {

@@ -174,7 +174,7 @@ export function startOffice(host: HTMLElement): OfficeHandle {
       scene.update(bridge.world, selectedAgentId, elapsedMs);
       if (followed !== null) {
         const actor = bridge.world.actors.get(followed);
-        if (actor !== undefined && !actor.hidden) {
+        if (actor !== undefined && !actor.hidden && actor.floorId === floorId) {
           scene.centreOnWorld((actor.pos.x + 0.5) * CELL_PX, (actor.pos.y + 0.5) * CELL_PX);
         }
       }

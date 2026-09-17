@@ -1,7 +1,10 @@
 import { z } from "zod";
 
+export const PublishMode = z.enum(["branch", "pull-request"]);
+export type PublishMode = z.infer<typeof PublishMode>;
+
 export const PublishPolicy = z.object({
-  mode: z.enum(["branch", "pull-request"]).default("branch"),
+  mode: PublishMode.default("branch"),
   draft: z.boolean().default(true),
 });
 export type PublishPolicy = z.infer<typeof PublishPolicy>;

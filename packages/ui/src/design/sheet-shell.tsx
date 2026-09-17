@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { DISPLAY } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
@@ -19,12 +20,13 @@ export function SheetShell({
   titleClass?: string;
   children: React.ReactNode;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const set = useDesign((s) => s.set);
   return (
     <div className={SHELL}>
       <div className="flex-[0_0_auto] flex items-center gap-11 py-14 px-16 border-b border-line">
         <button
-          aria-label="Back"
+          aria-label={t("common.back")}
           type="button"
           onClick={() => {
             set({ sheet: null, sheetDraft: null });

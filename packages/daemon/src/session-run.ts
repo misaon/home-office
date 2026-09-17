@@ -1,12 +1,26 @@
-import { attachmentsOfTask, type RuntimeSession } from "@ho/core";
-import type { RuntimeErrorCode, RuntimeEvent, SessionMode } from "@ho/protocol";
+import { attachmentsOfTask, changeSessionState, type RuntimeSession } from "@ho/core";
+import {
+  compact,
+  REPORT_MAX,
+  type RuntimeErrorCode,
+  type RuntimeEvent,
+  type SessionMode,
+  type SessionState,
+  SYSTEM_ACTOR,
+} from "@ho/protocol";
 import { browserMcpServers } from "./browser.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import { openingMessage, systemPrompt } from "./prompts.ts";
-import type { Provisioned, SessionContext } from "./session-provision.ts";
+import { secretEnvFor } from "./provider-secrets.ts";
+import {
+  provision,
+  type Provisioned,
+  type SessionContext,
+  sessionServicesOf,
+} from "./session-provision.ts";
+import { settle } from "./session-settle.ts";
 import type { SessionDeps } from "./sessions.ts";
 
-const REPORT_MAX = 4000;
 const PLUGINS_ROOT = "/opt/ho/plugins";
 
 export type Outcome = { report: string; failure: string | null };
@@ -110,7 +124,7 @@ const packDirs = (ctx: SessionContext): string[] => {
   return pack === "none" ? [] : [`${PLUGINS_ROOT}/${pack}`];
 };
 
-export async function runPrompt(
+async function runPrompt(
   deps: SessionDeps,
   ctx: SessionContext,
   provisioned: Provisioned,
@@ -165,4 +179,47 @@ export async function runPrompt(
   } finally {
     await provisioned.connection.terminate();
   }
+}
+
+export type Ending = { state: "stopped" | "failed"; reason: string | undefined };
+
+const setState = (
+  deps: SessionDeps,
+  ctx: SessionContext,
+  state: SessionState,
+  extra: { sandboxId?: string; services?: "ready" | "failed" } = {},
+): Promise<unknown> =>
+  deps.office.execute(SYSTEM_ACTOR, (m, c) =>
+    changeSessionState(m, { sessionId: ctx.session.id, state, ...extra }, c),
+  );
+
+export async function runSession(
+  deps: SessionDeps,
+  ctx: SessionContext,
+  hold: (provisioned: Provisioned) => void,
+  onEvent: (event: RuntimeEvent) => Promise<void>,
+): Promise<Ending> {
+  const secretEnv = await secretEnvFor(deps.secrets, ctx.agent);
+  const provisioned = await provision(deps, ctx);
+  hold(provisioned);
+  await setState(deps, ctx, "starting", {
+    sandboxId: provisioned.sandbox.id,
+    ...compact({ services: sessionServicesOf(provisioned.services) }),
+  });
+  deps.log.info(
+    {
+      sessionId: ctx.session.id,
+      mode: ctx.session.mode,
+      resume: ctx.previous?.runtimeSessionId ?? null,
+      uid: provisioned.connection.uid,
+    },
+    "runner connected",
+  );
+  const outcome = await runPrompt(deps, ctx, provisioned, secretEnv, onEvent);
+  await setState(deps, ctx, "stopping");
+  await settle(deps, ctx, provisioned, outcome);
+  return {
+    state: outcome.failure === null ? "stopped" : "failed",
+    reason: outcome.failure ?? undefined,
+  };
 }

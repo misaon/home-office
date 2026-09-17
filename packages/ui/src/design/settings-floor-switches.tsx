@@ -1,4 +1,5 @@
 import { Switch as BaseSwitch } from "@base-ui/react/switch";
+import type { ProjectUpdateInput } from "@ho/protocol";
 import { useTranslation } from "react-i18next";
 import type { Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
@@ -46,13 +47,8 @@ function Switch({
 export function FloorSwitches({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const update = useOfficeMutation({
-    mutationFn: (patch: {
-      publish?: { mode: "branch" | "pull-request" };
-      intake?: { enabled: boolean };
-      services?: { enabled: boolean };
-      preview?: { enabled: boolean };
-      hiring?: { enabled: boolean };
-    }) => requireClient().projects.update({ id: floor.id, patch }),
+    mutationFn: (patch: ProjectUpdateInput["patch"]) =>
+      requireClient().projects.update({ id: floor.id, patch }),
   });
 
   return (

@@ -120,7 +120,9 @@ export function carry(
   if (source === undefined || target === undefined || source.floorId !== target.floorId) {
     return false;
   }
+  summon(world, source);
   summon(world, target);
+  release(world, source);
   const meet = meetingPoint(world, source, target);
   const face = facingTowards(meet, target.hidden ? meet : target.tile);
   setEmotion(world, from, "envelope", null);
@@ -143,6 +145,7 @@ export function receive(world: World, agentId: AgentId, from: AgentId): void {
     return;
   }
   setEmotion(world, agentId, "envelope", RECEIVED_BUBBLE_MS);
+  release(world, actor);
   setSteps(actor, [
     ...pendingDeliveries(actor),
     {
@@ -161,21 +164,17 @@ export function sleep(world: World, agentId: AgentId): void {
   if (actor === undefined) {
     return;
   }
-  const spot = world.rng.pick(freeAnchors(world, actor.floorId, "sleep", actor.kind));
+  const bed = world.rng.pick(freeAnchors(world, actor.floorId, "sleep", actor.kind));
+  const spot = bed ?? world.rng.pick(freeAnchors(world, actor.floorId, "wander", actor.kind));
   actor.work = null;
   release(world, actor);
-  if (spot === undefined) {
-    setSteps(actor, [
-      ...pendingDeliveries(actor),
-      { kind: "hold", activity: "sleep", facing: "s" },
-    ]);
-    return;
+  if (bed !== undefined) {
+    reserve(world, actor, actor.floorId, bed.id);
   }
-  reserve(world, actor, actor.floorId, spot.id);
   setSteps(actor, [
     ...pendingDeliveries(actor),
-    ...walkSteps(actor.floorId, spot.at),
-    { kind: "hold", activity: "sleep", facing: spot.facing },
+    ...(spot === undefined ? [] : walkSteps(actor.floorId, spot.at)),
+    { kind: "hold", activity: "sleep", facing: spot?.facing ?? "s" },
   ]);
 }
 

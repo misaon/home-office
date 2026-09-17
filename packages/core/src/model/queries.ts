@@ -7,9 +7,9 @@ import {
   isSessionActive,
   type MailConnector,
   type MailItem,
-  type MailItemId,
   type ProjectId,
   type Session,
+  type SessionMode,
   type Task,
   type TaskId,
 } from "@ho/protocol";
@@ -72,10 +72,8 @@ export const findAgentByRef = (
   ref: string,
   projectId?: ProjectId,
 ): Agent | undefined =>
-  [...model.agents.values()].find(
-    (a) =>
-      (projectId === undefined || a.projectId === projectId) &&
-      (a.id === ref || a.name.toLowerCase() === ref.toLowerCase()),
+  (projectId === undefined ? [...model.agents.values()] : membersOf(model, projectId)).find(
+    (a) => a.id === ref || a.name.toLowerCase() === ref.toLowerCase(),
   );
 
 export const sessionsOfTask = (
@@ -100,10 +98,15 @@ export const resumableSession = (
   model: ReadModel,
   taskId: TaskId,
   agentId: AgentId,
+  mode: SessionMode,
 ): Session | undefined =>
   sessionsOfTask(model, taskId)
     .filter(
-      (s) => s.agentId === agentId && !isSessionActive(s.state) && s.runtimeSessionId !== undefined,
+      (s) =>
+        s.agentId === agentId &&
+        s.mode === mode &&
+        !isSessionActive(s.state) &&
+        s.runtimeSessionId !== undefined,
     )
     .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
 
@@ -161,14 +164,14 @@ export function attachmentsOfTask(
 }
 
 export function mailForTask(
-  model: { tasks: ReadonlyMap<TaskId, Task>; mail: ReadonlyMap<MailItemId, MailItem> },
+  model: Pick<ReadModel, "tasks" | "mail" | "mailBySource">,
   task: Task,
 ): MailItem | undefined {
   let current: Task | undefined = task;
-  for (let depth = 0; current !== undefined && depth < 4; depth += 1) {
-    const id: TaskId = current.id;
-    if (current.source.kind === "mail") {
-      return [...model.mail.values()].find((m) => m.taskId === id);
+  for (let depth = 0; current !== undefined && depth < THREAD_WALK_MAX; depth += 1) {
+    const { source } = current;
+    if (source.kind === "mail") {
+      return findMail(model, current.projectId, source.connector, source.externalId);
     }
     if (current.source.kind !== "delegation" || current.source.parentTaskId === undefined) {
       return undefined;

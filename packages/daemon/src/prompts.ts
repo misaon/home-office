@@ -25,7 +25,7 @@ const REPO_RULES =
   "House rules: this repository's own CLAUDE.md, .claude/skills and .claude/rules are loaded for you — follow them over your habits. AGENTS.md is not loaded automatically; if the repository has one, read it before you start and treat it the same way.";
 
 const HOST_TOOLS =
-  "Publishing: there is no `gh` in this sandbox and the only remote is a local path, so never try to open a pull request from the shell. Call ho_publish and the office pushes and opens it for you.";
+  "Publishing: there is no `gh` in this sandbox and the only remote is a local path, so never push or open a pull request from the shell; the office publishes finished work itself.";
 
 const previewGuide = (preview: { enabled: boolean; port: number }): string =>
   preview.enabled
@@ -103,7 +103,6 @@ const workPrompt = (f: SessionFacts): string[] => [
   previewGuide(f.preview),
   REPO_RULES,
   workPublish(f.project.publish.mode),
-  REPO_RULES,
   servicesGuide(f.services),
   `Task: ${f.task.title}`,
   criteriaGuide(f.task),

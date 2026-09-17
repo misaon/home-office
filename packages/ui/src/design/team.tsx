@@ -38,9 +38,9 @@ function TeamHeader({ floor, onHire }: { floor: Floor; onHire: () => void }): Re
       <div className={TOP}>
         <div className="flex items-baseline gap-9 min-w-0 flex-wrap">
           <span className={COUNT}>{team.length}</span>
-          <span
-            className={LABEL}
-          >{`${team.length === 1 ? "agent on " : "agents on "}${floor.name}`}</span>
+          <span className={LABEL}>
+            {t("team.onFloor", { count: team.length, floor: floor.name })}
+          </span>
         </div>
         <button
           type="button"
@@ -94,7 +94,7 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
         <div className={LIST}>
           {rows.map((person, n) => (
             <TeamRow
-              key={person.name}
+              key={person.id}
               person={person}
               first={n === 0}
               onOpen={() => {

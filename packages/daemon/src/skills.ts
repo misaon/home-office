@@ -79,10 +79,6 @@ export class SkillLibrary {
     this.#root = root;
   }
 
-  get available(): boolean {
-    return this.#root !== null;
-  }
-
   #packDir(pack: string): string | null {
     return this.#root === null || pack === "none" || pack.includes("/") || pack.includes("..")
       ? null

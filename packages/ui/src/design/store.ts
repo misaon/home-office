@@ -110,13 +110,14 @@ export const useDesign = create<Design>()(
 );
 
 export function useOfficeMutation<TData, TVariables>(
-  options: Omit<UseMutationOptions<TData, Error, TVariables>, "onError">,
+  options: UseMutationOptions<TData, Error, TVariables>,
 ): UseMutationResult<TData, Error, TVariables> {
   const flash = useDesign((s) => s.flash);
   return useMutation({
     ...options,
-    onError: (error: Error) => {
+    onError: (error, variables, onMutateResult, context) => {
       flash(error.message);
+      return options.onError?.(error, variables, onMutateResult, context);
     },
   });
 }

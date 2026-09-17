@@ -12,12 +12,14 @@ import {
   PublishPolicy,
   RepoSource,
   ServicesPolicy,
+  Task,
   TaskPriority,
   TaskStatus,
   Usage,
   VerifyPolicy,
 } from "./domain.ts";
 import { AgentId, ChatThreadId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import { patchOf } from "./patch.ts";
 
 const ProjectFields = Project.pick({
   name: true,
@@ -56,19 +58,14 @@ export const DirectoryPick = z.discriminatedUnion("status", [
   z.object({ status: z.literal("unavailable"), message: z.string() }),
 ]);
 export type DirectoryPick = z.infer<typeof DirectoryPick>;
-const ProjectPatch = z
-  .object({
-    name: Project.shape.name,
-    repo: Project.shape.repo,
-    defaultBranch: Project.shape.defaultBranch.unwrap(),
-    publish: PublishPolicy,
-    intake: IntakePolicy,
-    hiring: HiringPolicy,
-    preview: PreviewPolicy,
-    services: ServicesPolicy,
-    verify: VerifyPolicy,
-  })
-  .partial();
+const ProjectPatch = patchOf(Project.pick({ name: true, repo: true, defaultBranch: true })).extend({
+  publish: patchOf(PublishPolicy).optional(),
+  intake: patchOf(IntakePolicy).optional(),
+  hiring: patchOf(HiringPolicy).optional(),
+  preview: patchOf(PreviewPolicy).optional(),
+  services: patchOf(ServicesPolicy).optional(),
+  verify: patchOf(VerifyPolicy).optional(),
+});
 export const ProjectUpdateInput = z.object({ id: ProjectId, patch: ProjectPatch });
 export type ProjectUpdateInput = z.infer<typeof ProjectUpdateInput>;
 
@@ -87,20 +84,19 @@ export const AgentCreateInput = Agent.pick({
   budgets: Budgets.prefault({}),
 });
 export type AgentCreateInput = z.infer<typeof AgentCreateInput>;
-const AgentPatch = z
-  .object({
-    name: Agent.shape.name,
-    role: Agent.shape.role,
-    appearance: Agent.shape.appearance,
-    provider: Agent.shape.provider,
-    auth: AuthKind,
-    model: Agent.shape.model,
-    effort: Agent.shape.effort,
-    basePrompt: Agent.shape.basePrompt.unwrap(),
-    skillPack: Agent.shape.skillPack.unwrap(),
-    budgets: Budgets,
-  })
-  .partial();
+const AgentPatch = patchOf(
+  Agent.pick({
+    name: true,
+    role: true,
+    appearance: true,
+    provider: true,
+    auth: true,
+    model: true,
+    effort: true,
+    basePrompt: true,
+    skillPack: true,
+  }),
+).extend({ budgets: patchOf(Budgets).optional() });
 export const AgentUpdateInput = z.object({ id: AgentId, patch: AgentPatch });
 export type AgentUpdateInput = z.infer<typeof AgentUpdateInput>;
 export const AgentCopyInput = z.object({
@@ -113,8 +109,8 @@ export const AgentListInput = z.object({ projectId: ProjectId.optional() });
 
 export const TaskCreateInput = z.object({
   projectId: ProjectId,
-  title: z.string().min(1).max(200),
-  brief: z.string().max(20_000).default(""),
+  title: Task.shape.title,
+  brief: Task.shape.brief.default(""),
   priority: TaskPriority.default("normal"),
   assigneeId: AgentId.optional(),
 });

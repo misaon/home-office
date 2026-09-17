@@ -89,11 +89,13 @@ export class Office {
     for (const event of stored) {
       applyEvent(this.model, event);
     }
-    for (const event of stored) {
-      this.#log.debug(
-        { seq: event.seq, actor: event.actor.kind, ...subjectOf(event) },
-        `event ${event.type}`,
-      );
+    if (this.#log.isLevelEnabled("debug")) {
+      for (const event of stored) {
+        this.#log.debug(
+          { seq: event.seq, actor: event.actor.kind, ...subjectOf(event) },
+          `event ${event.type}`,
+        );
+      }
     }
     return result.value.read(this.model);
   }
