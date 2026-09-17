@@ -4,6 +4,7 @@ import {
   type HoReportInput,
   type HoReviewInput,
   type NewEvent,
+  REVIEW_STAGES,
   type Task,
   type TaskId,
 } from "@ho/protocol";
@@ -13,8 +14,38 @@ import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
 import { handoffEvent, note, noteEvent, statusChange, withTask } from "./shared.ts";
 import { readTask } from "./tasks.ts";
 
-const reviewerFor = (model: ReadModel, task: Task): Agent | undefined =>
-  membersOf(model, task.projectId).find((a) => a.role === "reviewer" && a.id !== task.assigneeId);
+export const reviewChain = (model: ReadModel, task: Task): Agent[] => {
+  const members = membersOf(model, task.projectId);
+  return REVIEW_STAGES.filter((stage) => (stage === "head" ? true : task.reviews[stage])).flatMap(
+    (stage) => {
+      const reviewer = members.find(
+        (agent) => agent.role === stage && agent.id !== task.assigneeId,
+      );
+      return reviewer === undefined ? [] : [reviewer];
+    },
+  );
+};
+
+const forwardTo = (
+  ctx: CommandContext,
+  task: Task,
+  from: Agent["id"] | undefined,
+  reviewer: Agent,
+): NewEvent[] => {
+  const handoffNote = note(ctx, "handoff", `review requested from ${reviewer.name}`);
+  const events: NewEvent[] = [
+    noteEvent(ctx, task, handoffNote),
+    {
+      type: "task.reviewer_assigned",
+      actor: ctx.actor,
+      payload: { taskId: task.id, reviewerId: reviewer.id },
+    },
+  ];
+  if (from !== undefined && from !== reviewer.id) {
+    events.push(handoffEvent(ctx, task.id, from, reviewer.id, handoffNote.text));
+  }
+  return events;
+};
 
 export function fileReport(
   model: ReadModel,
@@ -39,9 +70,9 @@ export function fileReport(
       events.push(statusChange(ctx, task, "blocked", input.summary.slice(0, 2000)));
       return ok({ events, read });
     }
-    const reviewer =
-      input.status === "review" && task.kind === "work" ? reviewerFor(model, task) : undefined;
-    if (reviewer === undefined) {
+    const [first] =
+      input.status === "review" && task.kind === "work" ? reviewChain(model, task) : [];
+    if (first === undefined) {
       events.push(
         statusChange(
           ctx,
@@ -54,19 +85,10 @@ export function fileReport(
       );
       return ok({ events, read });
     }
-    const handoffNote = note(ctx, "handoff", `review requested from ${reviewer.name}`);
     events.push(
-      noteEvent(ctx, task, handoffNote),
-      {
-        type: "task.reviewer_assigned",
-        actor: ctx.actor,
-        payload: { taskId: task.id, reviewerId: reviewer.id },
-      },
+      ...forwardTo(ctx, task, task.assigneeId, first),
       statusChange(ctx, task, "review", "awaiting review"),
     );
-    if (task.assigneeId !== undefined && task.assigneeId !== reviewer.id) {
-      events.push(handoffEvent(ctx, task.id, task.assigneeId, reviewer.id, handoffNote.text));
-    }
     return ok({ events, read });
   });
 }
@@ -81,7 +103,7 @@ export function submitReview(
     if (task.status !== "review") {
       return err(conflict(`task is ${task.status}; only tasks in review accept a verdict`));
     }
-    const rounds = task.reviewRounds + 1;
+    const rounds = input.verdict === "approve" ? task.reviewRounds : task.reviewRounds + 1;
     const events: NewEvent[] = [
       noteEvent(ctx, task, note(ctx, "review", `${input.verdict}: ${input.findings}`)),
       {
@@ -92,7 +114,14 @@ export function submitReview(
     ];
     const read = readTask(task.id);
     if (input.verdict === "approve") {
-      events.push(statusChange(ctx, task, "done", "approved"));
+      const chain = reviewChain(model, task);
+      const position = chain.findIndex((agent) => agent.id === task.reviewerId);
+      const next = position === -1 ? undefined : chain[position + 1];
+      if (next === undefined) {
+        events.push(statusChange(ctx, task, "done", "approved"));
+      } else {
+        events.push(...forwardTo(ctx, task, task.reviewerId, next));
+      }
       return ok({ events, read });
     }
     const worker = task.assigneeId === undefined ? undefined : model.agents.get(task.assigneeId);

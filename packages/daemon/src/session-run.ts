@@ -17,7 +17,7 @@ import {
   type SessionContext,
   sessionServicesOf,
 } from "./session-provision.ts";
-import { skillPackFor } from "./skill-pack.ts";
+import { skillPacksFor } from "./skill-pack.ts";
 import { explainExit } from "./session-record.ts";
 import { settle } from "./session-settle.ts";
 import type { SessionDeps } from "./sessions.ts";
@@ -34,19 +34,22 @@ type Consumed = Outcome & {
   turns: number;
 };
 
-type Prepared = { appendix: string; message: string; browser: boolean; pack: string };
+type Prepared = { appendix: string; message: string; browser: boolean; packs: string[] };
 
 const hashOf = (text: string): string =>
   new Bun.CryptoHasher("sha256").update(text).digest("hex").slice(0, HASH_CHARS);
 
+const plans = (ctx: SessionContext): boolean =>
+  ctx.session.mode === "triage" || ctx.session.mode === "plan";
+
 const browserFor = (deps: SessionDeps, ctx: SessionContext): boolean =>
-  deps.config.browser.enabled && (ctx.session.mode === "triage" || ctx.task.browser === true);
+  deps.config.browser.enabled && (plans(ctx) || ctx.task.browser === true);
 
 const prepare = (deps: SessionDeps, ctx: SessionContext, provisioned: Provisioned): Prepared => {
   const browser = browserFor(deps, ctx);
   return {
     browser,
-    pack: skillPackFor(ctx.agent, ctx.session.mode),
+    packs: skillPacksFor(ctx.agent, ctx.session.mode),
     appendix: systemPrompt(
       {
         agent: ctx.agent,
@@ -79,9 +82,7 @@ const openRuntime = (
       url: deps.mcpUrl(),
       headers: { Authorization: `Bearer ${provisioned.mcpToken}` },
     },
-    ...(prepared.browser && ctx.session.mode !== "triage"
-      ? browserMcpServers(deps.config.browser.devtools)
-      : {}),
+    ...(prepared.browser && !plans(ctx) ? browserMcpServers(deps.config.browser.devtools) : {}),
   };
   const spec = {
     sessionId: ctx.session.id,
@@ -97,7 +98,7 @@ const openRuntime = (
     systemPromptAppendix: prepared.appendix,
     cwd: REPO_IN_VOLUME,
     resume,
-    pluginDirs: prepared.pack === "none" ? [] : [`${PLUGINS_ROOT}/${prepared.pack}`],
+    pluginDirs: prepared.packs.map((pack) => `${PLUGINS_ROOT}/${pack}`),
     mcpServers,
   };
   const runtime = {

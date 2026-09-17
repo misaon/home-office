@@ -1,8 +1,0 @@
-{
-  "name": "ho-worker",
-  "description": "Home Office worker pack: the order of a work session in the sandbox, and checking the work in a browser",
-  "version": "0.3.0",
-  "author": {
-    "name": "Home Office"
-  }
-}

@@ -1,0 +1,8 @@
+{
+  "name": "ho-frontend",
+  "description": "Home Office frontend pack: accessible, stable user interface changes proven in the browser",
+  "version": "0.4.0",
+  "author": {
+    "name": "Home Office"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "ho-secretary",
+  "description": "Home Office secretary pack: small errands done exactly as asked, with the smallest diff",
+  "version": "0.4.0",
+  "author": {
+    "name": "Home Office"
+  }
+}

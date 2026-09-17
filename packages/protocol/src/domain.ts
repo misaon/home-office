@@ -18,6 +18,7 @@ import {
   ServicesPolicy,
   VerifyPolicy,
 } from "./policies.ts";
+import { ReviewPlan, SessionMode, StoredAgentRole, TaskKind } from "./roles.ts";
 import { Budgets, Usage } from "./usage.ts";
 
 export * from "./policies.ts";
@@ -41,12 +42,6 @@ export type TaskStatus = z.infer<typeof TaskStatus>;
 
 export const TaskPriority = z.enum(["low", "normal", "high"]);
 export type TaskPriority = z.infer<typeof TaskPriority>;
-
-const TaskKind = z.enum(["work", "triage"]);
-type TaskKind = z.infer<typeof TaskKind>;
-
-export const AgentRole = z.enum(["boss", "worker", "reviewer", "clerk"]);
-export type AgentRole = z.infer<typeof AgentRole>;
 
 export const EffortLevel = z.enum(["low", "medium", "high", "xhigh", "max"]);
 export type EffortLevel = z.infer<typeof EffortLevel>;
@@ -72,9 +67,6 @@ export type SessionState = z.infer<typeof SessionState>;
 
 export const isSessionActive = (state: SessionState): boolean =>
   state !== "stopped" && state !== "failed";
-
-export const SessionMode = z.enum(["work", "review", "triage"]);
-export type SessionMode = z.infer<typeof SessionMode>;
 
 export const Actor = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("human") }),
@@ -164,6 +156,7 @@ export const Project = z.object({
   preview: PreviewPolicy.prefault({}),
   services: ServicesPolicy.prefault({}),
   verify: VerifyPolicy.prefault({}),
+  staffedAt: IsoDateTime.optional(),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });
@@ -174,7 +167,7 @@ export const BASE_PROMPT_MAX = 4000;
 export const Agent = z.object({
   id: AgentId,
   name: z.string().min(1).max(60),
-  role: AgentRole,
+  role: StoredAgentRole,
   appearance: Appearance,
   provider: ProviderId,
   auth: AuthKind.default("subscription"),
@@ -208,6 +201,7 @@ export const Task = z.object({
   reviewerId: AgentId.optional(),
   publish: PublishMode.optional(),
   browser: z.boolean().optional(),
+  reviews: ReviewPlan.prefault({}),
   rating: TaskRating.optional(),
   reviewRounds: z.int().nonnegative().default(0),
   notes: z.array(TaskNote).default([]),

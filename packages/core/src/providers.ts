@@ -13,21 +13,33 @@ type AgentChoice = Pick<Agent, "provider" | "auth" | "model" | "effort">;
 
 const EFFORT_BY_ROLE: Readonly<Record<AgentRole, EffortLevel>> = {
   boss: "medium",
-  worker: "high",
-  reviewer: "high",
-  clerk: "low",
+  secretary: "low",
+  analyst: "high",
+  backend: "high",
+  frontend: "high",
+  devops: "high",
+  qa: "high",
+  security: "high",
+  head: "high",
+  developer: "high",
 };
 
 const CLAUDE_MODEL_BY_ROLE: Readonly<Record<AgentRole, string>> = {
   boss: "opus",
-  worker: "sonnet",
-  reviewer: "sonnet",
-  clerk: "haiku",
+  secretary: "haiku",
+  analyst: "opus",
+  backend: "sonnet",
+  frontend: "sonnet",
+  devops: "sonnet",
+  qa: "sonnet",
+  security: "opus",
+  head: "opus",
+  developer: "sonnet",
 };
 
 export const defaultChoice = (
   provider: ProviderId,
-  role: AgentRole = "worker",
+  role: AgentRole = "developer",
 ): Omit<AgentChoice, "provider"> => {
   const p = PROVIDERS[provider];
   const wanted = EFFORT_BY_ROLE[role];

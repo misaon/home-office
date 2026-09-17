@@ -34,6 +34,11 @@ function statusLine(
       ? `I could not process your message: ${reason ?? to}.`
       : null;
   }
+  if (task.kind === "plan") {
+    return to === "failed" || (to === "blocked" && !isQuestionReason(reason))
+      ? `${nameOf(model, task.assigneeId)} could not finish planning ${quote(task)}: ${reason ?? to}.`
+      : null;
+  }
   const worker = nameOf(model, task.assigneeId);
   const mine = task.assigneeId === boss.id;
   if (to === "in_progress") {
@@ -68,6 +73,39 @@ const walksBack = (boss: Agent, task: Task, to: TaskStatus, reason: string | und
   task.assigneeId !== boss.id &&
   (to === "done" || (to === "blocked" && !isQuestionReason(reason)));
 
+const createdLine = (model: Model, boss: Agent, task: Task): string | null => {
+  if (task.source.kind !== "delegation" || task.assigneeId === boss.id) {
+    return null;
+  }
+  const byBoss = task.source.byAgentId === boss.id;
+  if (task.kind === "plan") {
+    return byBoss ? `I have asked ${nameOf(model, task.assigneeId)} to plan ${quote(task)}.` : null;
+  }
+  if (task.kind !== "work") {
+    return null;
+  }
+  if (task.assigneeId === undefined) {
+    return `${quote(task)} waits in the inbox for an assignee.`;
+  }
+  return byBoss
+    ? `I have handed ${quote(task)} to ${nameOf(model, task.assigneeId)}.`
+    : `${nameOf(model, task.source.byAgentId)} handed ${quote(task)} to ${nameOf(model, task.assigneeId)}.`;
+};
+
+const nextStageLine = (model: Model, task: Task, reviewerId: Agent["id"] | null): string | null => {
+  if (task.status !== "review" || reviewerId === null) {
+    return null;
+  }
+  const report = task.notes.findLast((note) => note.kind === "report");
+  const verdict = task.notes.findLast(
+    (note) => note.kind === "review" && (report === undefined || note.at >= report.at),
+  );
+  if (verdict?.author.kind !== "agent" || !verdict.text.startsWith("approve")) {
+    return null;
+  }
+  return `${nameOf(model, verdict.author.agentId)} approved ${quote(task)}; ${nameOf(model, reviewerId)} reviews it next.`;
+};
+
 export function startBossVoice(
   office: Office,
   gate: OfficeGate,
@@ -81,21 +119,11 @@ export function startBossVoice(
       });
   };
   const onCreated = async (task: Task): Promise<void> => {
-    if (task.kind !== "work" || task.source.kind !== "delegation") {
-      return;
-    }
     const boss = bossOf(office.model, task.projectId);
-    if (boss === undefined || task.source.byAgentId !== boss.id) {
-      return;
+    const text = boss === undefined ? null : createdLine(office.model, boss, task);
+    if (boss !== undefined && text !== null) {
+      await say(boss, text, task.id);
     }
-    if (task.assigneeId === boss.id) {
-      return;
-    }
-    const text =
-      task.assigneeId === undefined
-        ? `${quote(task)} waits in the inbox for an assignee.`
-        : `I have handed ${quote(task)} to ${nameOf(office.model, task.assigneeId)}.`;
-    await say(boss, text, task.id);
   };
   const onStatus = async (
     event: Extract<StoredEvent, { type: "task.status_changed" }>,
@@ -115,15 +143,28 @@ export function startBossVoice(
       await say(boss, text, task.id);
     }
   };
+  const onReviewer = async (
+    event: Extract<StoredEvent, { type: "task.reviewer_assigned" }>,
+  ): Promise<void> => {
+    const task = office.model.tasks.get(event.payload.taskId);
+    const boss = task === undefined ? undefined : bossOf(office.model, task.projectId);
+    const text =
+      task === undefined ? null : nextStageLine(office.model, task, event.payload.reviewerId);
+    if (boss !== undefined && text !== null) {
+      await say(boss, text, event.payload.taskId);
+    }
+  };
   const following = followEvents(
     office,
-    ["task.created", "task.status_changed"],
+    ["task.created", "task.status_changed", "task.reviewer_assigned"],
     (event) =>
       event.type === "task.created"
         ? onCreated(event.payload.task)
         : event.type === "task.status_changed"
           ? onStatus(event)
-          : undefined,
+          : event.type === "task.reviewer_assigned"
+            ? onReviewer(event)
+            : undefined,
     log,
     "boss voice",
   );

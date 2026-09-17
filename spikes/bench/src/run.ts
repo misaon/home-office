@@ -81,7 +81,7 @@ function seed(agents: number, tasks: number): StoredEvent[] {
         agent: {
           id: agentId,
           name: `Agent${String(a)}`,
-          role: a === 0 ? "boss" : "worker",
+          role: a === 0 ? "boss" : "developer",
           appearance: { gender: "neutral" },
           provider: "claude-code",
           auth: "subscription",
@@ -117,6 +117,7 @@ function seed(agents: number, tasks: number): StoredEvent[] {
           brief: "b",
           status: "assigned",
           assigneeId: agentId,
+          reviews: { qa: false, security: false },
           reviewRounds: 0,
           notes: [],
           source: { kind: "manual" },

@@ -7,6 +7,7 @@ export const enOffice = {
   taskKind: {
     code: "code",
     triage: "triage",
+    plan: "plan",
   },
   status: {
     inbox: "inbox",
@@ -27,7 +28,6 @@ export const enOffice = {
     zoomIn: "Zoom in",
     zoomOut: "Zoom out",
     editFloor: "Edit floor",
-    receptionist: "Lola",
     atReception: "at the reception",
     atMail: "at the mail counter",
     carrying: "carrying a message to the boss",

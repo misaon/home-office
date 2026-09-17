@@ -16,7 +16,7 @@ import type { SkillLibrary } from "./skills.ts";
 
 export type McpSessionContext = {
   sessionId: SessionId;
-  skillPack: string;
+  skillPacks: readonly string[];
   taskId: TaskId;
   agentId: AgentId;
   projectId: ProjectId;
@@ -55,7 +55,7 @@ export type AnyTool = {
   handle: (input: unknown, office: Office, entry: Entry, actor: Actor) => Promise<unknown>;
 };
 
-export const ALL: readonly SessionMode[] = ["work", "review", "triage"];
+export const ALL: readonly SessionMode[] = ["work", "review", "triage", "plan"];
 
 export const define = <S extends z.ZodRawShape>(tool: Tool<S>): AnyTool => {
   const schema = z.object(tool.shape);

@@ -1,4 +1,4 @@
-import { createAgent, defaultChoice } from "@ho/core";
+import { createAgent, defaultChoice, rolePack } from "@ho/core";
 import { HoHireInput } from "@ho/protocol";
 import { define } from "./mcp-tool.ts";
 
@@ -30,7 +30,7 @@ export const hire = define({
           model: input.model ?? choice.model,
           effort: input.effort ?? choice.effort,
           basePrompt: input.basePrompt,
-          skillPack: input.role,
+          skillPack: rolePack(input.role),
           projectId: entry.ctx.projectId,
           budgets: { ...boss.budgets },
         },

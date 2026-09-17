@@ -42,7 +42,7 @@ export const taskCommand: Command = {
         assignee: "<agent>",
         priority: "low|normal|high",
       },
-      booleans: ["browser"],
+      booleans: ["browser", "qa", "security"],
       required: ["project", "title"],
       run: async (parsed, client) => {
         const rpc = await client();
@@ -52,6 +52,8 @@ export const taskCommand: Command = {
         const assignee =
           assigneeRef === undefined ? undefined : await findAgent(rpc, assigneeRef, projectId);
         const assigneeId = assignee?.id;
+        const qa = bool(parsed, "qa");
+        const security = bool(parsed, "security");
         const created = await rpc.tasks.create({
           projectId,
           title: required(parsed, "title"),
@@ -60,6 +62,7 @@ export const taskCommand: Command = {
             assigneeId,
             priority: TaskPriority.optional().parse(str(parsed, "priority")),
             browser: bool(parsed, "browser") ? true : undefined,
+            reviews: qa || security ? { qa, security } : undefined,
           }),
         });
         return output(

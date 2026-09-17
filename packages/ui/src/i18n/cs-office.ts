@@ -7,6 +7,7 @@ export const csOffice = {
   taskKind: {
     code: "kód",
     triage: "triage",
+    plan: "plán",
   },
   status: {
     inbox: "příchozí",
@@ -27,7 +28,6 @@ export const csOffice = {
     zoomIn: "Přiblížit",
     zoomOut: "Oddálit",
     editFloor: "Upravit podlaží",
-    receptionist: "Lola",
     atReception: "na recepci",
     atMail: "u poštovní přihrádky",
     carrying: "nese zprávu šéfovi",

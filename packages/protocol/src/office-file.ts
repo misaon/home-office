@@ -1,15 +1,8 @@
 import { z } from "zod";
-import {
-  AgentRole,
-  AuthKind,
-  BASE_PROMPT_MAX,
-  Budgets,
-  EffortLevel,
-  Gender,
-  ProviderId,
-} from "./domain.ts";
+import { AuthKind, BASE_PROMPT_MAX, Budgets, EffortLevel, Gender, ProviderId } from "./domain.ts";
 import { ProjectId } from "./ids.ts";
 import { IntakePolicy, PublishPolicy, ServicesPolicy, VerifyPolicy } from "./policies.ts";
+import { AgentRole } from "./roles.ts";
 
 export const OFFICE_DIR = ".ho";
 export const OFFICE_FILE = "config.json";

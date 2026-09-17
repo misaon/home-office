@@ -1,0 +1,8 @@
+{
+  "name": "ho-qa",
+  "description": "Home Office QA pack: testing a task branch against its acceptance criteria and writing reproducible defects",
+  "version": "0.4.0",
+  "author": {
+    "name": "Home Office"
+  }
+}
