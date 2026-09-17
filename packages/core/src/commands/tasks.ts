@@ -76,6 +76,7 @@ export const newTask = (
     priority?: Task["priority"] | undefined;
     notes?: Task["notes"] | undefined;
     publish?: Task["publish"] | undefined;
+    browser?: Task["browser"] | undefined;
   },
 ): Task => ({
   id: ctx.ids.task(),
@@ -83,7 +84,7 @@ export const newTask = (
   kind: fields.kind,
   title: fields.title,
   brief: fields.brief,
-  ...compact({ spec: fields.spec, publish: fields.publish }),
+  ...compact({ spec: fields.spec, publish: fields.publish, browser: fields.browser }),
   status: fields.assigneeId === undefined ? "inbox" : "assigned",
   ...compact({ assigneeId: fields.assigneeId }),
   reviewRounds: 0,
@@ -245,7 +246,7 @@ export function removeTask(
   });
 }
 
-const verifyAttempts = (task: Task): number =>
+export const verifyAttempts = (task: Task): number =>
   task.notes.filter((n) => n.author.kind === "system" && n.text.startsWith(VERIFY_NOTE_PREFIX))
     .length;
 

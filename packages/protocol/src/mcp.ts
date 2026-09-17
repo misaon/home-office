@@ -1,20 +1,20 @@
 import { z } from "zod";
 import { ATTACHMENTS_MAX, AttachmentName, CHAT_OUTBOX_DIR } from "./attachments.ts";
-import { PublishMode, REPORT_MAX, TaskPriority, TaskSpec } from "./domain.ts";
+import { EffortLevel, PublishMode, REPORT_MAX, TaskPriority, TaskSpec } from "./domain.ts";
 import { TaskId } from "./ids.ts";
 
 export const HoReportInput = z.object({
   status: z
     .enum(["review", "done", "blocked"])
     .describe(
-      "review: work is committed and ready for review; done: no review needed (only for triage or when told so); blocked: you cannot continue",
+      "review: the work is committed and ready for review, the only successful ending of a work session; done: the triage is finished; blocked: you cannot continue, and the summary says why",
     ),
   summary: z
     .string()
     .min(1)
     .max(REPORT_MAX)
     .describe(
-      "What changed, how you verified it, open questions. Plain text; keep it under a page.",
+      `Published verbatim as the pull-request description and, for tasks that came from an issue, as the comment on that issue. Markdown. Say what changed, how you verified it and what stays open; name no credentials and no paths outside the repository. At most ${String(REPORT_MAX)} characters.`,
     ),
 });
 export type HoReportInput = z.infer<typeof HoReportInput>;
@@ -52,11 +52,10 @@ export const HoHireInput = z.object({
     .min(1)
     .optional()
     .describe(
-      "Provider model id; omit for the role's default. Pick a cheaper one for mechanical work",
+      "A model id your own provider accepts; omit for the role's default. A wrong id fails at the colleague's first session, so use ids you know exist. Pick a cheaper one for mechanical work",
     ),
-  effort: z.string().min(1).optional().describe("Reasoning effort, when the provider takes one"),
+  effort: EffortLevel.optional().describe("Reasoning effort, when the provider takes one"),
   basePrompt: z.string().max(4000).default("").describe("How they work, not what they work on"),
-  why: z.string().min(1).max(300).describe("One sentence: why nobody already here fits"),
 });
 export type HoHireInput = z.infer<typeof HoHireInput>;
 
@@ -89,6 +88,12 @@ export const HoDelegateInput = z.object({
   publish: PublishMode.optional().describe(
     "Set only when the human asked for a particular delivery — pull-request when they want a PR, branch when they explicitly do not. Omit to follow the floor's own setting.",
   ),
+  browser: z
+    .boolean()
+    .optional()
+    .describe(
+      "true only when the result must be seen in a browser (UI changes, screenshots): the worker and the reviewer then get headless Chromium with Playwright tools. Omit for everything else.",
+    ),
   priority: TaskPriority.optional(),
 });
 export type HoDelegateInput = z.infer<typeof HoDelegateInput>;

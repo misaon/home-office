@@ -1,6 +1,6 @@
 import { compact, TaskPriority, TaskStatus } from "@ho/protocol";
 import { z } from "zod";
-import { required, str } from "../flags.ts";
+import { bool, required, str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
 import { colour, print } from "../output.ts";
 import { findAgent, findProject, findTask, projectIdOf } from "./lookup.ts";
@@ -42,6 +42,7 @@ export const taskCommand: Command = {
         assignee: "<agent>",
         priority: "low|normal|high",
       },
+      booleans: ["browser"],
       required: ["project", "title"],
       run: async (parsed, client) => {
         const rpc = await client();
@@ -58,6 +59,7 @@ export const taskCommand: Command = {
             brief: str(parsed, "brief"),
             assigneeId,
             priority: TaskPriority.optional().parse(str(parsed, "priority")),
+            browser: bool(parsed, "browser") ? true : undefined,
           }),
         });
         return output(

@@ -65,7 +65,12 @@ export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions): AgentRun
         }
       }
 
-      return { prompt, close: () => undefined };
+      return {
+        prompt,
+        close: () => {
+          channel.signal("SIGTERM");
+        },
+      };
     },
   };
 }

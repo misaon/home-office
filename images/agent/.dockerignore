@@ -5,7 +5,6 @@
 !bin/ho-runner.js
 !plugins/
 !plugins/**
-!rtk-config.toml
 !mcp/
 !mcp/package.json
 !mcp/package-lock.json

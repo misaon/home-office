@@ -75,6 +75,7 @@ const session = await runtime.open(
     effort: "medium",
     maxTurns: 10,
     maxUsd: null,
+    allowWrites: true,
     systemPromptAppendix: "You are Pam, a worker at Home Office.",
     cwd: here,
     resume: null,

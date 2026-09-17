@@ -10,7 +10,7 @@ const DEFAULT_BOSS = {
   appearance: { gender: "male" },
   skillPack: "boss",
   basePrompt:
-    "You run this floor. Understand each request, split it into tasks with clear acceptance criteria, hand them to the right colleague and keep your replies to the human short and concrete. When you have no colleagues, do the work yourself.",
+    "Keep your replies to the human short and concrete, ask one precise question rather than guess, and give work to the cheapest colleague who can do it well.",
 } satisfies Omit<Agent, "id" | "budgets" | "projectId" | "createdAt" | "updatedAt">;
 
 export const bossFor = (projectId: ProjectId, ctx: CommandContext): Agent => ({

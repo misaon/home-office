@@ -1,7 +1,7 @@
 {
   "name": "ho-reviewer",
-  "description": "Home Office reviewer pack: coding standards, security review, verification loop",
-  "version": "0.2.0",
+  "description": "Home Office reviewer pack: reading a task branch against its acceptance criteria",
+  "version": "0.3.0",
   "author": {
     "name": "Home Office"
   }

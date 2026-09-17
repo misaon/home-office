@@ -1,12 +1,4 @@
 # syntax=docker/dockerfile:1
-FROM rust:1-alpine@sha256:1716b3aa042d735f4566d14dc54e8037de9d69556e2d5dd58131d93a613d173d AS rtk
-RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
-    ln -sf /var/cache/apk /etc/apk/cache \
- && apk add musl-dev git \
- && cargo install --git https://github.com/rtk-ai/rtk --rev fde0a8f185945556f51718de0f4c430bb62b3df6 --locked --root /out rtk
-
 FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS base
 ARG TARGETARCH
 ARG BUN_VERSION=1.4.2
@@ -15,11 +7,11 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
     test "$TARGETARCH" = arm64 \
  && ln -sf /var/cache/apk /etc/apk/cache \
  && apk add bash curl ca-certificates libgcc libstdc++ ripgrep git openssh-client \
-      chromium nodejs npm python3 ttf-dejavu ttf-liberation unzip \
-      coreutils diffutils findutils gawk grep sed jq \
+      chromium nodejs npm python3 py3-pip ttf-dejavu ttf-liberation unzip \
+      coreutils diffutils findutils gawk grep sed jq build-base tzdata \
       docker-cli docker-cli-compose docker-cli-buildx \
  && adduser -D -u 1000 agent \
- && mkdir -p /work /home/agent/.config/rtk /home/agent/.cache /opt/ho/plugins /opt/ho/mcp \
+ && mkdir -p /work /home/agent/.cache /opt/ho/plugins /opt/ho/mcp \
  && chown -R agent:agent /work /home/agent
 RUN wget -qO /tmp/bun.zip "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-aarch64-musl.zip" \
  && echo "${BUN_SHA256}  /tmp/bun.zip" | sha256sum -c - \
@@ -34,15 +26,19 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
  && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 PUPPETEER_SKIP_DOWNLOAD=1 npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
  && test -f node_modules/@playwright/mcp/cli.js \
  && test -f node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js
-COPY --from=rtk /out/bin/rtk /usr/local/bin/rtk
 COPY --chmod=0644 bin/ho-runner.js /usr/local/bin/ho-runner.js
 COPY plugins/ /opt/ho/plugins/
-COPY --chown=agent:agent rtk-config.toml /home/agent/.config/rtk/config.toml
 ENV HOME=/home/agent \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
     PUPPETEER_SKIP_DOWNLOAD=1 \
     CHROME_PATH=/usr/lib/chromium/chromium \
     DO_NOT_TRACK=1 \
+    XDG_CACHE_HOME=/work/.cache \
+    npm_config_cache=/work/.cache/npm \
+    BUN_INSTALL_CACHE_DIR=/work/.cache/bun \
+    BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 \
+    PIP_CACHE_DIR=/work/.cache/pip \
+    GIT_CONFIG_GLOBAL=/tmp/gitconfig \
     PATH=/opt/ho/provider/node_modules/.bin:$PATH
 WORKDIR /work
 CMD ["bun", "/usr/local/bin/ho-runner.js"]
@@ -57,13 +53,13 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
  && apk add "claude-code=${CLAUDE_CODE_VERSION}" \
  && mkdir -p /home/agent/.claude && chown agent:agent /home/agent/.claude
 USER agent
-RUN rtk init -g --hook-only --auto-patch >/dev/null && test -s /home/agent/.claude/settings.json
 ENV CLAUDE_CONFIG_DIR=/home/agent/.claude \
     USE_BUILTIN_RIPGREP=0 \
     DISABLE_AUTOUPDATER=1 \
     DISABLE_TELEMETRY=1 \
     DISABLE_ERROR_REPORTING=1 \
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+    CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1 \
     ENABLE_CLAUDEAI_MCP_SERVERS=false
 
 FROM base AS opencode

@@ -110,7 +110,7 @@ jobs:
         if: steps.scope.outputs.build == 'true'
       # `docker buildx build` runs from a shell step, and GitHub exposes ACTIONS_RUNTIME_TOKEN and
       # ACTIONS_RESULTS_URL only to JavaScript actions. Without them BuildKit drops `type=gha` without
-      # reporting anything, which is why the pinned rtk stage was compiled from source on every run.
+      # reporting anything, which is why every stage was rebuilt from scratch on every run.
       - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487
         if: steps.scope.outputs.build == 'true'
       - name: Install dependencies
@@ -130,7 +130,7 @@ jobs:
           fi
           docker buildx build --load -t ho/git-bridge:ci "${cache[@]}" images/git-bridge
       # `mode=max` exports the layers of every stage the build walked through, so building `claude-code`
-      # alone also caches `rtk` and `base` for the provider targets. Building `base` separately only loaded
+      # alone also caches `base` for the provider targets. Building `base` separately only loaded
       # a tag that nothing read.
       - name: Build the agent image
         if: steps.scope.outputs.build == 'true'
@@ -146,5 +146,5 @@ jobs:
           docker run --rm ho/agent:ci 2>&1 \
             | grep -q "HO_GATEWAY and HO_SESSION_TOKEN are required"
           docker run --rm --entrypoint sh ho/agent:ci -c \
-            'claude --version && rtk --version && test -s /home/agent/.claude/settings.json'
+            'claude --version && python3 -m pip --version && gcc --version && test -d /usr/share/zoneinfo'
           docker run --rm ho/git-bridge:ci --version

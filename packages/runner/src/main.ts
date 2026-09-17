@@ -37,19 +37,22 @@ let child: Child | undefined;
 
 async function relayExit(proc: Child, output: Promise<unknown>): Promise<void> {
   const code = await proc.exited;
-  child = undefined;
+  if (child === proc) {
+    child = undefined;
+  }
   await output;
   send({ type: "exit", code });
 }
 
-function spawnChild(
+async function spawnChild(
   argv: readonly string[],
   env: Readonly<Record<string, string>>,
   cwd: string | undefined,
-): void {
-  if (child !== undefined) {
-    send({ type: "error", message: "a child process is already running" });
-    return;
+): Promise<void> {
+  const previous = child;
+  if (previous !== undefined) {
+    previous.kill("SIGKILL");
+    await previous.exited;
   }
   const proc = Bun.spawn([...argv], {
     stdin: "pipe",
@@ -65,7 +68,9 @@ function spawnChild(
     (text) => {
       send({ type: "stdout", text });
     },
-    () => child?.kill("SIGKILL"),
+    () => {
+      proc.kill("SIGKILL");
+    },
   ).catch(reportError);
   const stderr = pumpText(proc.stderr, (text) => {
     send({ type: "stderr", text });
@@ -76,7 +81,7 @@ function spawnChild(
 function handle(message: ToRunner): void {
   switch (message.type) {
     case "spawn": {
-      spawnChild(message.argv, message.env, message.cwd);
+      spawnChild(message.argv, message.env, message.cwd).catch(reportError);
       break;
     }
     case "stdin": {

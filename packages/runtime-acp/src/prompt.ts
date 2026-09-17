@@ -12,8 +12,8 @@ export function createPrompt(
   negotiated: Negotiated,
   exited: Promise<number | null>,
 ): RuntimeSession["prompt"] {
-  const { sessionId, resumed, servers } = negotiated;
-  let appendixSent = resumed;
+  const { sessionId, servers } = negotiated;
+  let appendixSent = false;
 
   return async function* prompt(
     input: { text: string },

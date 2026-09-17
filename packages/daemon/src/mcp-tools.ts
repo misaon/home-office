@@ -31,19 +31,24 @@ export type { AnyTool, Entry, McpSessionContext, ToolResult } from "./mcp-tool.t
 const report = define({
   name: "ho_report",
   description:
-    "File your report for the current task and end your work on it. Call exactly once when you are finished or blocked.",
+    "End your work on the current task with a report. Call it exactly once: when your changes are committed (status review), or when you cannot continue (status blocked, and the summary says why). The office runs the floor's checks and publishes committed work itself.",
   shape: HoReportInput.shape,
-  modes: ALL,
+  modes: ["work", "triage"],
   run: async (input, office, entry, actor) => {
     if (entry.ctx.mode === "work") {
       if (entry.report !== null) {
         throw new Error("a report was already submitted");
       }
+      if (input.status === "done") {
+        throw new Error(
+          "a work session ends with status review or blocked; the office decides when a task is done",
+        );
+      }
       await office.execute(actor, (m, c) =>
         patchTaskArtifacts(m, entry.ctx.taskId, { report: input.summary }, c),
       );
       entry.report = input;
-      return "report received; the daemon will publish your commits before completing the task. Stop working now.";
+      return "report received; the office runs the floor's checks, pushes your commits and hands the task on. Stop working now.";
     }
     const task = await office.execute(actor, (m, c) => fileReport(m, entry.ctx.taskId, input, c));
     return `report filed; task is now ${task.status}. Stop working now.`;
@@ -53,7 +58,7 @@ const report = define({
 const askTheHuman = define({
   name: "ho_ask_human",
   description:
-    "Ask the human a blocking question. The task pauses until they answer in the office chat; you will be resumed with the answer. Commit first.",
+    "Ask the human one blocking question. The task pauses until they answer in the office chat, and you are resumed with the answer.",
   shape: HoAskHumanInput.shape,
   modes: ALL,
   run: async (input, office, entry, actor) => {
@@ -64,9 +69,10 @@ const askTheHuman = define({
 
 const taskStatus = define({
   name: "ho_task_status",
-  description: "Current status, notes and artifacts of a task (defaults to yours).",
+  description:
+    "Call this when you lack context: a task's status, its artifacts (branch, report, pull request) and its last ten notes, including the office's check output and review findings. Defaults to your own task.",
   shape: HoTaskStatusInput.shape,
-  modes: ALL,
+  modes: ["work", "triage"],
   run: (input, office, entry) => {
     const id = input.taskId ?? entry.ctx.taskId;
     const task = office.model.tasks.get(id);
@@ -86,9 +92,10 @@ const taskStatus = define({
 
 const listAgents = define({
   name: "ho_list_agents",
-  description: "The team on this floor: names, roles, skill packs and current load.",
+  description:
+    "The team on this floor: names, roles, skill packs and current load. Use it before ho_handoff or ho_delegate when the roster in your briefing is not enough.",
   shape: {},
-  modes: ALL,
+  modes: ["work", "triage"],
   run: (_input, office, entry) =>
     Promise.resolve(
       membersOf(office.model, entry.ctx.projectId).map((a) => ({
@@ -105,7 +112,7 @@ const listAgents = define({
 const handoff = define({
   name: "ho_handoff",
   description:
-    "Hand the current task to a colleague (by name). Commit first. Your session ends after this call.",
+    "Hand the current task to a colleague (by name) with a brief of what is done and what is next. Commit first; your session ends after this call.",
   shape: HoHandoffInput.shape,
   modes: ["work"],
   run: async (input, office, entry, actor) => {
@@ -119,7 +126,7 @@ const handoff = define({
 const review = define({
   name: "ho_review",
   description:
-    "File your review verdict for the branch under review. approve closes the task; request_changes sends it back to the author with your findings.",
+    "File your verdict on the branch under review. approve closes the task; request_changes sends it back to the author with your numbered findings.",
   shape: HoReviewInput.shape,
   modes: ["review"],
   run: async (input, office, entry, actor) => {
@@ -131,7 +138,7 @@ const review = define({
 const delegate = define({
   name: "ho_delegate",
   description:
-    "Create a task on this floor and (optionally) assign it to a colleague by name — or to yourself when you do the work. One task per independent piece of work, with acceptance criteria in the brief.",
+    "Create a task on this floor and assign it to a colleague by name, or to yourself when you do the work. One task per independently verifiable piece of work; the fields are the specification the worker and the reviewer get.",
   shape: HoDelegateInput.shape,
   modes: ["triage"],
   run: async (input, office, entry, actor) => {
@@ -143,7 +150,7 @@ const delegate = define({
 const reply = define({
   name: "ho_reply",
   description:
-    "Say something to the human in the office chat (questions back, a short plan, or an answer when there is nothing to delegate).",
+    "Say something to the human in the office chat: a question back, a one-line plan, or an answer when there is nothing to delegate.",
   shape: HoReplyInput.shape,
   modes: ["triage"],
   run: async (input, office, entry, actor) => {
@@ -159,7 +166,7 @@ const reply = define({
 const publish = define({
   name: "ho_publish",
   description:
-    "Push a finished task's branch to the remote and open a pull request for it, returning the link. The task must already have a branch — work that has not been done yet cannot be published.",
+    "Push a finished task's branch to the remote and open its pull request now, returning the link. Only for tasks that already have a branch; on pull-request floors the office does this by itself when a task finishes.",
   shape: HoPublishInput.shape,
   modes: ["triage"],
   run: async (input, office, entry) => publishTask(office, entry.ctx.home, input.taskId),
@@ -171,6 +178,7 @@ const listSkills = define({
     "The skills available to you: name and one-line description each. Read one with ho_get_skill before doing work it covers.",
   shape: {},
   modes: ALL,
+  servesSkills: true,
   run: (_input, _office, entry) => entry.skills.index(entry.ctx.skillPack),
 });
 
@@ -180,6 +188,7 @@ const getSkill = define({
     "The full instructions of one skill, and the names of the files it bundles. Call it when its description matches the work in front of you.",
   shape: HoGetSkillInput.shape,
   modes: ALL,
+  servesSkills: true,
   run: (input, _office, entry) => entry.skills.read(entry.ctx.skillPack, input.name),
 });
 
@@ -189,6 +198,7 @@ const getSkillFile = define({
     "One file bundled with a skill, by the path ho_get_skill listed. Read it only when that skill's instructions send you to it.",
   shape: HoGetSkillFileInput.shape,
   modes: ALL,
+  servesSkills: true,
   run: (input, _office, entry) => entry.skills.file(entry.ctx.skillPack, input.name, input.path),
 });
 
