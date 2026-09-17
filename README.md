@@ -156,6 +156,26 @@ The point of the office is that an agent's mistake stays inside a box.
 Every state change in the office is an event appended to a local SQLite log, so the board, the floor
 and the usage panel are all views of one history — and you can replay exactly what happened.
 
+## What the office records
+
+Everything stays under `$HO_HOME` (`~/.config/home-office` by default) and is readable without the
+daemon:
+
+- **The daemon log.** `ho daemon --debug` writes JSON lines to `$HO_HOME/logs/daemon-<start>.log`
+  (rotated at 32 MB, five files kept): every domain event, every RPC and MCP tool call with its
+  duration, the timing of each session phase (volumes, checkout, sandbox, runner, verify, push, pull
+  request) and a one-line summary when a session ends.
+- **The event log.** `ho.db` holds every state change the office ever made.
+- **Session traces.** `$HO_HOME/traces/<session id>.jsonl` keeps what each agent saw and did: the
+  configuration it ran with, the exact system prompt and opening message, the complete runtime
+  stream (tool inputs and outputs, usage per turn), the office's messages to it and the office's
+  milestones. `index.jsonl` next to them has one summary line per session. Traces older than
+  `retention.traceDays` (30 by default) are removed by the office's garbage collector.
+
+Rate delivered work from the task's card or with `ho task rate <task> good|bad --note "…"`. The
+verdict is stored on the task and joins the traces when the office's prompts and skills are
+evaluated.
+
 ## The command line
 
 The desktop app and the `ho` binary talk to the same daemon, so anything you can click you can script:

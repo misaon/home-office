@@ -55,7 +55,7 @@ export async function launchDaemon(
   const { log, close: closeLog } = createLogger(config.logLevel, options.logFile);
   cleanup.defer(closeLog);
   const clock = { now: () => new Date() };
-  const { office, attachments, close: closeStore } = await openOffice(home, clock, log);
+  const { office, attachments, traces, close: closeStore } = await openOffice(home, clock, log);
   cleanup.defer(closeStore);
   const secrets = createSecretStore(home, config.secrets.store, (reason) => {
     log.warn({ reason }, "no OS credential store; using the file secret store");
@@ -64,8 +64,10 @@ export async function launchDaemon(
     socket: config.docker.socket,
     platform: config.docker.platform,
   });
-  const gateway = new RunnerGateway(log);
-  const mcp = new McpGateway(office, new SkillLibrary(resources.pluginsDir), log);
+  const gateway = new RunnerGateway(log, (sessionId, line) => {
+    traces.tap(sessionId, line);
+  });
+  const mcp = new McpGateway(office, new SkillLibrary(resources.pluginsDir), log, traces);
   const gate = new OfficeGate(log);
   let { port } = config;
   const sessions = new SessionManager({
@@ -76,6 +78,7 @@ export async function launchDaemon(
     mcp,
     attachments,
     secrets,
+    traces,
     config,
     home,
     log,
@@ -84,7 +87,7 @@ export async function launchDaemon(
   });
   await sessions.recover();
   const intake = new IntakeService(office, createGithubIssuesConnector(), log);
-  const gc = startGc(provider, config, log);
+  const gc = startGc(provider, config, log, traces);
   cleanup.defer(() => gc.stop());
   const startedAt = clock.now().toISOString();
   const server = startServer({
@@ -140,6 +143,23 @@ export async function launchDaemon(
     }
     return stopping;
   };
-  log.info({ home, resources: resources.root }, "daemon started");
+  log.info(
+    {
+      home,
+      resources: resources.root,
+      bun: Bun.version,
+      platform: `${process.platform}-${process.arch}`,
+      logLevel: config.logLevel,
+      port,
+      docker: config.docker,
+      limits: config.limits,
+      scheduler: config.scheduler,
+      retention: config.retention,
+      browser: config.browser,
+      services: { enabled: config.services.enabled, memoryMb: config.services.memoryMb },
+      traces: traces.dir,
+    },
+    "daemon started",
+  );
   return { info, config, stop };
 }

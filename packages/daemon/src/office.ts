@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { DomainFailureError } from "./domain-failure.ts";
 import { AttachmentStore } from "./attachments.ts";
 import type { Logger } from "./logger.ts";
+import { TraceStore } from "./traces.ts";
 
 const DB_FILE = "ho.db";
 
@@ -105,9 +106,16 @@ export async function openOffice(
   home: string,
   clock: Clock,
   log: Logger,
-): Promise<{ office: Office; attachments: AttachmentStore; close: () => void }> {
+): Promise<{
+  office: Office;
+  attachments: AttachmentStore;
+  traces: TraceStore;
+  close: () => void;
+}> {
   const attachments = new AttachmentStore(home);
   await attachments.init();
+  const traces = new TraceStore(home);
+  await traces.init();
   const ids = createIdFactory(clock, {
     randomize: (bytes) => {
       crypto.getRandomValues(bytes);
@@ -130,7 +138,7 @@ export async function openOffice(
       { cause: error },
     );
   }
-  return { office, attachments, close: store.close };
+  return { office, attachments, traces, close: store.close };
 }
 
 export function followEvents(

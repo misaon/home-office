@@ -3,7 +3,11 @@ import type { RuntimeEvent } from "@ho/protocol";
 import { claudeArgv, userMessage } from "./command.ts";
 import { normalizeLine } from "./stream-json.ts";
 
-export type ClaudeRuntimeOptions = { clock: Clock; onStderr: (text: string) => void };
+export type ClaudeRuntimeOptions = {
+  clock: Clock;
+  onStderr: (text: string) => void;
+  onIgnored: (text: string) => void;
+};
 
 export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions): AgentRuntime {
   return {
@@ -53,7 +57,7 @@ export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions): AgentRun
               options.onStderr(line.text);
               continue;
             }
-            for (const event of normalizeLine(line.text, options.clock.now)) {
+            for (const event of normalizeLine(line.text, options.clock.now, options.onIgnored)) {
               yield event;
               if (event.kind === "result") {
                 return;

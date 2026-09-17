@@ -14,6 +14,7 @@ import {
   ServicesPolicy,
   Task,
   TaskPriority,
+  TaskRating,
   TaskStatus,
   Usage,
   VerifyPolicy,
@@ -116,6 +117,12 @@ export const TaskCreateInput = z.object({
   browser: z.boolean().optional(),
 });
 export type TaskCreateInput = z.infer<typeof TaskCreateInput>;
+export const TaskRateInput = z.object({
+  id: TaskId,
+  verdict: TaskRating.shape.verdict,
+  note: TaskRating.shape.note,
+});
+export type TaskRateInput = z.infer<typeof TaskRateInput>;
 export const TaskListInput = z.object({
   projectId: ProjectId.optional(),
   status: z.array(TaskStatus).min(1).optional(),

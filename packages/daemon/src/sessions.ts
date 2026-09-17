@@ -31,9 +31,12 @@ import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
 import type { RunnerGateway } from "./runner-gateway.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
+import { recordSessionEnd, traceHeader } from "./session-record.ts";
 import { recoverSessions } from "./session-recover.ts";
 import { type Ending, runSession } from "./session-run.ts";
 import { gapOf, traceOf } from "./session-trace.ts";
+import { elapsedMs } from "./timing.ts";
+import type { TraceStore } from "./traces.ts";
 
 export type SessionDeps = {
   office: Office;
@@ -43,6 +46,7 @@ export type SessionDeps = {
   mcp: McpGateway;
   attachments: AttachmentStore;
   secrets: SecretStore;
+  traces: TraceStore;
   config: DaemonConfig;
   home: string;
   gatewayUrl: () => string;
@@ -103,7 +107,7 @@ export class SessionManager {
   }
 
   async #start(taskId: TaskId, agentId: Session["agentId"], mode: SessionMode): Promise<Session> {
-    const { office } = this.#deps;
+    const { office, log, traces } = this.#deps;
     const task = office.model.tasks.get(taskId);
     const agent = office.model.agents.get(agentId);
     const project = task === undefined ? undefined : office.model.projects.get(task.projectId);
@@ -117,9 +121,21 @@ export class SessionManager {
       session.resumedFrom === undefined
         ? undefined
         : office.model.sessions.get(session.resumedFrom);
+    log.info(
+      {
+        sessionId: session.id,
+        taskId,
+        agentId,
+        agent: agent.name,
+        mode,
+        resumedFrom: previous?.id,
+      },
+      "session starting",
+    );
+    traces.open(session.id, traceHeader(session, task, agent, project, previous));
     const controller = new AbortController();
     const budget = setTimeout(() => {
-      this.#deps.log.warn({ sessionId: session.id }, "wall-time budget exhausted");
+      log.warn({ sessionId: session.id, taskId }, "wall-time budget exhausted");
       controller.abort();
     }, agent.budgets.maxWallMinutes * 60_000);
     if (this.#stopping) {
@@ -134,10 +150,7 @@ export class SessionManager {
       signal: controller.signal,
     })
       .catch((error: unknown) => {
-        this.#deps.log.error(
-          { sessionId: session.id, err: errorMessage(error) },
-          "session teardown failed",
-        );
+        log.error({ sessionId: session.id, err: errorMessage(error) }, "session teardown failed");
       })
       .finally(() => {
         clearTimeout(budget);
@@ -217,6 +230,7 @@ export class SessionManager {
 
   async #onEvent(ctx: SessionContext, event: RuntimeEvent): Promise<void> {
     this.#emit(ctx.session.id, event);
+    this.#deps.traces.observe(ctx.session.id, event);
     const gap = gapOf(event);
     if (gap !== null) {
       this.#deps.log.warn(
@@ -251,6 +265,7 @@ export class SessionManager {
   async #run(ctx: SessionContext): Promise<void> {
     const { log } = this.#deps;
     const sessionId = ctx.session.id;
+    const started = Bun.nanoseconds();
     const held: { provisioned: Provisioned | null } = { provisioned: null };
     let ending: Ending;
     try {
@@ -264,7 +279,7 @@ export class SessionManager {
       );
     } catch (error) {
       const message = errorMessage(error).slice(0, 2000);
-      log.error({ sessionId, err: message }, "session failed");
+      log.error({ sessionId, taskId: ctx.task.id, err: message }, "session failed");
       this.#emit(sessionId, { kind: "error", code: "unknown", message });
       await this.#block(ctx.task.id, message);
       ending = { state: "failed", reason: message };
@@ -272,5 +287,6 @@ export class SessionManager {
       await held.provisioned?.dispose();
     }
     await this.#end(sessionId, ending).catch(() => null);
+    await recordSessionEnd(this.#deps, ctx, ending, elapsedMs(started));
   }
 }

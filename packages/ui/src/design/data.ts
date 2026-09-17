@@ -41,6 +41,7 @@ export type Card = {
   s: Lane;
   status: TaskStatus;
   criteria: readonly string[];
+  rating: "good" | "bad" | null;
   at: string;
 };
 

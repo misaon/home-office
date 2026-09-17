@@ -97,6 +97,7 @@ function cardOf(task: Task, snapshot: Snapshot): Card {
     who: task.assigneeId === undefined ? "" : (snapshot.agents.get(task.assigneeId)?.name ?? ""),
     s: laneOf(task.status),
     status: task.status,
+    rating: task.rating?.verdict ?? null,
     at: clock(task.updatedAt),
   };
 }

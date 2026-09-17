@@ -1,4 +1,4 @@
-import { compact, TaskPriority, TaskStatus } from "@ho/protocol";
+import { compact, TaskPriority, TaskRating, TaskStatus } from "@ho/protocol";
 import { z } from "zod";
 import { bool, required, str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
@@ -132,6 +132,24 @@ export const taskCommand: Command = {
             `${colour.id(moved.id)} → ${statusColour(moved.status)}${reason === undefined ? "" : ` (${reason})`}`,
           ],
           moved,
+        );
+      },
+    },
+    rate: {
+      positionals: ["<task>", "<good|bad>"],
+      strings: { note: "<text>" },
+      run: async (parsed, client) => {
+        const [taskRef = "", verdict] = parsed.positionals;
+        const rpc = await client();
+        const task = await findTask(rpc, taskRef);
+        const rated = await rpc.tasks.rate({
+          id: task.id,
+          verdict: TaskRating.shape.verdict.parse(verdict),
+          ...compact({ note: str(parsed, "note") }),
+        });
+        return output(
+          [`${colour.id(rated.id)} rated ${rated.rating?.verdict ?? String(verdict)}`],
+          rated,
         );
       },
     },

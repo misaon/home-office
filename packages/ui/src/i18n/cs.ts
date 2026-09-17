@@ -91,6 +91,12 @@ export const cs: typeof en = {
     removeTitle: "Smazat tento úkol?",
     removeAction: "Smazat úkol",
     removeRunning: "„{{title}}“ zmizí z boardu a {{name}} na něm okamžitě přestane pracovat.",
+    rateTitle: "Jaká byla tato práce?",
+    rateGood: "Dobrá",
+    rateBad: "Špatná",
+    rateNote: "Co bylo dobře nebo špatně (nepovinné)",
+    ratedGood: "Hodnocení: dobrá práce.",
+    ratedBad: "Hodnocení: špatná práce.",
   },
   chat: {
     removeAttachment: "Odebrat přílohu",

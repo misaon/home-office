@@ -193,9 +193,18 @@ export class IntakeService {
       return result;
     }
     state.polling = true;
+    const started = Bun.nanoseconds();
     try {
       const items = await this.#connector.poll(project, this.#controller.signal);
       state.lastPollAt = this.#office.clock.now().toISOString();
+      this.#log.debug(
+        {
+          projectId: project.id,
+          items: items.length,
+          ms: Math.round((Bun.nanoseconds() - started) / 1e6),
+        },
+        "intake polled",
+      );
       for (const item of items) {
         this.#controller.signal.throwIfAborted();
         if (

@@ -3,6 +3,8 @@ import type { PruneReport, SandboxProvider } from "@ho/core";
 import type { DaemonConfig } from "./config.ts";
 import { LABELS, MANAGED } from "./labels.ts";
 import type { Logger } from "./logger.ts";
+import { elapsedMs } from "./timing.ts";
+import type { TraceStore } from "./traces.ts";
 
 const INTERVAL_MS = 30 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -54,12 +56,21 @@ export function startGc(
   provider: SandboxProvider,
   config: DaemonConfig,
   log: Logger,
+  traces: TraceStore,
 ): { stop: () => Promise<void>; runOnce: () => Promise<PruneReport> } {
   const collect = async (): Promise<PruneReport> => {
+    const started = Bun.nanoseconds();
     const report = await collectGarbage(provider, config);
-    const total = report.containers.length + report.volumes.length + report.images.length;
-    if (total > 0) {
-      log.info(report, "garbage collected");
+    const prunedTraces = await traces.prune(config.retention.traceDays);
+    const counts = {
+      containers: report.containers.length,
+      volumes: report.volumes.length,
+      images: report.images.length,
+      traces: prunedTraces,
+    };
+    log.debug({ ...counts, ms: elapsedMs(started) }, "gc ran");
+    if (counts.containers + counts.volumes + counts.images + counts.traces > 0) {
+      log.info({ ...report, traces: prunedTraces }, "garbage collected");
     }
     return report;
   };

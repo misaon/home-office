@@ -91,6 +91,12 @@ export const en = {
     removeAction: "Delete task",
     removeRunning:
       "“{{title}}” disappears from the board and {{name}} stops working on it right now.",
+    rateTitle: "How was this work?",
+    rateGood: "Good",
+    rateBad: "Not good",
+    rateNote: "What was right or wrong (optional)",
+    ratedGood: "Rated: good work.",
+    ratedBad: "Rated: not good.",
   },
   chat: {
     removeAttachment: "Remove the attachment",

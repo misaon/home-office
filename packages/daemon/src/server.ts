@@ -171,9 +171,12 @@ export function startServer(options: ServerOptions): {
         }
         await handler.message(ws, message, { context: options.context });
       },
-      close(ws) {
+      close(ws, code, reason) {
         if (ws.data.kind === "runner") {
-          options.gateway.close(ws.data.token);
+          options.gateway.close(
+            ws.data.token,
+            `socket closed (${String(code)}${reason === "" ? "" : ` ${reason}`})`,
+          );
           return;
         }
         handler.close(ws);

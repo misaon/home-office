@@ -5,6 +5,7 @@ import type {
   SandboxProvider,
   SandboxRunResult,
   SandboxSpec,
+  SandboxState,
 } from "@ho/core";
 import { errorMessage, type ResourceInventory } from "@ho/protocol";
 import {
@@ -17,6 +18,7 @@ import {
   DockerApiError,
   hostLimits,
   ImageList,
+  inspectContainer,
   labelFilter,
   nameOf,
   NetworkList,
@@ -261,6 +263,15 @@ export function createDockerProvider(options: {
     startEngine: (spec, readyTimeoutMs) => startEngine(api, spec, readyTimeoutMs),
     stop: (handle: SandboxHandle, graceSeconds = 5) => stopContainer(api, handle.id, graceSeconds),
     remove: (handle) => removeContainer(api, handle.id),
+    inspect: async (handle): Promise<SandboxState> => {
+      const { State } = await inspectContainer(api, handle.id);
+      return {
+        running: State.Running,
+        exitCode: State.ExitCode,
+        oomKilled: State.OOMKilled,
+        error: State.Error,
+      };
+    },
     run: (spec, timeoutMs = 120_000) => runToCompletion(api, spec, timeoutMs),
     prune: (scope) => prune(api, scope),
     inventory: (labels) => inventory(api, labels),

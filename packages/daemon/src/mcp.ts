@@ -5,8 +5,12 @@ import type { Logger } from "./logger.ts";
 import { type Entry, type McpSessionContext, text, TOOLS, type ToolResult } from "./mcp-tools.ts";
 import type { Office } from "./office.ts";
 import type { SkillLibrary } from "./skills.ts";
+import { elapsedMs } from "./timing.ts";
 import { bearerToken, mintToken } from "./token.ts";
+import type { TraceStore } from "./traces.ts";
 import { VERSION } from "./version.ts";
+
+const INPUT_LOG_CHARS = 500;
 
 const INSTRUCTIONS: Readonly<Record<SessionMode, string>> = {
   work: "Home Office tools for a work session. Commit on the task branch, then end with ho_report: status review when the work is ready, blocked with the reason when you cannot continue. ho_ask_human pauses the task for a human decision, ho_handoff passes it to a named colleague, ho_task_status returns the notes and artifacts when you lack context. The office pushes and opens pull requests itself.",
@@ -16,16 +20,23 @@ const INSTRUCTIONS: Readonly<Record<SessionMode, string>> = {
     "Home Office tools for the boss. ho_delegate creates one task per independently verifiable piece of work, and its fields are the specification the worker and the reviewer get; ho_reply talks to the human; ho_hire adds a lasting colleague; ho_publish pushes a finished branch and opens its pull request. End with ho_report, status done.",
 };
 
+const shorten = (input: unknown): string => {
+  const json = input === undefined ? "" : JSON.stringify(input);
+  return json.length <= INPUT_LOG_CHARS ? json : `${json.slice(0, INPUT_LOG_CHARS)}…`;
+};
+
 export class McpGateway {
   readonly #entries = new Map<string, Entry>();
   readonly #office: Office;
   readonly #log: Logger;
   readonly #skills: SkillLibrary;
+  readonly #traces: TraceStore;
 
-  constructor(office: Office, skills: SkillLibrary, log: Logger) {
+  constructor(office: Office, skills: SkillLibrary, log: Logger, traces: TraceStore) {
     this.#office = office;
     this.#skills = skills;
     this.#log = log;
+    this.#traces = traces;
   }
 
   static readonly path = "/mcp";
@@ -65,7 +76,7 @@ export class McpGateway {
   }
 
   #build(entry: Entry): McpServer {
-    const { mode, provider } = entry.ctx;
+    const { mode, provider, sessionId, taskId } = entry.ctx;
     const server = new McpServer(
       { name: "home-office", version: VERSION },
       { instructions: INSTRUCTIONS[mode] },
@@ -82,20 +93,33 @@ export class McpGateway {
         tool.name,
         { description: tool.description, inputSchema: tool.shape },
         async (input: unknown): Promise<ToolResult> => {
+          const started = Bun.nanoseconds();
           this.#log.debug(
-            {
-              sessionId: entry.ctx.sessionId,
-              taskId: entry.ctx.taskId,
-              tool: tool.name,
-              fields: typeof input === "object" && input !== null ? Object.keys(input) : [],
-            },
+            { sessionId, taskId, tool: tool.name, input: shorten(input) },
             "mcp tool called",
           );
           try {
-            return text(await tool.handle(input, this.#office, entry, actor));
+            const answer = text(await tool.handle(input, this.#office, entry, actor));
+            const ms = elapsedMs(started);
+            this.#traces.mcp(sessionId, { tool: tool.name, ok: true, ms });
+            this.#log.debug(
+              {
+                sessionId,
+                tool: tool.name,
+                ms,
+                chars: answer.content.reduce((total, block) => total + block.text.length, 0),
+              },
+              "mcp tool answered",
+            );
+            return answer;
           } catch (error) {
             const message = errorMessage(error);
-            this.#log.warn({ sessionId: entry.ctx.sessionId, err: message }, "mcp tool rejected");
+            const ms = elapsedMs(started);
+            this.#traces.mcp(sessionId, { tool: tool.name, ok: false, ms, error: message });
+            this.#log.warn(
+              { sessionId, taskId, tool: tool.name, ms, err: message },
+              "mcp tool rejected",
+            );
             return { content: [{ type: "text", text: message }], isError: true };
           }
         },
