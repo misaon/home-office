@@ -7,6 +7,13 @@ import { IntakePollResult, IntakeStatus } from "./intake.ts";
 import { OfficeFileExport, OfficeFileSync } from "./office-file.ts";
 import { LayoutSaved, LayoutStore, OfficeLayout } from "./office-layout.ts";
 import { SecretKeyName } from "./providers.ts";
+import {
+  RemoteConfigureInput,
+  RemoteId,
+  RemotePairInput,
+  RemotePairing,
+  RemoteStatus,
+} from "./remote.ts";
 import { AgentId, ProjectId, SessionId, TaskId } from "./ids.ts";
 import { Doctor, LiveEvent, ResourceInventory } from "./runtime-events.ts";
 import {
@@ -129,6 +136,12 @@ export const contract = {
         logId: z.string().nullable(),
       }),
     ),
+  },
+  remote: {
+    status: base.output(RemoteStatus),
+    configure: base.input(RemoteConfigureInput).output(RemoteStatus),
+    pair: base.input(RemotePairInput).output(RemotePairing),
+    revoke: base.input(z.object({ deviceId: RemoteId })).output(RemoteStatus),
   },
   office: {
     presence: base.output(eventIterator(z.object({ at: IsoDateTime }))),

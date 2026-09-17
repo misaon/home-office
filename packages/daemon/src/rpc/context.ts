@@ -7,6 +7,8 @@ import type { Logger } from "../logger.ts";
 import type { OfficeGate } from "../office-gate.ts";
 import type { Office } from "../office.ts";
 import type { Resources } from "../paths.ts";
+import type { RemoteCaller } from "../remote-peers.ts";
+import type { RemoteService } from "../remote-service.ts";
 import type { SessionManager } from "../sessions.ts";
 
 export type RpcContext = {
@@ -24,5 +26,7 @@ export type RpcContext = {
   startedAt: string;
   gc: () => Promise<{ containers: string[]; volumes: string[]; images: string[] }>;
   pickDirectory: DirectoryPicker;
+  remote: RemoteService;
+  device?: RemoteCaller;
   log: Logger;
 };

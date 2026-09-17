@@ -30,6 +30,7 @@ import type { Logger } from "./logger.ts";
 import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
 import type { RunnerGateway } from "./runner-gateway.ts";
+import { createRuntimes } from "./runtimes.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import { recordSessionEnd, traceHeader } from "./session-record.ts";
 import { recoverSessions } from "./session-recover.ts";
@@ -65,8 +66,8 @@ export class SessionManager {
   #stopping = false;
   readonly #starting = new Set<Promise<Session>>();
 
-  constructor(deps: SessionDeps) {
-    this.#deps = deps;
+  constructor(deps: Omit<SessionDeps, "runtimes">) {
+    this.#deps = { ...deps, runtimes: createRuntimes(deps.log, deps.office.clock) };
   }
 
   async recover(): Promise<void> {

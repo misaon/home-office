@@ -187,7 +187,31 @@ ho project add app --path ~/code/app   # a new floor for a local repository
 ho task create --project app --title "Fix the focus trap in the settings dialog" --browser
 ho session watch                       # live output from every running agent
 ho usage --since 24h                   # tokens per agent, floor and day
+ho remote pair --name phone            # pair a phone through the relay
 ```
+
+## From your phone
+
+The daemon never listens outward, so remote control works the other way round: the daemon opens
+one outbound WebSocket to a small relay, and your phone connects to the same relay. The relay only
+forwards ciphertext. Every pairing derives a key with X25519 and HKDF, every frame is sealed with
+AES-256-GCM, and both ends prove the pairing secret before a single byte of the office crosses the
+wire.
+
+```bash
+bun run relay                                   # a relay on 127.0.0.1:47850 (RELAY_HOST, RELAY_PORT)
+ho remote on --relay wss://relay.example.com/relay
+ho remote pair --name phone                     # a one-time code, valid ten minutes
+ho remote status                                # connection, paired devices, open pairings
+ho remote revoke phone                          # that device is out, immediately
+```
+
+A paired device may chat, read the board and the sessions, create, move and rate tasks and stop a
+session. It cannot touch settings, credentials, floors, agents, images or garbage collection; the
+daemon refuses those routes before they run. Device keys and the relay key of the office live in
+`$HO_HOME/remote.json`, mode 600. The relay in `apps/relay` runs on Bun and has no state of its
+own, so it fits a free tier; the browser client that turns the code into a chat window is the next
+step, and `bun run spike:remote-tunnel` exercises the whole path today.
 
 ## Build from source
 

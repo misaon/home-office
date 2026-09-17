@@ -39,6 +39,15 @@
         "zod": "catalog:",
       },
     },
+    "apps/relay": {
+      "name": "@ho/relay",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ho/protocol": "workspace:*",
+        "@ho/remote": "workspace:*",
+        "pino": "catalog:",
+      },
+    },
     "packages/core": {
       "name": "@ho/core",
       "version": "0.0.0",
@@ -53,6 +62,7 @@
         "@ho/core": "workspace:*",
         "@ho/intake-github": "workspace:*",
         "@ho/protocol": "workspace:*",
+        "@ho/remote": "workspace:*",
         "@ho/runtime-acp": "workspace:*",
         "@ho/runtime-claude-code": "workspace:*",
         "@ho/sandbox-docker": "workspace:*",
@@ -80,6 +90,16 @@
       "dependencies": {
         "@orpc/contract": "catalog:",
         "zod": "catalog:",
+      },
+    },
+    "packages/remote": {
+      "name": "@ho/remote",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ho/core": "workspace:*",
+        "@ho/protocol": "workspace:*",
+        "@orpc/client": "catalog:",
+        "@orpc/contract": "catalog:",
       },
     },
     "packages/runner": {
@@ -182,6 +202,18 @@
         "@ho/sim": "workspace:*",
       },
     },
+    "spikes/remote-tunnel": {
+      "name": "@ho/spike-remote-tunnel",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ho/core": "workspace:*",
+        "@ho/daemon": "workspace:*",
+        "@ho/protocol": "workspace:*",
+        "@ho/remote": "workspace:*",
+        "@orpc/client": "catalog:",
+        "@orpc/contract": "catalog:",
+      },
+    },
     "spikes/s6-acp-mock": {
       "name": "@ho/spike-s6-acp-mock",
       "version": "0.0.0",
@@ -278,6 +310,10 @@
 
     "@ho/protocol": ["@ho/protocol@workspace:packages/protocol"],
 
+    "@ho/relay": ["@ho/relay@workspace:apps/relay"],
+
+    "@ho/remote": ["@ho/remote@workspace:packages/remote"],
+
     "@ho/runner": ["@ho/runner@workspace:packages/runner"],
 
     "@ho/runtime-acp": ["@ho/runtime-acp@workspace:packages/runtime-acp"],
@@ -291,6 +327,8 @@
     "@ho/sim": ["@ho/sim@workspace:packages/sim"],
 
     "@ho/spike-bench": ["@ho/spike-bench@workspace:spikes/bench"],
+
+    "@ho/spike-remote-tunnel": ["@ho/spike-remote-tunnel@workspace:spikes/remote-tunnel"],
 
     "@ho/spike-s6-acp-mock": ["@ho/spike-s6-acp-mock@workspace:spikes/s6-acp-mock"],
 

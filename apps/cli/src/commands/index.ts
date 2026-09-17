@@ -3,6 +3,7 @@ import { agentCommand } from "./agent.ts";
 import { chatCommand } from "./chat.ts";
 import { intakeCommand, mailCommand } from "./intake.ts";
 import { projectCommand } from "./project.ts";
+import { remoteCommand } from "./remote.ts";
 import { secretCommand } from "./secret.ts";
 import { sessionCommand } from "./session.ts";
 import { tailCommand, usageCommand } from "./streams.ts";
@@ -35,4 +36,5 @@ export const COMMANDS: readonly Command[] = [
   uiCommand,
   gcCommand,
   tailCommand,
+  remoteCommand,
 ];
