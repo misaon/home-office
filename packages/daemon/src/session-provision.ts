@@ -74,6 +74,15 @@ export type Provisioned = {
 export const sessionServicesOf = (services: Services): SessionServices | undefined =>
   services.kind === "off" ? undefined : services.kind;
 
+const PACK_BY_MODE: Readonly<Record<Session["mode"], string | null>> = {
+  work: "worker",
+  review: "reviewer",
+  triage: null,
+};
+
+export const skillPackFor = (ctx: SessionContext): string =>
+  ctx.agent.skillPack === "none" ? "none" : (PACK_BY_MODE[ctx.session.mode] ?? ctx.agent.skillPack);
+
 const sandboxSpec = (
   config: DaemonConfig,
   ctx: SessionContext,
@@ -179,7 +188,8 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
       agentId: ctx.agent.id,
       projectId: ctx.project.id,
       mode: ctx.session.mode,
-      skillPack: ctx.agent.skillPack,
+      provider: ctx.agent.provider,
+      skillPack: skillPackFor(ctx),
       attachments: deps.attachments,
       home,
     });

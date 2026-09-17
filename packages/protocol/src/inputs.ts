@@ -113,6 +113,7 @@ export const TaskCreateInput = z.object({
   brief: Task.shape.brief.default(""),
   priority: TaskPriority.default("normal"),
   assigneeId: AgentId.optional(),
+  browser: z.boolean().optional(),
 });
 export type TaskCreateInput = z.infer<typeof TaskCreateInput>;
 export const TaskListInput = z.object({

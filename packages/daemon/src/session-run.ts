@@ -4,7 +4,6 @@ import {
   REPORT_MAX,
   type RuntimeErrorCode,
   type RuntimeEvent,
-  type SessionMode,
   type SessionState,
   SYSTEM_ACTOR,
 } from "@ho/protocol";
@@ -17,6 +16,7 @@ import {
   type Provisioned,
   type SessionContext,
   sessionServicesOf,
+  skillPackFor,
 } from "./session-provision.ts";
 import { settle } from "./session-settle.ts";
 import type { SessionDeps } from "./sessions.ts";
@@ -25,14 +25,19 @@ const PLUGINS_ROOT = "/opt/ho/plugins";
 
 export type Outcome = { report: string; failure: string | null };
 
+const browserFor = (deps: SessionDeps, ctx: SessionContext): boolean =>
+  deps.config.browser.enabled && (ctx.session.mode === "triage" || ctx.task.browser === true);
+
 const openRuntime = (
   deps: SessionDeps,
   ctx: SessionContext,
   provisioned: Provisioned,
   secrets: Readonly<Record<string, string>>,
   resume: string | null,
-): Promise<RuntimeSession> =>
-  deps.runtimes[ctx.agent.provider].open(
+): Promise<RuntimeSession> => {
+  const browser = browserFor(deps, ctx);
+  const pack = skillPackFor(ctx);
+  return deps.runtimes[ctx.agent.provider].open(
     {
       sessionId: ctx.session.id,
       taskId: ctx.task.id,
@@ -43,6 +48,7 @@ const openRuntime = (
       effort: ctx.agent.effort,
       maxTurns: ctx.agent.budgets.maxTurnsPerTask,
       maxUsd: ctx.agent.budgets.maxUsdPerTask ?? null,
+      allowWrites: ctx.session.mode === "work",
       systemPromptAppendix: systemPrompt(
         {
           agent: ctx.agent,
@@ -51,7 +57,7 @@ const openRuntime = (
           files: attachmentsOfTask(deps.office.model, ctx.task),
           mode: ctx.session.mode,
           branch: provisioned.branch,
-          browser: deps.config.browser.enabled,
+          browser,
           preview: ctx.project.preview,
           services: provisioned.services,
         },
@@ -59,14 +65,14 @@ const openRuntime = (
       ),
       cwd: REPO_IN_VOLUME,
       resume,
-      pluginDirs: packDirs(ctx),
+      pluginDirs: pack === "none" ? [] : [`${PLUGINS_ROOT}/${pack}`],
       mcpServers: {
         ho: {
           kind: "http",
           url: deps.mcpUrl(),
           headers: { Authorization: `Bearer ${provisioned.mcpToken}` },
         },
-        ...(deps.config.browser.enabled && ctx.session.mode !== "triage"
+        ...(browser && ctx.session.mode !== "triage"
           ? browserMcpServers(deps.config.browser.devtools)
           : {}),
       },
@@ -74,6 +80,7 @@ const openRuntime = (
     provisioned.connection.channel,
     secrets,
   );
+};
 
 async function consume(
   runtimeSession: RuntimeSession,
@@ -112,17 +119,6 @@ async function consume(
   }
   return outcome;
 }
-
-const PACK_BY_MODE: Readonly<Record<SessionMode, string | null>> = {
-  work: "worker",
-  review: "reviewer",
-  triage: null,
-};
-
-const packDirs = (ctx: SessionContext): string[] => {
-  const pack = PACK_BY_MODE[ctx.session.mode] ?? ctx.agent.skillPack;
-  return pack === "none" ? [] : [`${PLUGINS_ROOT}/${pack}`];
-};
 
 async function runPrompt(
   deps: SessionDeps,

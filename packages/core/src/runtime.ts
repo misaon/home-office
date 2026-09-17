@@ -28,6 +28,7 @@ export type RuntimeSessionSpec = {
   effort: EffortLevel;
   maxTurns: number;
   maxUsd: number | null;
+  allowWrites: boolean;
   systemPromptAppendix: string;
   cwd: string;
   resume: string | null;

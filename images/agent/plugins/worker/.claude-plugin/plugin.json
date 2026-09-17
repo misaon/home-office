@@ -1,7 +1,7 @@
 {
   "name": "ho-worker",
-  "description": "Home Office worker pack: coding standards, verification loop, git workflow, error handling, Bun runtime",
-  "version": "0.2.0",
+  "description": "Home Office worker pack: the order of a work session in the sandbox, and checking the work in a browser",
+  "version": "0.3.0",
   "author": {
     "name": "Home Office"
   }

@@ -70,6 +70,7 @@ export function delegateTask(
       assigneeId: assignee?.id,
       priority: input.priority,
       publish: input.publish,
+      browser: input.browser,
       notes: handoffNote === undefined ? [] : [handoffNote],
     });
     const events: NewEvent[] = [{ type: "task.created", actor: ctx.actor, payload: { task } }];

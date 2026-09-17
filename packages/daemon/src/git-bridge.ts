@@ -109,10 +109,6 @@ export async function prepareRepo(
     volume,
     null,
   );
-  const probed = await run(provider, probe);
-  if (probed.ok) {
-    return;
-  }
   const clone = (ref: string): SandboxSpec =>
     bridgeSpec(
       config,
@@ -121,21 +117,38 @@ export async function prepareRepo(
       volume,
       { path: sourcePath, mode: "ro" },
     );
-  const cloned = await run(provider, clone(branch));
-  if (cloned.ok) {
-    return;
+  const probed = await run(provider, probe);
+  const cloned = probed.ok ? probed : await run(provider, clone(branch));
+  if (!cloned.ok) {
+    await runOrThrow(provider, clone(defaultBranch), "clone");
+    await runOrThrow(
+      provider,
+      bridgeSpec(
+        config,
+        `${volume}-branch`,
+        ["-C", REPO_IN_VOLUME, "checkout", "-q", "-b", branch],
+        volume,
+        null,
+      ),
+      "branch",
+    );
   }
-  await runOrThrow(provider, clone(defaultBranch), "clone");
-  await runOrThrow(
+  await run(
     provider,
     bridgeSpec(
       config,
-      `${volume}-branch`,
-      ["-C", REPO_IN_VOLUME, "checkout", "-q", "-b", branch],
+      `${volume}-base`,
+      [
+        "-C",
+        REPO_IN_VOLUME,
+        "fetch",
+        "-q",
+        "/src",
+        `+refs/heads/${defaultBranch}:refs/heads/${defaultBranch}`,
+      ],
       volume,
-      null,
+      { path: sourcePath, mode: "ro" },
     ),
-    "branch",
   );
 }
 

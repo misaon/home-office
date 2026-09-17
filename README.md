@@ -164,7 +164,7 @@ The desktop app and the `ho` binary talk to the same daemon, so anything you can
 ho daemon --ui                         # start the office and print a UI URL
 ho doctor                              # Docker, images, credentials, capacity
 ho project add app --path ~/code/app   # a new floor for a local repository
-ho task create --project app --title "Fix the focus trap in the settings dialog"
+ho task create --project app --title "Fix the focus trap in the settings dialog" --browser
 ho session watch                       # live output from every running agent
 ho usage --since 24h                   # tokens per agent, floor and day
 ```

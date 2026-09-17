@@ -1,11 +1,11 @@
 import { createAgent, defaultChoice } from "@ho/core";
-import { EffortLevel, HoHireInput } from "@ho/protocol";
+import { HoHireInput } from "@ho/protocol";
 import { define } from "./mcp-tool.ts";
 
 export const hire = define({
   name: "ho_hire",
   description:
-    "Take on a new colleague for this floor, when nobody already here fits the work. They stay after this task and can be given later work, so hire for a lasting need rather than one errand. Check ho_list_agents first.",
+    "Take on a new colleague for this floor when nobody already here fits the work. They stay after this task and take later work too, so hire for a lasting need rather than one errand, and check ho_list_agents first. They use your provider and inherit your budgets.",
   shape: HoHireInput.shape,
   modes: ["triage"],
   run: async (input, office, entry, actor) => {
@@ -28,7 +28,7 @@ export const hire = define({
           provider: boss.provider,
           auth: choice.auth,
           model: input.model ?? choice.model,
-          effort: EffortLevel.parse(input.effort ?? choice.effort),
+          effort: input.effort ?? choice.effort,
           basePrompt: input.basePrompt,
           skillPack: input.role,
           projectId: entry.ctx.projectId,

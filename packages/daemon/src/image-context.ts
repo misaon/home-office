@@ -24,7 +24,6 @@ const contextPatterns = (resources: Resources, name: "agent" | "git-bridge"): st
   return [
     "Dockerfile",
     ".dockerignore",
-    "rtk-config.toml",
     "plugins/**/*",
     "mcp/package.json",
     "mcp/package-lock.json",

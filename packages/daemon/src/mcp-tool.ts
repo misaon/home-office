@@ -3,6 +3,7 @@ import type {
   AgentId,
   HoReportInput,
   ProjectId,
+  ProviderId,
   SessionId,
   SessionMode,
   TaskId,
@@ -19,6 +20,7 @@ export type McpSessionContext = {
   taskId: TaskId;
   agentId: AgentId;
   projectId: ProjectId;
+  provider: ProviderId;
   mode: SessionMode;
   attachments: AttachmentStore;
   home: string;
@@ -36,6 +38,7 @@ export type Tool<S extends z.ZodRawShape> = {
   description: string;
   shape: S;
   modes: readonly SessionMode[];
+  servesSkills?: true;
   run: (
     input: z.infer<z.ZodObject<S>>,
     office: Office,
@@ -48,6 +51,7 @@ export type AnyTool = {
   description: string;
   shape: ZodRawShapeCompat;
   modes: readonly SessionMode[];
+  servesSkills?: true;
   handle: (input: unknown, office: Office, entry: Entry, actor: Actor) => Promise<unknown>;
 };
 

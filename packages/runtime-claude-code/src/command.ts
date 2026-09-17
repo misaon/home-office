@@ -6,6 +6,8 @@ const CLAUDE_SETTINGS = {
   bashOutputMaxChars: 10_000,
 } as const;
 
+const WRITE_TOOLS = ["Edit", "Write", "MultiEdit", "NotebookEdit"];
+
 type McpConfigEntry =
   | { type: "http"; url: string; headers: Record<string, string> }
   | { type: "stdio"; command: string; args: string[]; env: Record<string, string> };
@@ -34,10 +36,13 @@ export function claudeArgv(spec: RuntimeSessionSpec, claudeSessionId: string): s
     "--permission-mode",
     "bypassPermissions",
     "--setting-sources",
-    "user,project",
+    "project",
     "--settings",
     JSON.stringify(CLAUDE_SETTINGS),
     "--strict-mcp-config",
+    "--disallowedTools",
+    "Agent",
+    ...(spec.allowWrites ? [] : WRITE_TOOLS),
     "--name",
     `ho/${spec.agentId.slice(0, 8)}/${spec.taskId.slice(0, 8)}`,
   ];
