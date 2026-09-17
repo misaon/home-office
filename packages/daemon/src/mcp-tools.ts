@@ -5,6 +5,7 @@ import {
   handoffTask,
   membersOf,
   patchTaskArtifacts,
+  planTask,
   postAgentMessage,
   sessionsOfAgent,
   submitReview,
@@ -15,6 +16,7 @@ import {
   HoGetSkillFileInput,
   HoGetSkillInput,
   HoHandoffInput,
+  HoPlanInput,
   HoPublishInput,
   HoReplyInput,
   HoReportInput,
@@ -31,9 +33,9 @@ export type { AnyTool, Entry, McpSessionContext, ToolResult } from "./mcp-tool.t
 const report = define({
   name: "ho_report",
   description:
-    "End your work on the current task with a report. Call it exactly once: when your changes are committed (status review), or when you cannot continue (status blocked, and the summary says why). The office runs the floor's checks and publishes committed work itself.",
+    "End your work on the current task with a report. Call it exactly once: when your changes are committed (status review), when the triage or the plan is finished (status done), or when you cannot continue (status blocked, and the summary says why). The office runs the floor's checks and publishes committed work itself.",
   shape: HoReportInput.shape,
-  modes: ["work", "triage"],
+  modes: ["work", "triage", "plan"],
   run: async (input, office, entry, actor) => {
     if (entry.ctx.mode === "work") {
       if (entry.report !== null) {
@@ -72,7 +74,7 @@ const taskStatus = define({
   description:
     "Call this when you lack context: a task's status, its artifacts (branch, report, pull request) and its last ten notes, including the office's check output and review findings. Defaults to your own task.",
   shape: HoTaskStatusInput.shape,
-  modes: ["work", "triage"],
+  modes: ["work", "triage", "plan"],
   run: (input, office, entry) => {
     const id = input.taskId ?? entry.ctx.taskId;
     const task = office.model.tasks.get(id);
@@ -95,7 +97,7 @@ const listAgents = define({
   description:
     "The team on this floor: names, roles, skill packs and current load. Use it before ho_handoff or ho_delegate when the roster in your briefing is not enough.",
   shape: {},
-  modes: ["work", "triage"],
+  modes: ["work", "triage", "plan"],
   run: (_input, office, entry) =>
     Promise.resolve(
       membersOf(office.model, entry.ctx.projectId).map((a) => ({
@@ -138,11 +140,23 @@ const review = define({
 const delegate = define({
   name: "ho_delegate",
   description:
-    "Create a task on this floor and assign it to a colleague by name, or to yourself when you do the work. One task per independently verifiable piece of work; the fields are the specification the worker and the reviewer get.",
+    "Create a task on this floor and assign it to a colleague by name, or to yourself when you do the work. One task per independently verifiable piece of work; the fields are the specification the developer and the reviewers get, and qa/security decide who reviews it before the head of development.",
   shape: HoDelegateInput.shape,
-  modes: ["triage"],
+  modes: ["triage", "plan"],
   run: async (input, office, entry, actor) => {
     const task = await office.execute(actor, (m, c) => delegateTask(m, input, entry.ctx.taskId, c));
+    return { taskId: task.id, status: task.status, assigneeId: task.assigneeId ?? null };
+  },
+});
+
+const plan = define({
+  name: "ho_plan",
+  description:
+    "Hand a request to the analyst to specify and split: they read the repository, write one task per verifiable piece of work with acceptance criteria and assign each to the colleague who fits. Use it for anything that is more than one small, obvious change; small errands and obvious single changes you delegate yourself with ho_delegate.",
+  shape: HoPlanInput.shape,
+  modes: ["triage"],
+  run: async (input, office, entry, actor) => {
+    const task = await office.execute(actor, (m, c) => planTask(m, input, entry.ctx.taskId, c));
     return { taskId: task.id, status: task.status, assigneeId: task.assigneeId ?? null };
   },
 });
@@ -152,7 +166,7 @@ const reply = define({
   description:
     "Say something to the human in the office chat: a question back, a one-line plan, or an answer when there is nothing to delegate.",
   shape: HoReplyInput.shape,
-  modes: ["triage"],
+  modes: ["triage", "plan"],
   run: async (input, office, entry, actor) => {
     const files = await entry.ctx.attachments.collect(entry.ctx.sessionId, input.files);
     await office.execute(actor, (m, c) =>
@@ -179,7 +193,7 @@ const listSkills = define({
   shape: {},
   modes: ALL,
   servesSkills: true,
-  run: (_input, _office, entry) => entry.skills.index(entry.ctx.skillPack),
+  run: (_input, _office, entry) => entry.skills.index(entry.ctx.skillPacks),
 });
 
 const getSkill = define({
@@ -189,7 +203,7 @@ const getSkill = define({
   shape: HoGetSkillInput.shape,
   modes: ALL,
   servesSkills: true,
-  run: (input, _office, entry) => entry.skills.read(entry.ctx.skillPack, input.name),
+  run: (input, _office, entry) => entry.skills.read(entry.ctx.skillPacks, input.name),
 });
 
 const getSkillFile = define({
@@ -199,7 +213,7 @@ const getSkillFile = define({
   shape: HoGetSkillFileInput.shape,
   modes: ALL,
   servesSkills: true,
-  run: (input, _office, entry) => entry.skills.file(entry.ctx.skillPack, input.name, input.path),
+  run: (input, _office, entry) => entry.skills.file(entry.ctx.skillPacks, input.name, input.path),
 });
 
 export const TOOLS: readonly AnyTool[] = [
@@ -210,6 +224,7 @@ export const TOOLS: readonly AnyTool[] = [
   handoff,
   review,
   delegate,
+  plan,
   hire,
   reply,
   publish,

@@ -87,27 +87,33 @@ export function updateBadge(
   }
 }
 
-function receptionWork(actor: Actor): { caption: string; busy: boolean } {
+function receptionWork(
+  actor: Actor,
+  name: string,
+  working: boolean,
+): { caption: string; busy: boolean } {
   const carrying = actor.emotion?.kind === "envelope";
   const doing = carrying
     ? actor.activity === "handover"
       ? translate("stage.handingOver")
       : translate("stage.carrying")
-    : actor.activity === "receive" || actor.activity === "drop"
-      ? translate("stage.atMail")
-      : translate("stage.atReception");
-  return { caption: `${translate("stage.receptionist")} · ${doing}`, busy: carrying };
+    : working
+      ? translate("team.working")
+      : actor.activity === "receive" || actor.activity === "drop"
+        ? translate("stage.atMail")
+        : translate("stage.atReception");
+  return { caption: `${name} · ${doing}`, busy: carrying || working };
 }
 
 export function captionOf(actor: Actor): { caption: string; busy: boolean } | null {
-  if (actor.kind === "receptionist") {
-    return receptionWork(actor);
-  }
   const { snapshot } = useUi.getState();
   const agent = snapshot.agents.get(actor.id);
   if (agent === undefined) {
     return null;
   }
   const busy = activeSessionOf(snapshot, actor.id) !== undefined;
+  if (actor.kind === "receptionist") {
+    return receptionWork(actor, agent.name, busy);
+  }
   return { caption: `${agent.name} · ${translate(busy ? "team.working" : "team.idle")}`, busy };
 }

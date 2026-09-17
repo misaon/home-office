@@ -152,7 +152,18 @@
           },
           "role": {
             "type": "string",
-            "enum": ["boss", "worker", "reviewer", "clerk"]
+            "enum": [
+              "boss",
+              "secretary",
+              "analyst",
+              "backend",
+              "frontend",
+              "devops",
+              "qa",
+              "security",
+              "head",
+              "developer"
+            ]
           },
           "gender": {
             "type": "string",

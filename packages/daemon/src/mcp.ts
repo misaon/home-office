@@ -17,7 +17,8 @@ const INSTRUCTIONS: Readonly<Record<SessionMode, string>> = {
   review:
     "Home Office tools for a review session. Read the diff, then end with ho_review exactly once: approve, or request_changes with numbered findings (file:line). ho_ask_human pauses the task for a human decision.",
   triage:
-    "Home Office tools for the boss. ho_delegate creates one task per independently verifiable piece of work, and its fields are the specification the worker and the reviewer get; ho_reply talks to the human; ho_hire adds a lasting colleague; ho_publish pushes a finished branch and opens its pull request. End with ho_report, status done.",
+    "Home Office tools for the boss. ho_plan hands a request to the analyst, who specifies and splits it; ho_delegate creates one task per independently verifiable piece of work, and its fields are the specification the developer and the reviewers get; ho_reply talks to the human; ho_hire adds a lasting colleague; ho_publish pushes a finished branch and opens its pull request. End with ho_report, status done.",
+  plan: "Home Office tools for the analyst. Read the repository, then ho_delegate one task per independently verifiable piece of work, assigned to the colleague whose role fits; its fields are the specification the developer and the reviewers get. ho_reply tells the human the plan; ho_ask_human pauses for a decision only the human can make. End with ho_report, status done.",
 };
 
 const shorten = (input: unknown): string => {

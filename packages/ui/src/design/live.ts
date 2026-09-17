@@ -92,7 +92,7 @@ function cardOf(task: Task, snapshot: Snapshot): Card {
     id: task.id,
     t: task.title,
     p: task.priority,
-    k: task.kind === "triage" ? "triage" : "code",
+    k: task.kind === "work" ? "code" : task.kind,
     criteria: task.spec?.acceptanceCriteria ?? [],
     who: task.assigneeId === undefined ? "" : (snapshot.agents.get(task.assigneeId)?.name ?? ""),
     s: laneOf(task.status),

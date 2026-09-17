@@ -1,14 +1,13 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { defaultChoice } from "@ho/core";
+import { defaultChoice, rolePack } from "@ho/core";
 import { EffortLevel, ProviderId, type AgentRole } from "@ho/protocol";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { AgentDialogFields, AgentPrompt } from "./agent-dialog-fields.tsx";
 import { AgentDialogHead, AgentDoing } from "./agent-dialog-head.tsx";
-import { PresetSelect } from "./agent-presets.tsx";
-import { RoleCards } from "./agent-roles.tsx";
+import { RoleSelect } from "./agent-roles.tsx";
 import type { Floor, Member } from "./data.ts";
-import { CANCEL, CAP, COMMIT, DialogSheet, HINT } from "./dialog-sheet.tsx";
+import { CANCEL, COMMIT, DialogSheet, HINT } from "./dialog-sheet.tsx";
 import { requireClient } from "../rpc.ts";
 import { type AgentDraft, useDesign } from "./store.ts";
 
@@ -16,7 +15,7 @@ const REMOVE =
   "py-10 px-14 rounded-11 border border-bad-a30 bg-bad-a10 text-bad-soft text-12h cursor-pointer flex-[0_0_auto] transition-all duration-200";
 
 export const newDraft = (hasBoss: boolean): AgentDraft => {
-  const role: AgentRole = hasBoss ? "worker" : "boss";
+  const role: AgentRole = hasBoss ? "developer" : "boss";
   return {
     name: "",
     role,
@@ -109,7 +108,7 @@ async function commit(
   draft: AgentDraft,
   name: string,
   projectId: Floor["id"],
-  id: Member["id"] | null,
+  editing: Member | undefined,
 ): Promise<void> {
   const shared = {
     name,
@@ -120,15 +119,21 @@ async function commit(
     effort: EffortLevel.parse(draft.effort),
     basePrompt: draft.prompt,
   };
-  if (id !== null) {
-    await requireClient().agents.update({ id, patch: shared });
+  if (editing !== undefined) {
+    await requireClient().agents.update({
+      id: editing.id,
+      patch: {
+        ...shared,
+        ...(editing.role === draft.role ? {} : { skillPack: rolePack(draft.role) }),
+      },
+    });
     return;
   }
   await requireClient().agents.create({
     ...shared,
     projectId,
     appearance: { gender: draft.gender },
-    skillPack: draft.role === "clerk" ? "none" : draft.role,
+    skillPack: rolePack(draft.role),
   });
 }
 
@@ -161,10 +166,7 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
     );
 
   const save = useMutation({
-    mutationFn: () =>
-      draft === null
-        ? Promise.resolve()
-        : commit(draft, name, floor.id, dlg?.mode === "edit" ? dlg.id : null),
+    mutationFn: () => (draft === null ? Promise.resolve() : commit(draft, name, floor.id, editing)),
     onSuccess: () => {
       done(
         dlg?.mode === "edit"
@@ -232,21 +234,12 @@ export function AgentDialog({ floor }: { floor: Floor }): React.JSX.Element | nu
       {isEdit && editing !== undefined ? (
         <AgentDoing working={working} doing={editing.doing} since={editing.since} />
       ) : null}
-      <div className={`${CAP} text-9h mb-10`}>{t("agent.whoTheyAre")}</div>
-      <PresetSelect
-        show={editing === undefined}
-        bossTaken={boss !== undefined}
+      <RoleSelect
         draft={draft}
-        patch={patch}
-      />
-      <RoleCards
-        show={editing !== undefined}
-        value={draft.role}
         bossTaken={boss !== undefined}
         bossLocked={editing?.role === "boss"}
-        onPick={(role) => {
-          patch({ role });
-        }}
+        preset={editing === undefined}
+        patch={patch}
       />
       <AgentDialogFields draft={draft} patch={patch} />
       <AgentPrompt

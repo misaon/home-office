@@ -1,4 +1,4 @@
-import { defaultChoice } from "@ho/core";
+import { defaultChoice, rolePack } from "@ho/core";
 import {
   AgentRole,
   AuthKind,
@@ -19,7 +19,7 @@ const CHOICE = {
   model: "<id>",
   effort: "low|medium|high|xhigh|max",
   prompt: "<text>",
-  skills: "worker|reviewer|none",
+  skills: "boss|secretary|analyst|backend|frontend|devops|qa|security|head|none",
   gender: "female|male|neutral",
 };
 
@@ -62,7 +62,7 @@ export const agentCommand: Command = {
     add: {
       positionals: ["<name>"],
       strings: {
-        role: "worker|reviewer|clerk",
+        role: "secretary|analyst|backend|frontend|devops|qa|security|head|developer",
         project: "<floor>",
         ...CHOICE,
       },
@@ -72,7 +72,7 @@ export const agentCommand: Command = {
         const role = AgentRole.parse(required(parsed, "role"));
         if (role === "boss") {
           throw new Error(
-            "every floor already has its boss (Andrew); hire workers, reviewers or clerks",
+            "every floor already has its boss; hire staff: secretary, analyst, backend, frontend, devops, qa, security, head or developer",
           );
         }
         const project = await projectFor(rpc, str(parsed, "project"));
@@ -86,7 +86,7 @@ export const agentCommand: Command = {
           provider,
           model: str(parsed, "model") ?? defaults.model,
           effort: EffortLevel.optional().parse(str(parsed, "effort")) ?? defaults.effort,
-          skillPack: str(parsed, "skills") ?? (role === "clerk" ? "none" : role),
+          skillPack: str(parsed, "skills") ?? rolePack(role),
           ...compact({
             auth: AuthKind.optional().parse(str(parsed, "auth")),
             basePrompt: str(parsed, "prompt"),

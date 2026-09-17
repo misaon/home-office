@@ -24,7 +24,7 @@ import { sourcePathFor } from "./mirrors.ts";
 import type { Services } from "./prompts.ts";
 import type { RunnerConnection } from "./runner-gateway.ts";
 import type { SessionDeps } from "./sessions.ts";
-import { skillPackFor } from "./skill-pack.ts";
+import { skillPacksFor } from "./skill-pack.ts";
 import {
   engineEnv,
   prepareTaskEngine,
@@ -225,7 +225,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
       projectId: ctx.project.id,
       mode: ctx.session.mode,
       provider: ctx.agent.provider,
-      skillPack: skillPackFor(ctx.agent, ctx.session.mode),
+      skillPacks: skillPacksFor(ctx.agent, ctx.session.mode),
       attachments: deps.attachments,
       home,
     });

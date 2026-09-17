@@ -1,4 +1,11 @@
-import type { AgentId, Project, SessionMode, Task, TaskId } from "@ho/protocol";
+import {
+  type AgentId,
+  MODE_OF_KIND,
+  type Project,
+  type SessionMode,
+  type Task,
+  type TaskId,
+} from "@ho/protocol";
 import { activeSessions } from "./model/queries.ts";
 import type { ReadModel } from "./model/read-model.ts";
 
@@ -16,7 +23,7 @@ export const needsEngine = (
   daemonEnabled: boolean,
   project: Pick<Project, "services">,
   mode: SessionMode,
-): boolean => daemonEnabled && project.services.enabled && mode !== "triage";
+): boolean => daemonEnabled && project.services.enabled && (mode === "work" || mode === "review");
 
 const costOf = (
   model: ReadModel,
@@ -35,7 +42,7 @@ const candidateOf = (task: Task): SessionStart | null => {
     return {
       taskId: task.id,
       agentId: task.assigneeId,
-      mode: task.kind === "triage" ? "triage" : "work",
+      mode: MODE_OF_KIND[task.kind],
     };
   }
   if (task.status === "review" && task.reviewerId !== undefined) {

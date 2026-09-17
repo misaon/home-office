@@ -211,7 +211,8 @@ export async function settle(
       }
       return;
     }
-    case "triage": {
+    case "triage":
+    case "plan": {
       const bossWillReadItOut = blocked && filed === null;
       if (
         !bossWillReadItOut &&

@@ -1,10 +1,15 @@
 import type { Agent, SessionMode } from "@ho/protocol";
 
-const PACK_BY_MODE: Readonly<Record<SessionMode, string | null>> = {
-  work: "worker",
-  review: "reviewer",
+const MODE_PACK: Readonly<Record<SessionMode, string | null>> = {
+  work: "work",
+  review: "review",
   triage: null,
+  plan: null,
 };
 
-export const skillPackFor = (agent: Agent, mode: SessionMode): string =>
-  agent.skillPack === "none" ? "none" : (PACK_BY_MODE[mode] ?? agent.skillPack);
+export const skillPacksFor = (agent: Agent, mode: SessionMode): string[] => {
+  const packs = [MODE_PACK[mode], agent.skillPack].filter(
+    (pack): pack is string => pack !== null && pack !== "none",
+  );
+  return [...new Set(packs)];
+};

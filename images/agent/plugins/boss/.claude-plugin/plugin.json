@@ -1,7 +1,7 @@
 {
   "name": "ho-boss",
-  "description": "Home Office boss pack: turning a request into tasks a worker can finish and a reviewer can check",
-  "version": "0.3.0",
+  "description": "Home Office boss pack: routing a request to the secretary, a developer or the analyst, and specifying work",
+  "version": "0.4.0",
   "author": {
     "name": "Home Office"
   }

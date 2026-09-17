@@ -2,12 +2,13 @@ import { z } from "zod";
 import { ATTACHMENTS_MAX, AttachmentName, CHAT_OUTBOX_DIR } from "./attachments.ts";
 import { EffortLevel, PublishMode, REPORT_MAX, TaskPriority, TaskSpec } from "./domain.ts";
 import { TaskId } from "./ids.ts";
+import { StaffRole } from "./roles.ts";
 
 export const HoReportInput = z.object({
   status: z
     .enum(["review", "done", "blocked"])
     .describe(
-      "review: the work is committed and ready for review, the only successful ending of a work session; done: the triage is finished; blocked: you cannot continue, and the summary says why",
+      "review: the work is committed and ready for review, the only successful ending of a work session; done: the triage or the plan is finished; blocked: you cannot continue, and the summary says why",
     ),
   summary: z
     .string()
@@ -46,7 +47,9 @@ export type HoAskHumanInput = z.infer<typeof HoAskHumanInput>;
 
 export const HoHireInput = z.object({
   name: z.string().min(1).max(60).describe("A first name nobody on this floor uses yet"),
-  role: z.enum(["worker", "reviewer"]).describe("What they are for"),
+  role: StaffRole.describe(
+    "What they are for: backend, frontend, devops or developer build; qa tests; security audits; head reviews last; analyst specifies; secretary takes errands",
+  ),
   model: z
     .string()
     .min(1)
@@ -94,9 +97,44 @@ export const HoDelegateInput = z.object({
     .describe(
       "true only when the result must be seen in a browser (UI changes, screenshots): the worker and the reviewer then get headless Chromium with Playwright tools. Omit for everything else.",
     ),
+  qa: z
+    .boolean()
+    .describe(
+      "true when QA should test the result before the final review: user-visible behaviour, an API or data change, anything a tester can exercise. false for documentation, configuration and refactors the checks already cover.",
+    ),
+  security: z
+    .boolean()
+    .describe(
+      "true when the change touches authentication, authorisation, input handling, secrets, cryptography, network exposure, dependencies or a hot path where performance matters; the security engineer then reviews it before the head of development.",
+    ),
   priority: TaskPriority.optional(),
 });
 export type HoDelegateInput = z.infer<typeof HoDelegateInput>;
+
+export const HoPlanInput = z.object({
+  title: z.string().min(1).max(200),
+  brief: z
+    .string()
+    .min(1)
+    .max(12_000)
+    .describe(
+      "The request as the human made it, plus everything they clarified since; the analyst turns it into specified tasks",
+    ),
+  context: z
+    .string()
+    .max(4000)
+    .prefault("")
+    .describe(
+      "What the repository cannot tell the analyst: decisions already made, links, constraints the human named",
+    ),
+  assignee: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("Colleague name or id; omit for the floor's analyst"),
+  priority: TaskPriority.optional(),
+});
+export type HoPlanInput = z.infer<typeof HoPlanInput>;
 
 export const HoTaskStatusInput = z.object({
   taskId: TaskId.optional().describe("Defaults to the current task"),

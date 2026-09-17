@@ -36,7 +36,7 @@ export type Card = {
   id: TaskId;
   t: string;
   p: Priority;
-  k: "code" | "triage";
+  k: "code" | "triage" | "plan";
   who: string;
   s: Lane;
   status: TaskStatus;

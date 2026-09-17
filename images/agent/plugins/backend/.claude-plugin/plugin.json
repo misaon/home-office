@@ -1,0 +1,8 @@
+{
+  "name": "ho-backend",
+  "description": "Home Office backend pack: server-side, API and data changes behind a stable interface",
+  "version": "0.4.0",
+  "author": {
+    "name": "Home Office"
+  }
+}

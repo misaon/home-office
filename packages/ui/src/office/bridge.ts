@@ -77,7 +77,7 @@ export class Bridge {
   }
 
   syncFromModel(): void {
-    syncRoster(this.world, this.#receptionists, () => this.#ids.agent());
+    syncRoster(this.world, this.#receptionists);
     this.#envelopes.sweep((taskId) => inFlight(this.world, { kind: "task", id: taskId }));
     this.#mail.sweep((ref) => inFlight(this.world, { kind: "mail", id: ref }) > 0);
     for (const session of model.sessions.values()) {

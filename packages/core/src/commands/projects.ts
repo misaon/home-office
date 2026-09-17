@@ -13,7 +13,7 @@ import {
 import { activeSessionOfTask, membersOf, tasksOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, entity, err, ok } from "../result.ts";
-import { bossFor, copyOf } from "./office-defaults.ts";
+import { copyOf, DEFAULT_TEAM, hireDefault } from "./office-defaults.ts";
 import { withProject } from "./shared.ts";
 import { isTerminal } from "./tasks.ts";
 
@@ -48,12 +48,12 @@ export function createProject(
   const project: Project = {
     id: ctx.ids.project(),
     ...fields,
+    staffedAt: ctx.now,
     createdAt: ctx.now,
     updatedAt: ctx.now,
   };
-  const boss = bossFor(project.id, ctx);
-  const staff: Agent[] = [];
-  const names = new Set([boss.name.toLowerCase()]);
+  const imported: Agent[] = [];
+  const names = new Set<string>();
   for (const id of new Set(importAgentIds)) {
     const source = model.agents.get(id);
     if (source === undefined) {
@@ -66,11 +66,20 @@ export function createProject(
       return err(conflict(`two imported characters are both called "${source.name}"`));
     }
     names.add(source.name.toLowerCase());
-    staff.push(copyOf(source, project.id, source.name, ctx));
+    imported.push(copyOf(source, project.id, source.name, ctx));
   }
+  const clash = DEFAULT_TEAM.find(
+    (member) => member.role === "boss" && names.has(member.name.toLowerCase()),
+  );
+  if (clash !== undefined) {
+    return err(conflict(`"${clash.name}" is the boss's name on every floor; rename the import`));
+  }
+  const team = DEFAULT_TEAM.filter((member) => !names.has(member.name.toLowerCase())).map(
+    (member) => hireDefault(member, project.id, ctx),
+  );
   const events: NewEvent[] = [
     { type: "project.created", actor: ctx.actor, payload: { project } },
-    ...[boss, ...staff].map((agent): NewEvent => ({
+    ...[...team, ...imported].map((agent): NewEvent => ({
       type: "agent.created",
       actor: ctx.actor,
       payload: { agent },

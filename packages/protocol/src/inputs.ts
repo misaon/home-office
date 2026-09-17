@@ -21,6 +21,7 @@ import {
 } from "./domain.ts";
 import { AgentId, ChatThreadId, ProjectId, SessionId, TaskId } from "./ids.ts";
 import { patchOf } from "./patch.ts";
+import { ReviewPlan } from "./roles.ts";
 
 const ProjectFields = Project.pick({
   name: true,
@@ -115,6 +116,7 @@ export const TaskCreateInput = z.object({
   priority: TaskPriority.default("normal"),
   assigneeId: AgentId.optional(),
   browser: z.boolean().optional(),
+  reviews: ReviewPlan.optional(),
 });
 export type TaskCreateInput = z.infer<typeof TaskCreateInput>;
 export const TaskRateInput = z.object({

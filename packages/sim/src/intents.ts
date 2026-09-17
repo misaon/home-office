@@ -26,16 +26,23 @@ const CELEBRATE_MS = 1800;
 const RECEIVED_BUBBLE_MS = 3000;
 
 const SEAT_GROUP: Partial<Record<AgentRole, string>> = {
-  worker: "dev",
-  reviewer: "qa",
-  clerk: "analyst",
+  backend: "dev",
+  frontend: "dev",
+  devops: "dev",
+  developer: "dev",
+  security: "dev",
+  qa: "qa",
+  analyst: "analyst",
+  head: "analyst",
 };
 
 function seatFor(world: World, actor: Actor, role: AgentRole): Anchor | undefined {
-  if (role === "boss") {
+  if (role === "boss" || actor.kind === "receptionist") {
     const own =
       (actor.home === null ? undefined : anchorOf(world, actor.floorId, actor.home.anchorId)) ??
-      world.rng.pick(freeAnchors(world, actor.floorId, "boss-desk", "boss"));
+      (role === "boss"
+        ? world.rng.pick(freeAnchors(world, actor.floorId, "boss-desk", "boss"))
+        : undefined);
     if (own !== undefined) {
       return own;
     }

@@ -1,0 +1,8 @@
+{
+  "name": "ho-head",
+  "description": "Home Office head-of-development pack: the final code review before the default branch",
+  "version": "0.4.0",
+  "author": {
+    "name": "Home Office"
+  }
+}

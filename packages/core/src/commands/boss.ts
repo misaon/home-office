@@ -7,6 +7,7 @@ import {
   compact,
   conflict,
   type HoDelegateInput,
+  type HoPlanInput,
   type NewEvent,
   notFound,
   NOTE_MAX,
@@ -15,7 +16,7 @@ import {
   type TaskId,
   type TaskSpec,
 } from "@ho/protocol";
-import { bossOf, findAgentByRef, latestThread, threadOfTask } from "../model/queries.ts";
+import { bossOf, findAgentByRef, latestThread, membersOf, threadOfTask } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
 import { chatEvent, handoffEvent, note, titleFromText, withAgent, withProject } from "./shared.ts";
@@ -39,11 +40,11 @@ export function delegateTask(
   parentTaskId: TaskId | undefined,
   ctx: CommandContext,
 ): CommandResult<Task> {
-  const boss = ctx.actor.kind === "agent" ? model.agents.get(ctx.actor.agentId) : undefined;
-  if (boss?.role !== "boss") {
-    return err(conflict("only the boss delegates tasks"));
+  const delegator = ctx.actor.kind === "agent" ? model.agents.get(ctx.actor.agentId) : undefined;
+  if (delegator === undefined || (delegator.role !== "boss" && delegator.role !== "analyst")) {
+    return err(conflict("only the boss and the analyst delegate tasks"));
   }
-  return withProject(model, boss.projectId, (project) => {
+  return withProject(model, delegator.projectId, (project) => {
     const assignee =
       input.assignee === undefined ? undefined : findAgentByRef(model, input.assignee, project.id);
     if (input.assignee !== undefined && assignee === undefined) {
@@ -59,25 +60,75 @@ export function delegateTask(
     const handoffNote =
       assignee === undefined
         ? undefined
-        : note(ctx, "handoff", `delegated by ${boss.name}: ${brief}`.slice(0, NOTE_MAX));
+        : note(ctx, "handoff", `delegated by ${delegator.name}: ${brief}`.slice(0, NOTE_MAX));
     const task = newTask(ctx, {
       projectId: project.id,
       kind: "work",
       title: input.title,
       brief,
       spec,
-      source: { kind: "delegation", byAgentId: boss.id, parentTaskId },
+      source: { kind: "delegation", byAgentId: delegator.id, parentTaskId },
       assigneeId: assignee?.id,
       priority: input.priority,
       publish: input.publish,
       browser: input.browser,
+      reviews: { qa: input.qa, security: input.security },
       notes: handoffNote === undefined ? [] : [handoffNote],
     });
     const events: NewEvent[] = [{ type: "task.created", actor: ctx.actor, payload: { task } }];
     if (assignee !== undefined && handoffNote !== undefined) {
-      events.push(handoffEvent(ctx, task.id, boss.id, assignee.id, handoffNote.text));
+      events.push(handoffEvent(ctx, task.id, delegator.id, assignee.id, handoffNote.text));
     }
     return ok({ events, read: readTask(task.id) });
+  });
+}
+
+export function planTask(
+  model: ReadModel,
+  input: HoPlanInput,
+  parentTaskId: TaskId | undefined,
+  ctx: CommandContext,
+): CommandResult<Task> {
+  const boss = ctx.actor.kind === "agent" ? model.agents.get(ctx.actor.agentId) : undefined;
+  if (boss?.role !== "boss") {
+    return err(conflict("only the boss hands requests to the analyst"));
+  }
+  return withProject(model, boss.projectId, (project) => {
+    const analyst =
+      input.assignee === undefined
+        ? membersOf(model, project.id).find((agent) => agent.role === "analyst")
+        : findAgentByRef(model, input.assignee, project.id);
+    if (analyst === undefined) {
+      return err(
+        input.assignee === undefined
+          ? conflict("this floor has no analyst; specify the work yourself with ho_delegate")
+          : notFound("agent", `${input.assignee} (on floor "${project.name}")`),
+      );
+    }
+    if (analyst.id === boss.id) {
+      return err(
+        conflict("a plan goes to a colleague; specify the work yourself with ho_delegate"),
+      );
+    }
+    const context = input.context.trim();
+    const handoffNote = note(ctx, "handoff", `planning requested by ${boss.name}: ${input.title}`);
+    const task = newTask(ctx, {
+      projectId: project.id,
+      kind: "plan",
+      title: input.title,
+      brief: context === "" ? input.brief : `${input.brief}\n\nContext:\n${context}`,
+      source: { kind: "delegation", byAgentId: boss.id, parentTaskId },
+      assigneeId: analyst.id,
+      priority: input.priority,
+      notes: [handoffNote],
+    });
+    return ok({
+      events: [
+        { type: "task.created", actor: ctx.actor, payload: { task } },
+        handoffEvent(ctx, task.id, boss.id, analyst.id, handoffNote.text),
+      ],
+      read: readTask(task.id),
+    });
   });
 }
 

@@ -14,6 +14,7 @@ import type { ReadModel } from "./model/read-model.ts";
 import { jsonEqual } from "./office-file.ts";
 import { defaultChoice, validateChoice } from "./providers.ts";
 import type { CommandContext } from "./result.ts";
+import { rolePack } from "./roles.ts";
 
 export type Plan = { events: NewEvent[]; changes: string[]; problems: string[] };
 
@@ -40,7 +41,7 @@ const hire = (
     model: entry.model ?? fallback.model,
     effort: entry.effort ?? fallback.effort,
     basePrompt: entry.basePrompt ?? "",
-    skillPack: entry.skillPack ?? "none",
+    skillPack: entry.skillPack ?? rolePack(entry.role),
     budgets,
     projectId,
     createdAt: ctx.now,

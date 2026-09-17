@@ -77,6 +77,7 @@ export const newTask = (
     notes?: Task["notes"] | undefined;
     publish?: Task["publish"] | undefined;
     browser?: Task["browser"] | undefined;
+    reviews?: Task["reviews"] | undefined;
   },
 ): Task => ({
   id: ctx.ids.task(),
@@ -85,6 +86,7 @@ export const newTask = (
   title: fields.title,
   brief: fields.brief,
   ...compact({ spec: fields.spec, publish: fields.publish, browser: fields.browser }),
+  reviews: fields.reviews ?? { qa: false, security: false },
   status: fields.assigneeId === undefined ? "inbox" : "assigned",
   ...compact({ assigneeId: fields.assigneeId }),
   reviewRounds: 0,

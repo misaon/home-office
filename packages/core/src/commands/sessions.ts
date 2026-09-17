@@ -3,6 +3,7 @@ import {
   compact,
   conflict,
   isSessionActive,
+  MODE_OF_KIND,
   type NewEvent,
   notFound,
   type Session,
@@ -46,7 +47,7 @@ export function startSession(
   if (agent.projectId !== task.projectId) {
     return err(conflict("agent belongs to another project"));
   }
-  if ((input.mode === "triage") !== (task.kind === "triage")) {
+  if (input.mode !== "review" && input.mode !== MODE_OF_KIND[task.kind]) {
     return err(conflict("session mode does not match the task kind"));
   }
   if (

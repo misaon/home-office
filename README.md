@@ -4,9 +4,10 @@
 
 **Hire a team of AI coding agents, give them a floor, and watch them work your backlog.**
 
-Every repository becomes an office. A boss takes your request, writes a real specification, hands it
-to a colleague, and the work comes back as a branch or a pull request — each agent in its own Docker
-sandbox, nothing running on your machine.
+Every repository becomes an office with a team of nine. A boss takes your request, an analyst turns
+it into a real specification, a developer builds it, QA, a security engineer and the head of
+development review it, and the work comes back as a branch or a pull request — each agent in its own
+Docker sandbox, nothing running on your machine.
 
 [![ci](https://github.com/misaon/home-office/actions/workflows/ci.yml/badge.svg)](https://github.com/misaon/home-office/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/misaon/home-office?display_name=tag&sort=semver)](https://github.com/misaon/home-office/releases/latest)
@@ -34,34 +35,43 @@ subscription — and it shows you the whole thing as a floor you can look at.
 flowchart LR
   You([You, in chat]) --> Boss
   Issue([GitHub issue]) -->|the postman<br/>brings the post| Boss[Andrew<br/>the boss]
-  Boss -->|one task per piece of work,<br/>with acceptance criteria| Task[(Task on the board)]
-  Task --> Work[Work session<br/>sandboxed container]
+  Boss -->|an errand| Lola[Lola<br/>the secretary]
+  Boss -->|anything bigger| Vera[Vera<br/>the analyst]
+  Vera -->|one task per piece of work,<br/>with acceptance criteria| Task[(Task on the board)]
+  Boss -->|an obvious change| Task
+  Lola --> Task
+  Task --> Work[Work session<br/>backend, frontend or DevOps]
   Work -->|commits| Verify{your own<br/>checks}
   Verify -->|fail, with the output| Task
-  Verify -->|pass| Publish[Branch<br/>+ draft pull request]
-  Publish --> Review[Review session]
-  Review -->|request changes| Task
-  Review -->|approve| Done([Done])
+  Verify -->|pass| QA[QA tests<br/>when flagged]
+  QA --> Sec[Security audit<br/>when flagged]
+  Sec --> Head[Head of development<br/>reviews last]
+  QA & Sec & Head -->|request changes| Task
+  Head -->|approve| Done([Branch + draft pull request])
 ```
 
-Nothing in that chain is a prompt you have to write twice. The boss is told how to specify work, the
-worker is told how to report, the reviewer is told to produce a verdict and nothing else — and the
-daemon, not the model, decides what happens next.
+Nothing in that chain is a prompt you have to write twice. The boss is told how to route, the analyst
+how to specify, the developer how to report, each reviewer what to look for and to produce a verdict
+and nothing else — and the daemon, not the model, decides what happens next.
 
 ## What you actually get
 
-**A specification, not a paraphrase.** The boss cannot hand over a paragraph. Delegation takes a goal
-in one sentence and acceptance criteria written so that someone else can check them, plus what must
-not change and what is deliberately out of scope. If it cannot write a checkable criterion, it asks
-you instead of guessing.
+**A specification, not a paraphrase.** Nobody can hand over a paragraph. The boss routes an errand to
+the secretary and an obvious change to the right developer, and hands everything else to the analyst,
+who reads the repository and creates the tasks. Delegation takes a goal in one sentence and acceptance
+criteria written so that someone else can check them, plus what must not change and what is
+deliberately out of scope. If nobody can write a checkable criterion, they ask you instead of guessing.
 
 **Your checks are the gate.** Set one command per floor — `bun run check`, `make test`, whatever you
 already use. It runs in a network-less sandbox against the agent's commits. Failing work never reaches
 your branch; it goes back to the author with the real output attached.
 
-**Review is a separate session.** A second agent gets the diff, the base branch and no write access,
-and must answer approve or request changes with numbered findings. Rejected work returns to the author
-with those findings, and the round is counted.
+**Review is a chain of separate sessions.** Whoever specifies a task flags whether QA should test it
+and whether the security engineer should audit it; the head of development reviews every task last.
+Each reviewer gets the diff, the base branch, the verdicts before theirs and no write access, and must
+answer approve or request changes with numbered findings. Approval passes the branch to the next
+reviewer; rejected work returns to the author with the findings, the round is counted, and the chain
+starts over.
 
 **Work survives a session ending.** Each task owns a Docker volume: the checkout, the branch, the
 provider's state, the build cache. A budget runs out, the daemon restarts, you close the lid — the next
@@ -78,7 +88,27 @@ as a comment, and the branch as a draft pull request.
 
 **Four providers, one office.** Claude Code, OpenCode, Gemini CLI and Codex. Per agent you choose the
 provider, the model, the effort, the budget in turns, minutes and dollars, and the skill pack. One
-floor can run a Claude boss over a Qwen worker on your own Ollama — the office does not mind.
+floor can run a Claude boss over a Qwen developer on your own Ollama — the office does not mind.
+
+## The team
+
+Every floor starts with the same nine, each with a skill pack for their part of the chain. Change
+their model, effort, budget or prompt, dismiss anyone you do not need, or hire your own; a floor with
+no team yet gets it when the daemon starts.
+
+| Who    | Role      | Default (Claude Code) | What they do                                                                           |
+| ------ | --------- | --------------------- | -------------------------------------------------------------------------------------- |
+| Andrew | boss      | opus, medium          | Reads the chat and the post, routes each request, reports back                         |
+| Lola   | secretary | haiku, low            | Small errands — docs, changelog, renames, dependency bumps — and carries the envelopes |
+| Vera   | analyst   | opus, high            | Turns a request into tasks with acceptance criteria and assigns them                   |
+| Rex    | backend   | sonnet, high          | Server-side code, APIs and data changes                                                |
+| Ida    | frontend  | sonnet, high          | What the user sees, checked in the browser                                             |
+| Bruno  | devops    | sonnet, high          | Containers, pipelines and infrastructure                                               |
+| Otto   | qa        | sonnet, high          | Tests flagged branches against their criteria                                          |
+| Sable  | security  | opus, high            | Audits flagged branches for security and performance issues                            |
+| Mara   | head      | opus, high            | Reviews every branch last                                                              |
+
+A tenth role, `developer`, is a general developer for whatever the specialists do not cover.
 
 ## Requirements
 
@@ -106,16 +136,16 @@ Right-clicking the app and choosing **Open** works too.
 ## Your first ten minutes
 
 1. **Open the app.** The office is empty; that is the only thing on screen.
-2. **Add a floor.** Point it at a local repository or a Git URL. You get a floor, a boss called
-   **Andrew**, and **Lola** on reception.
+2. **Add a floor.** Point it at a local repository or a Git URL. You get a floor and the team of
+   nine: **Andrew** at the boss's desk, **Lola** on reception, and the others at theirs.
 3. **Walk the setup checklist.** It verifies Docker, builds the images it needs, and puts your provider
    credentials in the macOS Keychain — never in a file the office can read back.
-4. **Hire someone.** Settings → add a worker and a reviewer, and pick the model and the budget. The
-   boss works alone until you do.
+4. **Meet the team.** Team lists the nine; change a model or a budget, dismiss anyone you do not
+   need, or hire your own colleague with a role and a prompt.
 5. **Set the gate.** Give the floor your own check command. This is the one setting that decides
    whether the office is useful or merely fast.
 6. **Write to the boss.** "The settings dialog loses focus when you press Escape." Watch Lola carry it
-   over, watch him think, watch the task appear on the board and a colleague walk to a desk.
+   over, watch him think, watch the task appear on the board and Ida walk to her desk.
 
 ## Let the repository describe its own floor
 
@@ -135,9 +165,11 @@ branch, publish and intake policy, budgets, and the staff to hire:
 ```
 
 The office applies it when the daemon starts and whenever the file changes;
-`ho project export <floor>` writes the floor back out again. No credential ever goes in it — only which
-provider an agent uses, which is enough for the daemon to find the key in the Keychain. A gitignored
-`.ho/config.local.json` layers over it for one machine.
+`ho project export <floor>` writes the floor back out again. An `agents` list names the whole staff:
+each entry has a `role` from boss, secretary, analyst, backend, frontend, devops, qa, security, head
+or developer, and a floor whose file names no staff keeps the default team. No credential ever goes in
+it — only which provider an agent uses, which is enough for the daemon to find the key in the Keychain.
+A gitignored `.ho/config.local.json` layers over it for one machine.
 
 ## What runs where
 
@@ -183,8 +215,9 @@ The desktop app and the `ho` binary talk to the same daemon, so anything you can
 ```bash
 ho daemon --ui                         # start the office and print a UI URL
 ho doctor                              # Docker, images, credentials, capacity
-ho project add app --path ~/code/app   # a new floor for a local repository
-ho task create --project app --title "Fix the focus trap in the settings dialog" --browser
+ho project add app --path ~/code/app   # a new floor for a local repository, with the team of nine
+ho agent add Nico --role backend --project app --model sonnet
+ho task create --project app --title "Fix the focus trap in the settings dialog" --browser --qa
 ho session watch                       # live output from every running agent
 ho usage --since 24h                   # tokens per agent, floor and day
 ho remote pair --name phone            # pair a phone through the relay

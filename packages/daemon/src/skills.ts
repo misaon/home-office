@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join, normalize } from "node:path";
 
@@ -85,48 +86,64 @@ export class SkillLibrary {
       : join(this.#root, pack, "skills");
   }
 
-  async index(pack: string): Promise<SkillIndexEntry[]> {
-    const dir = this.#packDir(pack);
-    if (dir === null) {
-      return [];
-    }
-    const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
-    const found: SkillIndexEntry[] = [];
-    for (const entry of entries.filter((e) => e.isDirectory())) {
-      const text = await readFile(join(dir, entry.name, "SKILL.md"), "utf8").catch(() => null);
-      const parsed = text === null ? null : parseSkill(text, entry.name);
-      if (parsed?.ok === true) {
-        found.push({ name: parsed.value.name, description: parsed.value.description });
+  async index(packs: readonly string[]): Promise<SkillIndexEntry[]> {
+    const found = new Map<string, SkillIndexEntry>();
+    for (const pack of packs) {
+      const dir = this.#packDir(pack);
+      if (dir === null) {
+        continue;
+      }
+      const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+      for (const entry of entries.filter((e) => e.isDirectory())) {
+        const text = await readFile(join(dir, entry.name, "SKILL.md"), "utf8").catch(() => null);
+        const parsed = text === null ? null : parseSkill(text, entry.name);
+        if (parsed?.ok === true && !found.has(parsed.value.name)) {
+          found.set(parsed.value.name, {
+            name: parsed.value.name,
+            description: parsed.value.description,
+          });
+        }
       }
     }
-    return found.toSorted((a, b) => a.name.localeCompare(b.name));
+    return [...found.values()].toSorted((a, b) => a.name.localeCompare(b.name));
   }
 
-  async read(pack: string, name: string): Promise<SkillBody> {
-    const dir = this.#packDir(pack);
-    if (dir === null || !SKILL_NAME.test(name)) {
-      throw new Error(`no skill "${name}" in this session`);
+  #locate(packs: readonly string[], name: string): string | null {
+    if (!SKILL_NAME.test(name)) {
+      return null;
     }
-    const text = await readFile(join(dir, name, "SKILL.md"), "utf8").catch(() => null);
+    for (const pack of packs) {
+      const dir = this.#packDir(pack);
+      if (dir !== null && existsSync(join(dir, name, "SKILL.md"))) {
+        return join(dir, name);
+      }
+    }
+    return null;
+  }
+
+  async read(packs: readonly string[], name: string): Promise<SkillBody> {
+    const dir = this.#locate(packs, name);
+    const text =
+      dir === null ? null : await readFile(join(dir, "SKILL.md"), "utf8").catch(() => null);
     const parsed = text === null ? null : parseSkill(text, name);
-    if (parsed?.ok !== true) {
+    if (dir === null || parsed?.ok !== true) {
       throw new Error(`no skill "${name}" in this session`);
     }
     const files: string[] = [];
     for (const bundled of BUNDLED_DIRS) {
-      const entries = await readdir(join(dir, name, bundled), { recursive: true }).catch(() => []);
+      const entries = await readdir(join(dir, bundled), { recursive: true }).catch(() => []);
       files.push(...entries.map((file) => `${bundled}/${file.replaceAll("\\", "/")}`));
     }
     return { ...parsed.value, body: parsed.value.body.slice(0, BODY_MAX), files: files.toSorted() };
   }
 
-  async file(pack: string, name: string, path: string): Promise<string> {
-    const dir = this.#packDir(pack);
+  async file(packs: readonly string[], name: string, path: string): Promise<string> {
+    const dir = this.#locate(packs, name);
     const relative = bundledPath(path);
-    if (dir === null || !SKILL_NAME.test(name) || relative === null) {
+    if (dir === null || relative === null) {
       throw new Error(`no file "${path}" in skill "${name}"`);
     }
-    const text = await readFile(join(dir, name, relative), "utf8").catch(() => null);
+    const text = await readFile(join(dir, relative), "utf8").catch(() => null);
     if (text === null) {
       throw new Error(`no file "${path}" in skill "${name}"`);
     }
