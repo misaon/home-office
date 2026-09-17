@@ -27,7 +27,9 @@ export const patchOf = <Shape extends Record<string, z.ZodType>>(
     Object.fromEntries(
       Object.entries(schema.shape).map(([key, field]) => [
         key,
-        z.optional(field instanceof z.ZodDefault ? field.unwrap() : field),
+        z.optional(
+          field instanceof z.ZodDefault || field instanceof z.ZodPrefault ? field.unwrap() : field,
+        ),
       ]),
     ),
   ) as PatchSchema<Shape>;

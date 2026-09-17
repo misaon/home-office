@@ -19,7 +19,7 @@ import { SkillLibrary } from "./skills.ts";
 import { SessionManager } from "./sessions.ts";
 import { VERSION } from "./version.ts";
 
-const STOP_TIMEOUT_MS = 20_000;
+const STOP_TIMEOUT_MS = 60_000;
 
 export type DaemonHandle = {
   info: DaemonInfo;

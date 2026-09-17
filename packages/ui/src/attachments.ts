@@ -61,11 +61,13 @@ export function useAttachmentUrl(attachment: Attachment, wanted = true): string 
       return undefined;
     }
     let live = true;
-    void attachmentUrl(attachment).then((value) => {
-      if (live) {
-        setUrl(value);
-      }
-    });
+    attachmentUrl(attachment)
+      .then((value) => {
+        if (live) {
+          setUrl(value);
+        }
+      })
+      .catch(() => undefined);
     return () => {
       live = false;
     };

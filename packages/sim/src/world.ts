@@ -47,11 +47,16 @@ export type DeliveryRef = { kind: "task"; id: string } | { kind: "mail"; id: str
 
 const sameRef = (a: DeliveryRef, b: DeliveryRef): boolean => a.kind === b.kind && a.id === b.id;
 
+const carries = (event: SimEvent, ref: DeliveryRef): boolean =>
+  event.kind === "delivered"
+    ? sameRef(event.ref, ref)
+    : event.kind === "mail_dropped" && ref.kind === "mail" && event.ref === ref.id;
+
 export const inFlight = (world: World, ref: DeliveryRef): number => {
   let count = 0;
   for (const actor of world.actors.values()) {
     for (const step of actor.steps) {
-      if (step.kind === "emit" && step.event.kind === "delivered" && sameRef(step.event.ref, ref)) {
+      if (step.kind === "emit" && carries(step.event, ref)) {
         count += 1;
       }
     }
@@ -183,14 +188,14 @@ export function release(world: World, actor: Actor): void {
   if (current === null) {
     return;
   }
-  const isHome =
-    actor.home !== null &&
-    actor.home.floorId === current.floorId &&
-    actor.home.anchorId === current.anchorId;
-  if (!isHome) {
+  const kept = [actor.home, actor.work].some(
+    (held) =>
+      held !== null && held.floorId === current.floorId && held.anchorId === current.anchorId,
+  );
+  if (!kept) {
     world.floors.get(current.floorId)?.reservations.delete(current.anchorId);
   }
-  actor.reservation = isHome ? current : null;
+  actor.reservation = kept ? current : null;
 }
 
 export const NEED_PERIOD_MS: Record<NeedKind, number> = {

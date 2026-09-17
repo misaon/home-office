@@ -7,15 +7,14 @@ import {
   type Task,
   type TaskId,
 } from "@ho/protocol";
+import { membersOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
 import { handoffEvent, note, noteEvent, statusChange, withTask } from "./shared.ts";
 import { readTask } from "./tasks.ts";
 
 const reviewerFor = (model: ReadModel, task: Task): Agent | undefined =>
-  [...model.agents.values()].find(
-    (a) => a.role === "reviewer" && a.id !== task.assigneeId && a.projectId === task.projectId,
-  );
+  membersOf(model, task.projectId).find((a) => a.role === "reviewer" && a.id !== task.assigneeId);
 
 export function fileReport(
   model: ReadModel,

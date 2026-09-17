@@ -1,4 +1,5 @@
 import { awaitsAnswer, chatOf } from "@ho/core";
+import { t } from "i18next";
 import {
   type Agent,
   type AgentId,
@@ -77,8 +78,11 @@ function memberOf(agent: Agent, snapshot: Snapshot, now: number): Member {
     model: agent.model,
     effort: agent.effort,
     status: session === undefined ? "idle" : "working",
-    doing: task?.title ?? "Waiting for work",
-    since: session === undefined ? "idle" : `started ${since(session.startedAt, now)} ago`,
+    doing: task?.title ?? t("team.waiting"),
+    since:
+      session === undefined
+        ? t("team.idle")
+        : t("team.startedAgo", { since: since(session.startedAt, now) }),
     prompt: agent.basePrompt,
   };
 }

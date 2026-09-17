@@ -29,7 +29,10 @@ export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions): AgentRun
           channel.write(userMessage(input.text));
           for (;;) {
             const step = await Promise.race([lines.next(), cancelled.promise]);
-            if (step === null || step.done === true) {
+            if (step === null) {
+              return;
+            }
+            if (step.done === true) {
               yield {
                 kind: "error",
                 code: "process_exit",

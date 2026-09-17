@@ -96,7 +96,6 @@ export class RunnerGateway {
       return;
     }
     const lines = createChannel<RunnerLine>(undefined, {
-      capacity: 128,
       onClose: () => {
         this.close(token);
       },

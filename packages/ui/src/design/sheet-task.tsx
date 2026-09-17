@@ -13,10 +13,10 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
   const set = useDesign((s) => s.set);
   const tone = priority(task.p);
   const canFinish = canTransition(task.status, "done");
-  const canResume = canTransition(task.status, "in_progress");
+  const canResume = task.who !== "" && canTransition(task.status, "assigned");
 
   const move = useOfficeMutation({
-    mutationFn: (status: "done" | "in_progress") =>
+    mutationFn: (status: "done" | "assigned") =>
       requireClient().tasks.transition({ id: task.id, to: status }),
     onSuccess: () => {
       set({ sheet: null });
@@ -72,7 +72,7 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
               type="button"
               disabled={move.isPending}
               onClick={() => {
-                move.mutate("in_progress");
+                move.mutate("assigned");
               }}
               className="hover:text-accent-soft hover:border-accent-a45 py-11 px-15 rounded-11 border border-border-strong bg-transparent text-ink-quiet text-12h cursor-pointer whitespace-nowrap transition-all duration-200"
             >

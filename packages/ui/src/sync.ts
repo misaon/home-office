@@ -34,7 +34,8 @@ let followedLog: string | null = null;
 
 async function runEvents(client: Client, bridge: Bridge, signal: AbortSignal): Promise<void> {
   const head = await client.events.head();
-  if (head.logId !== null && followedLog !== null && head.logId !== followedLog) {
+  const replaced = head.logId !== null && followedLog !== null && head.logId !== followedLog;
+  if (replaced || head.seq < model.lastSeq) {
     window.location.reload();
     return;
   }

@@ -164,6 +164,9 @@ export function transitionTask(
     if (!canTransition(task.status, input.to)) {
       return err({ code: "invalid_transition", from: task.status, to: input.to });
     }
+    if (input.to === "in_progress" && ctx.actor.kind !== "system") {
+      return err(conflict("a task is in progress only while a session runs it; assign it instead"));
+    }
     if ((input.to === "assigned" || input.to === "in_progress") && task.assigneeId === undefined) {
       return err(conflict("task has no assignee"));
     }
@@ -194,6 +197,14 @@ export function patchTaskArtifacts(
   );
 }
 
+const hasOpenFollowUps = (model: ReadModel, task: Task): boolean =>
+  tasksOf(model, task.projectId).some(
+    (child) =>
+      child.source.kind === "delegation" &&
+      child.source.parentTaskId === task.id &&
+      !isTerminal(child.status),
+  );
+
 export function clearFinishedTasks(
   model: ReadModel,
   projectId: ProjectId,
@@ -201,7 +212,10 @@ export function clearFinishedTasks(
 ): CommandResult<TaskId[]> {
   return withProject(model, projectId, () => {
     const finished = tasksOf(model, projectId).filter(
-      (task) => isTerminal(task.status) && activeSessionOfTask(model, task.id) === undefined,
+      (task) =>
+        isTerminal(task.status) &&
+        activeSessionOfTask(model, task.id) === undefined &&
+        !hasOpenFollowUps(model, task),
     );
     const events: NewEvent[] = finished.map((task) => ({
       type: "task.removed",
@@ -217,9 +231,12 @@ export function removeTask(
   taskId: TaskId,
   ctx: CommandContext,
 ): CommandResult<TaskId> {
-  return withTask(model, taskId, () => {
+  return withTask(model, taskId, (task) => {
     if (activeSessionOfTask(model, taskId) !== undefined) {
       return err(conflict("task has an active session; stop it first"));
+    }
+    if (hasOpenFollowUps(model, task)) {
+      return err(conflict("task still has open follow-up tasks delegated from it"));
     }
     return ok({
       events: [{ type: "task.removed", actor: ctx.actor, payload: { taskId } }],

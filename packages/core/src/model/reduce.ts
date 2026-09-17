@@ -135,7 +135,11 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
 }
 
 function removeTask(model: ReadModel, taskId: TaskId, projectId: ProjectId): void {
-  for (const sessionId of model.sessionsByTask.get(taskId) ?? []) {
+  const sessions = model.sessionsByTask.get(taskId);
+  if (sessions !== undefined && sessions.size > 0) {
+    model.revisions.sessions += 1;
+  }
+  for (const sessionId of sessions ?? []) {
     const session = model.sessions.get(sessionId);
     if (session !== undefined) {
       dropFrom(model.sessionsByAgent, session.agentId, sessionId);

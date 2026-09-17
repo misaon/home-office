@@ -1,5 +1,5 @@
 import { planSessionStarts } from "@ho/core";
-import { errorMessage } from "@ho/protocol";
+import { errorMessage, type StoredEvent } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
 import type { Logger } from "./logger.ts";
 import { followEvents, type Office } from "./office.ts";
@@ -17,31 +17,29 @@ export function startScheduler(
   let active: Promise<void> | null = null;
   let again = false;
   const run = async (): Promise<void> => {
-    try {
-      const plan = planSessionStarts(
-        office.model,
-        config.scheduler.maxConcurrentSessions,
-        config.services.enabled,
-      );
-      log.debug(
-        {
-          starts: plan.starts.length,
-          skipped: plan.skipped,
-          capacity: plan.capacity,
-          active: office.model.activeSessions.size,
-          max: config.scheduler.maxConcurrentSessions,
-        },
-        "scheduler tick",
-      );
-      for (const start of plan.starts) {
-        if (stopped) {
-          break;
-        }
-        log.info({ taskId: start.taskId, agentId: start.agentId }, "scheduling session");
-        await sessions.start(start.taskId, start.agentId, start.mode);
+    const plan = planSessionStarts(
+      office.model,
+      config.scheduler.maxConcurrentSessions,
+      config.services.enabled,
+    );
+    log.debug(
+      {
+        starts: plan.starts.length,
+        skipped: plan.skipped,
+        capacity: plan.capacity,
+        active: office.model.activeSessions.size,
+        max: config.scheduler.maxConcurrentSessions,
+      },
+      "scheduler tick",
+    );
+    for (const start of plan.starts) {
+      if (stopped) {
+        break;
       }
-    } catch (error) {
-      log.error({ err: errorMessage(error) }, "scheduler tick failed");
+      log.info({ taskId: start.taskId, agentId: start.agentId }, "scheduling session");
+      await sessions.start(start.taskId, start.agentId, start.mode).catch((error: unknown) => {
+        log.error({ taskId: start.taskId, err: errorMessage(error) }, "session did not start");
+      });
     }
   };
   const tick = (): void => {
@@ -60,6 +58,12 @@ export function startScheduler(
       }
     });
   };
+  const onEvent = (event: StoredEvent): void => {
+    if (event.type === "task.status_changed" && event.payload.to === "cancelled") {
+      void sessions.stopTask(event.payload.taskId);
+    }
+    tick();
+  };
   const following = followEvents(
     office,
     [
@@ -70,7 +74,7 @@ export function startScheduler(
       "session.ended",
       "agent.updated",
     ],
-    tick,
+    onEvent,
     log,
     "scheduler",
   );

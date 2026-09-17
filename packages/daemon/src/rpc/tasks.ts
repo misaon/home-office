@@ -31,9 +31,12 @@ export const taskRoutes = {
   transition: base.tasks.transition.handler(({ input, context }) =>
     context.office.execute(HUMAN_ACTOR, (m, ctx) => transitionTask(m, input, ctx)),
   ),
-  remove: base.tasks.remove.handler(async ({ input, context }) => ({
-    id: await context.office.execute(HUMAN_ACTOR, (m, ctx) => removeTask(m, input.id, ctx)),
-  })),
+  remove: base.tasks.remove.handler(async ({ input, context }) => {
+    await context.sessions.stopTask(input.id);
+    return {
+      id: await context.office.execute(HUMAN_ACTOR, (m, ctx) => removeTask(m, input.id, ctx)),
+    };
+  }),
   publish: base.tasks.publish.handler(({ input, context }) =>
     publishTask(context.office, context.home, input.id),
   ),

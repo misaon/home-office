@@ -29,17 +29,10 @@ import type { AttachmentStore } from "./attachments.ts";
 import type { Logger } from "./logger.ts";
 import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
-import { secretEnvFor } from "./provider-secrets.ts";
 import type { RunnerGateway } from "./runner-gateway.ts";
-import {
-  provision,
-  type Provisioned,
-  type SessionContext,
-  sessionServicesOf,
-} from "./session-provision.ts";
+import type { Provisioned, SessionContext } from "./session-provision.ts";
 import { recoverSessions } from "./session-recover.ts";
-import { runPrompt } from "./session-run.ts";
-import { settle } from "./session-settle.ts";
+import { type Ending, runSession } from "./session-run.ts";
 import { gapOf, traceOf } from "./session-trace.ts";
 
 export type SessionDeps = {
@@ -59,10 +52,12 @@ export type SessionDeps = {
 
 type Subscriber = { sessionId: SessionId | null; push: (event: LiveEvent) => void };
 
+type Running = { taskId: TaskId; controller: AbortController; done: Promise<void> };
+
 export class SessionManager {
   readonly #deps: SessionDeps;
   readonly #subscribers = new Set<Subscriber>();
-  readonly #running = new Map<SessionId, { controller: AbortController; done: Promise<void> }>();
+  readonly #running = new Map<SessionId, Running>();
   #stopping = false;
   readonly #starting = new Set<Promise<Session>>();
 
@@ -73,7 +68,7 @@ export class SessionManager {
   async recover(): Promise<void> {
     await recoverSessions(
       this.#deps,
-      (id, reason) => this.#end(id, "failed", reason),
+      (id, reason) => this.#end(id, { state: "failed", reason }),
       (taskId, reason) => this.#block(taskId, reason),
     );
   }
@@ -148,7 +143,7 @@ export class SessionManager {
         clearTimeout(budget);
         this.#running.delete(session.id);
       });
-    this.#running.set(session.id, { controller, done });
+    this.#running.set(session.id, { taskId, controller, done });
     return session;
   }
 
@@ -159,6 +154,14 @@ export class SessionManager {
     }
     running.controller.abort();
     return true;
+  }
+
+  async stopTask(taskId: TaskId): Promise<void> {
+    const running = [...this.#running.values()].filter((entry) => entry.taskId === taskId);
+    for (const { controller } of running) {
+      controller.abort();
+    }
+    await Promise.allSettled(running.map(({ done }) => done));
   }
 
   async stopAll(): Promise<void> {
@@ -195,9 +198,9 @@ export class SessionManager {
     );
   }
 
-  #end(sessionId: SessionId, state: "stopped" | "failed", reason?: string): Promise<Session> {
+  #end(sessionId: SessionId, ending: Ending): Promise<Session> {
     return this.#deps.office.execute(SYSTEM_ACTOR, (m, ctx) =>
-      endSession(m, { sessionId, state, ...compact({ reason }) }, ctx),
+      endSession(m, { sessionId, state: ending.state, ...compact({ reason: ending.reason }) }, ctx),
     );
   }
 
@@ -248,41 +251,26 @@ export class SessionManager {
   async #run(ctx: SessionContext): Promise<void> {
     const { log } = this.#deps;
     const sessionId = ctx.session.id;
-    let provisioned: Provisioned | null = null;
+    const held: { provisioned: Provisioned | null } = { provisioned: null };
+    let ending: Ending;
     try {
-      const secretEnv = await secretEnvFor(this.#deps.secrets, ctx.agent);
-      provisioned = await provision(this.#deps, ctx);
-      await this.#state(sessionId, "starting", {
-        sandboxId: provisioned.sandbox.id,
-        ...compact({ services: sessionServicesOf(provisioned.services) }),
-      });
-      log.info(
-        {
-          sessionId,
-          mode: ctx.session.mode,
-          resume: ctx.previous?.runtimeSessionId ?? null,
-          uid: provisioned.connection.uid,
+      ending = await runSession(
+        this.#deps,
+        ctx,
+        (provisioned) => {
+          held.provisioned = provisioned;
         },
-        "runner connected",
-      );
-      const outcome = await runPrompt(this.#deps, ctx, provisioned, secretEnv, (event) =>
-        this.#onEvent(ctx, event),
-      );
-      await this.#state(sessionId, "stopping");
-      await settle(this.#deps, ctx, provisioned, outcome);
-      await this.#end(
-        sessionId,
-        outcome.failure === null ? "stopped" : "failed",
-        outcome.failure ?? undefined,
+        (event) => this.#onEvent(ctx, event),
       );
     } catch (error) {
       const message = errorMessage(error).slice(0, 2000);
       log.error({ sessionId, err: message }, "session failed");
       this.#emit(sessionId, { kind: "error", code: "unknown", message });
       await this.#block(ctx.task.id, message);
-      await this.#end(sessionId, "failed", message).catch(() => null);
+      ending = { state: "failed", reason: message };
     } finally {
-      await provisioned?.dispose();
+      await held.provisioned?.dispose();
     }
+    await this.#end(sessionId, ending).catch(() => null);
   }
 }

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
@@ -13,6 +14,7 @@ const CLEAR =
   "w-20 h-20 flex-[0_0_20px] grid place-items-center border-0 rounded-6 bg-transparent text-accent-quote cursor-pointer transition-all duration-200";
 
 export function ChatAttachment({ file }: { file: string }): React.JSX.Element {
+  const { t } = useTranslation();
   const set = useDesign((s) => s.set);
   return (
     <div className={CHIP}>
@@ -20,7 +22,7 @@ export function ChatAttachment({ file }: { file: string }): React.JSX.Element {
       <span className={NAME}>{file}</span>
       <button
         type="button"
-        aria-label="Remove the attachment"
+        aria-label={t("chat.removeAttachment")}
         onClick={() => {
           set({ attachment: null });
         }}

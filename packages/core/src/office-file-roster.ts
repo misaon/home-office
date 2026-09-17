@@ -197,13 +197,14 @@ export function planRoster(
   const roster = membersOf(model, project.id);
   const boss = roster.find((agent) => agent.role === "boss");
   const staff = roster.filter((agent) => agent.id !== boss?.id);
-  const taken = new Set<string>();
+  const taken = new Set<string>(boss === undefined ? [] : [boss.name.toLowerCase()]);
   for (const agent of staff) {
     if (named.has(agent.name.toLowerCase()) || !release(model, agent, ctx, plan)) {
       taken.add(agent.name.toLowerCase());
     }
   }
   if (boss !== undefined && bossEntry !== undefined) {
+    taken.delete(boss.name.toLowerCase());
     taken.add(planBoss(boss, bossEntry, floorBudgets, taken, ctx, plan).toLowerCase());
   }
   const byName = new Map(staff.map((agent) => [agent.name.toLowerCase(), agent]));

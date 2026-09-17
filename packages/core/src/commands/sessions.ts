@@ -73,7 +73,7 @@ export function startSession(
   const previous =
     input.mode === "triage" && threadId !== undefined
       ? resumableThreadSession(model, threadId, input.agentId)
-      : resumableSession(model, task.id, input.agentId);
+      : resumableSession(model, task.id, input.agentId, input.mode);
   const session: Session = {
     id: ctx.ids.session(),
     taskId: task.id,

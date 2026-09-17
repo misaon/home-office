@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useUi } from "../store.ts";
 import { Board } from "./board.tsx";
 import { Chat } from "./chat.tsx";
@@ -19,16 +19,18 @@ export function Panel(): React.JSX.Element | null {
   const sheetDraft = useDesign((s) => s.sheetDraft);
   const floor = useFloor();
   const selectedAgentId = useUi((s) => s.selectedAgentId);
+  const shown = useRef<typeof selectedAgentId>(null);
 
   useEffect(() => {
-    if (selectedAgentId === null) {
+    if (selectedAgentId === null || shown.current === selectedAgentId) {
+      shown.current = selectedAgentId;
       return;
     }
     const person = floor?.team.find((member) => member.id === selectedAgentId);
-    const open = useDesign.getState().sheet;
-    if (person === undefined || (open?.type === "agent" && open.id === person.id)) {
+    if (person === undefined) {
       return;
     }
+    shown.current = selectedAgentId;
     useDesign.setState({
       tab: "Team",
       sheet: { type: "agent", id: person.id },

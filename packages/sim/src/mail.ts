@@ -2,7 +2,7 @@ import type { AgentId } from "@ho/protocol";
 import { pendingDeliveries, resumeSteps, setSteps, spawnActor, walkSteps } from "./actors.ts";
 import { carry } from "./intents.ts";
 import type { Anchor } from "./map.ts";
-import { anchorOf, type Step, type World } from "./world.ts";
+import { anchorOf, release, type Step, type World } from "./world.ts";
 
 const DROP_MS = 900;
 const PICKUP_MS = 800;
@@ -54,6 +54,7 @@ export function fetchMail(
   if (boss === undefined || boss.floorId !== floorId) {
     return false;
   }
+  release(world, boss);
   setSteps(boss, [
     ...pendingDeliveries(boss),
     ...pickup,
