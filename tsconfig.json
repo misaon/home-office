@@ -3,6 +3,7 @@
   "include": [
     "scripts/**/*.ts",
     "apps/cli/src",
+    "apps/relay/src",
     "packages/daemon/src",
     "packages/intake-github/src",
     "packages/runner/src",

@@ -5,6 +5,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { AttachmentStore } from "./attachments.ts";
 import type { Logger } from "./logger.ts";
 import { McpGateway } from "./mcp.ts";
+import type { RemoteDispatcher } from "./remote-peers.ts";
 import type { RpcContext } from "./rpc/context.ts";
 import { router } from "./rpc/router.ts";
 import { RunnerGateway, type RunnerSocketData } from "./runner-gateway.ts";
@@ -93,6 +94,7 @@ const serveUi = (uiDir: string | null, pathname: string): Promise<Response> | Re
 export function startServer(options: ServerOptions): {
   port: number;
   token: string;
+  remote: RemoteDispatcher;
   stop: () => Promise<void>;
 } {
   const token = mintToken();
@@ -184,5 +186,16 @@ export function startServer(options: ServerOptions): {
     },
   });
   options.log.info({ host: options.host, port: server.port }, "rpc server listening");
-  return { port: server.port ?? options.port, token, stop: () => server.stop(true) };
+  return {
+    port: server.port ?? options.port,
+    token,
+    remote: {
+      message: (socket, data, device) =>
+        handler.message(socket, data, { context: { ...options.context, device } }),
+      close: (socket) => {
+        handler.close(socket);
+      },
+    },
+    stop: () => server.stop(true),
+  };
 }

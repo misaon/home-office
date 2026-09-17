@@ -25,6 +25,9 @@
     },
     "apps/cli": {
       "project": ["src/**/*.ts"]
+    },
+    "apps/relay": {
+      "project": ["src/**/*.ts"]
     }
   }
 }

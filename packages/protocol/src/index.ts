@@ -13,5 +13,6 @@ export * from "./office-file.ts";
 export * from "./office-layout.ts";
 export * from "./patch.ts";
 export * from "./providers.ts";
+export * from "./remote.ts";
 export * from "./repo.ts";
 export * from "./runtime-events.ts";

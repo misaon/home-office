@@ -7,13 +7,13 @@ import { startFloorJobs } from "./floor-jobs.ts";
 import { startGc } from "./gc.ts";
 import { type DirectoryPicker, osascriptDirectoryPicker } from "./host-dialog.ts";
 import { IntakeService } from "./intake.ts";
-import { createLogger } from "./logger.ts";
+import { createLogger, type Logger } from "./logger.ts";
 import { McpGateway } from "./mcp.ts";
 import { OfficeGate } from "./office-gate.ts";
 import { openOffice } from "./office.ts";
-import { buildsImages, resolveResources } from "./paths.ts";
+import { buildsImages, resolveResources, type Resources } from "./paths.ts";
+import { RemoteService } from "./remote-service.ts";
 import { RunnerGateway } from "./runner-gateway.ts";
-import { createRuntimes } from "./runtimes.ts";
 import { startServer } from "./server.ts";
 import { SkillLibrary } from "./skills.ts";
 import { SessionManager } from "./sessions.ts";
@@ -45,6 +45,37 @@ const withDeadline = (work: Promise<void>, ms: number): Promise<void> =>
     });
   });
 
+const announceStarted = (
+  log: Logger,
+  started: {
+    home: string;
+    resources: Resources;
+    config: DaemonConfig;
+    port: number;
+    tracesDir: string;
+  },
+): void => {
+  const { home, resources, config, port, tracesDir } = started;
+  log.info(
+    {
+      home,
+      resources: resources.root,
+      bun: Bun.version,
+      platform: `${process.platform}-${process.arch}`,
+      logLevel: config.logLevel,
+      port,
+      docker: config.docker,
+      limits: config.limits,
+      scheduler: config.scheduler,
+      retention: config.retention,
+      browser: config.browser,
+      services: { enabled: config.services.enabled, memoryMb: config.services.memoryMb },
+      traces: tracesDir,
+    },
+    "daemon started",
+  );
+};
+
 export async function launchDaemon(
   options: DaemonOptions,
   home: string,
@@ -73,7 +104,6 @@ export async function launchDaemon(
   const sessions = new SessionManager({
     office,
     provider,
-    runtimes: createRuntimes(log, clock),
     gateway,
     mcp,
     attachments,
@@ -90,6 +120,7 @@ export async function launchDaemon(
   const gc = startGc(provider, config, log, traces);
   cleanup.defer(() => gc.stop());
   const startedAt = clock.now().toISOString();
+  const remote = await RemoteService.open(home, clock, log);
   const server = startServer({
     host: config.host,
     port: config.port,
@@ -112,12 +143,17 @@ export async function launchDaemon(
       startedAt,
       gc: gc.runOnce,
       pickDirectory: options.pickDirectory ?? osascriptDirectoryPicker,
+      remote,
       log,
     },
   });
   cleanup.defer(async () => {
     await sessions.stopAll();
     await server.stop();
+  });
+  remote.attach(server.remote);
+  cleanup.defer(() => {
+    remote.stop();
   });
   ({ port } = server);
   const info: DaemonInfo = {
@@ -143,23 +179,6 @@ export async function launchDaemon(
     }
     return stopping;
   };
-  log.info(
-    {
-      home,
-      resources: resources.root,
-      bun: Bun.version,
-      platform: `${process.platform}-${process.arch}`,
-      logLevel: config.logLevel,
-      port,
-      docker: config.docker,
-      limits: config.limits,
-      scheduler: config.scheduler,
-      retention: config.retention,
-      browser: config.browser,
-      services: { enabled: config.services.enabled, memoryMb: config.services.memoryMb },
-      traces: traces.dir,
-    },
-    "daemon started",
-  );
+  announceStarted(log, { home, resources, config, port, tracesDir: traces.dir });
   return { info, config, stop };
 }
