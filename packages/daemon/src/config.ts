@@ -24,6 +24,7 @@ export const DaemonConfig = z.object({
   retention: z
     .object({
       taskVolumeHours: z.int().positive().default(24),
+      traceDays: z.int().positive().default(30),
     })
     .prefault({}),
   docker: z

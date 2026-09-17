@@ -14,6 +14,7 @@ import {
   TaskArtifacts,
   TaskNote,
   TaskPriority,
+  TaskRating,
   TaskStatus,
   Usage,
 } from "./domain.ts";
@@ -59,6 +60,7 @@ export const DomainEvent = z.discriminatedUnion("type", [
     verdict: z.enum(["approve", "request_changes"]),
     rounds: z.int().nonnegative(),
   }),
+  event("task.rated", { taskId: TaskId, rating: TaskRating }),
   event("task.removed", { taskId: TaskId }),
 
   event("handoff.requested", {

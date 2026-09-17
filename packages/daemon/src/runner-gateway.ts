@@ -3,6 +3,7 @@ import { compact, type SessionId } from "@ho/protocol";
 import { FromRunner, RUNNER_PATH, type ToRunner } from "@ho/protocol/runner";
 import type { Logger } from "./logger.ts";
 import { bearerToken, mintToken } from "./token.ts";
+import type { TraceLine } from "./traces.ts";
 
 export type RunnerConnection = {
   uid: number;
@@ -11,6 +12,7 @@ export type RunnerConnection = {
 };
 export type RunnerSocket = { send: (data: string) => unknown; close: () => void };
 export type RunnerSocketData = { kind: "runner"; token: string };
+type RunnerTap = (sessionId: SessionId, line: TraceLine) => void;
 
 type Pending = {
   sessionId: SessionId;
@@ -42,14 +44,24 @@ const CONNECT_TIMEOUT_MS = 30_000;
 const SPAWN_TIMEOUT_MS = 15_000;
 const TERMINATE_STEP_MS = 5000;
 const STDERR_TAIL_CHARS = 600;
+const APPENDIX_FLAG = "--append-system-prompt";
+
+const redactArgv = (argv: readonly string[]): string[] =>
+  argv.map((part, index) =>
+    index > 0 && argv[index - 1] === APPENDIX_FLAG
+      ? `<${String(part.length)} chars>`
+      : part.replaceAll(/Bearer [^"\s]+/gu, "Bearer ***"),
+  );
 
 export class RunnerGateway {
   readonly #pending = new Map<string, Pending>();
   readonly #live = new Map<string, Live>();
   readonly #log: Logger;
+  readonly #tap: RunnerTap | null;
 
-  constructor(log: Logger) {
+  constructor(log: Logger, tap: RunnerTap | null = null) {
     this.#log = log;
+    this.#tap = tap;
   }
 
   issue(
@@ -65,7 +77,7 @@ export class RunnerGateway {
         pending.dispose();
         pending.settle.reject(new Error("runner connection cancelled or timed out"));
       }
-      this.close(token);
+      this.close(token, "cancelled by the office");
     };
     const timer = setTimeout(cancel, CONNECT_TIMEOUT_MS);
     signal?.addEventListener("abort", cancel);
@@ -97,7 +109,7 @@ export class RunnerGateway {
     }
     const lines = createChannel<RunnerLine>(undefined, {
       onClose: () => {
-        this.close(token);
+        this.close(token, "line channel closed");
       },
     });
     this.#live.set(token, {
@@ -120,7 +132,7 @@ export class RunnerGateway {
     const parsed = parseFrame(raw);
     if (parsed === null || live.hello !== (parsed.type !== "hello")) {
       this.#log.warn({ sessionId: live.sessionId }, "invalid runner message");
-      this.close(token);
+      this.close(token, "invalid message");
       return;
     }
     const message = parsed;
@@ -135,17 +147,17 @@ export class RunnerGateway {
         break;
       }
       case "stdout": {
-        live.lines.push({ stream: "stdout", text: message.text });
+        this.#push(live, { stream: "stdout", text: message.text });
         break;
       }
       case "stderr": {
         live.stderrTail = (live.stderrTail + message.text).slice(-STDERR_TAIL_CHARS);
-        live.lines.push({ stream: "stderr", text: message.text });
+        this.#push(live, { stream: "stderr", text: message.text });
         break;
       }
       case "exit": {
         live.spawned?.reject(new Error("runner child exited before spawning"));
-        live.lines.push({
+        this.#push(live, {
           stream: "exit",
           code: message.code,
           stderrTail: live.stderrTail === "" ? "" : `: ${live.stderrTail.trim()}`,
@@ -155,18 +167,26 @@ export class RunnerGateway {
       }
       case "error": {
         live.spawned?.reject(new Error(message.message));
-        live.lines.push({ stream: "stderr", text: `runner: ${message.message}` });
+        this.#log.warn(
+          { sessionId: live.sessionId, err: message.message },
+          "runner reported an error",
+        );
+        this.#push(live, { stream: "stderr", text: `runner: ${message.message}` });
         break;
       }
     }
   }
 
-  close(token: string): void {
+  close(token: string, why = "closed"): void {
     const live = this.#live.get(token);
     this.#live.delete(token);
     if (live === undefined) {
       return;
     }
+    this.#log.debug(
+      { sessionId: live.sessionId, why, awaitingSpawn: live.spawned !== null },
+      "runner connection closed",
+    );
     const pending = this.#pending.get(token);
     if (pending !== undefined) {
       this.#pending.delete(token);
@@ -182,15 +202,23 @@ export class RunnerGateway {
 
   static readonly path = RUNNER_PATH;
 
+  #push(live: Live, line: RunnerLine): void {
+    this.#tap?.(live.sessionId, line);
+    live.lines.push(line);
+  }
+
   #settle(token: string, live: Live, uid: number): void {
     const pending = this.#pending.get(token);
     if (pending === undefined) {
-      this.close(token);
+      this.close(token, "no pending session for this runner");
       return;
     }
     this.#pending.delete(token);
     pending.dispose();
     const send = (message: ToRunner): void => {
+      if (message.type === "stdin") {
+        this.#tap?.(live.sessionId, { stream: "stdin", text: message.data });
+      }
       live.socket.send(JSON.stringify(message));
     };
     const stream = live.lines.iterate();
@@ -205,8 +233,12 @@ export class RunnerGateway {
         live.stderrTail = "";
         const timer = setTimeout(() => {
           spawned.reject(new Error("runner did not spawn the child in time"));
-          this.close(token);
+          this.close(token, "spawn timed out");
         }, SPAWN_TIMEOUT_MS);
+        this.#log.debug(
+          { sessionId: live.sessionId, argv: redactArgv(argv), cwd, env: Object.keys(env) },
+          "spawning the agent process",
+        );
         send({ type: "spawn", argv: [...argv], env: { ...env }, ...compact({ cwd }) });
         return spawned.promise.finally(() => {
           clearTimeout(timer);
@@ -247,7 +279,7 @@ export class RunnerGateway {
         for (const timer of timers) {
           clearTimeout(timer);
         }
-        this.close(token);
+        this.close(token, "terminated by the office");
       }
     };
     pending.settle.resolve({ uid, channel, terminate });

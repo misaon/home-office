@@ -24,6 +24,7 @@ import { sourcePathFor } from "./mirrors.ts";
 import type { Services } from "./prompts.ts";
 import type { RunnerConnection } from "./runner-gateway.ts";
 import type { SessionDeps } from "./sessions.ts";
+import { skillPackFor } from "./skill-pack.ts";
 import {
   engineEnv,
   prepareTaskEngine,
@@ -31,6 +32,7 @@ import {
   type TaskEnginePlan,
   type TaskEngineRequest,
 } from "./task-engine.ts";
+import { stopwatch } from "./timing.ts";
 
 const SANDBOX_STOP_GRACE_S = 5;
 
@@ -73,15 +75,6 @@ export type Provisioned = {
 
 export const sessionServicesOf = (services: Services): SessionServices | undefined =>
   services.kind === "off" ? undefined : services.kind;
-
-const PACK_BY_MODE: Readonly<Record<Session["mode"], string | null>> = {
-  work: "worker",
-  review: "reviewer",
-  triage: null,
-};
-
-export const skillPackFor = (ctx: SessionContext): string =>
-  ctx.agent.skillPack === "none" ? "none" : (PACK_BY_MODE[ctx.session.mode] ?? ctx.agent.skillPack);
 
 const sandboxSpec = (
   config: DaemonConfig,
@@ -141,9 +134,50 @@ const sandboxSpec = (
   readonlyRootfs: true,
 });
 
+async function startServices(
+  deps: SessionDeps,
+  ctx: SessionContext,
+  request: TaskEngineRequest | null,
+  plan: TaskEnginePlan | null,
+  sandbox: SandboxHandle,
+  stack: AsyncDisposableStack,
+): Promise<Services> {
+  if (request === null || plan === null) {
+    return { kind: "off" };
+  }
+  try {
+    const engine = await startTaskEngine(deps.provider, deps.config, request, plan, sandbox);
+    stack.defer(async () => {
+      await deps.provider.stop(engine, 15).catch(() => null);
+      await deps.provider.remove(engine).catch(() => null);
+    });
+    return { kind: "ready" };
+  } catch (error) {
+    const message = errorMessage(error).slice(0, 500);
+    deps.log.warn(
+      { sessionId: ctx.session.id, err: message },
+      "task engine did not start; the session continues without its services",
+    );
+    return { kind: "failed", message };
+  }
+}
+
+const announceProvisioned = (
+  deps: SessionDeps,
+  ctx: SessionContext,
+  facts: Record<string, unknown>,
+): void => {
+  deps.log.info(
+    { sessionId: ctx.session.id, taskId: ctx.task.id, ...facts },
+    "session provisioned",
+  );
+  deps.traces.write(ctx.session.id, { kind: "provisioned", ...facts }, true);
+};
+
 export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {
   const { provider, config, gateway, mcp, home, log } = deps;
   ctx.signal.throwIfAborted();
+  const watch = stopwatch();
   const volume = `ho-task-${ctx.task.id.slice(-12)}`;
   const thread = ctx.session.mode === "triage" ? ctx.session.threadId : undefined;
   const stateVolume =
@@ -163,11 +197,13 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
   await provider.createVolume(volume, { ...labels, [LABELS.kind]: "task-volume" });
   await provider.createVolume(stateVolume, { ...labels, [LABELS.kind]: "provider-state" });
   const sourcePath = await sourcePathFor(home, ctx.project);
+  watch.lap("volumesMs");
   log.debug(
     { sessionId: ctx.session.id, volume, stateVolume, branch, sourcePath },
     "volumes ready; preparing the repository",
   );
   await prepareRepo(provider, config, sourcePath, ctx.project.defaultBranch, volume, branch);
+  watch.lap("repoMs");
   log.debug({ sessionId: ctx.session.id, branch }, "repository prepared");
   const engineRequest: TaskEngineRequest | null = needsEngine(
     config.services.enabled,
@@ -189,7 +225,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
       projectId: ctx.project.id,
       mode: ctx.session.mode,
       provider: ctx.agent.provider,
-      skillPack: skillPackFor(ctx),
+      skillPack: skillPackFor(ctx.agent, ctx.session.mode),
       attachments: deps.attachments,
       home,
     });
@@ -221,22 +257,10 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
       await provider.stop(sandbox, SANDBOX_STOP_GRACE_S).catch(() => null);
       await provider.remove(sandbox).catch(() => null);
     });
-    let services: Services = { kind: "off" };
-    if (engineRequest !== null && plan !== null) {
-      try {
-        const engine = await startTaskEngine(provider, config, engineRequest, plan, sandbox);
-        stack.defer(async () => {
-          await provider.stop(engine, 15).catch(() => null);
-          await provider.remove(engine).catch(() => null);
-        });
-        services = { kind: "ready" };
-      } catch (error) {
-        services = { kind: "failed", message: errorMessage(error).slice(0, 500) };
-        log.warn(
-          { sessionId: ctx.session.id, err: services.message },
-          "task engine did not start; the session continues without its services",
-        );
-      }
+    watch.lap("sandboxMs");
+    const services = await startServices(deps, ctx, engineRequest, plan, sandbox, stack);
+    if (engineRequest !== null) {
+      watch.lap("engineMs");
     }
     log.debug(
       { sessionId: ctx.session.id, sandbox: sandbox.id, services: services.kind },
@@ -244,6 +268,16 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     );
     const connection = await issued.connected;
     ctx.signal.throwIfAborted();
+    watch.lap("runnerMs");
+    announceProvisioned(deps, ctx, {
+      volume,
+      stateVolume,
+      branch,
+      image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
+      services: services.kind,
+      ...watch.laps(),
+      totalMs: watch.total(),
+    });
     return {
       sandbox,
       services,

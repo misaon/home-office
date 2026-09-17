@@ -85,18 +85,27 @@ const RETRY_ERROR_CODES: Readonly<Record<string, RuntimeErrorCode>> = {
   invalid_request: "invalid_request",
 };
 
-export function normalizeLine(raw: string, now: () => Date): RuntimeEvent[] {
+export function normalizeLine(
+  raw: string,
+  now: () => Date,
+  onIgnored: (text: string) => void = () => undefined,
+): RuntimeEvent[] {
   if (!raw.startsWith("{")) {
+    if (raw.trim() !== "") {
+      onIgnored(raw);
+    }
     return [];
   }
   let json: unknown;
   try {
     json = JSON.parse(raw);
   } catch {
+    onIgnored(raw);
     return [];
   }
   const parsed = StreamLine.safeParse(json);
   if (!parsed.success) {
+    onIgnored(raw);
     return [];
   }
   const line = parsed.data;
@@ -123,9 +132,11 @@ export function normalizeLine(raw: string, now: () => Date): RuntimeEvent[] {
         return [{ kind: "rate_limited", retryAt }];
       }
       const code = line.error === undefined ? undefined : RETRY_ERROR_CODES[line.error];
-      return line.subtype === "api_retry" && code !== undefined
-        ? [{ kind: "error", code, message: `api retry: ${line.error ?? ""}` }]
-        : [];
+      if (line.subtype === "api_retry" && code !== undefined) {
+        return [{ kind: "error", code, message: `api retry: ${line.error ?? ""}` }];
+      }
+      onIgnored(raw);
+      return [];
     }
     case "assistant": {
       return line.message.content.flatMap((block): RuntimeEvent[] =>

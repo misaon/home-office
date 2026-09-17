@@ -93,18 +93,35 @@ export const router = base.router({
       };
     }),
     buildImages: base.system.buildImages.handler(({ context, signal }) =>
-      linesFrom(
-        (onLine) =>
-          ensureImages(
+      linesFrom(async (onLine) => {
+        const started = Bun.nanoseconds();
+        const variants = neededVariants(context.office.model);
+        context.log.info({ variants }, "image build requested");
+        try {
+          await ensureImages(
             context.provider,
             context.config,
             context.resources,
-            neededVariants(context.office.model),
+            variants,
             onLine,
             signal,
-          ),
-        signal,
-      ),
+          );
+          context.log.info(
+            { variants, ms: Math.round((Bun.nanoseconds() - started) / 1e6) },
+            "images ready",
+          );
+        } catch (error) {
+          context.log.error(
+            {
+              variants,
+              err: errorMessage(error),
+              ms: Math.round((Bun.nanoseconds() - started) / 1e6),
+            },
+            "image build failed",
+          );
+          throw error;
+        }
+      }, signal),
     ),
     pickDirectory: base.system.pickDirectory.handler(({ input, context }) =>
       context.pickDirectory(input),

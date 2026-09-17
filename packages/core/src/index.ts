@@ -6,6 +6,7 @@ export * from "./commands/mail.ts";
 export * from "./commands/office-defaults.ts";
 export * from "./commands/review.ts";
 export * from "./commands/projects.ts";
+export * from "./commands/ratings.ts";
 export * from "./commands/sessions.ts";
 export * from "./commands/tasks.ts";
 export * from "./ids.ts";

@@ -29,11 +29,21 @@ export async function recoverSessions(
     (item) => item.kind === "session" || item.kind === "engine",
   );
   for (const session of active) {
-    for (const container of abandoned.filter((item) => item.sessionId === session.id)) {
+    const containers = abandoned.filter((item) => item.sessionId === session.id);
+    for (const container of containers) {
       const handle = { id: container.name, name: container.name };
       await provider.stop(handle, 2).catch(() => null);
       await provider.remove(handle).catch(() => null);
     }
+    log.info(
+      {
+        sessionId: session.id,
+        taskId: session.taskId,
+        state: session.state,
+        containers: containers.map((item) => item.name),
+      },
+      "session abandoned by a daemon restart",
+    );
     await end(session.id, RESTART_REASON);
     await block(session.taskId, RESTART_REASON);
   }

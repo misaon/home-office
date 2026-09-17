@@ -189,6 +189,13 @@ export const Agent = z.object({
 });
 export type Agent = z.infer<typeof Agent>;
 
+export const TaskRating = z.object({
+  verdict: z.enum(["good", "bad"]),
+  note: z.string().max(2000).default(""),
+  at: IsoDateTime,
+});
+export type TaskRating = z.infer<typeof TaskRating>;
+
 export const Task = z.object({
   id: TaskId,
   projectId: ProjectId,
@@ -201,6 +208,7 @@ export const Task = z.object({
   reviewerId: AgentId.optional(),
   publish: PublishMode.optional(),
   browser: z.boolean().optional(),
+  rating: TaskRating.optional(),
   reviewRounds: z.int().nonnegative().default(0),
   notes: z.array(TaskNote).default([]),
   source: TaskSource,

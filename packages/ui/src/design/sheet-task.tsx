@@ -1,5 +1,8 @@
 import { canTransition, isTerminal } from "@ho/core";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FIELD } from "./controls.tsx";
 import type { Card, Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
 import { PRIMARY, SheetShell } from "./sheet-shell.tsx";
@@ -7,6 +10,69 @@ import { MONO, priority } from "./tokens.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
 
 const TAG = `${MONO} text-9h py-4 px-9 rounded-6`;
+const PANEL = "p-12 rounded-12 bg-card-lit border border-border";
+const SECONDARY =
+  "hover:text-accent-soft hover:border-accent-a45 py-11 px-15 rounded-11 border border-border-strong bg-transparent text-ink-quiet text-12h cursor-pointer whitespace-nowrap transition-all duration-200";
+const RATE = `${SECONDARY} inline-flex items-center gap-6 disabled:opacity-50`;
+
+type Verdict = "good" | "bad";
+
+function Rating({ task }: { task: Card }): React.JSX.Element {
+  const { t } = useTranslation();
+  const [note, setNote] = useState("");
+  const rate = useOfficeMutation({
+    mutationFn: (verdict: Verdict) =>
+      requireClient().tasks.rate({ id: task.id, verdict, note: note.trim() }),
+    onSuccess: () => {
+      setNote("");
+    },
+  });
+  return (
+    <div className={`${PANEL} mt-18`}>
+      <div className={`${MONO} text-10 tracking-caps uppercase text-ink-label mb-7`}>
+        {t("board.rateTitle")}
+      </div>
+      {task.rating === null ? null : (
+        <div className="text-12h text-ink-dim leading-body mb-8">
+          {t(task.rating === "good" ? "board.ratedGood" : "board.ratedBad")}
+        </div>
+      )}
+      <input
+        value={note}
+        onChange={(e) => {
+          setNote(e.target.value);
+        }}
+        placeholder={t("board.rateNote")}
+        aria-label={t("board.rateNote")}
+        className={`${FIELD} placeholder:text-ink-ghost mb-9`}
+      />
+      <div className="flex gap-9">
+        <button
+          type="button"
+          disabled={rate.isPending}
+          onClick={() => {
+            rate.mutate("good");
+          }}
+          className={`${RATE}${task.rating === "good" ? " text-accent-soft border-accent-a45" : ""}`}
+        >
+          <ThumbsUp size={13} aria-hidden="true" />
+          {t("board.rateGood")}
+        </button>
+        <button
+          type="button"
+          disabled={rate.isPending}
+          onClick={() => {
+            rate.mutate("bad");
+          }}
+          className={`${RATE}${task.rating === "bad" ? " text-accent-soft border-accent-a45" : ""}`}
+        >
+          <ThumbsDown size={13} aria-hidden="true" />
+          {t("board.rateBad")}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
@@ -14,6 +80,7 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
   const tone = priority(task.p);
   const canFinish = canTransition(task.status, "done");
   const canResume = task.who !== "" && canTransition(task.status, "assigned");
+  const rateable = task.status !== "inbox" && task.status !== "planned";
 
   const move = useOfficeMutation({
     mutationFn: (status: "done" | "assigned") =>
@@ -30,14 +97,14 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
         <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`taskKind.${task.k}`)}</span>
         <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`status.${task.status}`)}</span>
       </div>
-      <div className="p-12 rounded-12 bg-card-lit border border-border mb-18">
+      <div className={`${PANEL} mb-18`}>
         <div className={`${MONO} text-10 text-ink-meta`}>{floor.name}</div>
         <div className="text-12h text-ink-dim leading-body mt-6">
           {task.who === "" ? t("board.unassigned") : t("board.assignedTo", { name: task.who })}
         </div>
       </div>
       {task.criteria.length === 0 ? null : (
-        <div className="p-12 rounded-12 bg-card-lit border border-border mb-18">
+        <div className={`${PANEL} mb-18`}>
           <div className={`${MONO} text-10 tracking-caps uppercase text-ink-label mb-7`}>
             {t("board.criteria")}
           </div>
@@ -74,7 +141,7 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
               onClick={() => {
                 move.mutate("assigned");
               }}
-              className="hover:text-accent-soft hover:border-accent-a45 py-11 px-15 rounded-11 border border-border-strong bg-transparent text-ink-quiet text-12h cursor-pointer whitespace-nowrap transition-all duration-200"
+              className={SECONDARY}
             >
               {t("board.handBack")}
             </button>
@@ -85,6 +152,7 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
           {t(isTerminal(task.status) ? "board.taskClosed" : "board.taskNotStarted")}
         </div>
       )}
+      {rateable ? <Rating task={task} /> : null}
     </SheetShell>
   );
 }

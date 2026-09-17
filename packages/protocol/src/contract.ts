@@ -29,6 +29,7 @@ import {
   TaskAssignInput,
   TaskCreateInput,
   TaskListInput,
+  TaskRateInput,
   TaskTransitionInput,
   UsageSummary,
   UsageSummaryInput,
@@ -78,6 +79,7 @@ export const contract = {
     create: base.input(TaskCreateInput).output(Task),
     assign: base.input(TaskAssignInput).output(Task),
     transition: base.input(TaskTransitionInput).output(Task),
+    rate: base.input(TaskRateInput).output(Task),
     remove: base.input(z.object({ id: TaskId })).output(z.object({ id: TaskId })),
     publish: base
       .input(z.object({ id: TaskId }))

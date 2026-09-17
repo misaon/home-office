@@ -54,6 +54,13 @@ export type PruneScope = {
 };
 export type PruneReport = { containers: string[]; volumes: string[]; images: string[] };
 
+export type SandboxState = {
+  running: boolean;
+  exitCode: number;
+  oomKilled: boolean;
+  error: string;
+};
+
 export type SandboxProvider = {
   readonly id: "docker";
   health: () => Promise<ProviderHealth>;
@@ -74,6 +81,7 @@ export type SandboxProvider = {
   startEngine: (spec: EngineSpec, readyTimeoutMs: number) => Promise<SandboxHandle>;
   stop: (handle: SandboxHandle, graceSeconds?: number) => Promise<void>;
   remove: (handle: SandboxHandle) => Promise<void>;
+  inspect: (handle: SandboxHandle) => Promise<SandboxState>;
   run: (spec: SandboxSpec, timeoutMs?: number) => Promise<SandboxRunResult>;
   prune: (scope: PruneScope) => Promise<PruneReport>;
   inventory: (labels: Readonly<Record<string, string>>) => Promise<ResourceInventory>;

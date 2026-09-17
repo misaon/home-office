@@ -1,4 +1,11 @@
-import { assignTask, clearFinishedTasks, createTask, removeTask, transitionTask } from "@ho/core";
+import {
+  assignTask,
+  clearFinishedTasks,
+  createTask,
+  rateTask,
+  removeTask,
+  transitionTask,
+} from "@ho/core";
 import { HUMAN_ACTOR, notFound } from "@ho/protocol";
 import { DomainFailureError } from "../domain-failure.ts";
 import { publishTask } from "../publish.ts";
@@ -30,6 +37,9 @@ export const taskRoutes = {
   ),
   transition: base.tasks.transition.handler(({ input, context }) =>
     context.office.execute(HUMAN_ACTOR, (m, ctx) => transitionTask(m, input, ctx)),
+  ),
+  rate: base.tasks.rate.handler(({ input, context }) =>
+    context.office.execute(HUMAN_ACTOR, (m, ctx) => rateTask(m, input, ctx)),
   ),
   remove: base.tasks.remove.handler(async ({ input, context }) => {
     await context.sessions.stopTask(input.id);
