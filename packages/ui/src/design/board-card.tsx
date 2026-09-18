@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
+import { ClickableRow } from "./clickable-row.tsx";
 import type { Card, Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
-import { MONO, priorityDot, priorityInk, separator } from "./tokens.ts";
+import { MONO, priorityDot, priorityInk } from "./tokens.ts";
 import { bossOf } from "./live.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
 
@@ -41,21 +42,7 @@ export function BoardCard({
   };
 
   return (
-    <div
-      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
-      role="button"
-      aria-label={card.t}
-      tabIndex={0}
-      onClick={open}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          open();
-        }
-      }}
-      className={`flex items-stretch gap-0 cursor-pointer transition-[background] duration-200 hover:bg-row-hover ${separator(first)}`}
-    >
-      <div className={`w-3 flex-[0_0_3px] ${stripe}`} />
+    <ClickableRow label={card.t} first={first} stripe={stripe} onOpen={open}>
       <div className={BODY}>
         <div className="flex items-start gap-10">
           <div className={TITLE}>{card.t}</div>
@@ -112,6 +99,6 @@ export function BoardCard({
           <span>{card.at}</span>
         </div>
       </div>
-    </div>
+    </ClickableRow>
   );
 }
