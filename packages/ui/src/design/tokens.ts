@@ -25,9 +25,9 @@ export const MONO = "font-mono";
 export const DISPLAY = "font-display";
 
 declare module "react" {
-  // oxlint-disable-next-line typescript/consistent-type-definitions
+  // oxlint-disable-next-line typescript/consistent-type-definitions -- augmenting a declared interface needs an interface; a type alias cannot reopen one
   interface CSSProperties {
-    // oxlint-disable-next-line typescript/consistent-indexed-object-style
+    // oxlint-disable-next-line typescript/consistent-indexed-object-style -- an interface body cannot be a Record, and the augmentation must merge
     [name: `--${string}`]: string | number | undefined;
   }
 }

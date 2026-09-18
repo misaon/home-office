@@ -30,14 +30,17 @@ function useNow(everyMs = 30_000): number {
   return now;
 }
 
-const laneOf = (status: TaskStatus): Lane =>
-  status === "blocked"
-    ? "blocked"
-    : status === "done" || status === "failed" || status === "cancelled"
-      ? "done"
-      : status === "inbox" || status === "planned"
-        ? "queued"
-        : "running";
+const LANES: Readonly<Record<TaskStatus, Lane>> = {
+  inbox: "queued",
+  planned: "queued",
+  assigned: "running",
+  in_progress: "running",
+  review: "running",
+  done: "done",
+  blocked: "blocked",
+  failed: "done",
+  cancelled: "done",
+};
 
 const pad = (v: number): string => String(v).padStart(2, "0");
 
@@ -95,7 +98,7 @@ function cardOf(task: Task, snapshot: Snapshot): Card {
     k: task.kind === "work" ? "code" : task.kind,
     criteria: task.spec?.acceptanceCriteria ?? [],
     who: task.assigneeId === undefined ? "" : (snapshot.agents.get(task.assigneeId)?.name ?? ""),
-    s: laneOf(task.status),
+    s: LANES[task.status],
     status: task.status,
     rating: task.rating?.verdict ?? null,
     at: clock(task.updatedAt),
