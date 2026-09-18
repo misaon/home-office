@@ -1,4 +1,5 @@
 import {
+  errorMessage,
   REPO_BRANCH_LIMIT,
   type RepoInspection,
   type RepoInspectInput,
@@ -6,14 +7,19 @@ import {
 } from "@ho/protocol";
 import { stat } from "node:fs/promises";
 import { basename } from "node:path";
-import { exec, redactCredentials } from "./host-exec.ts";
+import { exec, type Exec, redactCredentials } from "./host-exec.ts";
 import { daemonLog } from "./logger.ts";
 
 const GIT_TIMEOUT_MS = 15_000;
 const STDERR_LOG_CHARS = 300;
 
-const git = (argv: readonly string[], cwd?: string): ReturnType<typeof exec> =>
-  exec(["git", ...argv], { cwd, timeoutMs: GIT_TIMEOUT_MS });
+const git = async (argv: readonly string[], cwd?: string): Promise<Exec> => {
+  try {
+    return await exec(["git", ...argv], { cwd, timeoutMs: GIT_TIMEOUT_MS });
+  } catch (error) {
+    return { code: -1, stdout: "", stderr: errorMessage(error) };
+  }
+};
 
 const tried = async (
   what: string,

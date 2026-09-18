@@ -22,12 +22,35 @@ const LEVELS: Readonly<Record<string, LogLevel>> = {
   error: "error",
 };
 const REDACTED = "***";
-const SECRET_NAME = /token|secret|password|credential|authorization|bearer|cookie|key/iu;
+const URL_CREDENTIALS = /\/\/[^\s/@]+@/gu;
+const NAME_SEPARATORS = /[^A-Za-z0-9]+/u;
+const CAMEL_BOUNDARY = /(?=[A-Z])/u;
+const SECRET_WORDS: ReadonlySet<string> = new Set([
+  "authorization",
+  "bearer",
+  "cookie",
+  "credential",
+  "credentials",
+  "passphrase",
+  "password",
+  "secret",
+  "token",
+]);
+
+const isSecretName = (name: string): boolean =>
+  name
+    .split(NAME_SEPARATORS)
+    .flatMap((segment) =>
+      segment === segment.toUpperCase() ? [segment] : segment.split(CAMEL_BOUNDARY),
+    )
+    .some((part) => SECRET_WORDS.has(part.toLowerCase()));
 
 const redact = (fields: Record<string, unknown>): Record<string, unknown> =>
   Object.fromEntries(
     Object.entries(fields).map(([name, value]) =>
-      SECRET_NAME.test(name) ? [name, REDACTED] : [name, value],
+      isSecretName(name)
+        ? [name, REDACTED]
+        : [name, typeof value === "string" ? value.replaceAll(URL_CREDENTIALS, "//***@") : value],
     ),
   );
 

@@ -67,11 +67,13 @@ export function RichText({ text }: { text: string }): React.JSX.Element {
   const [core, setCore] = useState<HighlighterCore | null>(null);
   useEffect(() => {
     let live = true;
-    void highlighter().then((ready) => {
-      if (live) {
-        setCore(ready);
-      }
-    });
+    void highlighter()
+      .then((ready) => {
+        if (live) {
+          setCore(ready);
+        }
+      })
+      .catch(() => undefined);
     return () => {
       live = false;
     };

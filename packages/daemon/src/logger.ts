@@ -28,8 +28,28 @@ const KEEP = 5;
 const BASE = { app: "ho", version: VERSION };
 const REDACTION_DEPTH = 4;
 const REDACTED = "***";
-const SECRET_NAME =
-  /token|secret|password|passphrase|credential|authorization|bearer|cookie|session[-_]?key|api[-_]?key|private[-_]?key/iu;
+const SECRET_WORDS: ReadonlySet<string> = new Set([
+  "authorization",
+  "bearer",
+  "cookie",
+  "credential",
+  "credentials",
+  "passphrase",
+  "password",
+  "secret",
+  "token",
+]);
+const SECRET_NAMES: ReadonlySet<string> = new Set([
+  "accesskey",
+  "apikey",
+  "privatekey",
+  "secretkey",
+  "sessionkey",
+  "signingkey",
+]);
+const NAME_SEPARATORS = /[^A-Za-z0-9]+/u;
+const CAMEL_BOUNDARY = /(?=[A-Z])/u;
+const URL_CREDENTIALS = /\/\/[^\s/@]+@/gu;
 
 const LEVELS: Readonly<Record<DaemonConfig["logLevel"], LogTapeLevel>> = {
   trace: "trace",
@@ -39,7 +59,22 @@ const LEVELS: Readonly<Record<DaemonConfig["logLevel"], LogTapeLevel>> = {
   error: "error",
 };
 
+const nameParts = (name: string): string[] =>
+  name
+    .split(NAME_SEPARATORS)
+    .flatMap((segment) =>
+      segment === segment.toUpperCase() ? [segment] : segment.split(CAMEL_BOUNDARY),
+    )
+    .map((part) => part.toLowerCase());
+
+const isSecretName = (name: string): boolean =>
+  SECRET_NAMES.has(name.replaceAll(/[^A-Za-z0-9]/gu, "").toLowerCase()) ||
+  nameParts(name).some((part) => SECRET_WORDS.has(part));
+
 const redactValue = (value: unknown, depth: number): unknown => {
+  if (typeof value === "string") {
+    return value.replaceAll(URL_CREDENTIALS, "//***@");
+  }
   if (depth <= 0 || value === null || typeof value !== "object") {
     return value;
   }
@@ -48,7 +83,7 @@ const redactValue = (value: unknown, depth: number): unknown => {
   }
   return Object.fromEntries(
     Object.entries(value).map(([key, nested]) =>
-      SECRET_NAME.test(key) ? [key, REDACTED] : [key, redactValue(nested, depth - 1)],
+      isSecretName(key) ? [key, REDACTED] : [key, redactValue(nested, depth - 1)],
     ),
   );
 };
@@ -56,7 +91,7 @@ const redactValue = (value: unknown, depth: number): unknown => {
 const redact = (fields: Fields): Fields =>
   Object.fromEntries(
     Object.entries(fields).map(([key, value]) =>
-      SECRET_NAME.test(key) ? [key, REDACTED] : [key, redactValue(value, REDACTION_DEPTH)],
+      isSecretName(key) ? [key, REDACTED] : [key, redactValue(value, REDACTION_DEPTH)],
     ),
   );
 
