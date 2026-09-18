@@ -212,84 +212,80 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
   )
     ? { mode: ctx.project.services.mode, sessionId: ctx.session.id, taskVolume: volume, labels }
     : null;
-  const stack = new AsyncDisposableStack();
-  try {
-    const plan =
-      engineRequest === null ? null : await prepareTaskEngine(provider, engineRequest, stack);
-    const issued = gateway.issue(ctx.session.id, ctx.signal);
-    stack.defer(issued.cancel);
-    const mcpToken = mcp.register({
-      sessionId: ctx.session.id,
-      taskId: ctx.task.id,
-      agentId: ctx.agent.id,
-      projectId: ctx.project.id,
-      mode: ctx.session.mode,
-      provider: ctx.agent.provider,
-      skillPacks: skillPacksFor(ctx.agent, ctx.session.mode),
-      attachments: deps.attachments,
-      home,
-    });
-    stack.defer(() => {
-      mcp.unregister(mcpToken);
-    });
-    ctx.signal.throwIfAborted();
-    const outbox = await deps.attachments.openOutbox(ctx.session.id);
-    stack.defer(() => deps.attachments.closeOutbox(ctx.session.id));
-    const inbox = await deps.attachments.fillInbox(
-      ctx.session.id,
-      attachmentsOfTask(deps.office.model, ctx.task),
-    );
-    stack.defer(() => deps.attachments.closeInbox(ctx.session.id));
-    const sandbox = await provider.start(
-      sandboxSpec(
-        config,
-        ctx,
-        volume,
-        stateVolume,
-        deps.gatewayUrl(),
-        issued.token,
-        plan,
-        { outbox, inbox },
-        await hostGitIdentity(),
-      ),
-    );
-    stack.defer(async () => {
-      await provider.stop(sandbox, SANDBOX_STOP_GRACE_S).catch(() => null);
-      await provider.remove(sandbox).catch(() => null);
-    });
-    watch.lap("sandboxMs");
-    const services = await startServices(deps, ctx, engineRequest, plan, sandbox, stack);
-    if (engineRequest !== null) {
-      watch.lap("engineMs");
-    }
-    log.debug(
-      { sessionId: ctx.session.id, sandbox: sandbox.id, services: services.kind },
-      "sandbox started; waiting for the runner to connect",
-    );
-    const connection = await issued.connected;
-    ctx.signal.throwIfAborted();
-    watch.lap("runnerMs");
-    announceProvisioned(deps, ctx, {
+  await using stack = new AsyncDisposableStack();
+  const plan =
+    engineRequest === null ? null : await prepareTaskEngine(provider, engineRequest, stack);
+  const issued = gateway.issue(ctx.session.id, ctx.signal);
+  stack.defer(issued.cancel);
+  const mcpToken = mcp.register({
+    sessionId: ctx.session.id,
+    taskId: ctx.task.id,
+    agentId: ctx.agent.id,
+    projectId: ctx.project.id,
+    mode: ctx.session.mode,
+    provider: ctx.agent.provider,
+    skillPacks: skillPacksFor(ctx.agent, ctx.session.mode),
+    attachments: deps.attachments,
+    home,
+  });
+  stack.defer(() => {
+    mcp.unregister(mcpToken);
+  });
+  ctx.signal.throwIfAborted();
+  const outbox = await deps.attachments.openOutbox(ctx.session.id);
+  stack.defer(() => deps.attachments.closeOutbox(ctx.session.id));
+  const inbox = await deps.attachments.fillInbox(
+    ctx.session.id,
+    attachmentsOfTask(deps.office.model, ctx.task),
+  );
+  stack.defer(() => deps.attachments.closeInbox(ctx.session.id));
+  const sandbox = await provider.start(
+    sandboxSpec(
+      config,
+      ctx,
       volume,
       stateVolume,
-      branch,
-      image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
-      services: services.kind,
-      ...watch.laps(),
-      totalMs: watch.total(),
-    });
-    return {
-      sandbox,
-      services,
-      connection,
-      volume,
-      branch,
-      sourcePath,
-      mcpToken,
-      dispose: () => stack.disposeAsync(),
-    };
-  } catch (error) {
-    await stack.disposeAsync();
-    throw error;
+      deps.gatewayUrl(),
+      issued.token,
+      plan,
+      { outbox, inbox },
+      await hostGitIdentity(),
+    ),
+  );
+  stack.defer(async () => {
+    await provider.stop(sandbox, SANDBOX_STOP_GRACE_S).catch(() => null);
+    await provider.remove(sandbox).catch(() => null);
+  });
+  watch.lap("sandboxMs");
+  const services = await startServices(deps, ctx, engineRequest, plan, sandbox, stack);
+  if (engineRequest !== null) {
+    watch.lap("engineMs");
   }
+  log.debug(
+    { sessionId: ctx.session.id, sandbox: sandbox.id, services: services.kind },
+    "sandbox started; waiting for the runner to connect",
+  );
+  const connection = await issued.connected;
+  ctx.signal.throwIfAborted();
+  watch.lap("runnerMs");
+  announceProvisioned(deps, ctx, {
+    volume,
+    stateVolume,
+    branch,
+    image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
+    services: services.kind,
+    ...watch.laps(),
+    totalMs: watch.total(),
+  });
+  const owned = stack.move();
+  return {
+    sandbox,
+    services,
+    connection,
+    volume,
+    branch,
+    sourcePath,
+    mcpToken,
+    dispose: () => owned.disposeAsync(),
+  };
 }
