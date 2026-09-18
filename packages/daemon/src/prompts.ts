@@ -1,6 +1,7 @@
 import type { ReadModel } from "@ho/core";
 import {
   type Agent,
+  type AgentId,
   type Project,
   ROLE_TITLE,
   type Session,
@@ -54,25 +55,44 @@ const taskBrief = (task: Task): string =>
 
 const formatNote = (note: TaskNote): string => `- [${note.kind}] ${note.text}`;
 
-const reviewOpening = (task: Task): string => {
+const SINCE_MAX = 8;
+
+const reviewOpening = (task: Task, reviewerId: AgentId): string => {
   const report = task.notes.findLast((n) => n.kind === "report");
-  const verdicts = task.notes.filter(
-    (n) => n.kind === "review" && (report === undefined || n.at >= report.at),
-  );
+  const thisRound = (note: TaskNote): boolean => report === undefined || note.at >= report.at;
+  const verdicts = task.notes.filter((note) => note.kind === "review" && thisRound(note));
   const earlier =
     verdicts.length === 0
       ? ""
       : `\n\nVerdicts before yours in this round:\n${verdicts.map((n) => formatNote(n)).join("\n")}`;
-  return `Review request for task "${task.title}".\n\nOriginal brief:\n${task.brief}\n\nAuthor's report:\n${report?.text ?? task.artifacts.report ?? "(none)"}${earlier}`;
+  const mine = task.notes.findLast(
+    (note) =>
+      note.kind === "review" &&
+      note.author.kind === "agent" &&
+      note.author.agentId === reviewerId &&
+      !thisRound(note),
+  );
+  const again =
+    mine === undefined
+      ? ""
+      : `\n\nYou reviewed this branch before, at ${mine.at}. Your verdict then:\n${formatNote(mine)}\n\nWhat happened after it:\n${task.notes
+          .filter((note) => note.at > mine.at)
+          .slice(-SINCE_MAX)
+          .map((n) => formatNote(n))
+          .join(
+            "\n",
+          )}\n\nYour earlier pass is not void, but the branch has moved. Read what changed since, and check that the findings which sent it back are addressed; you need not repeat in full a pass the new commits do not touch.`;
+  return `Review request for task "${task.title}".\n\nOriginal brief:\n${task.brief}\n\nAuthor's report:\n${report?.text ?? task.artifacts.report ?? "(none)"}${again}${earlier}`;
 };
 
 export const openingMessage = (
   task: Task,
   mode: Session["mode"],
   previous: Session | undefined,
+  agentId: AgentId,
 ): string => {
   if (mode === "review") {
-    return reviewOpening(task);
+    return reviewOpening(task, agentId);
   }
   if (previous === undefined) {
     return taskBrief(task);
