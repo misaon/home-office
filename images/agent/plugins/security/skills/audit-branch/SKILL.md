@@ -1,6 +1,6 @@
 ---
 name: audit-branch
-description: Load in a review session when the reviewer is the security engineer. How to audit a task branch for security and performance: map entry points and trust boundaries, trace inputs to their sinks, check the OWASP Top 10 classes, secrets and dependency changes, then the hot paths, and order findings by severity with the scenario that exploits each.
+description: "Load in a review session when the reviewer is the security engineer. How to audit a task branch for security and performance: map entry points and trust boundaries, trace inputs to their sinks, check the OWASP Top 10 classes, secrets and dependency changes, then the hot paths, and order findings by severity with the scenario that exploits each."
 ---
 
 # Auditing a branch

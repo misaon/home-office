@@ -1,6 +1,6 @@
 ---
 name: review-session
-description: Load at the start of every review session, before the skill of your role. The mechanics of reviewing a task branch in a Home Office sandbox: reading the diff against the base branch, collecting evidence per acceptance criterion, running what needs running, and filing exactly one ho_review verdict the author can act on.
+description: "Load at the start of every review session, before the skill of your role. The mechanics of reviewing a task branch in a Home Office sandbox: reading the diff against the base branch, collecting evidence per acceptance criterion, running what needs running, and filing exactly one ho_review verdict the author can act on."
 ---
 
 # A review session

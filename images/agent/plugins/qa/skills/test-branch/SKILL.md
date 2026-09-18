@@ -1,6 +1,6 @@
 ---
 name: test-branch
-description: Load in a review session when the reviewer is the QA engineer. How to test a task branch against its acceptance criteria: run the checks and the application, exercise each criterion the way a user would, explore the edges and the unhappy paths, read the added tests, and write defects as reproducible bug reports.
+description: "Load in a review session when the reviewer is the QA engineer. How to test a task branch against its acceptance criteria: run the checks and the application, exercise each criterion the way a user would, explore the edges and the unhappy paths, read the added tests, and write defects as reproducible bug reports."
 ---
 
 # Testing a branch
