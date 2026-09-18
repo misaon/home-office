@@ -1,14 +1,58 @@
 import { RELAY_MAX_FRAME_BYTES } from "@ho/protocol";
-import { pino } from "pino";
+import {
+  configureSync,
+  getConsoleSink,
+  getLogger,
+  jsonLinesFormatter,
+  type LogLevel,
+} from "@logtape/logtape";
 import { RelayCore } from "./core.ts";
-import type { RelaySocket } from "./state.ts";
+import type { RelayLog, RelaySocket } from "./state.ts";
 
 const DEFAULT_PORT = 47850;
 const IDLE_TIMEOUT_S = 120;
 
 type SocketData = { socket: RelaySocket | null };
 
-const log = pino({ level: Bun.env["RELAY_LOG_LEVEL"] ?? "info", base: { app: "ho-relay" } });
+const LEVELS: Readonly<Record<string, LogLevel>> = {
+  trace: "trace",
+  debug: "debug",
+  info: "info",
+  warn: "warning",
+  error: "error",
+};
+const REDACTED = "***";
+const SECRET_NAME = /token|secret|password|credential|authorization|bearer|cookie|key/iu;
+
+const redact = (fields: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(fields).map(([name, value]) =>
+      SECRET_NAME.test(name) ? [name, REDACTED] : [name, value],
+    ),
+  );
+
+configureSync({
+  reset: true,
+  sinks: { relay: getConsoleSink({ formatter: jsonLinesFormatter }) },
+  loggers: [
+    {
+      category: ["ho-relay"],
+      sinks: ["relay"],
+      lowestLevel: LEVELS[Bun.env["RELAY_LOG_LEVEL"] ?? "info"] ?? "info",
+    },
+    { category: ["logtape", "meta"], sinks: [], lowestLevel: "error" },
+  ],
+});
+
+const relayLogger = getLogger(["ho-relay"]).with({ app: "ho-relay" });
+const log: RelayLog = {
+  info: (fields, message) => {
+    relayLogger.info(message, () => redact(fields));
+  },
+  warn: (fields, message) => {
+    relayLogger.warn(message, () => redact(fields));
+  },
+};
 const core = new RelayCore(log);
 const allowedOrigins = (Bun.env["RELAY_ALLOWED_ORIGINS"] ?? "")
   .split(",")

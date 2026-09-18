@@ -11,6 +11,8 @@
     "catalog": {
       "@agentclientprotocol/sdk": "1.4.0",
       "@base-ui/react": "1.8.0",
+      "@logtape/file": "2.2.8",
+      "@logtape/logtape": "2.3.5",
       "@modelcontextprotocol/server": "2.0.0",
       "@orpc/client": "1.15.1",
       "@orpc/contract": "1.15.1",
@@ -28,7 +30,6 @@
       "oxfmt": "0.68.0",
       "oxlint": "1.83.0",
       "oxlint-tsgolint": "7.0.2001",
-      "pino": "10.3.1",
       "pixi.js": "8.20.1",
       "react": "19.3.0",
       "react-dom": "19.3.0",

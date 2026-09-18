@@ -17,9 +17,10 @@
     "@ho/sandbox-docker": "workspace:*",
     "@ho/secrets": "workspace:*",
     "@ho/store": "workspace:*",
+    "@logtape/file": "catalog:",
+    "@logtape/logtape": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
     "@orpc/server": "catalog:",
-    "pino": "catalog:",
     "simple-git": "catalog:",
     "zod": "catalog:"
   }
