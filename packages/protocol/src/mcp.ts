@@ -30,6 +30,23 @@ export const HoReviewInput = z.object({
 });
 export type HoReviewInput = z.infer<typeof HoReviewInput>;
 
+export const HoRecallInput = z.object({
+  query: z
+    .string()
+    .min(2)
+    .max(200)
+    .describe(
+      "What you want to know about, in a few words: a file, a subsystem, an error, a decision.",
+    ),
+  limit: z
+    .int()
+    .positive()
+    .max(10)
+    .default(5)
+    .describe("How many past tasks to return, most relevant first."),
+});
+export type HoRecallInput = z.infer<typeof HoRecallInput>;
+
 export const HoHandoffInput = z.object({
   toAgent: z.string().min(1).describe("Target agent name or id"),
   brief: z

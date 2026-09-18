@@ -18,6 +18,7 @@ import {
   HoHandoffInput,
   HoPlanInput,
   HoPublishInput,
+  HoRecallInput,
   HoReplyInput,
   HoReportInput,
   HoReviewInput,
@@ -25,6 +26,7 @@ import {
   isSessionActive,
 } from "@ho/protocol";
 import { z } from "zod";
+import { recall } from "./recall.ts";
 import { hire } from "./mcp-hire.ts";
 import { ALL, define, type AnyTool, type ToolResult } from "./mcp-tool.ts";
 import { publishTask } from "./publish.ts";
@@ -90,6 +92,45 @@ const taskStatus = define({
       artifacts: task.artifacts,
       notes: task.notes.slice(-10),
     });
+  },
+});
+
+const recallPast = define({
+  name: "ho_recall",
+  description:
+    "Search what this floor already finished: the reports and review findings of past tasks, ranked by how well they match your words. Use it before you start, when a file or subsystem is new to you, or when an error looks like one somebody met before. ho_task_status reads one task you already know the id of; this one finds the tasks you do not.",
+  schema: HoRecallInput,
+  modes: ALL,
+  run: (input, office, entry) => {
+    const hits = recall(
+      office.model,
+      entry.ctx.projectId,
+      entry.ctx.taskId,
+      input.query,
+      input.limit,
+      Date.now(),
+    );
+    if (hits.length === 0) {
+      return Promise.resolve(
+        `Nothing on this floor matches "${input.query}". Nobody has finished work here that mentions it, so treat this as new ground.`,
+      );
+    }
+    return Promise.resolve(
+      hits
+        .map((hit) => {
+          const lines = [
+            `## ${hit.title} — ${hit.status}, ${hit.who}, ${hit.daysAgo === 0 ? "today" : `${String(hit.daysAgo)} day(s) ago`}`,
+          ];
+          if (hit.report !== "") {
+            lines.push(`Report: ${hit.report}`);
+          }
+          for (const finding of hit.findings) {
+            lines.push(`Review: ${finding}`);
+          }
+          return lines.join("\n");
+        })
+        .join("\n\n"),
+    );
   },
 });
 
@@ -221,6 +262,7 @@ export const TOOLS: readonly AnyTool[] = [
   report,
   askTheHuman,
   taskStatus,
+  recallPast,
   listAgents,
   handoff,
   review,
