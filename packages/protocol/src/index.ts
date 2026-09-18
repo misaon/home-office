@@ -3,6 +3,7 @@ export * from "./contract.ts";
 export * from "./domain.ts";
 export * from "./error-message.ts";
 export * from "./errors.ts";
+export * from "./evals.ts";
 export * from "./events.ts";
 export * from "./format.ts";
 export * from "./ids.ts";

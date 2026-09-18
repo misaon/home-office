@@ -1,6 +1,7 @@
 import { eventIterator, oc } from "@orpc/contract";
 import { z } from "zod";
 import { Agent, ChatMessage, IsoDateTime, MailItem, Project, Session, Task } from "./domain.ts";
+import { EvalInput, EvalScorecard } from "./evals.ts";
 import { RPC_ERRORS } from "./errors.ts";
 import { StoredEvent } from "./events.ts";
 import { IntakePollResult, IntakeStatus } from "./intake.ts";
@@ -108,6 +109,9 @@ export const contract = {
   },
   usage: {
     summary: base.input(UsageSummaryInput).output(UsageSummary),
+  },
+  evals: {
+    scorecard: base.input(EvalInput).output(EvalScorecard),
   },
   resources: {
     inventory: base.output(ResourceInventory),
