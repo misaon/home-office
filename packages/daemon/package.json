@@ -21,7 +21,6 @@
     "@logtape/logtape": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
     "@orpc/server": "catalog:",
-    "simple-git": "catalog:",
     "zod": "catalog:"
   }
 }

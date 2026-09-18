@@ -12,7 +12,8 @@ type ExecOptions = {
   secret?: boolean;
 };
 
-const redact = (text: string): string => text.replaceAll(/\/\/[^\s/@]+@/gu, "//***@");
+export const redactCredentials = (text: string): string =>
+  text.replaceAll(/\/\/[^\s/@]+@/gu, "//***@");
 
 export async function exec(argv: readonly string[], options: ExecOptions): Promise<Exec> {
   const started = Bun.nanoseconds();
@@ -28,10 +29,10 @@ export async function exec(argv: readonly string[], options: ExecOptions): Promi
     new Response(proc.stderr).text(),
     proc.exited,
   ]);
-  const result = { code, stdout: stdout.trim(), stderr: redact(stderr.trim()) };
+  const result = { code, stdout: stdout.trim(), stderr: redactCredentials(stderr.trim()) };
   daemonLog()?.debug(
     {
-      argv: argv.map((part) => redact(part)),
+      argv: argv.map((part) => redactCredentials(part)),
       ...compact({ cwd: options.cwd }),
       code,
       ms: Math.round((Bun.nanoseconds() - started) / 1e6),
