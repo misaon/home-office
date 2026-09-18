@@ -1,0 +1,8 @@
+{
+  "name": "ho-developer",
+  "description": "Home Office developer pack: work that belongs to no specialist, done to the convention already in the repository",
+  "version": "0.4.0",
+  "author": {
+    "name": "Home Office"
+  }
+}

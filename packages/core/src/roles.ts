@@ -10,7 +10,7 @@ const ROLE_PACK: Readonly<Record<AgentRole, string>> = {
   qa: "qa",
   security: "security",
   head: "head",
-  developer: "none",
+  developer: "developer",
 };
 
 export const rolePack = (role: AgentRole): string => ROLE_PACK[role];

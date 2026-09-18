@@ -19,7 +19,7 @@ const CHOICE = {
   model: "<id>",
   effort: "low|medium|high|xhigh|max",
   prompt: "<text>",
-  skills: "boss|secretary|analyst|backend|frontend|devops|qa|security|head|none",
+  skills: "boss|secretary|analyst|backend|frontend|devops|qa|security|head|developer|none",
   gender: "female|male|neutral",
 };
 
