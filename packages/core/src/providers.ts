@@ -3,7 +3,7 @@ import {
   type AgentRole,
   conflict,
   type DomainError,
-  type EffortLevel,
+  EffortLevel,
   PROVIDERS,
   type ProviderId,
 } from "@ho/protocol";
@@ -37,6 +37,22 @@ const CLAUDE_MODEL_BY_ROLE: Readonly<Record<AgentRole, string>> = {
   developer: "sonnet",
 };
 
+const rank = (level: EffortLevel): number => EffortLevel.options.indexOf(level);
+
+export const nearestEffort = (
+  wanted: EffortLevel,
+  available: readonly EffortLevel[],
+): EffortLevel => {
+  if (available.length === 0 || available.includes(wanted)) {
+    return wanted;
+  }
+  const below = available.filter((level) => rank(level) < rank(wanted));
+  const pool = below.length > 0 ? below : available;
+  const pick = below.length > 0 ? Math.max : Math.min;
+  const target = pick(...pool.map((level) => rank(level)));
+  return pool.find((level) => rank(level) === target) ?? wanted;
+};
+
 export const defaultChoice = (
   provider: ProviderId,
   role: AgentRole = "developer",
@@ -47,7 +63,7 @@ export const defaultChoice = (
   return {
     auth: p.defaultAuth,
     model: p.models.some((m) => m.id === model) || p.freeFormModels ? model : p.defaultModel,
-    effort: p.effortLevels.includes(wanted) ? wanted : (p.effortLevels[0] ?? "medium"),
+    effort: p.effortLevels.length === 0 ? "medium" : nearestEffort(wanted, p.effortLevels),
   };
 };
 
