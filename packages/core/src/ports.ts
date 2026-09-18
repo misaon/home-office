@@ -19,9 +19,19 @@ export type Randomness = { randomize: (bytes: Uint8Array) => void };
 
 export type EventFilter = { types?: readonly StoredEvent["type"][] };
 
+export type ReplayProblem = {
+  seq: number;
+  type: string;
+  at: string;
+  reason: string;
+};
+
 export type EventStore = {
   append: (events: readonly NewEvent[]) => Promise<StoredEvent[]>;
-  read: (afterSeq?: number) => AsyncIterable<StoredEvent>;
+  read: (
+    afterSeq?: number,
+    onUnreadable?: (problem: ReplayProblem) => void,
+  ) => AsyncIterable<StoredEvent>;
   subscribe: (filter?: EventFilter, signal?: Cancellation) => AsyncIterable<StoredEvent>;
   lastSeq: () => Promise<number>;
   firstId: () => Promise<string | null>;

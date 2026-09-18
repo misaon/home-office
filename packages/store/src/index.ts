@@ -6,10 +6,18 @@ import {
   type EventFilter,
   type EventStore,
   type IdFactory,
+  type ReplayProblem,
 } from "@ho/core";
-import { errorCode, type NewEvent, StoredEvent } from "@ho/protocol";
+import {
+  errorCode,
+  errorMessage,
+  type NewEvent,
+  type RawStoredEvent,
+  StoredEvent,
+  upcastStoredEvent,
+} from "@ho/protocol";
 import { chmod } from "node:fs/promises";
-import { z } from "zod";
+import { prettifyError, z } from "zod";
 
 const BATCH = 500;
 const SCHEMA_VERSION = 1;
@@ -35,30 +43,39 @@ const Row = z.object({
   payload: z.string(),
 });
 
-const toStored = (raw: unknown): StoredEvent => {
+type Read = { kind: "event"; event: StoredEvent } | { kind: "skipped"; problem: ReplayProblem };
+
+const skipped = (row: z.infer<typeof Row>, reason: string): Read => ({
+  kind: "skipped",
+  problem: { seq: row.seq, type: row.type, at: row.at, reason },
+});
+
+const toStored = (raw: unknown): Read => {
   const row = Row.parse(raw);
-  const named = (what: string, cause: unknown): Error =>
-    new Error(`stored event ${String(row.seq)} (${row.type}, ${row.at}) ${what}`, { cause });
   let actor: unknown;
   let payload: unknown;
   try {
     actor = JSON.parse(row.actor);
     payload = JSON.parse(row.payload);
   } catch (error) {
-    throw named("is not readable JSON", error);
+    return skipped(row, `is not readable JSON: ${errorMessage(error)}`);
   }
-  const parsed = StoredEvent.safeParse({
+  const carried: RawStoredEvent = {
     seq: row.seq,
     id: row.id,
     type: row.type,
     at: row.at,
     actor,
     payload,
-  });
-  if (!parsed.success) {
-    throw named("does not match the current schema", parsed.error);
+  };
+  const upcast = upcastStoredEvent(carried);
+  if (upcast.kind === "retired") {
+    return skipped(row, `is a retired event type (${upcast.reason})`);
   }
-  return parsed.data;
+  const parsed = StoredEvent.safeParse(upcast.event);
+  return parsed.success
+    ? { kind: "event", event: parsed.data }
+    : skipped(row, `does not match the current schema: ${prettifyError(parsed.error)}`);
 };
 
 const matches = (filter: EventFilter | undefined, event: StoredEvent): boolean =>
@@ -142,14 +159,24 @@ export async function openEventStore(
       return Promise.resolve(stored);
     },
     // oxlint-disable-next-line typescript/require-await -- bun:sqlite is synchronous; the port is async for remote backends
-    async *read(afterSeq = -1) {
-      let cursor = afterSeq;
+    async *read(afterSeq, onUnreadable) {
+      let cursor = afterSeq ?? -1;
       for (;;) {
         const rows = after.all(cursor, BATCH);
         for (const raw of rows) {
-          const event = toStored(raw);
-          yield event;
-          cursor = event.seq;
+          const read = toStored(raw);
+          if (read.kind === "skipped") {
+            if (onUnreadable === undefined) {
+              throw new Error(
+                `stored event ${String(read.problem.seq)} (${read.problem.type}, ${read.problem.at}) ${read.problem.reason}`,
+              );
+            }
+            onUnreadable(read.problem);
+            cursor = read.problem.seq;
+            continue;
+          }
+          yield read.event;
+          cursor = read.event.seq;
         }
         if (rows.length < BATCH) {
           return;

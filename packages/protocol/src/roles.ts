@@ -14,17 +14,6 @@ export const AgentRole = z.enum([
 ]);
 export type AgentRole = z.infer<typeof AgentRole>;
 
-const RENAMED_ROLES: Readonly<Record<string, AgentRole>> = {
-  worker: "developer",
-  reviewer: "head",
-  clerk: "secretary",
-};
-
-export const StoredAgentRole = z.preprocess(
-  (value) => (typeof value === "string" ? (RENAMED_ROLES[value] ?? value) : value),
-  AgentRole,
-);
-
 export const StaffRole = AgentRole.exclude(["boss"]);
 export type StaffRole = z.infer<typeof StaffRole>;
 
