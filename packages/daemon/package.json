@@ -17,7 +17,7 @@
     "@ho/sandbox-docker": "workspace:*",
     "@ho/secrets": "workspace:*",
     "@ho/store": "workspace:*",
-    "@modelcontextprotocol/sdk": "catalog:",
+    "@modelcontextprotocol/server": "catalog:",
     "@orpc/server": "catalog:",
     "pino": "catalog:",
     "simple-git": "catalog:",

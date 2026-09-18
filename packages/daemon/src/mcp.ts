@@ -1,6 +1,5 @@
 import { type Actor, errorMessage, type HoReportInput, type SessionMode } from "@ho/protocol";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { McpServer, WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import type { Logger } from "./logger.ts";
 import { type Entry, type McpSessionContext, text, TOOLS, type ToolResult } from "./mcp-tools.ts";
 import type { Office } from "./office.ts";
@@ -92,7 +91,7 @@ export class McpGateway {
       }
       server.registerTool(
         tool.name,
-        { description: tool.description, inputSchema: tool.shape },
+        { description: tool.description, inputSchema: tool.schema },
         async (input: unknown): Promise<ToolResult> => {
           const started = Bun.nanoseconds();
           this.#log.debug(
