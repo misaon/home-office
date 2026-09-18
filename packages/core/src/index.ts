@@ -10,6 +10,7 @@ export * from "./commands/ratings.ts";
 export * from "./commands/sessions.ts";
 export * from "./commands/staffing.ts";
 export * from "./commands/tasks.ts";
+export * from "./escalate.ts";
 export * from "./ids.ts";
 export * from "./model/queries.ts";
 export * from "./model/read-model.ts";

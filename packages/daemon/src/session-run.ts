@@ -1,6 +1,13 @@
-import { attachmentsOfTask, changeSessionState, type RuntimeSession } from "@ho/core";
+import {
+  attachmentsOfTask,
+  changeSessionState,
+  escalatedEffort,
+  type RuntimeSession,
+  setbacksOf,
+} from "@ho/core";
 import {
   compact,
+  PROVIDERS,
   REPORT_MAX,
   type RuntimeErrorCode,
   type RuntimeEvent,
@@ -84,6 +91,8 @@ const openRuntime = (
     },
     ...(prepared.browser && !plans(ctx) ? browserMcpServers(deps.config.browser.devtools) : {}),
   };
+  const setbacks = ctx.session.mode === "work" ? setbacksOf(ctx.task) : 0;
+  const levels = PROVIDERS[ctx.agent.provider].effortLevels;
   const spec = {
     sessionId: ctx.session.id,
     taskId: ctx.task.id,
@@ -91,7 +100,7 @@ const openRuntime = (
     provider: ctx.agent.provider,
     auth: ctx.agent.auth,
     model: ctx.agent.model,
-    effort: ctx.agent.effort,
+    effort: escalatedEffort(ctx.agent.effort, levels, setbacks),
     maxTurns: ctx.agent.budgets.maxTurnsPerTask,
     maxUsd: ctx.agent.budgets.maxUsdPerTask ?? null,
     allowWrites: ctx.session.mode === "work",
@@ -111,6 +120,8 @@ const openRuntime = (
     pluginDirs: spec.pluginDirs,
     mcpServers: Object.keys(mcpServers),
     browser: prepared.browser,
+    setbacks,
+    askedFor: ctx.agent.effort,
     resume,
     promptHash: hashOf(prepared.appendix),
     promptChars: prepared.appendix.length,
