@@ -118,8 +118,9 @@ Always `bun`. Never npm, pnpm, yarn or `node`.
 - **Tailwind 4 scans the whole repository as text, prose included**, and emits a rule for every bare
   utility name it finds. Do not write a bare utility name in prose, and make sure a class the office
   composes at runtime also appears as a literal in real code.
-- **The agent image is arm64-only** (`RUN test "$TARGETARCH" = arm64`); the Docker platform is pinned
-  to `linux/arm64`.
+- **The agent image builds for arm64 and amd64** and refuses anything else by name. Bun is pinned per
+  architecture with its own checksum. `docker.platform` defaults to the host's architecture and
+  accepts `linux/arm64` or `linux/amd64`.
 - **Generated — never edit by hand:** `.hutch/`, `.tools/`, `.tscache/`, `packages/ui/dist/`,
   `apps/*/dist/`, `build/`, `schema/office.schema.json`.
 

@@ -112,8 +112,9 @@ A tenth role, `developer`, is a general developer for whatever the specialists d
 
 ## Requirements
 
-- **macOS 14 or newer on Apple Silicon.** The agent image is arm64-only; Intel Macs, Linux and Windows
-  are not supported yet.
+- **macOS 14 or newer on Apple Silicon** for the packaged app: the DMG is built for Apple Silicon
+  only. The agent image itself builds for arm64 and amd64, so a daemon run from a source checkout
+  works on an x86-64 host too; that path is not packaged and not yet covered by a release.
 - **Docker Desktop**, running.
 - **Credentials for one provider.** A Claude subscription token from `claude setup-token`, or an API
   key for Anthropic, OpenAI or Google.

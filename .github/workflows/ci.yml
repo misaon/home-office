@@ -59,11 +59,19 @@ jobs:
           cat "$HO_HOME/daemon.log"
 
   images:
-    # The agent Dockerfile requires arm64 (`RUN test "$TARGETARCH" = arm64`); Linux arm64 hosted runners are
-    # free in public repositories. Only `claude-code` is built: the four provider targets share `base`, which
+    # The agent image is built for both architectures it supports, each on a runner of that architecture so
+    # nothing is emulated. Only `claude-code` is built: the four provider targets share `base`, which
     # `mode=max` caches on the way past.
-    runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+          - runner: ubuntu-24.04
+            arch: amd64
     env:
       # Only `main` writes the shared BuildKit cache. A pull request can read the default branch's cache but
       # writes to its own merge-ref scope, which nothing else can ever read, so letting pull requests export
@@ -124,9 +132,9 @@ jobs:
       - name: Build the git-bridge image
         if: steps.scope.outputs.build == 'true'
         run: |
-          cache=(--cache-from "type=gha,scope=git-bridge")
+          cache=(--cache-from "type=gha,scope=git-bridge-${{ matrix.arch }}")
           if [ "$PUBLISH_BUILD_CACHE" = true ]; then
-            cache+=(--cache-to "type=gha,mode=max,scope=git-bridge")
+            cache+=(--cache-to "type=gha,mode=max,scope=git-bridge-${{ matrix.arch }}")
           fi
           docker buildx build --load -t ho/git-bridge:ci "${cache[@]}" images/git-bridge
       # `mode=max` exports the layers of every stage the build walked through, so building `claude-code`
@@ -135,9 +143,9 @@ jobs:
       - name: Build the agent image
         if: steps.scope.outputs.build == 'true'
         run: |
-          cache=(--cache-from "type=gha,scope=agent")
+          cache=(--cache-from "type=gha,scope=agent-${{ matrix.arch }}")
           if [ "$PUBLISH_BUILD_CACHE" = true ]; then
-            cache+=(--cache-to "type=gha,mode=max,scope=agent")
+            cache+=(--cache-to "type=gha,mode=max,scope=agent-${{ matrix.arch }}")
           fi
           docker buildx build --load --target claude-code -t ho/agent:ci "${cache[@]}" images/agent
       - name: Smoke test the images
