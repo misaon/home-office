@@ -8,6 +8,7 @@ import {
   type EventStore,
   type IdFactory,
   type ReadModel,
+  type ReplayProblem,
 } from "@ho/core";
 import type { Actor, StoredEvent } from "@ho/protocol";
 import { openEventStore } from "@ho/store";
@@ -102,6 +103,24 @@ export class Office {
   }
 }
 
+const unreadable = (path: string, problems: readonly ReplayProblem[]): string => {
+  const grouped = new Map<string, { count: number; first: ReplayProblem }>();
+  for (const problem of problems) {
+    const key = `${problem.type}: ${problem.reason}`;
+    const seen = grouped.get(key);
+    grouped.set(key, { count: (seen?.count ?? 0) + 1, first: seen?.first ?? problem });
+  }
+  const lines = [...grouped.entries()].map(
+    ([key, { count, first }]) =>
+      `  ${String(count)}x from seq ${String(first.seq)} (${first.at}) — ${key}`,
+  );
+  return [
+    `Cannot replay the event log: ${String(problems.length)} of its events do not match the schema this build understands.`,
+    ...lines,
+    `The log at ${path} is preserved and untouched. Add a migration in packages/protocol/src/upcast.ts so these events can be read, restore ${DB_FILE} from a backup, or — if this history is expendable — move ${DB_FILE}, ${DB_FILE}-wal and ${DB_FILE}-shm aside and start with an empty log.`,
+  ].join("\n");
+};
+
 export async function openOffice(
   home: string,
   clock: Clock,
@@ -124,19 +143,23 @@ export async function openOffice(
   const path = join(home, DB_FILE);
   const store = await openEventStore(path, { ids, clock });
   const office = new Office(store, ids, clock, log);
+  const problems: ReplayProblem[] = [];
   try {
     let count = 0;
-    for await (const event of store.read()) {
+    for await (const event of store.read(undefined, (problem) => {
+      problems.push(problem);
+    })) {
       applyEvent(office.model, event);
       count += 1;
     }
     log.info({ events: count, lastSeq: office.model.lastSeq }, "read model rebuilt");
   } catch (error) {
     store.close();
-    throw new Error(
-      `Cannot replay the event log; ${path} is preserved and untouched. Restore it from a backup, or — if the events predate a schema change and are expendable — move ${DB_FILE}, ${DB_FILE}-wal and ${DB_FILE}-shm aside and start with an empty log.`,
-      { cause: error },
-    );
+    throw new Error(`Cannot read the event log at ${path}.`, { cause: error });
+  }
+  if (problems.length > 0) {
+    store.close();
+    throw new Error(unreadable(path, problems));
   }
   return { office, attachments, traces, close: store.close };
 }

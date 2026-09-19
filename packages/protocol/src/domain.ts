@@ -18,7 +18,7 @@ import {
   ServicesPolicy,
   VerifyPolicy,
 } from "./policies.ts";
-import { ReviewPlan, SessionMode, StoredAgentRole, TaskKind } from "./roles.ts";
+import { AgentRole, ReviewPlan, SessionMode, TaskKind } from "./roles.ts";
 import { Budgets, Usage } from "./usage.ts";
 
 export * from "./policies.ts";
@@ -167,7 +167,7 @@ export const BASE_PROMPT_MAX = 4000;
 export const Agent = z.object({
   id: AgentId,
   name: z.string().min(1).max(60),
-  role: StoredAgentRole,
+  role: AgentRole,
   appearance: Appearance,
   provider: ProviderId,
   auth: AuthKind.default("subscription"),

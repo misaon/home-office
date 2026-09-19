@@ -614,39 +614,4 @@ button:disabled:hover,
     border-top: 1px solid var(--color-line);
     margin-block: 0.9em;
   }
-  .ho-md .hljs-comment,
-  .ho-md .hljs-quote {
-    color: var(--color-ink-lane);
-  }
-  .ho-md .hljs-keyword,
-  .ho-md .hljs-selector-tag,
-  .ho-md .hljs-literal,
-  .ho-md .hljs-doctag {
-    color: var(--color-accent);
-  }
-  .ho-md .hljs-string,
-  .ho-md .hljs-regexp,
-  .ho-md .hljs-addition {
-    color: var(--color-good);
-  }
-  .ho-md .hljs-number,
-  .ho-md .hljs-symbol,
-  .ho-md .hljs-attr,
-  .ho-md .hljs-attribute {
-    color: var(--color-ink-mute);
-  }
-  .ho-md .hljs-title,
-  .ho-md .hljs-section,
-  .ho-md .hljs-name {
-    color: var(--color-ink-bright);
-  }
-  .ho-md .hljs-deletion {
-    color: var(--color-bad);
-  }
-  .ho-md .hljs-emphasis {
-    font-style: italic;
-  }
-  .ho-md .hljs-strong {
-    font-weight: 600;
-  }
 }

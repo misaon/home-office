@@ -82,6 +82,7 @@ async function build(): Promise<void> {
       entrypoints: [resolve(root, "packages/ui/index.html")],
       outdir: staging,
       target: "browser",
+      splitting: true,
       minify: !watch,
       sourcemap: watch ? "inline" : "none",
       reactCompiler: true,

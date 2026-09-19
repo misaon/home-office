@@ -6,6 +6,6 @@
   "dependencies": {
     "@ho/protocol": "workspace:*",
     "@ho/remote": "workspace:*",
-    "pino": "catalog:"
+    "@logtape/logtape": "catalog:"
   }
 }

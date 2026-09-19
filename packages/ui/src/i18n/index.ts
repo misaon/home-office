@@ -37,7 +37,7 @@ export const startI18n = async (): Promise<void> => {
 };
 
 declare module "i18next" {
-  // oxlint-disable-next-line typescript/consistent-type-definitions
+  // oxlint-disable-next-line typescript/consistent-type-definitions -- augmenting i18next's declared interface needs an interface
   interface CustomTypeOptions {
     defaultNS: "translation";
     resources: { translation: typeof en };

@@ -6,7 +6,7 @@ export const hire = define({
   name: "ho_hire",
   description:
     "Take on a new colleague for this floor when nobody already here fits the work. They stay after this task and take later work too, so hire for a lasting need rather than one errand, and check ho_list_agents first. They use your provider and inherit your budgets.",
-  shape: HoHireInput.shape,
+  schema: HoHireInput,
   modes: ["triage"],
   run: async (input, office, entry, actor) => {
     const project = office.model.projects.get(entry.ctx.projectId);

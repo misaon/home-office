@@ -24,6 +24,7 @@ import {
   HoTaskStatusInput,
   isSessionActive,
 } from "@ho/protocol";
+import { z } from "zod";
 import { hire } from "./mcp-hire.ts";
 import { ALL, define, type AnyTool, type ToolResult } from "./mcp-tool.ts";
 import { publishTask } from "./publish.ts";
@@ -34,7 +35,7 @@ const report = define({
   name: "ho_report",
   description:
     "End your work on the current task with a report. Call it exactly once: when your changes are committed (status review), when the triage or the plan is finished (status done), or when you cannot continue (status blocked, and the summary says why). The office runs the floor's checks and publishes committed work itself.",
-  shape: HoReportInput.shape,
+  schema: HoReportInput,
   modes: ["work", "triage", "plan"],
   run: async (input, office, entry, actor) => {
     if (entry.ctx.mode === "work") {
@@ -61,7 +62,7 @@ const askTheHuman = define({
   name: "ho_ask_human",
   description:
     "Ask the human one blocking question. The task pauses until they answer in the office chat, and you are resumed with the answer.",
-  shape: HoAskHumanInput.shape,
+  schema: HoAskHumanInput,
   modes: ALL,
   run: async (input, office, entry, actor) => {
     await office.execute(actor, (m, c) => askHuman(m, entry.ctx.taskId, input.question, c));
@@ -73,7 +74,7 @@ const taskStatus = define({
   name: "ho_task_status",
   description:
     "Call this when you lack context: a task's status, its artifacts (branch, report, pull request) and its last ten notes, including the office's check output and review findings. Defaults to your own task.",
-  shape: HoTaskStatusInput.shape,
+  schema: HoTaskStatusInput,
   modes: ["work", "triage", "plan"],
   run: (input, office, entry) => {
     const id = input.taskId ?? entry.ctx.taskId;
@@ -96,7 +97,7 @@ const listAgents = define({
   name: "ho_list_agents",
   description:
     "The team on this floor: names, roles, skill packs and current load. Use it before ho_handoff or ho_delegate when the roster in your briefing is not enough.",
-  shape: {},
+  schema: z.object({}),
   modes: ["work", "triage", "plan"],
   run: (_input, office, entry) =>
     Promise.resolve(
@@ -115,7 +116,7 @@ const handoff = define({
   name: "ho_handoff",
   description:
     "Hand the current task to a colleague (by name) with a brief of what is done and what is next. Commit first; your session ends after this call.",
-  shape: HoHandoffInput.shape,
+  schema: HoHandoffInput,
   modes: ["work"],
   run: async (input, office, entry, actor) => {
     const task = await office.execute(actor, (m, c) =>
@@ -129,7 +130,7 @@ const review = define({
   name: "ho_review",
   description:
     "File your verdict on the branch under review. approve closes the task; request_changes sends it back to the author with your numbered findings.",
-  shape: HoReviewInput.shape,
+  schema: HoReviewInput,
   modes: ["review"],
   run: async (input, office, entry, actor) => {
     const task = await office.execute(actor, (m, c) => submitReview(m, entry.ctx.taskId, input, c));
@@ -141,7 +142,7 @@ const delegate = define({
   name: "ho_delegate",
   description:
     "Create a task on this floor and assign it to a colleague by name, or to yourself when you do the work. One task per independently verifiable piece of work; the fields are the specification the developer and the reviewers get, and qa/security decide who reviews it before the head of development.",
-  shape: HoDelegateInput.shape,
+  schema: HoDelegateInput,
   modes: ["triage", "plan"],
   run: async (input, office, entry, actor) => {
     const task = await office.execute(actor, (m, c) => delegateTask(m, input, entry.ctx.taskId, c));
@@ -153,7 +154,7 @@ const plan = define({
   name: "ho_plan",
   description:
     "Hand a request to the analyst to specify and split: they read the repository, write one task per verifiable piece of work with acceptance criteria and assign each to the colleague who fits. Use it for anything that is more than one small, obvious change; small errands and obvious single changes you delegate yourself with ho_delegate.",
-  shape: HoPlanInput.shape,
+  schema: HoPlanInput,
   modes: ["triage"],
   run: async (input, office, entry, actor) => {
     const task = await office.execute(actor, (m, c) => planTask(m, input, entry.ctx.taskId, c));
@@ -165,7 +166,7 @@ const reply = define({
   name: "ho_reply",
   description:
     "Say something to the human in the office chat: a question back, a one-line plan, or an answer when there is nothing to delegate.",
-  shape: HoReplyInput.shape,
+  schema: HoReplyInput,
   modes: ["triage", "plan"],
   run: async (input, office, entry, actor) => {
     const files = await entry.ctx.attachments.collect(entry.ctx.sessionId, input.files);
@@ -181,7 +182,7 @@ const publish = define({
   name: "ho_publish",
   description:
     "Push a finished task's branch to the remote and open its pull request now, returning the link. Only for tasks that already have a branch; on pull-request floors the office does this by itself when a task finishes.",
-  shape: HoPublishInput.shape,
+  schema: HoPublishInput,
   modes: ["triage"],
   run: async (input, office, entry) => publishTask(office, entry.ctx.home, input.taskId),
 });
@@ -190,7 +191,7 @@ const listSkills = define({
   name: "ho_list_skills",
   description:
     "The skills available to you: name and one-line description each. Read one with ho_get_skill before doing work it covers.",
-  shape: {},
+  schema: z.object({}),
   modes: ALL,
   servesSkills: true,
   run: (_input, _office, entry) => entry.skills.index(entry.ctx.skillPacks),
@@ -200,7 +201,7 @@ const getSkill = define({
   name: "ho_get_skill",
   description:
     "The full instructions of one skill, and the names of the files it bundles. Call it when its description matches the work in front of you.",
-  shape: HoGetSkillInput.shape,
+  schema: HoGetSkillInput,
   modes: ALL,
   servesSkills: true,
   run: (input, _office, entry) => entry.skills.read(entry.ctx.skillPacks, input.name),
@@ -210,7 +211,7 @@ const getSkillFile = define({
   name: "ho_get_skill_file",
   description:
     "One file bundled with a skill, by the path ho_get_skill listed. Read it only when that skill's instructions send you to it.",
-  shape: HoGetSkillFileInput.shape,
+  schema: HoGetSkillFileInput,
   modes: ALL,
   servesSkills: true,
   run: (input, _office, entry) => entry.skills.file(entry.ctx.skillPacks, input.name, input.path),

@@ -174,7 +174,7 @@ export async function launchDaemon(
   let stopping: Promise<void> | null = null;
   const stop = (): Promise<void> => {
     if (stopping === null) {
-      log.info("daemon stopping");
+      log.info({}, "daemon stopping");
       stopping = withDeadline(cleanup.disposeAsync(), STOP_TIMEOUT_MS);
     }
     return stopping;

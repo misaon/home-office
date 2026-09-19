@@ -1,14 +1,81 @@
 import { RELAY_MAX_FRAME_BYTES } from "@ho/protocol";
-import { pino } from "pino";
+import {
+  configureSync,
+  getConsoleSink,
+  getLogger,
+  jsonLinesFormatter,
+  type LogLevel,
+} from "@logtape/logtape";
 import { RelayCore } from "./core.ts";
-import type { RelaySocket } from "./state.ts";
+import type { RelayLog, RelaySocket } from "./state.ts";
 
 const DEFAULT_PORT = 47850;
 const IDLE_TIMEOUT_S = 120;
 
 type SocketData = { socket: RelaySocket | null };
 
-const log = pino({ level: Bun.env["RELAY_LOG_LEVEL"] ?? "info", base: { app: "ho-relay" } });
+const LEVELS: Readonly<Record<string, LogLevel>> = {
+  trace: "trace",
+  debug: "debug",
+  info: "info",
+  warn: "warning",
+  error: "error",
+};
+const REDACTED = "***";
+const URL_CREDENTIALS = /\/\/[^\s/@]+@/gu;
+const NAME_SEPARATORS = /[^A-Za-z0-9]+/u;
+const CAMEL_BOUNDARY = /(?=[A-Z])/u;
+const SECRET_WORDS: ReadonlySet<string> = new Set([
+  "authorization",
+  "bearer",
+  "cookie",
+  "credential",
+  "credentials",
+  "passphrase",
+  "password",
+  "secret",
+  "token",
+]);
+
+const isSecretName = (name: string): boolean =>
+  name
+    .split(NAME_SEPARATORS)
+    .flatMap((segment) =>
+      segment === segment.toUpperCase() ? [segment] : segment.split(CAMEL_BOUNDARY),
+    )
+    .some((part) => SECRET_WORDS.has(part.toLowerCase()));
+
+const redact = (fields: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(fields).map(([name, value]) =>
+      isSecretName(name)
+        ? [name, REDACTED]
+        : [name, typeof value === "string" ? value.replaceAll(URL_CREDENTIALS, "//***@") : value],
+    ),
+  );
+
+configureSync({
+  reset: true,
+  sinks: { relay: getConsoleSink({ formatter: jsonLinesFormatter }) },
+  loggers: [
+    {
+      category: ["ho-relay"],
+      sinks: ["relay"],
+      lowestLevel: LEVELS[Bun.env["RELAY_LOG_LEVEL"] ?? "info"] ?? "info",
+    },
+    { category: ["logtape", "meta"], sinks: [], lowestLevel: "error" },
+  ],
+});
+
+const relayLogger = getLogger(["ho-relay"]).with({ app: "ho-relay" });
+const log: RelayLog = {
+  info: (fields, message) => {
+    relayLogger.info(message, () => redact(fields));
+  },
+  warn: (fields, message) => {
+    relayLogger.warn(message, () => redact(fields));
+  },
+};
 const core = new RelayCore(log);
 const allowedOrigins = (Bun.env["RELAY_ALLOWED_ORIGINS"] ?? "")
   .split(",")

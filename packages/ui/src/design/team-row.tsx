@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { ROLE_KEY } from "../i18n/labels.ts";
+import { ClickableRow } from "./clickable-row.tsx";
 import type { Member } from "./data.ts";
 import { ChevronRight } from "lucide-react";
-import { DISPLAY, MONO, separator } from "./tokens.ts";
+import { DISPLAY, MONO } from "./tokens.ts";
 
 const INNER = "flex-1 min-w-0 p-13 flex items-center gap-12";
 
@@ -31,21 +32,7 @@ export function TeamRow({
   const accent = working ? "bg-accent" : "bg-dot-idle";
 
   return (
-    <div
-      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
-      role="button"
-      aria-label={person.name}
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-      className={`flex items-stretch cursor-pointer transition-[background] duration-200 hover:bg-row-hover ${separator(first)}`}
-    >
-      <div className={`w-3 flex-[0_0_3px] ${accent}`} />
+    <ClickableRow label={person.name} first={first} stripe={accent} onOpen={onOpen}>
       <div className={INNER}>
         <div
           className={`${AVATAR} ${chief ? "bg-gold" : "bg-edge-lit"} ${chief ? "text-accent-ink-deep" : "text-ink-mute"}`}
@@ -74,6 +61,6 @@ export function TeamRow({
         </div>
         <ChevronRight size={10} strokeWidth={1.5} className="flex-[0_0_auto] stroke-ink-idle" />
       </div>
-    </div>
+    </ClickableRow>
   );
 }
