@@ -265,6 +265,7 @@ export const Session = z.object({
   threadId: ChatThreadId.optional(),
   resumedFrom: SessionId.optional(),
   usage: Usage,
+  costUsd: z.number().nonnegative().optional(),
   startedAt: IsoDateTime,
   endedAt: IsoDateTime.optional(),
 });

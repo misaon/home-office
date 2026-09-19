@@ -126,6 +126,7 @@ function applySessionEvent(model: ReadModel, event: SessionEvent): void {
       model.sessions.set(session.id, {
         ...session,
         usage: addUsage(session.usage, event.payload.usage),
+        ...compact({ costUsd: event.payload.costUsd ?? session.costUsd }),
       });
       break;
     }

@@ -29,6 +29,8 @@ const Counts = z.object({
   ratedGood: z.int().nonnegative(),
   ratedBad: z.int().nonnegative(),
   usage: Usage,
+  costUsd: z.number().nonnegative(),
+  costKnown: z.int().nonnegative(),
 });
 
 export const AgentScore = Counts.extend({
@@ -75,11 +77,18 @@ export const EvalInput = z.object({
 });
 export type EvalInput = z.infer<typeof EvalInput>;
 
+export const RoleScore = Counts.extend({
+  role: AgentRole,
+  people: z.int().nonnegative(),
+});
+export type RoleScore = z.infer<typeof RoleScore>;
+
 export const EvalScorecard = z.object({
   since: IsoDateTime.nullable(),
   until: IsoDateTime,
   office: Counts,
   agents: z.array(AgentScore),
+  roles: z.array(RoleScore),
   reviewers: z.array(ReviewerScore),
   attention: z.array(EvalAttention),
 });

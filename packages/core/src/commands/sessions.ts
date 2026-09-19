@@ -128,7 +128,7 @@ export function changeSessionState(
 
 export function recordSessionUsage(
   model: ReadModel,
-  input: { sessionId: SessionId; usage: Usage },
+  input: { sessionId: SessionId; usage: Usage; costUsd?: number },
   ctx: CommandContext,
 ): CommandResult<Session> {
   return withSession(model, input.sessionId, () =>

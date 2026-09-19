@@ -85,7 +85,11 @@ export const DomainEvent = z.discriminatedUnion("type", [
     services: SessionServices.optional(),
     reason: z.string().max(2000).optional(),
   }),
-  event("session.usage_recorded", { sessionId: SessionId, usage: Usage }),
+  event("session.usage_recorded", {
+    sessionId: SessionId,
+    usage: Usage,
+    costUsd: z.number().nonnegative().optional(),
+  }),
   event("session.ended", {
     sessionId: SessionId,
     state: z.enum(["stopped", "failed"]),
