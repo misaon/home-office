@@ -27,9 +27,18 @@ const hoursOf = (since: string | undefined): number | undefined => {
 const outcome = (counts: Counts): string =>
   `finished ${String(counts.finished)}  first-pass ${String(counts.firstPass)} (${share(counts.firstPass, counts.finished)})  blocked ${String(counts.blocked)}  failed ${String(counts.failed)}  rounds/task ${per(counts.reviewRounds, counts.finished)}`;
 
+const money = (counts: Counts): string =>
+  counts.costKnown === 0
+    ? "cost not reported"
+    : `~$${counts.costUsd.toFixed(2)} est${counts.costKnown < counts.sessions ? ` (${String(counts.costKnown)}/${String(counts.sessions)} sessions)` : ""}`;
+
 const spend = (counts: Counts): string => {
   const tokens = counts.usage.inputTokens + counts.usage.outputTokens;
-  return `sessions ${String(counts.sessions)}  ${fmt(counts.minutes)} min  ${fmt(tokens)} tokens  per finished task: ${counts.finished === 0 ? "n/a" : `${fmt(tokens / counts.finished)} tokens, ${fmt(counts.minutes / counts.finished)} min`}`;
+  const each =
+    counts.finished === 0
+      ? "n/a"
+      : `${fmt(tokens / counts.finished)} tokens, ${fmt(counts.minutes / counts.finished)} min${counts.costKnown === 0 ? "" : `, ~$${(counts.costUsd / counts.finished).toFixed(2)}`}`;
+  return `sessions ${String(counts.sessions)}  ${fmt(counts.minutes)} min  ${fmt(tokens)} tokens  ${money(counts)}  per finished task: ${each}`;
 };
 
 const officeLines = (card: EvalScorecard): string[] => [
@@ -46,6 +55,17 @@ const employeeLines = (card: EvalScorecard): string[] =>
         ...card.agents.map(
           (a) =>
             `${a.name.padEnd(10)} ${a.role.padEnd(10)} ${`${a.model}/${a.effort}`.padEnd(14)} ${outcome(a)}  bad ${String(a.ratedBad)}  ${spend(a)}`,
+        ),
+      ];
+
+const roleLines = (card: EvalScorecard): string[] =>
+  card.roles.length === 0
+    ? []
+    : [
+        "-- by role",
+        ...card.roles.map(
+          (r) =>
+            `${r.role.padEnd(11)} ${String(r.people)} ${r.people === 1 ? "person " : "people"}  finished ${String(r.finished).padStart(3)}  ${money(r)}  ${fmt(r.usage.inputTokens + r.usage.outputTokens)} tokens`,
         ),
       ];
 
@@ -85,6 +105,7 @@ export const evalCommand: Command = {
       [
         ...officeLines(card),
         ...employeeLines(card),
+        ...roleLines(card),
         ...reviewerLines(card),
         ...attentionLines(card),
       ],

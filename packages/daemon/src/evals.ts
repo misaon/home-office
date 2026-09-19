@@ -8,6 +8,7 @@ import {
   type EvalInput,
   type EvalScorecard,
   type ReviewerScore,
+  type RoleScore,
   reviewVerdictOf,
   type Session,
   type Task,
@@ -32,6 +33,8 @@ const zero = (): Counts => ({
   ratedGood: 0,
   ratedBad: 0,
   usage: ZERO_USAGE,
+  costUsd: 0,
+  costKnown: 0,
 });
 
 const minutesOf = (session: Session): number =>
@@ -66,6 +69,25 @@ const countSession = (into: Counts, session: Session): void => {
   into.sessions += 1;
   into.minutes += minutesOf(session);
   into.usage = addUsage(into.usage, session.usage);
+  if (session.costUsd !== undefined) {
+    into.costUsd += session.costUsd;
+    into.costKnown += 1;
+  }
+};
+
+const addCounts = (into: Counts, from: Counts): void => {
+  into.finished += from.finished;
+  into.blocked += from.blocked;
+  into.failed += from.failed;
+  into.firstPass += from.firstPass;
+  into.reviewRounds += from.reviewRounds;
+  into.sessions += from.sessions;
+  into.minutes += from.minutes;
+  into.ratedGood += from.ratedGood;
+  into.ratedBad += from.ratedBad;
+  into.costUsd += from.costUsd;
+  into.costKnown += from.costKnown;
+  into.usage = addUsage(into.usage, from.usage);
 };
 
 const flagOf = (task: Task, sessions: number): { flag: EvalFlag; detail: string } | null => {
@@ -205,11 +227,22 @@ export function scorecard(model: ReadModel, now: number, input: EvalInput): Eval
     });
   }
 
+  const byRole = new Map<AgentScore["role"], RoleScore>();
+  for (const score of agents) {
+    const carried = byRole.get(score.role) ?? { ...zero(), role: score.role, people: 0 };
+    addCounts(carried, score);
+    carried.people += 1;
+    byRole.set(score.role, carried);
+  }
+
   return {
     since,
     until: new Date(now).toISOString(),
     office,
     agents: agents.toSorted((a, b) => b.finished - a.finished || a.name.localeCompare(b.name)),
+    roles: [...byRole.values()].toSorted(
+      (a, b) => b.costUsd - a.costUsd || b.finished - a.finished,
+    ),
     reviewers: [...scoreReviewers(model, tasks).values()].toSorted(
       (a, b) => b.reviewed - a.reviewed || a.name.localeCompare(b.name),
     ),

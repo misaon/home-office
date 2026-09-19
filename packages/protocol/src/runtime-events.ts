@@ -40,7 +40,11 @@ export const RuntimeEvent = z.discriminatedUnion("kind", [
     tool: z.string(),
     input: z.unknown(),
   }),
-  z.object({ kind: z.literal("usage"), usage: Usage }),
+  z.object({
+    kind: z.literal("usage"),
+    usage: Usage,
+    costUsd: z.number().nonnegative().optional(),
+  }),
   z.object({
     kind: z.literal("context"),
     usedTokens: z.int().nonnegative(),

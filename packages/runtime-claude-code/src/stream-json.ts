@@ -57,6 +57,7 @@ const StreamLine = z.discriminatedUnion("type", [
     session_id: z.string(),
     num_turns: z.int(),
     usage: Usage.optional(),
+    total_cost_usd: z.number().nonnegative().optional(),
   }),
 ]);
 const SPEND_LIMIT_PATTERN = /\b(?:spend|usage|weekly) limit\b/iu;
@@ -182,6 +183,7 @@ export function normalizeLine(
             cacheWriteTokens: usage.cache_creation_input_tokens,
             turns: line.num_turns,
           },
+          ...(line.total_cost_usd === undefined ? {} : { costUsd: line.total_cost_usd }),
         },
       ];
       if (line.is_error && line.subtype === "error_max_turns") {

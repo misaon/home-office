@@ -249,7 +249,11 @@ export class SessionManager {
     const { office } = this.#deps;
     if (event.kind === "usage") {
       await office.execute(SYSTEM_ACTOR, (m, c) =>
-        recordSessionUsage(m, { sessionId: ctx.session.id, usage: event.usage }, c),
+        recordSessionUsage(
+          m,
+          { sessionId: ctx.session.id, usage: event.usage, ...compact({ costUsd: event.costUsd }) },
+          c,
+        ),
       );
     } else if (event.kind === "rate_limited") {
       await this.#state(ctx.session.id, "idle", { reason: rateLimitedReason(event.retryAt) });
