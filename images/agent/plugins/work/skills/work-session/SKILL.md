@@ -1,6 +1,6 @@
 ---
 name: work-session
-description: Load at the start of every work session and again before ho_report. The order of work in a Home Office sandbox, from recovering context and setting up the repository through committing at checkpoints and running the floor's check the way the office re-runs it, to a report written for the reviewers who read the branch next.
+description: Load at the start of every work session and again before ho_report. The order of work in a Home Office sandbox, from recovering context and setting up the repository through committing at checkpoints and running the floor's check the way the office re-runs it, to updating whatever documentation the change made untrue and a report written for the reviewers who read the branch next.
 ---
 
 # A work session
@@ -23,7 +23,12 @@ description: Load at the start of every work session and again before ho_report.
    /work/repo.
 6. Read the check's exit code, not its last lines. Fix, commit, run it again. Never delete or weaken
    a test or a check to make it pass; if a check is wrong, say so in the report.
-7. `ho_report` with status review. The briefing names who reviews the branch next (QA, the security
+7. Check what the change made untrue before you report it: the README, whatever the repository keeps
+   as documentation, and the help text of any command you altered. A change to what someone
+   installs, runs, configures or calls ships with the documentation for it in the same commit. The
+   head of development reviews this, and a finding at that gate sends the branch back through the
+   whole review chain — so it is much cheaper to find here.
+8. `ho_report` with status review. The briefing names who reviews the branch next (QA, the security
    engineer, the head of development); write for them: what changed and why, how to run it, how you
-   verified each acceptance criterion, and what stays open. The text also becomes the pull-request
-   description. Then stop.
+   verified each acceptance criterion, what documentation you updated or why none needed it, and
+   what stays open. The text also becomes the pull-request description. Then stop.

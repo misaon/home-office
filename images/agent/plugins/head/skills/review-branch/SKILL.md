@@ -19,7 +19,8 @@ description: Load in a review session when the reviewer is the head of developme
    restating the implementation.
 6. Naming, consistency and documentation: names that say what things are and do; the repository's
    conventions over the surrounding code's inconsistencies; documentation updated when user-facing
-   behaviour changed.
+   behaviour changed. The report states what was updated or why nothing needed it — check that
+   claim against the diff rather than forming it yourself.
 7. Read every line of the diff. Something you do not understand is a finding: ask for it to be made
    clear.
 8. Verdict: approve what you would be happy to maintain, with non-blocking suggestions prefixed
