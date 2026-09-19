@@ -22,6 +22,7 @@ import { listLayouts, saveLayout } from "../layouts.ts";
 import { buildsImages } from "../paths.ts";
 import { exportProject, syncProject } from "../office-config.ts";
 import { inspectRepo } from "../repo-inspect.ts";
+import { scorecard } from "../evals.ts";
 import { usageSummary } from "../usage.ts";
 import { guarded } from "./guarded.ts";
 
@@ -132,6 +133,11 @@ export const router = base.router({
   usage: {
     summary: base.usage.summary.handler(({ input, context }) =>
       usageSummary(context.office.model, context.office.clock.now().getTime(), input.sinceHours),
+    ),
+  },
+  evals: {
+    scorecard: base.evals.scorecard.handler(({ input, context }) =>
+      scorecard(context.office.model, context.office.clock.now().getTime(), input),
     ),
   },
   resources: {

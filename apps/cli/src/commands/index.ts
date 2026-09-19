@@ -1,6 +1,7 @@
 import type { Command } from "../cli.ts";
 import { agentCommand } from "./agent.ts";
 import { chatCommand } from "./chat.ts";
+import { evalCommand } from "./evals.ts";
 import { intakeCommand, mailCommand } from "./intake.ts";
 import { projectCommand } from "./project.ts";
 import { remoteCommand } from "./remote.ts";
@@ -32,6 +33,7 @@ export const COMMANDS: readonly Command[] = [
   intakeCommand,
   mailCommand,
   usageCommand,
+  evalCommand,
   resourcesCommand,
   uiCommand,
   gcCommand,

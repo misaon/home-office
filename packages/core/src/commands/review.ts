@@ -1,4 +1,5 @@
 import {
+  formatReviewNote,
   type Agent,
   conflict,
   type HoReportInput,
@@ -105,7 +106,7 @@ export function submitReview(
     }
     const rounds = input.verdict === "approve" ? task.reviewRounds : task.reviewRounds + 1;
     const events: NewEvent[] = [
-      noteEvent(ctx, task, note(ctx, "review", `${input.verdict}: ${input.findings}`)),
+      noteEvent(ctx, task, note(ctx, "review", formatReviewNote(input.verdict, input.findings))),
       {
         type: "task.review_recorded",
         actor: ctx.actor,
