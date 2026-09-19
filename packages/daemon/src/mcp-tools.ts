@@ -3,12 +3,14 @@ import {
   delegateTask,
   fileReport,
   handoffTask,
+  isTerminal,
   membersOf,
   patchTaskArtifacts,
   planTask,
   postAgentMessage,
   sessionsOfAgent,
   submitReview,
+  tasksOf,
 } from "@ho/core";
 import {
   HoAskHumanInput,
@@ -27,6 +29,7 @@ import {
 } from "@ho/protocol";
 import { z } from "zod";
 import { recall } from "./recall.ts";
+import { dismiss } from "./mcp-dismiss.ts";
 import { hire } from "./mcp-hire.ts";
 import { ALL, define, type AnyTool, type ToolResult } from "./mcp-tool.ts";
 import { publishTask } from "./publish.ts";
@@ -137,11 +140,12 @@ const recallPast = define({
 const listAgents = define({
   name: "ho_list_agents",
   description:
-    "The team on this floor: names, roles, skill packs and current load. Use it before ho_handoff or ho_delegate when the roster in your briefing is not enough.",
+    "The team on this floor: names, roles, skill packs, and how much each of them is carrying and has finished. Use it before ho_handoff or ho_delegate when the roster in your briefing is not enough, and before ho_dismiss to see who this floor has stopped using.",
   schema: z.object({}),
   modes: ["work", "triage", "plan"],
-  run: (_input, office, entry) =>
-    Promise.resolve(
+  run: (_input, office, entry) => {
+    const tasks = tasksOf(office.model, entry.ctx.projectId);
+    return Promise.resolve(
       membersOf(office.model, entry.ctx.projectId).map((a) => ({
         id: a.id,
         name: a.name,
@@ -149,8 +153,11 @@ const listAgents = define({
         skills: a.skillPack,
         activeSessions: sessionsOfAgent(office.model, a.id).filter((s) => isSessionActive(s.state))
           .length,
+        openTasks: tasks.filter((t) => t.assigneeId === a.id && !isTerminal(t.status)).length,
+        finishedTasks: tasks.filter((t) => t.assigneeId === a.id && t.status === "done").length,
       })),
-    ),
+    );
+  },
 });
 
 const handoff = define({
@@ -269,6 +276,7 @@ export const TOOLS: readonly AnyTool[] = [
   delegate,
   plan,
   hire,
+  dismiss,
   reply,
   publish,
   listSkills,

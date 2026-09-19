@@ -132,6 +132,7 @@ export function removeAgent(
   model: ReadModel,
   id: AgentId,
   ctx: CommandContext,
+  reason?: string,
 ): CommandResult<AgentId> {
   return withAgent(model, id, (agent) => {
     if (agent.role === "boss" && model.projects.has(agent.projectId)) {
@@ -147,7 +148,13 @@ export function removeAgent(
       return err(conflict(`agent has ${String(busy)} active task(s); reassign them first`));
     }
     return ok({
-      events: [{ type: "agent.removed", actor: ctx.actor, payload: { agentId: id } }],
+      events: [
+        {
+          type: "agent.removed",
+          actor: ctx.actor,
+          payload: { agentId: id, ...compact({ reason }) },
+        },
+      ],
       read: () => id,
     });
   });

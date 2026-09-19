@@ -79,6 +79,19 @@ export const HoHireInput = z.object({
 });
 export type HoHireInput = z.infer<typeof HoHireInput>;
 
+export const HoDismissInput = z.object({
+  agent: z
+    .string()
+    .min(1)
+    .describe("Name or id of the colleague on this floor who is leaving; never your own"),
+  reason: z
+    .string()
+    .min(1)
+    .max(500)
+    .describe("Why this floor no longer needs them; it is kept in the office record"),
+});
+export type HoDismissInput = z.infer<typeof HoDismissInput>;
+
 export const HoDelegateInput = z.object({
   title: z.string().min(1).max(200),
   goal: TaskSpec.shape.goal.describe("One sentence: what this task achieves and for whom"),

@@ -234,6 +234,7 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
       const gone = model.agents.get(event.payload.agentId);
       model.agents.delete(event.payload.agentId);
       if (gone !== undefined) {
+        model.formerAgents.set(gone.id, gone);
         dropFrom(model.agentsByProject, gone.projectId, gone.id);
       }
       break;

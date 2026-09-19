@@ -37,6 +37,9 @@ const zero = (): Counts => ({
   costKnown: 0,
 });
 
+const anyone = (model: ReadModel, agentId: Agent["id"]): Agent | undefined =>
+  model.agents.get(agentId) ?? model.formerAgents.get(agentId);
+
 const minutesOf = (session: Session): number =>
   session.endedAt === undefined
     ? 0
@@ -129,7 +132,7 @@ const scoreReviewers = (
         continue;
       }
       const verdict = reviewVerdictOf(entry.text);
-      const reviewer = model.agents.get(entry.author.agentId);
+      const reviewer = anyone(model, entry.author.agentId);
       if (verdict === null || reviewer === undefined) {
         continue;
       }
@@ -137,6 +140,7 @@ const scoreReviewers = (
         agentId: reviewer.id,
         name: reviewer.name,
         role: reviewer.role,
+        departed: !model.agents.has(reviewer.id),
         reviewed: 0,
         approved: 0,
         requestedChanges: 0,
@@ -182,7 +186,7 @@ export function scorecard(model: ReadModel, now: number, input: EvalInput): Eval
     const sessions = model.sessionsByTask.get(task.id)?.size ?? 0;
     const flagged = flagOf(task, sessions);
     if (flagged !== null) {
-      const assignee = task.assigneeId === undefined ? null : model.agents.get(task.assigneeId);
+      const assignee = task.assigneeId === undefined ? null : anyone(model, task.assigneeId);
       attention.push({
         taskId: task.id,
         title: task.title,
@@ -213,7 +217,7 @@ export function scorecard(model: ReadModel, now: number, input: EvalInput): Eval
 
   const agents: AgentScore[] = [];
   for (const [agentId, counts] of perAgent) {
-    const agent = model.agents.get(agentId);
+    const agent = anyone(model, agentId);
     if (agent === undefined) {
       continue;
     }
@@ -224,6 +228,7 @@ export function scorecard(model: ReadModel, now: number, input: EvalInput): Eval
       role: agent.role,
       model: agent.model,
       effort: agent.effort,
+      departed: !model.agents.has(agentId),
     });
   }
 
@@ -231,7 +236,9 @@ export function scorecard(model: ReadModel, now: number, input: EvalInput): Eval
   for (const score of agents) {
     const carried = byRole.get(score.role) ?? { ...zero(), role: score.role, people: 0 };
     addCounts(carried, score);
-    carried.people += 1;
+    if (!score.departed) {
+      carried.people += 1;
+    }
     byRole.set(score.role, carried);
   }
 

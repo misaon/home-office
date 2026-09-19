@@ -154,9 +154,9 @@ export const cs: typeof en = {
     intake: "GitHub issues → pošta",
     intro: "Samotná kancelář. Lidé na podlažích jsou v panelu Tým.",
     intakeHint: "Pošťák nosí odpovídající issues na recepci a šéf je roztřídí.",
-    hiringLabel: "Šéf smí najímat kolegy",
+    hiringLabel: "Šéf smí měnit, kdo tu pracuje",
     hiringHint:
-      "Když se na práci nikdo na patře nehodí, šéf někoho najme — zůstane a může dostat další úkoly. Vypnuto: musí všechno zvládnout sám, nebo počkat, až někoho přidáte v Týmu.",
+      "Když se na práci nikdo na patře nehodí, šéf někoho najme — zůstane a může dostat další úkoly — a roli, kterou patro přestalo využívat, propustí. Nikdy sebe a nikdy posledního, kdo pokrývá některou fázi revize. Vypnuto: musí všechno zvládnout sám, nebo počkat, až tým změníte vy.",
     previewLabel: "Lokální náhled na portu {{port}}",
     previewHint:
       "Vystaví tenhle jeden port z každého sandboxu na 127.0.0.1, takže dev server, který agent spustí, otevřete v prohlížeči. Vypnuto: nic, co agent servíruje, z kontejneru neodejde.",

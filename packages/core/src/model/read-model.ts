@@ -16,6 +16,7 @@ import type {
 export type ReadModel = {
   projects: Map<ProjectId, Project>;
   agents: Map<AgentId, Agent>;
+  formerAgents: Map<AgentId, Agent>;
   tasks: Map<TaskId, Task>;
   sessions: Map<SessionId, Session>;
   chat: Map<ProjectId, ChatMessage[]>;
@@ -37,6 +38,7 @@ export type Collection = "projects" | "agents" | "tasks" | "sessions" | "chat" |
 export const createReadModel = (): ReadModel => ({
   projects: new Map(),
   agents: new Map(),
+  formerAgents: new Map(),
   tasks: new Map(),
   sessions: new Map(),
   chat: new Map(),
