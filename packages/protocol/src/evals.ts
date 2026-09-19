@@ -39,6 +39,7 @@ export const AgentScore = Counts.extend({
   role: AgentRole,
   model: z.string(),
   effort: EffortLevel,
+  departed: z.boolean(),
 });
 export type AgentScore = z.infer<typeof AgentScore>;
 
@@ -46,6 +47,7 @@ export const ReviewerScore = z.object({
   agentId: AgentId,
   name: z.string(),
   role: AgentRole,
+  departed: z.boolean(),
   reviewed: z.int().nonnegative(),
   approved: z.int().nonnegative(),
   requestedChanges: z.int().nonnegative(),

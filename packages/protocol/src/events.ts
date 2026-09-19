@@ -36,7 +36,7 @@ export const DomainEvent = z.discriminatedUnion("type", [
 
   event("agent.created", { agent: Agent }),
   event("agent.updated", { agent: Agent }),
-  event("agent.removed", { agentId: AgentId }),
+  event("agent.removed", { agentId: AgentId, reason: z.string().max(500).optional() }),
 
   event("task.created", { task: Task }),
   event("task.edited", {

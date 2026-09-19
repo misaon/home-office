@@ -154,9 +154,9 @@ export const en = {
     intake: "GitHub issues → mail",
     intro: "The office itself. The people on each floor are in Team.",
     intakeHint: "The postman brings matching issues to the reception and the boss triages them.",
-    hiringLabel: "The boss may take on colleagues",
+    hiringLabel: "The boss may change who works here",
     hiringHint:
-      "When nobody on this floor fits the work, the boss hires someone who stays and can take later work too. Off, it must do everything itself or wait for you to add someone in Team.",
+      "When nobody on this floor fits the work, the boss hires someone who stays and can take later work too, and it lets go of a role the floor has stopped using. Never itself, and never the last person covering a review stage. Off, it must do everything itself or wait for you to change the roster in Team.",
     previewLabel: "Local preview on port {{port}}",
     previewHint:
       "Publishes that one port from each sandbox to 127.0.0.1, so a dev server an agent starts opens in your browser. Off, nothing an agent serves can leave its container.",

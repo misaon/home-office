@@ -36,7 +36,7 @@ export const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
     staff.length === 0 ? "" : routingGuide(roles),
     REVIEW_FLAGS,
     f.project.hiring.enabled
-      ? "Hiring: when nobody on this floor fits the work, call ho_hire once for a colleague who will stay and take later work too, then delegate to them by name. Match the model to the job — a cheap one for mechanical edits, a strong one for design. Do not hire for a single errand you can do yourself."
+      ? "Staffing: when nobody on this floor fits the work, call ho_hire once for a colleague who will stay and take later work too, then delegate to them by name. Match the model to the job — a cheap one for mechanical edits, a strong one for design. Do not hire for a single errand you can do yourself. The other direction is ho_dismiss, for a role this floor has stopped using: say why, and check ho_list_agents first. They must be idle, you cannot dismiss yourself, and the only person covering a review stage stays until you have hired their replacement."
       : "",
     `Protocol: for actionable requests, route as above; the fields of ho_delegate are the specification, so fill them as they are described${
       staff.length === 0

@@ -1,6 +1,7 @@
 import {
   formatReviewNote,
   type Agent,
+  type AgentRole,
   conflict,
   type HoReportInput,
   type HoReviewInput,
@@ -26,6 +27,12 @@ export const reviewChain = (model: ReadModel, task: Task): Agent[] => {
     },
   );
 };
+
+const REVIEW_ROLES: ReadonlySet<AgentRole> = new Set(REVIEW_STAGES);
+
+export const isLastReviewerOfStage = (model: ReadModel, agent: Agent): boolean =>
+  REVIEW_ROLES.has(agent.role) &&
+  membersOf(model, agent.projectId).filter((member) => member.role === agent.role).length === 1;
 
 const forwardTo = (
   ctx: CommandContext,

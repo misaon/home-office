@@ -24,6 +24,9 @@ const hoursOf = (since: string | undefined): number | undefined => {
   return Number(span["amount"]) * (span["unit"] === "d" ? 24 : 1);
 };
 
+const who = (person: { name: string; departed: boolean }): string =>
+  (person.departed ? `${person.name} (left)` : person.name).padEnd(17);
+
 const outcome = (counts: Counts): string =>
   `finished ${String(counts.finished)}  first-pass ${String(counts.firstPass)} (${share(counts.firstPass, counts.finished)})  blocked ${String(counts.blocked)}  failed ${String(counts.failed)}  rounds/task ${per(counts.reviewRounds, counts.finished)}`;
 
@@ -54,7 +57,7 @@ const employeeLines = (card: EvalScorecard): string[] =>
         "-- employees",
         ...card.agents.map(
           (a) =>
-            `${a.name.padEnd(10)} ${a.role.padEnd(10)} ${`${a.model}/${a.effort}`.padEnd(14)} ${outcome(a)}  bad ${String(a.ratedBad)}  ${spend(a)}`,
+            `${who(a)} ${a.role.padEnd(10)} ${`${a.model}/${a.effort}`.padEnd(14)} ${outcome(a)}  bad ${String(a.ratedBad)}  ${spend(a)}`,
         ),
       ];
 
@@ -76,7 +79,7 @@ const reviewerLines = (card: EvalScorecard): string[] =>
         "-- reviewers",
         ...card.reviewers.map(
           (r) =>
-            `${r.name.padEnd(10)} ${r.role.padEnd(10)} reviewed ${String(r.reviewed).padStart(3)}  approved ${String(r.approved).padStart(3)}  changes ${String(r.requestedChanges).padStart(3)}  escapes ${String(r.escapes).padStart(3)}`,
+            `${who(r)} ${r.role.padEnd(10)} reviewed ${String(r.reviewed).padStart(3)}  approved ${String(r.approved).padStart(3)}  changes ${String(r.requestedChanges).padStart(3)}  escapes ${String(r.escapes).padStart(3)}`,
         ),
       ];
 
