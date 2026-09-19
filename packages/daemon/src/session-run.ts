@@ -64,7 +64,7 @@ const prepare = (deps: SessionDeps, ctx: SessionContext, provisioned: Provisione
       },
       deps.office.model,
     ),
-    message: openingMessage(ctx.task, ctx.session.mode, ctx.previous),
+    message: openingMessage(ctx.task, ctx.session.mode, ctx.previous, ctx.agent.id),
   };
 };
 
