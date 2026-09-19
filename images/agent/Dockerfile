@@ -2,9 +2,11 @@
 FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS base
 ARG TARGETARCH
 ARG BUN_VERSION=1.4.2
-ARG BUN_SHA256=71760b6c8ea30623b81a4907cb815d48e2ea266f2e73e751534a44a0607950df
+ARG BUN_SHA256_ARM64=71760b6c8ea30623b81a4907cb815d48e2ea266f2e73e751534a44a0607950df
+ARG BUN_SHA256_AMD64=4835eca59d6da70f4674f5642f6e459dcadab773695b2ed9922d131057989742
 RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
-    test "$TARGETARCH" = arm64 \
+    { [ "$TARGETARCH" = arm64 ] || [ "$TARGETARCH" = amd64 ]; } \
+      || { echo "the agent image builds for arm64 and amd64, not $TARGETARCH" >&2; exit 1; } \
  && ln -sf /var/cache/apk /etc/apk/cache \
  && apk add bash curl ca-certificates libgcc libstdc++ ripgrep git openssh-client \
       chromium nodejs npm python3 py3-pip ttf-dejavu ttf-liberation unzip \
@@ -13,10 +15,15 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
  && adduser -D -u 1000 agent \
  && mkdir -p /work /home/agent/.cache /opt/ho/plugins /opt/ho/mcp \
  && chown -R agent:agent /work /home/agent
-RUN wget -qO /tmp/bun.zip "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-aarch64-musl.zip" \
- && echo "${BUN_SHA256}  /tmp/bun.zip" | sha256sum -c - \
+RUN if [ "$TARGETARCH" = arm64 ]; then \
+      build=bun-linux-aarch64-musl; sum="$BUN_SHA256_ARM64"; \
+    else \
+      build=bun-linux-x64-musl; sum="$BUN_SHA256_AMD64"; \
+    fi \
+ && wget -qO /tmp/bun.zip "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/${build}.zip" \
+ && echo "${sum}  /tmp/bun.zip" | sha256sum -c - \
  && unzip -q /tmp/bun.zip -d /tmp/bun \
- && install -m 0755 /tmp/bun/bun-linux-aarch64-musl/bun /usr/local/bin/bun \
+ && install -m 0755 "/tmp/bun/${build}/bun" /usr/local/bin/bun \
  && ln -s /usr/local/bin/bun /usr/local/bin/bunx \
  && rm -r /tmp/bun /tmp/bun.zip \
  && apk del unzip

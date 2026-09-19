@@ -9,6 +9,12 @@ const ROOTLESS_ENGINE_IMAGE =
 const ROOTFUL_ENGINE_IMAGE =
   "docker:29.8.0-dind@sha256:c9da39e30475d7bf353436738239d02fb1c2a52a1c968322beccb6ec239707d8";
 
+export const DockerPlatform = z.enum(["linux/arm64", "linux/amd64"]);
+export type DockerPlatform = z.infer<typeof DockerPlatform>;
+
+const hostPlatform = (): DockerPlatform =>
+  process.arch === "arm64" ? "linux/arm64" : "linux/amd64";
+
 export const LogLevel = z.enum(["trace", "debug", "info", "warn", "error"]);
 export type LogLevel = z.infer<typeof LogLevel>;
 
@@ -30,7 +36,7 @@ export const DaemonConfig = z.object({
   docker: z
     .object({
       socket: z.string().min(1).default("/var/run/docker.sock"),
-      platform: z.literal("linux/arm64").default("linux/arm64"),
+      platform: DockerPlatform.default(hostPlatform()),
       network: z.string().min(1).default("ho-agents"),
       agentImage: z.string().min(1).default("ho/agent:dev"),
       bridgeImage: z.string().min(1).default("ho/git-bridge:dev"),
