@@ -4,7 +4,7 @@ import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FIELD } from "./controls.tsx";
-import type { Card, Floor } from "./data.ts";
+import type { Card, CriterionEvidence, Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
 import { PRIMARY, SheetShell } from "./sheet-shell.tsx";
 import { MONO, priority } from "./tokens.ts";
@@ -123,6 +123,37 @@ function ReviewPlanPanel({ task }: { task: Card }): React.JSX.Element {
   );
 }
 
+const MARK: Readonly<Record<CriterionEvidence["mark"], { glyph: string; tone: string }>> = {
+  pass: { glyph: "✓", tone: "text-good-soft" },
+  fail: { glyph: "✗", tone: "text-bad-soft" },
+  claimed: { glyph: "◔", tone: "text-warn" },
+  open: { glyph: "○", tone: "text-ink-faint" },
+};
+
+function EvidenceLine({ evidence }: { evidence: CriterionEvidence }): React.JSX.Element {
+  const { t } = useTranslation();
+  const mark = MARK[evidence.mark];
+  const text =
+    evidence.mark === "pass"
+      ? t("mandate.pass", { name: evidence.by })
+      : evidence.mark === "fail"
+        ? t("mandate.fail", { name: evidence.by })
+        : evidence.mark === "claimed"
+          ? t("mandate.claimed", { name: evidence.by })
+          : t("mandate.open");
+  return (
+    <div className={`${MONO} text-10 mt-3 flex gap-6 items-baseline`}>
+      <span className={mark.tone} aria-hidden="true">
+        {mark.glyph}
+      </span>
+      <span className="text-ink-meta">{text}</span>
+      {evidence.proof === "" ? null : (
+        <span className="text-ink-faint text-pretty">{evidence.proof}</span>
+      )}
+    </div>
+  );
+}
+
 function Provenance({ task }: { task: Card }): React.JSX.Element | null {
   const { t } = useTranslation();
   if (task.kind !== "code") {
@@ -178,6 +209,11 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
         <div className="text-12h text-ink-dim leading-body mt-6">
           {task.who === "" ? t("board.unassigned") : t("board.assignedTo", { name: task.who })}
         </div>
+        {task.request === null ? null : (
+          <div className="text-12h text-ink-dim leading-body mt-4">
+            {t("mandate.partOf", { title: task.request })}
+          </div>
+        )}
       </div>
       {task.criteria.length === 0 ? null : (
         <div className={`${PANEL} mb-18`}>
@@ -188,7 +224,12 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
                 <span className={`${MONO} text-10 text-ink-meta flex-[0_0_auto]`}>
                   {index + 1}.
                 </span>
-                <span>{criterion}</span>
+                <div className="min-w-0 flex-1">
+                  <span>{criterion}</span>
+                  {task.evidence[index] === undefined ? null : (
+                    <EvidenceLine evidence={task.evidence[index]} />
+                  )}
+                </div>
               </li>
             ))}
           </ol>

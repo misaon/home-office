@@ -8,6 +8,8 @@ import { ChatMessage } from "./chat-message.tsx";
 import { ChatThreads } from "./chat-threads.tsx";
 import { ChatTranscript } from "./chat-transcript.tsx";
 import { bossOf, useFloorActivity } from "./live.ts";
+import { useThreadRequests } from "./live-mandates.ts";
+import { RequestCard } from "./request-card.tsx";
 import { useDesign } from "./store.ts";
 
 const LIST = "flex-1 min-h-0 overflow-y-auto p-16 flex flex-col gap-11";
@@ -32,6 +34,7 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
       ? pick
       : (floor.threads[0]?.id ?? "new");
   const activity = useFloorActivity(floor.id, active);
+  const requests = useThreadRequests(floor.id, active);
   const inThread =
     active === "new"
       ? []
@@ -89,6 +92,13 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
           }
         />
       ) : null}
+      {requests.length === 0 ? null : (
+        <div className="px-16 pt-12 flex flex-col gap-8 flex-[0_0_auto]">
+          {requests.map((request) => (
+            <RequestCard key={request.id} request={request} />
+          ))}
+        </div>
+      )}
       <div
         ref={list}
         onScroll={(e) => {

@@ -3,7 +3,7 @@ import { Trash2 } from "lucide-react";
 import { ClickableRow } from "./clickable-row.tsx";
 import type { Card, Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
-import { MONO, priorityDot, priorityInk } from "./tokens.ts";
+import { ELLIPSIS, MONO, priorityDot, priorityInk } from "./tokens.ts";
 import { bossOf } from "./live.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
 
@@ -83,6 +83,14 @@ export function BoardCard({
           </span>
           <span className="opacity-40">·</span>
           <span>{t(`taskKind.${card.kind}`)}</span>
+          {card.request === null ? null : (
+            <>
+              <span className="opacity-40">·</span>
+              <span className={`${ELLIPSIS} max-w-160`} title={card.request}>
+                {card.request}
+              </span>
+            </>
+          )}
           <span className="opacity-40">·</span>
           <span>{card.who === "" ? t("board.unassigned") : card.who}</span>
           <span className="opacity-40">·</span>
