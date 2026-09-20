@@ -16,7 +16,9 @@ description: Load at the start of every work session and again before ho_report.
    look for.
 4. Work in small steps and commit each one that leaves the repository consistent, with a
    Conventional Commit message. An uncommitted change is lost when the turn or time budget ends; a
-   committed one is pushed by the office even then.
+   committed one is pushed by the office even then. The office verifies and publishes exactly the
+   commit at HEAD, and only from a clean tree: a file left modified or untracked when you report
+   comes back to you as a failed check, so `git status --short` must be empty before `ho_report`.
 5. Before you report, run the floor's check command exactly as given. The office re-runs it in a
    container with no network and an empty home directory, so a check that downloads something or
    needs a global tool fails there even if it passed for you; keep everything it needs under
@@ -28,7 +30,8 @@ description: Load at the start of every work session and again before ho_report.
    installs, runs, configures or calls ships with the documentation for it in the same commit. The
    head of development reviews this, and a finding at that gate sends the branch back through the
    whole review chain — so it is much cheaper to find here.
-8. `ho_report` with status review. The briefing names who reviews the branch next (QA, the security
-   engineer, the head of development); write for them: what changed and why, how to run it, how you
-   verified each acceptance criterion, what documentation you updated or why none needed it, and
-   what stays open. The text also becomes the pull-request description. Then stop.
+8. `ho_report` with status review. The briefing names who reviews the commit next (QA, the security
+   engineer, the head of development), each in their own copy of the repository; write for them:
+   what changed and why, how to run it, how you verified each acceptance criterion, what
+   documentation you updated or why none needed it, and what stays open. The text also becomes the
+   pull-request description. Then stop.
