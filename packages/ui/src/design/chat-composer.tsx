@@ -193,7 +193,7 @@ export function ChatComposer({
           )}
           className={`${INPUT} placeholder:text-ink-ghost`}
         />
-        <ChatToolbar floor={floor} onSend={submit} onAttach={attach} />
+        <ChatToolbar floor={floor} active={active} onSend={submit} onAttach={attach} />
       </div>
     </div>
   );

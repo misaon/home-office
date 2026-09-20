@@ -125,6 +125,7 @@ export const cs: typeof en = {
     doingReview: "reviduje",
     doingTriage: "čte vaši zprávu",
     doingPlan: "plánuje",
+    jumpToLatest: "Skočit na konec",
     moreText: "Ukázat, co říkali",
     lessText: "Zase skrýt",
     doneWork: "pracoval(a) na tom",

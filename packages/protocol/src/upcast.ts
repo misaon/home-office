@@ -49,7 +49,35 @@ const renameAgentRole: Migration = {
   },
 };
 
-const MIGRATIONS: readonly Migration[] = [renameAgentRole];
+const OLD_DEFAULT_TURNS = 60;
+const DEFAULT_TURNS = 200;
+
+const raiseOldTurnDefault: Migration = {
+  describe: "the default turn budget per task rose from 60 to 200 once the ledger spanned a task",
+  apply: (event) => {
+    if (event.type !== "agent.created" && event.type !== "agent.updated") {
+      return event;
+    }
+    const { payload } = event;
+    if (!isRecord(payload) || !isRecord(payload["agent"])) {
+      return event;
+    }
+    const agent: Record<string, unknown> = payload["agent"];
+    const { budgets } = agent;
+    if (!isRecord(budgets) || budgets["maxTurnsPerTask"] !== OLD_DEFAULT_TURNS) {
+      return event;
+    }
+    return {
+      ...event,
+      payload: {
+        ...payload,
+        agent: { ...agent, budgets: { ...budgets, maxTurnsPerTask: DEFAULT_TURNS } },
+      },
+    };
+  },
+};
+
+const MIGRATIONS: readonly Migration[] = [renameAgentRole, raiseOldTurnDefault];
 
 export const upcastStoredEvent = (event: RawStoredEvent): Upcast => {
   const retired = RETIRED_TYPES[event.type];

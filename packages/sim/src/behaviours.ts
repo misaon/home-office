@@ -1,4 +1,4 @@
-import { manhattan } from "./grid.ts";
+import { manhattan, samePoint } from "./grid.ts";
 import { homeSteps, setSteps, walkSteps } from "./actors.ts";
 import {
   type Actor,
@@ -23,7 +23,7 @@ const DWELL: Record<
   relax: { activity: "relax", ms: 12_000, anchor: "relax" },
 };
 const BOSS_NEEDS: readonly NeedKind[] = ["coffee", "restroom"];
-const AWAY_CHANCE = 0.06;
+const AWAY_CHANCE = 0.03;
 const AWAY_MIN_MS = 45_000;
 const AWAY_SPAN_MS = 90_000;
 
@@ -75,6 +75,26 @@ function bossIdle(world: World, actor: Actor): void {
   actor.idleUntil = world.time + 5000;
 }
 
+const WANDER_CHANCE = 0.15;
+const WANDER_MS = 6000;
+const DESK_IDLE_MIN_MS = 8000;
+const DESK_IDLE_SPAN_MS = 14_000;
+
+function wander(world: World, actor: Actor): boolean {
+  const spot = world.rng.pick(freeAnchors(world, actor.floorId, "wander", actor.kind));
+  if (spot === undefined || !reserve(world, actor, actor.floorId, spot.id)) {
+    return false;
+  }
+  setSteps(actor, [
+    ...walkSteps(actor.floorId, spot.at),
+    { kind: "dwell", activity: "idle", facing: spot.facing, until: null, ms: WANDER_MS },
+    { kind: "release" },
+    ...homeSteps(world, actor),
+  ]);
+  actor.idleUntil = world.time + WANDER_MS;
+  return true;
+}
+
 function staffIdle(world: World, actor: Actor): void {
   const need = pressingNeed(actor, NEEDS);
   if (need !== undefined && world.rng.chance(0.7) && satisfy(world, actor, need)) {
@@ -87,16 +107,21 @@ function staffIdle(world: World, actor: Actor): void {
   ) {
     return;
   }
-  if (world.rng.chance(0.55)) {
-    actor.idleUntil = world.time + 2500 + world.rng.int(5000);
-    actor.activity = "idle";
+  const home =
+    actor.home === null ? undefined : anchorOf(world, actor.floorId, actor.home.anchorId);
+  if (home !== undefined && !samePoint(actor.tile, home.at)) {
+    setSteps(actor, homeSteps(world, actor));
+    actor.idleUntil = world.time + 3000;
     return;
   }
-  const spot = world.rng.pick(freeAnchors(world, actor.floorId, "wander", actor.kind));
-  if (spot !== undefined) {
-    setSteps(actor, walkSteps(actor.floorId, spot.at));
+  if ((home === undefined || world.rng.chance(WANDER_CHANCE)) && wander(world, actor)) {
+    return;
   }
-  actor.idleUntil = world.time + 3000;
+  actor.activity = "idle";
+  if (home !== undefined) {
+    actor.facing = home.facing;
+  }
+  actor.idleUntil = world.time + DESK_IDLE_MIN_MS + world.rng.int(DESK_IDLE_SPAN_MS);
 }
 
 export function idleBehaviour(world: World, actor: Actor): void {

@@ -22,7 +22,9 @@ description: Load at the start of every work session and again before ho_report.
 5. Before you report, run the floor's check command exactly as given. The office re-runs it in a
    container with no network and an empty home directory, so a check that downloads something or
    needs a global tool fails there even if it passed for you; keep everything it needs under
-   /work/repo.
+   /work/repo. When the floor has no check command, run only what the package you changed already
+   defines and stop there: no tour of the repository's tooling, no attempt to run an application
+   whose services you do not have.
 6. Read the check's exit code, not its last lines. Fix, commit, run it again. Never delete or weaken
    a test or a check to make it pass; if a check is wrong, say so in the report.
 7. Check what the change made untrue before you report it: the README, whatever the repository keeps

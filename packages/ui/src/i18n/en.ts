@@ -125,6 +125,7 @@ export const en = {
     doingReview: "is reviewing",
     doingTriage: "is reading your message",
     doingPlan: "is planning",
+    jumpToLatest: "Jump to the latest",
     moreText: "Show what they said",
     lessText: "Hide it again",
     doneWork: "worked on it",

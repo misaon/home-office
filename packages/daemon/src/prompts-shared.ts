@@ -44,7 +44,7 @@ export type SessionFacts = {
 };
 
 export const SANDBOX =
-  "Sandbox: only /work and /tmp are writable; the rest of the filesystem, including your home directory, is read-only. Package caches already point into /work/.cache and survive between your sessions on this task. The git remote is a path this sandbox cannot reach, so fetch, pull and push fail, and there is no gh; the office moves commits for you.";
+  "Sandbox: only /work and /tmp are writable; the rest of the filesystem, including your home directory, is read-only. Package caches already point into /work/.cache and survive between your sessions on this task. The git remote is a path this sandbox cannot reach, so fetch, pull and push fail, and there is no gh; the office moves commits for you. Nothing runs here besides what this briefing lists: no Docker engine and no database unless a Services line says so, so do not spend turns probing for them. Each shell command runs in a fresh shell, so a variable or a background job from one command is gone in the next.";
 
 export const repoRules = (agent: Agent): string =>
   agent.provider === "claude-code"
@@ -58,16 +58,16 @@ export const browserGuide = (enabled: boolean, reportsFiles: boolean): string =>
     ? `Browser: headless Chromium with the Playwright MCP tools (browser_navigate, browser_snapshot, browser_click, browser_take_screenshot and more); there is no display. Screenshots land in ${BROWSER_OUTPUT_DIR}; copy the ones that belong in the repository into the repository before committing.${reportsFiles ? ` ${SHOW_THE_HUMAN}` : ""} Close pages you no longer need.`
     : "";
 
-const STOP_RULE =
-  'Stop a server you started with the pid you kept (`kill "$pid"`), never with `pkill -f <pattern>`: the pattern also matches the shell running your own command, which then dies with exit 144 and the rest of the line never runs.';
+const LEAVE_RUNNING =
+  "Leave a server you started running: the container ends with your session and the office's checks run in their own container, so stopping it only costs turns.";
 
 export const serveGuide = (preview: Preview, browser: boolean): string => {
   if (preview.enabled) {
     const port = String(preview.port);
-    return `Serving: bind a server you start to 0.0.0.0:${port}, not 127.0.0.1, or only you will see it; the human reaches it at http://127.0.0.1:${port}${browser ? ", and so do your browser tools" : ""}. That port is the only one that leaves the sandbox. ${STOP_RULE}`;
+    return `Serving: bind a server you start to 0.0.0.0:${port}, not 127.0.0.1, or only you will see it; the human reaches it at http://127.0.0.1:${port}${browser ? ", and so do your browser tools" : ""}. That port is the only one that leaves the sandbox. ${LEAVE_RUNNING}`;
   }
   return browser
-    ? `Serving: nothing you serve leaves this sandbox. Start dev servers on 127.0.0.1 and open them at http://127.0.0.1:<port> with your browser tools; send the human a screenshot rather than a local URL. ${STOP_RULE}`
+    ? `Serving: nothing you serve leaves this sandbox. Start dev servers on 127.0.0.1 and open them at http://127.0.0.1:<port> with your browser tools; send the human a screenshot rather than a local URL. ${LEAVE_RUNNING}`
     : "Serving: nothing you serve leaves this sandbox, so never tell the human to open a local URL.";
 };
 
@@ -125,4 +125,4 @@ export const rosterLines = (model: ReadModel, project: Project, except: Agent["i
     );
 
 export const REVIEW_FLAGS =
-  "Set qa and security deliberately on every ho_delegate: qa true when a tester can exercise the result (user-visible behaviour, an API or data change), false for documentation, configuration and refactors the checks already cover; security true when the change touches authentication, authorisation, input handling, secrets, cryptography, network exposure, dependencies or a hot path where performance matters. The head of development reviews every task last. A flag names a role this floor must have: when nobody holds it, ho_delegate refuses, and you either hire that role first or set the flag false and say why in context. A review is never skipped silently.";
+  "Set qa and security deliberately on every ho_delegate: qa true when a tester can exercise behaviour — a flow, a form, an API or data change, anything with states to walk through — and false for content, copy, styling, documentation, configuration and refactors, where the head of development checks the result in the browser without a separate QA pass; security true when the change touches authentication, authorisation, input handling, secrets, cryptography, network exposure, dependencies or a hot path where performance matters. The head of development reviews every task last. A flag names a role this floor must have: when nobody holds it, ho_delegate refuses, and you either hire that role first or set the flag false and say why in context. A review is never skipped silently.";

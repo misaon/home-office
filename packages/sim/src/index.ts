@@ -4,6 +4,7 @@ export {
   assignWork,
   carry,
   emotionFor,
+  freeDeskFor,
   receive,
   releaseWork,
   setEmotion,

@@ -36,24 +36,37 @@ const SEAT_GROUP: Partial<Record<AgentRole, string>> = {
   head: "analyst",
 };
 
-function seatFor(world: World, actor: Actor, role: AgentRole): Anchor | undefined {
-  if (role === "boss" || actor.kind === "receptionist") {
-    const own =
-      (actor.home === null ? undefined : anchorOf(world, actor.floorId, actor.home.anchorId)) ??
-      (role === "boss"
-        ? world.rng.pick(freeAnchors(world, actor.floorId, "boss-desk", "boss"))
-        : undefined);
-    if (own !== undefined) {
-      return own;
-    }
-  }
-  const desks = freeAnchors(world, actor.floorId, "desk", actor.kind);
+export function freeDeskFor(
+  world: World,
+  floorId: string,
+  role: AgentRole,
+  kind: Actor["kind"],
+): Anchor | undefined {
+  const desks = freeAnchors(world, floorId, "desk", kind);
   const group = SEAT_GROUP[role];
   return (
     world.rng.pick(desks.filter((a) => a.group === group)) ??
     world.rng.pick(desks.filter((a) => a.group === "dev")) ??
     world.rng.pick(desks)
   );
+}
+
+function seatFor(world: World, actor: Actor, role: AgentRole): Anchor | undefined {
+  const own = actor.home === null ? undefined : anchorOf(world, actor.floorId, actor.home.anchorId);
+  if (role === "boss" || actor.kind === "receptionist") {
+    const desk =
+      own ??
+      (role === "boss"
+        ? world.rng.pick(freeAnchors(world, actor.floorId, "boss-desk", "boss"))
+        : undefined);
+    if (desk !== undefined) {
+      return desk;
+    }
+  }
+  if (own?.kind === "desk") {
+    return own;
+  }
+  return freeDeskFor(world, actor.floorId, role, actor.kind);
 }
 
 export function assignWork(

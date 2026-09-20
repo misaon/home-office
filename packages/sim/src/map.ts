@@ -102,19 +102,21 @@ export function compileLayout(
       id: `door-${String(i + 1)}`,
       blocks: false,
       opens: true,
+      throughWall: true,
     })),
     ...office.objects.map((piece, i) => ({
       ...piece,
       id: `${piece.kind}-${String(i + 1)}`,
       blocks: OBJECT_SPEC[piece.kind].blocks,
       opens: OBJECT_SPEC[piece.kind].walkable,
+      throughWall: false,
     })),
-  ].map(({ blocks, opens, ...placed }) => {
+  ].map(({ blocks, opens, throughWall, ...placed }) => {
     for (const i of cellsOf(placed, width, height)) {
       object[i] = placed.id;
       if (blocks) {
         blocked[i] = 1;
-      } else if (opens === true) {
+      } else if (opens === true && (throughWall || wall[i] === null)) {
         blocked[i] = 0;
       }
     }

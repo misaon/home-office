@@ -144,7 +144,7 @@ export const HoDelegateInput = z.object({
   qa: z
     .boolean()
     .describe(
-      "true when QA should test the result before the final review: user-visible behaviour, an API or data change, anything a tester can exercise. false for documentation, configuration and refactors the checks already cover.",
+      "true when QA should exercise behaviour before the final review: a flow, a form, an API or data change, anything with states to walk through. false for content, copy, styling, documentation, configuration and refactors: the head of development checks those in the browser without a separate QA pass.",
     ),
   security: z
     .boolean()

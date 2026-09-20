@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { Floor, ThreadPick } from "./data.ts";
 import { ChatComposer } from "./chat-composer.tsx";
+import { useFollowLatest } from "./chat-follow.ts";
 import { ChatSearch } from "./chat-search.tsx";
 import { ChatMessage } from "./chat-message.tsx";
 import { ChatThreads } from "./chat-threads.tsx";
@@ -11,7 +12,8 @@ import { useDesign } from "./store.ts";
 
 const LIST = "flex-1 min-h-0 overflow-y-auto p-16 flex flex-col gap-11";
 
-const STICK_WITHIN = 80;
+const JUMP =
+  "absolute -top-38 right-16 py-6 px-11 rounded-pill border border-accent-a45 bg-toast text-11 text-accent-quote shadow-toast cursor-pointer transition-all duration-200 animate-rise-240";
 
 const ANNOUNCEMENT_GRACE_MS = 1500;
 
@@ -23,9 +25,6 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
   const query = useDesign((s) => s.query);
   const searchOpen = useDesign((s) => s.searchOpen);
   const set = useDesign((s) => s.set);
-  const list = useRef<HTMLDivElement>(null);
-  const atBottom = useRef(true);
-
   const boss = bossOf(floor);
   const pick = useDesign((s) => s.thread);
   const active: ThreadPick | "new" =
@@ -53,10 +52,6 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
   ].toSorted((a, b) => a.at.localeCompare(b.at) || a.order - b.order);
 
   useEffect(() => {
-    atBottom.current = true;
-  }, [active]);
-
-  useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === "f" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
@@ -72,15 +67,16 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
     };
   }, [set]);
 
-  useEffect(() => {
-    const el = list.current;
-    if (el === null || !atBottom.current) {
-      return;
+  const growth = `${String(shown.length)}|${activity
+    .map((one) => `${one.sessionId}:${String(one.steps.length)}:${String(one.text.length)}`)
+    .join(",")}`;
+  const list = useRef<HTMLDivElement>(null);
+  const follow = useFollowLatest(active, growth, () => {
+    const element = list.current;
+    if (element !== null) {
+      element.scrollTop = element.scrollHeight;
     }
-    requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
-    });
-  }, [active, shown.length, activity]);
+  });
 
   return (
     <div className="flex flex-col min-h-0 flex-1 animate-slide-420">
@@ -96,8 +92,7 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
       <div
         ref={list}
         onScroll={(e) => {
-          const el = e.currentTarget;
-          atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_WITHIN;
+          follow.onScroll(e.currentTarget);
         }}
         className={LIST}
       >
@@ -121,6 +116,19 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
           <div className="py-22 px-4 text-center text-12h text-ink-label">{t("chat.noHits")}</div>
         ) : null}
       </div>
+      {follow.behind ? (
+        <div className="relative h-0 z-10">
+          <button
+            type="button"
+            onClick={() => {
+              follow.jump();
+            }}
+            className={`hover:border-accent-a70 hover:text-accent-soft ${JUMP}`}
+          >
+            {t("chat.jumpToLatest")}
+          </button>
+        </div>
+      ) : null}
       <ChatThreads floor={floor} active={active} />
       <ChatComposer floor={floor} active={active} pending={pending} />
     </div>

@@ -2,10 +2,10 @@ import { Popover } from "@base-ui/react/popover";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { UsageMenu, useContextFill } from "./chat-usage-menu.tsx";
-import type { Floor } from "./data.ts";
+import type { Floor, ThreadPick } from "./data.ts";
 import { Plus } from "lucide-react";
 import { MONO } from "./tokens.ts";
-import { useBossSession } from "./live.ts";
+import { useThreadSession } from "./live.ts";
 import { requireClient } from "../rpc.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
 
@@ -20,10 +20,12 @@ const SEND =
 
 export function ChatToolbar({
   floor,
+  active,
   onSend,
   onAttach,
 }: {
   floor: Floor;
+  active: ThreadPick | "new";
   onSend: () => void;
   onAttach: (file: File) => void;
 }): React.JSX.Element {
@@ -31,7 +33,7 @@ export function ChatToolbar({
   const [usageOpen, setUsageOpen] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const fill = useContextFill(floor.id);
-  const running = useBossSession(floor.id);
+  const running = useThreadSession(floor.id, active);
   const flash = useDesign((s) => s.flash);
   const stop = useOfficeMutation({
     mutationFn: (id: NonNullable<typeof running>["sessionId"]) =>

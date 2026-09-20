@@ -1,4 +1,4 @@
-import { lazyOccupancy, setSteps, walkSteps } from "./actors.ts";
+import { homeSteps, lazyOccupancy, setSteps, walkSteps } from "./actors.ts";
 import { idleBehaviour } from "./behaviours.ts";
 import type { Point } from "./grid.ts";
 import { advanceStep } from "./steps.ts";
@@ -61,9 +61,11 @@ function runElevator(world: World, floorId: string, floor: Floor, dtMs: number):
           const spot = world.rng.pick(freeAnchors(world, floorId, "wander", passenger.kind))
             ?.at ?? { x: car.x, y: car.y + 5 };
           const leaves = passenger.steps[0]?.kind === "walk";
+          const settles =
+            passenger.home === null ? walkSteps(floorId, spot) : homeSteps(world, passenger);
           setSteps(passenger, [
             { kind: "dwell", activity: "idle", facing: "s", until: null, ms: STEP_OUT_MS },
-            ...(leaves ? [] : walkSteps(floorId, spot)),
+            ...(leaves ? [] : settles),
             ...passenger.steps,
           ]);
         }
