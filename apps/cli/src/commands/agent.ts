@@ -24,9 +24,22 @@ const CHOICE = {
 };
 
 const BUDGET = {
-  "max-turns": "<n> tool turns per task",
+  "max-turns": "<n> tool turns per task, all sessions together",
   "max-minutes": "<n> wall-clock minutes per session",
   "max-sessions": "<n> concurrent sessions",
+  "max-usd": "<amount> spend per task where the provider reports cost",
+};
+
+const usd = (parsed: Parsed): number | undefined => {
+  const value = str(parsed, "max-usd");
+  if (value === undefined) {
+    return undefined;
+  }
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new RangeError(`--max-usd expects an amount above zero, got "${value}"`);
+  }
+  return amount;
 };
 
 const budgetPatch = (parsed: Parsed): { budgets: Partial<Budgets> } | Record<string, never> => {
@@ -34,6 +47,7 @@ const budgetPatch = (parsed: Parsed): { budgets: Partial<Budgets> } | Record<str
     maxTurnsPerTask: positive(parsed, "max-turns"),
     maxWallMinutes: positive(parsed, "max-minutes"),
     maxConcurrentSessions: positive(parsed, "max-sessions"),
+    maxUsdPerTask: usd(parsed),
   });
   return Object.keys(next).length === 0 ? {} : { budgets: next };
 };
@@ -128,7 +142,7 @@ export const agentCommand: Command = {
         return output(
           [
             `${colour.bold(updated.name)}: ${updated.provider}/${updated.model}@${updated.effort}, skills ${updated.skillPack}`,
-            `budgets: ${String(updated.budgets.maxTurnsPerTask)} turns/task, ${String(updated.budgets.maxWallMinutes)} min/session, ${String(updated.budgets.maxConcurrentSessions)} concurrent`,
+            `budgets: ${String(updated.budgets.maxTurnsPerTask)} turns/task, ${String(updated.budgets.maxWallMinutes)} min/session, ${String(updated.budgets.maxConcurrentSessions)} concurrent${updated.budgets.maxUsdPerTask === undefined ? "" : `, $${updated.budgets.maxUsdPerTask.toFixed(2)}/task`}`,
           ],
           updated,
         );

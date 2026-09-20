@@ -1,4 +1,4 @@
-import type { ReadModel } from "@ho/core";
+import { type ReadModel, sessionsOfTask, verifyAttempts } from "@ho/core";
 import {
   addUsage,
   type Agent,
@@ -7,13 +7,13 @@ import {
   type EvalFlag,
   type EvalInput,
   type EvalScorecard,
-  type ReviewerScore,
   type RoleScore,
-  reviewVerdictOf,
+  type RunConfiguration,
   type Session,
   type Task,
   ZERO_USAGE,
 } from "@ho/protocol";
+import { scoreReviewers } from "./evals-reviewers.ts";
 
 const ATTENTION_LIMIT = 20;
 const REWORK_ROUNDS = 2;
@@ -28,6 +28,8 @@ const zero = (): Counts => ({
   failed: 0,
   firstPass: 0,
   reviewRounds: 0,
+  verifyFailures: 0,
+  planning: 0,
   sessions: 0,
   minutes: 0,
   ratedGood: 0,
@@ -47,10 +49,18 @@ const minutesOf = (session: Session): number =>
       MINUTE_MS;
 
 const countTask = (into: Counts, task: Task): void => {
+  if (task.kind !== "work") {
+    if (task.status === "done") {
+      into.planning += 1;
+    }
+    return;
+  }
+  const failedChecks = verifyAttempts(task);
+  into.verifyFailures += failedChecks;
   if (task.status === "done") {
     into.finished += 1;
     into.reviewRounds += task.reviewRounds;
-    if (task.reviewRounds === 0) {
+    if (task.reviewRounds === 0 && failedChecks === 0) {
       into.firstPass += 1;
     }
   }
@@ -84,6 +94,8 @@ const addCounts = (into: Counts, from: Counts): void => {
   into.failed += from.failed;
   into.firstPass += from.firstPass;
   into.reviewRounds += from.reviewRounds;
+  into.verifyFailures += from.verifyFailures;
+  into.planning += from.planning;
   into.sessions += from.sessions;
   into.minutes += from.minutes;
   into.ratedGood += from.ratedGood;
@@ -92,6 +104,9 @@ const addCounts = (into: Counts, from: Counts): void => {
   into.costKnown += from.costKnown;
   into.usage = addUsage(into.usage, from.usage);
 };
+
+const workSessionsOf = (model: ReadModel, task: Task): Session[] =>
+  sessionsOfTask(model, task.id).filter((session) => session.mode === "work");
 
 const flagOf = (task: Task, sessions: number): { flag: EvalFlag; detail: string } | null => {
   if (task.status === "failed") {
@@ -120,45 +135,28 @@ const SEVERITY: Readonly<Record<EvalFlag, number>> = {
   retried: 4,
 };
 
-const scoreReviewers = (
-  model: ReadModel,
-  tasks: readonly Task[],
-): Map<Agent["id"], ReviewerScore> => {
-  const scores = new Map<Agent["id"], ReviewerScore>();
-  for (const task of tasks) {
-    const ratedBad = task.rating?.verdict === "bad";
-    for (const entry of task.notes) {
-      if (entry.kind !== "review" || entry.author.kind !== "agent") {
-        continue;
-      }
-      const verdict = reviewVerdictOf(entry.text);
-      const reviewer = anyone(model, entry.author.agentId);
-      if (verdict === null || reviewer === undefined) {
-        continue;
-      }
-      const score = scores.get(reviewer.id) ?? {
-        agentId: reviewer.id,
-        name: reviewer.name,
-        role: reviewer.role,
-        departed: !model.agents.has(reviewer.id),
-        reviewed: 0,
-        approved: 0,
-        requestedChanges: 0,
-        escapes: 0,
+const runOf = (agent: Agent, session: Session): { model: string; effort: string } => {
+  const { runtime } = session;
+  return runtime === undefined
+    ? { model: agent.model, effort: agent.effort }
+    : {
+        model: runtime.confirmedModel ?? runtime.model,
+        effort: runtime.confirmedEffort ?? runtime.effort,
       };
-      score.reviewed += 1;
-      if (verdict === "approve") {
-        score.approved += 1;
-        if (ratedBad) {
-          score.escapes += 1;
-        }
-      } else {
-        score.requestedChanges += 1;
-      }
-      scores.set(reviewer.id, score);
-    }
+};
+
+const runsOf = (agent: Agent, sessions: readonly Session[]): RunConfiguration[] => {
+  const seen = new Map<string, RunConfiguration>();
+  for (const session of sessions) {
+    const run = runOf(agent, session);
+    const key = `${run.model}/${run.effort}`;
+    const known = seen.get(key);
+    seen.set(
+      key,
+      known === undefined ? { ...run, sessions: 1 } : { ...known, sessions: known.sessions + 1 },
+    );
   }
-  return scores;
+  return [...seen.values()].toSorted((a, b) => b.sessions - a.sessions);
 };
 
 export function scorecard(model: ReadModel, now: number, input: EvalInput): EvalScorecard {
@@ -174,6 +172,7 @@ export function scorecard(model: ReadModel, now: number, input: EvalInput): Eval
   );
   const office = zero();
   const perAgent = new Map<Agent["id"], Counts>();
+  const sessionsByAgent = new Map<Agent["id"], Session[]>();
   const attention: (EvalAttention & { at: string; severity: number })[] = [];
 
   for (const task of tasks) {
@@ -183,7 +182,7 @@ export function scorecard(model: ReadModel, now: number, input: EvalInput): Eval
       countTask(counts, task);
       perAgent.set(task.assigneeId, counts);
     }
-    const sessions = model.sessionsByTask.get(task.id)?.size ?? 0;
+    const sessions = workSessionsOf(model, task).length;
     const flagged = flagOf(task, sessions);
     if (flagged !== null) {
       const assignee = task.assigneeId === undefined ? null : anyone(model, task.assigneeId);
@@ -213,6 +212,10 @@ export function scorecard(model: ReadModel, now: number, input: EvalInput): Eval
     const counts = perAgent.get(session.agentId) ?? zero();
     countSession(counts, session);
     perAgent.set(session.agentId, counts);
+    sessionsByAgent.set(session.agentId, [
+      ...(sessionsByAgent.get(session.agentId) ?? []),
+      session,
+    ]);
   }
 
   const agents: AgentScore[] = [];
@@ -228,6 +231,7 @@ export function scorecard(model: ReadModel, now: number, input: EvalInput): Eval
       role: agent.role,
       model: agent.model,
       effort: agent.effort,
+      runs: runsOf(agent, sessionsByAgent.get(agentId) ?? []),
       departed: !model.agents.has(agentId),
     });
   }

@@ -1,38 +1,29 @@
 import type {
-  PruneReport,
-  PruneScope,
   SandboxHandle,
   SandboxProvider,
   SandboxRunResult,
   SandboxSpec,
   SandboxState,
 } from "@ho/core";
-import { errorMessage, type ResourceInventory } from "@ho/protocol";
+import { errorMessage } from "@ho/protocol";
 import {
-  ContainerList,
   createContainer,
   createDockerApi,
-  Created,
   demux,
   type DockerApi,
-  DockerApiError,
   hostLimits,
-  ImageList,
   inspectContainer,
-  labelFilter,
-  nameOf,
-  NetworkList,
   removeContainer,
   startContainer,
   stopContainer,
-  SystemDf,
   Version,
   volumeMounts,
-  VolumeList,
   Wait,
 } from "./api.ts";
 import { startEngine } from "./engine.ts";
+import { containers, inventory, prune } from "./housekeeping.ts";
 import { buildImage, imageHash } from "./image.ts";
+import { ensureNetwork } from "./network.ts";
 
 const exposed = (ports: readonly number[]): Record<string, Record<string, never>> =>
   Object.fromEntries(ports.map((port) => [`${String(port)}/tcp`, {}]));
@@ -67,135 +58,52 @@ const containerConfig = (spec: SandboxSpec): unknown => ({
   },
 });
 
+const logsOf = async (
+  api: DockerApi,
+  path: string,
+): Promise<{ stdout: string; stderr: string }> => {
+  const written = await api.raw("GET", `${path}/logs?stdout=1&stderr=1`).catch(() => null);
+  return written === null
+    ? { stdout: "", stderr: "" }
+    : demux(new Uint8Array(await written.arrayBuffer()));
+};
+
+async function waitForExit(
+  api: DockerApi,
+  id: string,
+  timeoutMs: number,
+): Promise<SandboxRunResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+  const path = `/containers/${encodeURIComponent(id)}`;
+  try {
+    const waited = await api.raw("POST", `${path}/wait`, undefined, controller.signal);
+    const { StatusCode } = Wait.parse(await waited.json());
+    return { exitCode: StatusCode, timedOut: false, ...(await logsOf(api, path)) };
+  } catch (error) {
+    if (!controller.signal.aborted) {
+      throw error;
+    }
+    return { exitCode: null, timedOut: true, ...(await logsOf(api, path)) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function runToCompletion(
   api: DockerApi,
   spec: SandboxSpec,
   timeoutMs: number,
 ): Promise<SandboxRunResult> {
   const id = await createContainer(api, spec.name, containerConfig(spec));
-  const controller = new AbortController();
-  const timer = setTimeout(() => {
-    controller.abort();
-  }, timeoutMs);
   try {
     await startContainer(api, id);
-    const path = `/containers/${encodeURIComponent(id)}`;
-    const waited = await api.raw("POST", `${path}/wait`, undefined, controller.signal);
-    const { StatusCode } = Wait.parse(await waited.json());
-    const written = await api.raw("GET", `${path}/logs?stdout=1&stderr=1`);
-    const logs = demux(new Uint8Array(await written.arrayBuffer()));
-    return { exitCode: StatusCode, ...logs };
+    return await waitForExit(api, id, timeoutMs);
   } finally {
-    clearTimeout(timer);
     await removeContainer(api, id);
   }
-}
-
-const removeVolumeIfFree = async (api: DockerApi, name: string): Promise<boolean> => {
-  try {
-    await api.raw("DELETE", `/volumes/${encodeURIComponent(name)}`);
-    return true;
-  } catch (error) {
-    if (error instanceof DockerApiError && (error.status === 404 || error.status === 409)) {
-      return false;
-    }
-    throw error;
-  }
-};
-
-async function prune(api: DockerApi, scope: PruneScope): Promise<PruneReport> {
-  const report: PruneReport = { containers: [], volumes: [], images: [] };
-  const cutoff =
-    scope.olderThanMs === undefined ? Number.POSITIVE_INFINITY : Date.now() - scope.olderThanMs;
-  if (scope.kinds.includes("containers")) {
-    const containers = await api.json(
-      ContainerList,
-      "GET",
-      `/containers/json?all=1&filters=${labelFilter(scope.labels)}`,
-    );
-    for (const c of containers) {
-      if (c.State !== "running" && c.State !== "created" && c.Created * 1000 <= cutoff) {
-        await removeContainer(api, c.Id);
-        report.containers.push(nameOf(c));
-      }
-    }
-  }
-  if (scope.kinds.includes("volumes")) {
-    const listed = await api.json(
-      VolumeList,
-      "GET",
-      `/volumes?filters=${labelFilter(scope.labels)}`,
-    );
-    const volumes = listed.Volumes ?? [];
-    for (const v of volumes) {
-      const createdAt = v.CreatedAt === undefined ? 0 : new Date(v.CreatedAt).getTime();
-      if (createdAt <= cutoff && (await removeVolumeIfFree(api, v.Name))) {
-        report.volumes.push(v.Name);
-      }
-    }
-  }
-  if (scope.kinds.includes("images")) {
-    const images = await api.json(
-      ImageList,
-      "GET",
-      `/images/json?filters=${labelFilter(scope.labels, { dangling: ["true"] })}`,
-    );
-    for (const image of images) {
-      if (image.Created * 1000 <= cutoff) {
-        await api.maybe("DELETE", `/images/${image.Id}`);
-        report.images.push(image.Id);
-      }
-    }
-  }
-  return report;
-}
-
-const iso = (seconds: number): string => new Date(seconds * 1000).toISOString();
-const isoOrNull = (value: string | undefined): string | null => {
-  if (value === undefined) {
-    return null;
-  }
-  const time = new Date(value).getTime();
-  return Number.isNaN(time) ? null : new Date(time).toISOString();
-};
-
-async function inventory(
-  api: DockerApi,
-  labels: Readonly<Record<string, string>>,
-): Promise<ResourceInventory> {
-  const [containers, volumes, df] = await Promise.all([
-    api.json(ContainerList, "GET", `/containers/json?all=1&filters=${labelFilter(labels)}`),
-    api.json(VolumeList, "GET", `/volumes?filters=${labelFilter(labels)}`),
-    api.json(SystemDf, "GET", "/system/df"),
-  ]);
-  const has = (candidate: Record<string, string> | null): boolean =>
-    Object.entries(labels).every(([k, v]) => candidate?.[k] === v);
-  const owned = (df.Volumes ?? []).filter((v) => has(v.Labels));
-  const sizes = new Map(owned.map((v) => [v.Name, v.UsageData?.Size ?? null] as const));
-  return {
-    snapshot: {
-      containers: containers.length,
-      volumes: owned.length,
-      imagesBytes: (df.Images ?? [])
-        .filter((i) => has(i.Labels))
-        .reduce((sum, i) => sum + i.Size, 0),
-      volumesBytes: owned.reduce((sum, v) => sum + (v.UsageData?.Size ?? 0), 0),
-    },
-    containers: containers.map((c) => ({
-      name: nameOf(c),
-      state: c.State,
-      kind: c.Labels?.["ho.kind"] ?? "unknown",
-      sessionId: c.Labels?.["ho.session"] ?? null,
-      createdAt: iso(c.Created),
-    })),
-    volumes: (volumes.Volumes ?? []).map((v) => ({
-      name: v.Name,
-      kind: v.Labels?.["ho.kind"] ?? "unknown",
-      sessionId: v.Labels?.["ho.session"] ?? null,
-      createdAt: isoOrNull(v.CreatedAt),
-      sizeBytes: sizes.get(v.Name) ?? null,
-    })),
-  };
 }
 
 export function createDockerProvider(options: {
@@ -228,18 +136,7 @@ export function createDockerProvider(options: {
         );
       }
     },
-    ensureNetwork: async (name, labels) => {
-      const filter = encodeURIComponent(JSON.stringify({ name: [name] }));
-      const existing = await api.json(NetworkList, "GET", `/networks?filters=${filter}`);
-      if (!existing.some((n) => n.Name === name)) {
-        await api.json(Created, "POST", "/networks/create", {
-          Name: name,
-          Driver: "bridge",
-          Options: { "com.docker.network.bridge.enable_icc": "false" },
-          Labels: { ...labels },
-        });
-      }
-    },
+    ensureNetwork: (name, labels) => ensureNetwork(api, name, labels),
     createVolume: async (name, labels, driverOpts) => {
       await api.raw("POST", "/volumes/create", {
         Name: name,
@@ -273,7 +170,9 @@ export function createDockerProvider(options: {
       };
     },
     run: (spec, timeoutMs = 120_000) => runToCompletion(api, spec, timeoutMs),
+    wait: (handle, timeoutMs) => waitForExit(api, handle.id, timeoutMs),
     prune: (scope) => prune(api, scope),
     inventory: (labels) => inventory(api, labels),
+    containers: (labels) => containers(api, labels),
   };
 }

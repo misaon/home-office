@@ -1,4 +1,5 @@
-import type { Agent, Project, Session, Task } from "@ho/protocol";
+import { annotateTask } from "@ho/core";
+import { type Agent, type Project, type Session, SYSTEM_ACTOR, type Task } from "@ho/protocol";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import type { Ending } from "./session-run.ts";
 import type { SessionDeps } from "./sessions.ts";
@@ -103,4 +104,19 @@ export async function explainExit(
     "the agent process exited before it finished",
   );
   deps.traces.write(ctx.session.id, { kind: "process_exit", failure, sandbox }, true);
+  if (sandbox?.oomKilled === true) {
+    await deps.office
+      .execute(SYSTEM_ACTOR, (m, c) =>
+        annotateTask(
+          m,
+          ctx.task.id,
+          {
+            kind: "info",
+            text: `the agent process ran out of memory at the ${String(deps.config.limits.memoryMb)} MiB the sandbox allows; raise limits.memoryMb in the daemon configuration or split the task`,
+          },
+          c,
+        ),
+      )
+      .catch(() => null);
+  }
 }

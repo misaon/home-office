@@ -28,10 +28,6 @@ export const csOffice = {
     zoomIn: "Přiblížit",
     zoomOut: "Oddálit",
     editFloor: "Upravit podlaží",
-    atReception: "na recepci",
-    atMail: "u poštovní přihrádky",
-    carrying: "nese zprávu šéfovi",
-    handingOver: "předává ji",
   },
   usage: {
     contextLabel: "Kontextové okno",

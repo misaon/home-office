@@ -29,7 +29,6 @@ class OfficeScene extends MapView {
 
   override async init(host: HTMLElement): Promise<void> {
     await super.init(host);
-    this.app.ticker.maxFPS = 30;
     this.app.stage.eventMode = "static";
     this.app.stage.hitArea = this.app.screen;
     this.app.stage.on("pointertap", () => {
@@ -119,7 +118,8 @@ class OfficeScene extends MapView {
       }
       const dot = view ?? this.#ensureDot(actor);
       dot.root.visible = true;
-      dot.root.position.set((actor.pos.x + 0.5) * CELL_PX, (actor.pos.y + 0.5) * CELL_PX);
+      const at = bridge.positionOf(actor);
+      dot.root.position.set((at.x + 0.5) * CELL_PX, (at.y + 0.5) * CELL_PX);
       const isSelected = actor.id === selected;
       if (dot.selected !== isSelected) {
         dot.selected = isSelected;
@@ -128,7 +128,7 @@ class OfficeScene extends MapView {
       const said = captionOf(actor);
       dot.badge.root.visible = said !== null;
       if (said !== null) {
-        updateBadge(dot.badge, said.caption, said.busy, elapsedMs, this.camera.scale);
+        updateBadge(dot.badge, said, elapsedMs, this.camera.scale);
       }
     }
     for (const [id, view] of this.#dots) {
@@ -175,7 +175,8 @@ export function startOffice(host: HTMLElement): OfficeHandle {
       if (followed !== null) {
         const actor = bridge.world.actors.get(followed);
         if (actor !== undefined && !actor.hidden && actor.floorId === floorId) {
-          scene.centreOnWorld((actor.pos.x + 0.5) * CELL_PX, (actor.pos.y + 0.5) * CELL_PX);
+          const at = bridge.positionOf(actor);
+          scene.centreOnWorld((at.x + 0.5) * CELL_PX, (at.y + 0.5) * CELL_PX);
         }
       }
     } catch (error) {

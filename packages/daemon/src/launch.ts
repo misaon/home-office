@@ -117,7 +117,7 @@ export async function launchDaemon(
   });
   await sessions.recover();
   const intake = new IntakeService(office, createGithubIssuesConnector(), log);
-  const gc = startGc(provider, config, log, traces);
+  const gc = startGc(provider, config, log, traces, office.model);
   cleanup.defer(() => gc.stop());
   const startedAt = clock.now().toISOString();
   const remote = await RemoteService.open(home, clock, log);

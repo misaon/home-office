@@ -81,6 +81,11 @@
           "default": "rootless",
           "type": "string",
           "enum": ["rootless", "rootful"]
+        },
+        "trust": {
+          "default": "untrusted",
+          "type": "string",
+          "enum": ["untrusted", "trusted"]
         }
       }
     },

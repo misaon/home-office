@@ -3,6 +3,8 @@ import {
   type Agent,
   type Attachment,
   CHAT_INBOX_DIR,
+  CHAT_OUTBOX_DIR,
+  type CommitSha,
   isSessionActive,
   type Project,
   ROLE_TITLE,
@@ -12,7 +14,18 @@ import {
 import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 
-export type Services = { kind: "off" } | { kind: "ready" } | { kind: "failed"; message: string };
+export type Services =
+  | { kind: "off" }
+  | { kind: "ready" }
+  | { kind: "failed"; message: string }
+  | { kind: "untrusted" };
+
+export type WorkBase = {
+  title: string;
+  branch: string;
+  commit: CommitSha | null;
+  others: readonly string[];
+};
 
 type Preview = { enabled: boolean; port: number };
 
@@ -23,6 +36,8 @@ export type SessionFacts = {
   files: readonly Attachment[];
   mode: Session["mode"];
   branch: string;
+  commit: CommitSha | null;
+  base: WorkBase | null;
   browser: boolean;
   preview: Preview;
   services: Services;
@@ -36,9 +51,11 @@ export const repoRules = (agent: Agent): string =>
     ? "House rules: this repository's CLAUDE.md, .claude/rules and .claude/skills are loaded for you; follow them over your habits. If the repository has an AGENTS.md that CLAUDE.md does not import, read it first and treat it the same way."
     : "House rules: read the repository's CLAUDE.md and AGENTS.md at the root before you start, unless your runtime already loaded them, and follow them over your habits.";
 
-export const browserGuide = (enabled: boolean): string =>
+const SHOW_THE_HUMAN = `Take a screenshot of every change a user can see, copy it into ${CHAT_OUTBOX_DIR} and name it in ho_report's files: the human then sees the result in the office chat.`;
+
+export const browserGuide = (enabled: boolean, reportsFiles: boolean): string =>
   enabled
-    ? `Browser: headless Chromium with the Playwright MCP tools (browser_navigate, browser_snapshot, browser_click, browser_take_screenshot and more); there is no display. Screenshots land in ${BROWSER_OUTPUT_DIR}; copy the ones that belong in the repository into the repository before committing. Close pages you no longer need.`
+    ? `Browser: headless Chromium with the Playwright MCP tools (browser_navigate, browser_snapshot, browser_click, browser_take_screenshot and more); there is no display. Screenshots land in ${BROWSER_OUTPUT_DIR}; copy the ones that belong in the repository into the repository before committing.${reportsFiles ? ` ${SHOW_THE_HUMAN}` : ""} Close pages you no longer need.`
     : "";
 
 export const serveGuide = (preview: Preview, browser: boolean): string => {
@@ -51,14 +68,34 @@ export const serveGuide = (preview: Preview, browser: boolean): string => {
     : "Serving: nothing you serve leaves this sandbox, so never tell the human to open a local URL.";
 };
 
+const SERVICES_UNTRUSTED =
+  "Services: this floor asks for a private container engine, but the human has not marked the repository as trusted, and the engine runs as a privileged container, so the office did not start it. Do not run docker or docker compose; if the task needs them, report that as the blocker and name the trust setting.";
+
+const SERVICES_READY = `Services: this task has its own Docker engine — \`docker\`, \`docker compose\` and \`docker buildx\` reach only it, never the host. Run the repository's own compose file from ${REPO_IN_VOLUME} as written; published ports answer on 127.0.0.1 inside this sandbox. Per-service limits such as mem_limit are accepted but not enforced: the engine has one memory limit for the whole environment, and passing it kills every service at once. Images, build cache and service volumes survive for the next session of this task, and the office's final check runs against the same cache without network, so pull every image the checks need while you work.`;
+
 export const servicesGuide = (services: Services): string => {
   if (services.kind === "off") {
     return "";
   }
+  if (services.kind === "untrusted") {
+    return SERVICES_UNTRUSTED;
+  }
   if (services.kind === "failed") {
     return `Services: this project expects a private container engine, but it did not start (${services.message}). Do not run docker or docker compose; if the task needs them, report that as the blocker.`;
   }
-  return `Services: this task has its own Docker engine — \`docker\`, \`docker compose\` and \`docker buildx\` reach only it, never the host. Run the repository's own compose file from ${REPO_IN_VOLUME} as written; published ports answer on 127.0.0.1 inside this sandbox. Per-service limits such as mem_limit are accepted but not enforced: the engine has one memory limit for the whole environment, and passing it kills every service at once. Images, build cache and service volumes survive for the next session of this task.`;
+  return SERVICES_READY;
+};
+
+export const dependenciesGuide = (base: WorkBase | null): string => {
+  if (base === null) {
+    return "";
+  }
+  const at = base.commit === null ? "" : ` at commit ${base.commit}`;
+  const others =
+    base.others.length === 0
+      ? ""
+      : ` The other branches this task builds on are fetched into this repository as ${base.others.join(", ")}; merge what you need.`;
+  return `This task builds on "${base.title}" (branch ${base.branch}${at}): your branch starts from that result, so it is already in your tree.${others} The checks and the reviewers judge the combined result against the request, not your commits alone.`;
 };
 
 export const filesGuide = (files: readonly Attachment[]): string =>
@@ -82,4 +119,4 @@ export const rosterLines = (model: ReadModel, project: Project, except: Agent["i
     );
 
 export const REVIEW_FLAGS =
-  "Set qa and security deliberately on every ho_delegate: qa true when a tester can exercise the result (user-visible behaviour, an API or data change), false for documentation, configuration and refactors the checks already cover; security true when the change touches authentication, authorisation, input handling, secrets, cryptography, network exposure, dependencies or a hot path where performance matters. The head of development reviews every task last; QA and the security engineer review only the tasks flagged for them, and a flagged role that is missing on this floor is skipped.";
+  "Set qa and security deliberately on every ho_delegate: qa true when a tester can exercise the result (user-visible behaviour, an API or data change), false for documentation, configuration and refactors the checks already cover; security true when the change touches authentication, authorisation, input handling, secrets, cryptography, network exposure, dependencies or a hot path where performance matters. The head of development reviews every task last. A flag names a role this floor must have: when nobody holds it, ho_delegate refuses, and you either hire that role first or set the flag false and say why in context. A review is never skipped silently.";

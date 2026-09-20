@@ -2,31 +2,23 @@ import {
   formatReviewNote,
   type Agent,
   type AgentRole,
+  compact,
   conflict,
   type HoReportInput,
   type HoReviewInput,
   type NewEvent,
   REVIEW_STAGES,
+  ROLE_TITLE,
   type Task,
   type TaskId,
+  type TaskWaiveReviewInput,
 } from "@ho/protocol";
-import { membersOf } from "../model/queries.ts";
+import { awaitsAnswer, membersOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
+import { missingReviewReason, reviewPlanOf } from "./review-plan.ts";
 import { handoffEvent, note, noteEvent, statusChange, withTask } from "./shared.ts";
 import { readTask } from "./tasks.ts";
-
-export const reviewChain = (model: ReadModel, task: Task): Agent[] => {
-  const members = membersOf(model, task.projectId);
-  return REVIEW_STAGES.filter((stage) => (stage === "head" ? true : task.reviews[stage])).flatMap(
-    (stage) => {
-      const reviewer = members.find(
-        (agent) => agent.role === stage && agent.id !== task.assigneeId,
-      );
-      return reviewer === undefined ? [] : [reviewer];
-    },
-  );
-};
 
 const REVIEW_ROLES: ReadonlySet<AgentRole> = new Set(REVIEW_STAGES);
 
@@ -55,10 +47,27 @@ const forwardTo = (
   return events;
 };
 
+const intoReview = (
+  model: ReadModel,
+  ctx: CommandContext,
+  task: Task,
+  from: Agent["id"] | undefined,
+  nobody: string,
+): NewEvent[] => {
+  const plan = reviewPlanOf(model, task);
+  if (plan.missing.length > 0) {
+    return [statusChange(ctx, task, "blocked", missingReviewReason(plan.missing))];
+  }
+  const [first] = plan.chain;
+  return first === undefined
+    ? [statusChange(ctx, task, "done", nobody)]
+    : [...forwardTo(ctx, task, from, first), statusChange(ctx, task, "review", "awaiting review")];
+};
+
 export function fileReport(
   model: ReadModel,
   taskId: TaskId,
-  input: HoReportInput,
+  input: Pick<HoReportInput, "status" | "summary">,
   ctx: CommandContext,
 ): CommandResult<Task> {
   return withTask(model, taskId, (task) => {
@@ -78,24 +87,12 @@ export function fileReport(
       events.push(statusChange(ctx, task, "blocked", input.summary.slice(0, 2000)));
       return ok({ events, read });
     }
-    const [first] =
-      input.status === "review" && task.kind === "work" ? reviewChain(model, task) : [];
-    if (first === undefined) {
-      events.push(
-        statusChange(
-          ctx,
-          task,
-          "done",
-          input.status === "review" && task.kind === "work"
-            ? "reported; no reviewer in this project"
-            : "reported",
-        ),
-      );
+    if (input.status !== "review" || task.kind !== "work") {
+      events.push(statusChange(ctx, task, "done", "reported"));
       return ok({ events, read });
     }
     events.push(
-      ...forwardTo(ctx, task, task.assigneeId, first),
-      statusChange(ctx, task, "review", "awaiting review"),
+      ...intoReview(model, ctx, task, task.assigneeId, "reported; this task asks for no review"),
     );
     return ok({ events, read });
   });
@@ -112,19 +109,27 @@ export function submitReview(
       return err(conflict(`task is ${task.status}; only tasks in review accept a verdict`));
     }
     const rounds = input.verdict === "approve" ? task.reviewRounds : task.reviewRounds + 1;
+    const { commit } = task.artifacts;
     const events: NewEvent[] = [
-      noteEvent(ctx, task, note(ctx, "review", formatReviewNote(input.verdict, input.findings))),
+      noteEvent(ctx, task, {
+        ...note(ctx, "review", formatReviewNote(input.verdict, input.findings)),
+        ...compact({ commit }),
+      }),
       {
         type: "task.review_recorded",
         actor: ctx.actor,
-        payload: { taskId: task.id, verdict: input.verdict, rounds },
+        payload: { taskId: task.id, verdict: input.verdict, rounds, ...compact({ commit }) },
       },
     ];
     const read = readTask(task.id);
     if (input.verdict === "approve") {
-      const chain = reviewChain(model, task);
-      const position = chain.findIndex((agent) => agent.id === task.reviewerId);
-      const next = position === -1 ? undefined : chain[position + 1];
+      const plan = reviewPlanOf(model, task);
+      if (plan.missing.length > 0) {
+        events.push(statusChange(ctx, task, "blocked", missingReviewReason(plan.missing)));
+        return ok({ events, read });
+      }
+      const position = plan.chain.findIndex((agent) => agent.id === task.reviewerId);
+      const next = position === -1 ? undefined : plan.chain[position + 1];
       if (next === undefined) {
         events.push(statusChange(ctx, task, "done", "approved"));
       } else {
@@ -158,5 +163,53 @@ export function submitReview(
       events.push(handoffEvent(ctx, task.id, task.reviewerId, worker.id, back.text));
     }
     return ok({ events, read });
+  });
+}
+
+export function waiveReview(
+  model: ReadModel,
+  input: TaskWaiveReviewInput,
+  ctx: CommandContext,
+): CommandResult<Task> {
+  return withTask(model, input.id, (task) => {
+    if (ctx.actor.kind !== "human") {
+      return err(conflict("only the human waives a review"));
+    }
+    if (task.kind !== "work") {
+      return err(conflict(`a ${task.kind} task has no review to waive`));
+    }
+    if (!task.reviews[input.stage]) {
+      return err(conflict(`this task does not ask for a ${ROLE_TITLE[input.stage]} review`));
+    }
+    const reason = input.reason?.trim();
+    const explained = reason === undefined || reason === "" ? "" : `: ${reason}`;
+    const events: NewEvent[] = [
+      {
+        type: "task.review_waived",
+        actor: ctx.actor,
+        payload: { taskId: task.id, stage: input.stage, ...compact({ reason }) },
+      },
+      noteEvent(
+        ctx,
+        task,
+        note(ctx, "info", `review by ${ROLE_TITLE[input.stage]} waived by the human${explained}`),
+      ),
+    ];
+    const waived: Task = { ...task, reviews: { ...task.reviews, [input.stage]: false } };
+    if (task.status === "blocked" && task.artifacts.commit !== undefined && !awaitsAnswer(task)) {
+      const plan = reviewPlanOf(model, waived);
+      if (plan.missing.length === 0) {
+        events.push(
+          ...intoReview(
+            model,
+            ctx,
+            waived,
+            task.assigneeId,
+            "approved without review: every stage was waived",
+          ),
+        );
+      }
+    }
+    return ok({ events, read: readTask(task.id) });
   });
 }

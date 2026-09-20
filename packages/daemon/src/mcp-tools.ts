@@ -1,11 +1,9 @@
 import {
   askHuman,
   delegateTask,
-  fileReport,
   handoffTask,
   isTerminal,
   membersOf,
-  patchTaskArtifacts,
   planTask,
   postAgentMessage,
   sessionsOfAgent,
@@ -22,7 +20,6 @@ import {
   HoPublishInput,
   HoRecallInput,
   HoReplyInput,
-  HoReportInput,
   HoReviewInput,
   HoTaskStatusInput,
   isSessionActive,
@@ -31,37 +28,11 @@ import { z } from "zod";
 import { recall } from "./recall.ts";
 import { dismiss } from "./mcp-dismiss.ts";
 import { hire } from "./mcp-hire.ts";
+import { report } from "./mcp-report.ts";
 import { ALL, define, type AnyTool, type ToolResult } from "./mcp-tool.ts";
 import { publishTask } from "./publish.ts";
 
 export type { AnyTool, Entry, McpSessionContext, ToolResult } from "./mcp-tool.ts";
-
-const report = define({
-  name: "ho_report",
-  description:
-    "End your work on the current task with a report. Call it exactly once: when your changes are committed (status review), when the triage or the plan is finished (status done), or when you cannot continue (status blocked, and the summary says why). The office runs the floor's checks and publishes committed work itself.",
-  schema: HoReportInput,
-  modes: ["work", "triage", "plan"],
-  run: async (input, office, entry, actor) => {
-    if (entry.ctx.mode === "work") {
-      if (entry.report !== null) {
-        throw new Error("a report was already submitted");
-      }
-      if (input.status === "done") {
-        throw new Error(
-          "a work session ends with status review or blocked; the office decides when a task is done",
-        );
-      }
-      await office.execute(actor, (m, c) =>
-        patchTaskArtifacts(m, entry.ctx.taskId, { report: input.summary }, c),
-      );
-      entry.report = input;
-      return "report received; the office runs the floor's checks, pushes your commits and hands the task on. Stop working now.";
-    }
-    const task = await office.execute(actor, (m, c) => fileReport(m, entry.ctx.taskId, input, c));
-    return `report filed; task is now ${task.status}. Stop working now.`;
-  },
-});
 
 const askTheHuman = define({
   name: "ho_ask_human",
@@ -92,6 +63,8 @@ const taskStatus = define({
       title: task.title,
       status: task.status,
       assigneeId: task.assigneeId ?? null,
+      reviews: task.reviews,
+      dependsOn: task.dependsOn,
       artifacts: task.artifacts,
       notes: task.notes.slice(-10),
     });
@@ -121,8 +94,14 @@ const recallPast = define({
     return Promise.resolve(
       hits
         .map((hit) => {
+          const evidence =
+            hit.verified === "checked"
+              ? "checks passed on the published commit"
+              : hit.verified === "unchecked"
+                ? "published without checks"
+                : "no verified commit on record";
           const lines = [
-            `## ${hit.title} — ${hit.status}, ${hit.who}, ${hit.daysAgo === 0 ? "today" : `${String(hit.daysAgo)} day(s) ago`}`,
+            `## ${hit.title} — ${hit.status}, ${hit.who}${hit.model === null ? "" : ` on ${hit.model}`}, ${hit.daysAgo === 0 ? "today" : `${String(hit.daysAgo)} day(s) ago`}; ${evidence}`,
           ];
           if (hit.report !== "") {
             lines.push(`Report: ${hit.report}`);
@@ -177,7 +156,7 @@ const handoff = define({
 const review = define({
   name: "ho_review",
   description:
-    "File your verdict on the branch under review. approve closes the task; request_changes sends it back to the author with your numbered findings.",
+    "File your verdict on the commit under review; the office records which commit you judged. approve passes it to the next reviewer or closes the task; request_changes sends it back to the author with your numbered findings.",
   schema: HoReviewInput,
   modes: ["review"],
   run: async (input, office, entry, actor) => {
@@ -189,7 +168,7 @@ const review = define({
 const delegate = define({
   name: "ho_delegate",
   description:
-    "Create a task on this floor and assign it to a colleague by name, or to yourself when you do the work. One task per independently verifiable piece of work; the fields are the specification the developer and the reviewers get, and qa/security decide who reviews it before the head of development.",
+    "Create a task on this floor and assign it to a colleague by name, or to yourself when you do the work. One task per independently verifiable piece of work; the fields are the specification the developer and the reviewers get, qa/security decide who reviews it before the head of development, and dependsOn holds it until the tasks it builds on are done.",
   schema: HoDelegateInput,
   modes: ["triage", "plan"],
   run: async (input, office, entry, actor) => {

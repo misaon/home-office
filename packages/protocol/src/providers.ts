@@ -12,6 +12,10 @@ export type SecretKeyName = z.infer<typeof SecretKeyName>;
 
 type ModelDescriptor = { id: string; label: string };
 
+export type BudgetGuarantee = "runtime" | "office" | "none";
+
+export type BudgetGuarantees = { turns: BudgetGuarantee; usd: BudgetGuarantee };
+
 type ProviderDescriptor = {
   id: ProviderId;
   name: string;
@@ -22,6 +26,7 @@ type ProviderDescriptor = {
   defaultModel: string;
   freeFormModels: boolean;
   effortLevels: readonly EffortLevel[];
+  guarantees: BudgetGuarantees;
   stateDir: string;
   scratchDirs: readonly string[];
   image: ProviderId;
@@ -29,6 +34,15 @@ type ProviderDescriptor = {
 };
 
 const HOME = "/home/agent";
+
+const ACP_GUARANTEES: BudgetGuarantees = { turns: "office", usd: "office" };
+
+export const budgetGuaranteesFor = (provider: ProviderId, auth: AuthKind): BudgetGuarantees => {
+  const { guarantees } = PROVIDERS[provider];
+  return provider === "claude-code" && auth !== "api-key"
+    ? { ...guarantees, usd: "none" }
+    : guarantees;
+};
 
 export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
   "claude-code": {
@@ -46,6 +60,7 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     defaultModel: "sonnet",
     freeFormModels: true,
     effortLevels: EffortLevel.options,
+    guarantees: { turns: "runtime", usd: "runtime" },
     stateDir: `${HOME}/.claude`,
     scratchDirs: [],
     image: "claude-code",
@@ -68,6 +83,7 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     defaultModel: "anthropic/claude-sonnet-5",
     freeFormModels: true,
     effortLevels: [],
+    guarantees: ACP_GUARANTEES,
     stateDir: `${HOME}/.local/share/opencode`,
     scratchDirs: [`${HOME}/.cache`, `${HOME}/.config/opencode`],
     image: "opencode",
@@ -89,6 +105,7 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     defaultModel: "gemini-3.8-flash",
     freeFormModels: true,
     effortLevels: [],
+    guarantees: ACP_GUARANTEES,
     stateDir: `${HOME}/.gemini`,
     scratchDirs: [`${HOME}/.cache`],
     image: "gemini-cli",
@@ -104,6 +121,7 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     defaultModel: "default",
     freeFormModels: true,
     effortLevels: ["low", "medium", "high", "xhigh"],
+    guarantees: ACP_GUARANTEES,
     stateDir: `${HOME}/.codex`,
     scratchDirs: [`${HOME}/.cache`],
     image: "codex",

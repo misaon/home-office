@@ -135,7 +135,9 @@ The owner decides these per task, and the standing answer is no.
   directive with its reason, because that one is read by a tool. Verified 2026-09-16: the source
   carries **zero** comments — seven such directives and two shebangs are all that is left — so a `//`
   appearing in your diff is a new comment, never an edit to an existing one.
-- Do not add tests. The source carries zero of them.
+- Tests exist only where a task asked for them: `*.test.ts` beside the module they cover, run by
+  `bun test` inside `check`. Do not add one unasked, and when a task does ask, test the behaviour the
+  audit or the bug described, not the implementation.
 - The prose documentation was deleted on 2026-09-16 and survives in `git show 6dc771d:docs/`. Do not
   recreate `docs/` or an ADR unasked. `README.md` is the exception and is expected to be current: if
   your change alters what a newcomer installs, runs or configures, update it in the same commit.

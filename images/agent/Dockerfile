@@ -8,6 +8,7 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
     { [ "$TARGETARCH" = arm64 ] || [ "$TARGETARCH" = amd64 ]; } \
       || { echo "the agent image builds for arm64 and amd64, not $TARGETARCH" >&2; exit 1; } \
  && ln -sf /var/cache/apk /etc/apk/cache \
+ && apk upgrade \
  && apk add bash curl ca-certificates libgcc libstdc++ ripgrep git openssh-client \
       chromium nodejs npm python3 py3-pip ttf-dejavu ttf-liberation unzip \
       coreutils diffutils findutils gawk grep sed jq build-base tzdata \
@@ -57,6 +58,7 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
  && echo "395759c1f7449ef4cdef305a42e820f3c766d6090d142634ebdb049f113168b6  /etc/apk/keys/claude-code.rsa.pub" | sha256sum -c - \
  && echo "https://downloads.claude.ai/claude-code/apk/latest" >> /etc/apk/repositories \
  && ln -sf /var/cache/apk /etc/apk/cache \
+ && apk upgrade \
  && apk add "claude-code=${CLAUDE_CODE_VERSION}" \
  && mkdir -p /home/agent/.claude && chown agent:agent /home/agent/.claude
 USER agent

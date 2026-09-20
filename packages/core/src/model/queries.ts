@@ -45,7 +45,10 @@ export const latestThread = (
 const THREAD_WALK_MAX = 8;
 
 export function threadOfTask(
-  model: Pick<ReadModel, "chat" | "tasks">,
+  model: {
+    chat: ReadonlyMap<ProjectId, readonly ChatMessage[]>;
+    tasks: ReadonlyMap<TaskId, Task>;
+  },
   task: Task,
 ): ChatThreadId | undefined {
   let current: Task | undefined = task;
@@ -66,6 +69,20 @@ export const tasksOf = (
   model: Pick<ReadModel, "tasks" | "tasksByProject">,
   projectId: ProjectId,
 ): Task[] => resolve(model.tasks, model.tasksByProject.get(projectId));
+
+export const dependenciesOf = (model: Pick<ReadModel, "tasks">, task: Task): Task[] =>
+  task.dependsOn.flatMap((id) => {
+    const dependency = model.tasks.get(id);
+    return dependency === undefined ? [] : [dependency];
+  });
+
+export const openDependenciesOf = (model: Pick<ReadModel, "tasks">, task: Task): Task[] =>
+  dependenciesOf(model, task).filter((dependency) => dependency.status !== "done");
+
+export const dependentsOf = (
+  model: Pick<ReadModel, "tasks" | "tasksByProject">,
+  task: Task,
+): Task[] => tasksOf(model, task.projectId).filter((other) => other.dependsOn.includes(task.id));
 
 export const findAgentByRef = (
   model: ReadModel,

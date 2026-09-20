@@ -3,6 +3,7 @@ import {
   type Agent,
   errorMessage,
   isQuestionReason,
+  ROLE_TITLE,
   type StoredEvent,
   SYSTEM_ACTOR,
   type Task,
@@ -12,6 +13,7 @@ import type { Logger } from "./logger.ts";
 import { followEvents, type Office } from "./office.ts";
 import type { OfficeGate } from "./office-gate.ts";
 import { describeOutcome } from "./outcome.ts";
+import { timingLine, timingOf } from "./task-timing.ts";
 
 const REPORT_MAX = 600;
 
@@ -22,12 +24,23 @@ const nameOf = (model: Model, id: Agent["id"] | undefined): string =>
 
 const quote = (task: Task): string => `“${task.title}”`;
 
+const whoWorks = (model: Model, id: Agent["id"] | undefined): string => {
+  const agent = id === undefined ? undefined : model.agents.get(id);
+  return agent === undefined
+    ? nameOf(model, id)
+    : `${agent.name} (${ROLE_TITLE[agent.role]}, ${agent.model}, ${agent.effort} effort)`;
+};
+
+const pullRequestNote = (task: Task): string =>
+  task.artifacts.prUrl === undefined ? "" : ` (pull request: ${task.artifacts.prUrl})`;
+
 function statusLine(
   model: Model,
   boss: Agent,
   task: Task,
   to: TaskStatus,
   reason: string | undefined,
+  at: string,
 ): string | null {
   if (task.kind === "triage") {
     return to === "failed" || to === "blocked"
@@ -42,10 +55,10 @@ function statusLine(
   const worker = nameOf(model, task.assigneeId);
   const mine = task.assigneeId === boss.id;
   if (to === "in_progress") {
-    return mine ? null : `${worker} is working on ${quote(task)}.`;
+    return mine ? null : `${whoWorks(model, task.assigneeId)} is working on ${quote(task)}.`;
   }
   if (to === "review") {
-    return `${mine ? "I" : worker} finished ${quote(task)}; ${nameOf(model, task.reviewerId)} is reviewing it.`;
+    return `${mine ? "I" : worker} finished ${quote(task)}${pullRequestNote(task)}; ${nameOf(model, task.reviewerId)} is reviewing it.`;
   }
   if (to === "assigned") {
     return reason === "changes requested"
@@ -54,7 +67,8 @@ function statusLine(
   }
   if (to === "done") {
     const outcome = describeOutcome(task, reason, REPORT_MAX);
-    return `${quote(task)} is done.${outcome === "" ? "" : `\n${outcome}`}`;
+    const timing = timingLine(timingOf(model, task, at));
+    return `${quote(task)} is done. ${timing}${outcome === "" ? "" : `\n${outcome}`}`;
   }
   if (to === "blocked") {
     return isQuestionReason(reason)
@@ -138,7 +152,7 @@ export function startBossVoice(
       await gate.waitFor(before.id, event.at);
     }
     const task = office.model.tasks.get(taskId) ?? before;
-    const text = statusLine(office.model, boss, task, to, reason);
+    const text = statusLine(office.model, boss, task, to, reason, event.at);
     if (text !== null) {
       await say(boss, text, task.id);
     }

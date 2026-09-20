@@ -4,6 +4,7 @@ import {
   Agent,
   AuthKind,
   Budgets,
+  DEPENDENCIES_MAX,
   HiringPolicy,
   IntakePolicy,
   IsoDateTime,
@@ -21,7 +22,7 @@ import {
 } from "./domain.ts";
 import { AgentId, ChatThreadId, ProjectId, SessionId, TaskId } from "./ids.ts";
 import { patchOf } from "./patch.ts";
-import { ReviewPlan } from "./roles.ts";
+import { ReviewPlan, ReviewStage } from "./roles.ts";
 
 const ProjectFields = Project.pick({
   name: true,
@@ -117,8 +118,15 @@ export const TaskCreateInput = z.object({
   assigneeId: AgentId.optional(),
   browser: z.boolean().optional(),
   reviews: ReviewPlan.optional(),
+  dependsOn: z.array(TaskId).max(DEPENDENCIES_MAX).optional(),
 });
 export type TaskCreateInput = z.infer<typeof TaskCreateInput>;
+export const TaskWaiveReviewInput = z.object({
+  id: TaskId,
+  stage: ReviewStage,
+  reason: z.string().max(500).optional(),
+});
+export type TaskWaiveReviewInput = z.infer<typeof TaskWaiveReviewInput>;
 export const TaskRateInput = z.object({
   id: TaskId,
   verdict: TaskRating.shape.verdict,

@@ -23,11 +23,18 @@ export const IntakePolicy = z.object({
 });
 export type IntakePolicy = z.infer<typeof IntakePolicy>;
 
+export const RepositoryTrust = z.enum(["untrusted", "trusted"]);
+export type RepositoryTrust = z.infer<typeof RepositoryTrust>;
+
 export const ServicesPolicy = z.object({
   enabled: z.boolean().default(false),
   mode: z.enum(["rootless", "rootful"]).default("rootless"),
+  trust: RepositoryTrust.default("untrusted"),
 });
 export type ServicesPolicy = z.infer<typeof ServicesPolicy>;
+
+export const servicesAvailable = (services: ServicesPolicy): boolean =>
+  services.enabled && services.trust === "trusted";
 
 export const HiringPolicy = z.object({
   enabled: z.boolean().default(true),

@@ -84,8 +84,9 @@ const sandboxSpec = (
 
 export const requestFor = (id: string, volume: string): TaskEngineRequest => ({
   mode: "rootless",
+  role: "session",
   sessionId: ids.session(),
-  taskVolume: volume,
+  workVolume: volume,
   labels: labelsFor(id),
 });
 

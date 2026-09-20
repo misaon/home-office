@@ -1,5 +1,6 @@
 import { compact, type RuntimeErrorCode, type RuntimeEvent } from "@ho/protocol";
 import { z } from "zod";
+import { fileChangeOf } from "./file-change.ts";
 
 const TextBlock = z.object({ type: z.literal("text"), text: z.string() });
 
@@ -40,6 +41,7 @@ const StreamLine = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("user"),
     message: z.object({ content: z.union([z.string(), z.array(ContentBlock)]) }),
+    tool_use_result: z.unknown().optional(),
   }),
   z.object({
     type: z.literal("stream_event"),
@@ -76,6 +78,27 @@ const summarize = (content: string | unknown[] | undefined): string => {
           })
           .join(" ");
   return text.length > SUMMARY_MAX ? `${text.slice(0, SUMMARY_MAX - 1)}…` : text;
+};
+
+type ContentBlock = z.infer<typeof ContentBlock>;
+
+const userEvents = (content: string | ContentBlock[], toolUseResult: unknown): RuntimeEvent[] => {
+  if (typeof content === "string") {
+    return [];
+  }
+  return content.flatMap((block): RuntimeEvent[] => {
+    if (block.type !== "tool_result") {
+      return [];
+    }
+    const result: RuntimeEvent = {
+      kind: "tool_result",
+      id: block.tool_use_id,
+      ok: block.is_error !== true,
+      summary: summarize(block.content),
+    };
+    const change = block.is_error === true ? null : fileChangeOf(block.tool_use_id, toolUseResult);
+    return change === null ? [result] : [result, change];
+  });
 };
 
 const RETRY_ERROR_CODES: Readonly<Record<string, RuntimeErrorCode>> = {
@@ -147,21 +170,7 @@ export function normalizeLine(
       );
     }
     case "user": {
-      if (typeof line.message.content === "string") {
-        return [];
-      }
-      return line.message.content.flatMap((block): RuntimeEvent[] =>
-        block.type === "tool_result"
-          ? [
-              {
-                kind: "tool_result",
-                id: block.tool_use_id,
-                ok: block.is_error !== true,
-                summary: summarize(block.content),
-              },
-            ]
-          : [],
-      );
+      return userEvents(line.message.content, line.tool_use_result);
     }
     case "stream_event": {
       const text = line.event.delta?.text;

@@ -1,3 +1,4 @@
+import type { BudgetGuarantee } from "@ho/protocol";
 import { type Member } from "./data.ts";
 import { useTranslation } from "react-i18next";
 import { draftOf } from "./agent-dialog.tsx";
@@ -24,6 +25,45 @@ function AgentStatus({ draft }: { draft: Member }): React.JSX.Element {
 
 const LIST = "rounded-13 bg-card border border-edge overflow-hidden mb-16";
 
+const GUARANTEE_KEY = {
+  runtime: "agent.guarantee_runtime",
+  office: "agent.guarantee_office",
+  none: "agent.guarantee_none",
+} as const satisfies Record<BudgetGuarantee, string>;
+
+function AgentBudget({ draft }: { draft: Member }): React.JSX.Element {
+  const { t } = useTranslation();
+  const rows: [string, string][] = [
+    [
+      t("agent.budgetTurns", { count: draft.budgets.maxTurnsPerTask }),
+      t(GUARANTEE_KEY[draft.guarantees.turns]),
+    ],
+    [
+      draft.budgets.maxUsdPerTask === undefined
+        ? t("agent.budgetUsdNone")
+        : t("agent.budgetUsd", { amount: draft.budgets.maxUsdPerTask.toFixed(2) }),
+      t(GUARANTEE_KEY[draft.budgets.maxUsdPerTask === undefined ? "none" : draft.guarantees.usd]),
+    ],
+    [
+      t("agent.budgetMinutes", { count: draft.budgets.maxWallMinutes }),
+      t("agent.guaranteeMinutes"),
+    ],
+  ];
+  return (
+    <>
+      <div className={`${CAPS} mb-10`}>{t("agent.budgetTitle")}</div>
+      <div className={LIST}>
+        {rows.map(([amount, guarantee], i) => (
+          <div key={amount} className={`flex gap-11 py-10 px-13 ${separator(i === 0)}`}>
+            <span className={`${MONO} text-11 text-ink-pale flex-[0_0_auto]`}>{amount}</span>
+            <span className="text-12h text-ink-meta leading-body">{guarantee}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 export function AgentSheet({ draft }: { draft: Member }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);
@@ -35,6 +75,7 @@ export function AgentSheet({ draft }: { draft: Member }): React.JSX.Element {
       subtitle={`${draft.provider} · ${draft.model} / ${draft.effort}`}
     >
       <AgentStatus draft={draft} />
+      <AgentBudget draft={draft} />
       <div className={`${CAPS} mb-10`}>{t("agent.recentWork")}</div>
       <div className={LIST}>
         {work.map((row, i) => (

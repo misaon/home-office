@@ -10,6 +10,7 @@ import {
   TaskId,
 } from "@ho/protocol";
 import {
+  type Actor,
   assignWork,
   carry,
   createWorld,
@@ -24,13 +25,14 @@ import {
   wake,
 } from "@ho/sim";
 import type { Client } from "../rpc.ts";
+import { Interpolation } from "./interpolation.ts";
 import { model } from "../store.ts";
 import { Envelopes } from "./envelopes.ts";
 import { MailFlow } from "./mail-flow.ts";
 import { syncRoster } from "./roster.ts";
 
 const MAX_DT_MS = 250;
-const STEP_MS = 1000 / 30;
+const STEP_MS = 1000 / 60;
 
 export class Bridge {
   readonly world = createWorld("home-office");
@@ -38,6 +40,7 @@ export class Bridge {
   readonly #envelopes = new Envelopes();
   readonly #mail: MailFlow;
   readonly #sleeping = new Set<AgentId>();
+  readonly #interpolation = new Interpolation();
   readonly #ids = createIdFactory(
     { now: () => new Date() },
     {
@@ -204,6 +207,7 @@ export class Bridge {
       case "task.removed":
       case "task.edited":
       case "task.review_recorded":
+      case "task.review_waived":
       case "task.reviewer_assigned": {
         break;
       }
@@ -234,9 +238,14 @@ export class Bridge {
     this.#envelopes.report(taskId);
   }
 
+  positionOf(actor: Actor): { x: number; y: number } {
+    return this.#interpolation.positionOf(actor, Math.min(1, this.#accumulator / STEP_MS));
+  }
+
   tick(dtMs: number): void {
     this.#accumulator += Math.max(0, Math.min(dtMs, MAX_DT_MS));
     while (this.#accumulator >= STEP_MS) {
+      this.#interpolation.remember(this.world);
       tick(this.world, STEP_MS);
       this.#accumulator -= STEP_MS;
     }

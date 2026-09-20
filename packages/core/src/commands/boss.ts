@@ -20,6 +20,7 @@ import { bossOf, findAgentByRef, latestThread, membersOf, threadOfTask } from ".
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
 import { chatEvent, handoffEvent, note, titleFromText, withAgent, withProject } from "./shared.ts";
+import { checkDependencies, checkReviewers } from "./task-checks.ts";
 import { newTask, readTask } from "./tasks.ts";
 
 const section = (heading: string, lines: readonly string[]): string =>
@@ -50,6 +51,19 @@ export function delegateTask(
     if (input.assignee !== undefined && assignee === undefined) {
       return err(notFound("agent", `${input.assignee} (on floor "${project.name}")`));
     }
+    const reviews = { qa: input.qa, security: input.security, head: true };
+    const reviewers = checkReviewers(model, {
+      projectId: project.id,
+      reviews,
+      assigneeId: assignee?.id,
+    });
+    if (!reviewers.ok) {
+      return reviewers;
+    }
+    const dependencies = checkDependencies(model, project.id, input.dependsOn);
+    if (!dependencies.ok) {
+      return dependencies;
+    }
     const spec: TaskSpec = {
       goal: input.goal,
       acceptanceCriteria: input.acceptanceCriteria,
@@ -72,7 +86,8 @@ export function delegateTask(
       priority: input.priority,
       publish: input.publish,
       browser: input.browser,
-      reviews: { qa: input.qa, security: input.security },
+      reviews,
+      dependsOn: dependencies.value,
       notes: handoffNote === undefined ? [] : [handoffNote],
     });
     const events: NewEvent[] = [{ type: "task.created", actor: ctx.actor, payload: { task } }];

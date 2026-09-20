@@ -5,8 +5,8 @@ import {
   type DomainError,
   type NewEvent,
   notFound,
-  NOTE_MAX,
   type ProjectId,
+  type ReviewPlan,
   type Task,
   type TaskArtifacts,
   type TaskAssignInput,
@@ -14,7 +14,6 @@ import {
   type TaskId,
   type TaskStatus,
   type TaskTransitionInput,
-  VERIFY_NOTE_PREFIX,
 } from "@ho/protocol";
 import { activeSessionOfTask, tasksOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
@@ -26,7 +25,8 @@ import {
   ok,
   type Result,
 } from "../result.ts";
-import { note, noteEvent, statusChange, withProject, withTask } from "./shared.ts";
+import { statusChange, withProject, withTask } from "./shared.ts";
+import { checkDependencies, checkReviewers } from "./task-checks.ts";
 
 const TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = {
   inbox: ["planned", "assigned", "blocked", "cancelled"],
@@ -68,6 +68,8 @@ const assignable = (
   return ok(agent);
 };
 
+const NO_REVIEWS: ReviewPlan = { qa: false, security: false, head: true };
+
 export const newTask = (
   ctx: CommandContext,
   fields: Pick<Task, "projectId" | "kind" | "title" | "brief" | "source"> & {
@@ -78,6 +80,7 @@ export const newTask = (
     publish?: Task["publish"] | undefined;
     browser?: Task["browser"] | undefined;
     reviews?: Task["reviews"] | undefined;
+    dependsOn?: Task["dependsOn"] | undefined;
   },
 ): Task => ({
   id: ctx.ids.task(),
@@ -86,11 +89,12 @@ export const newTask = (
   title: fields.title,
   brief: fields.brief,
   ...compact({ spec: fields.spec, publish: fields.publish, browser: fields.browser }),
-  reviews: fields.reviews ?? { qa: false, security: false },
+  reviews: fields.reviews ?? NO_REVIEWS,
   status: fields.assigneeId === undefined ? "inbox" : "assigned",
   ...compact({ assigneeId: fields.assigneeId }),
   reviewRounds: 0,
   notes: fields.notes ?? [],
+  dependsOn: fields.dependsOn ?? [],
   source: fields.source,
   artifacts: {},
   priority: fields.priority ?? "normal",
@@ -115,7 +119,26 @@ export function createTask(
         return check;
       }
     }
-    const task = newTask(ctx, { ...input, kind: "work", source: { kind: "manual" } });
+    const reviews = input.reviews ?? NO_REVIEWS;
+    const reviewers = checkReviewers(model, {
+      projectId: input.projectId,
+      reviews,
+      assigneeId: input.assigneeId,
+    });
+    if (!reviewers.ok) {
+      return reviewers;
+    }
+    const dependencies = checkDependencies(model, input.projectId, input.dependsOn ?? []);
+    if (!dependencies.ok) {
+      return dependencies;
+    }
+    const task = newTask(ctx, {
+      ...input,
+      reviews,
+      dependsOn: dependencies.value,
+      kind: "work",
+      source: { kind: "manual" },
+    });
     return ok({
       events: [{ type: "task.created", actor: ctx.actor, payload: { task } }],
       read: readTask(task.id),
@@ -244,43 +267,6 @@ export function removeTask(
     return ok({
       events: [{ type: "task.removed", actor: ctx.actor, payload: { taskId } }],
       read: () => taskId,
-    });
-  });
-}
-
-export const verifyAttempts = (task: Task): number =>
-  task.notes.filter((n) => n.author.kind === "system" && n.text.startsWith(VERIFY_NOTE_PREFIX))
-    .length;
-
-export function recordVerificationFailure(
-  model: ReadModel,
-  taskId: TaskId,
-  detail: { command: string; output: string; maxAttempts: number },
-  ctx: CommandContext,
-): CommandResult<Task> {
-  return withTask(model, taskId, (task) => {
-    const spent = verifyAttempts(task) + 1 >= detail.maxAttempts;
-    const to: TaskStatus = spent || task.assigneeId === undefined ? "blocked" : "assigned";
-    if (!canTransition(task.status, to)) {
-      return err({ code: "invalid_transition", from: task.status, to });
-    }
-    const text = `${VERIFY_NOTE_PREFIX} \`${detail.command}\`\n\n${detail.output}`.slice(
-      0,
-      NOTE_MAX,
-    );
-    return ok({
-      events: [
-        noteEvent(ctx, task, note(ctx, "review", text)),
-        statusChange(
-          ctx,
-          task,
-          to,
-          spent
-            ? `checks still failing after ${String(detail.maxAttempts)} attempt(s)`
-            : "checks failed",
-        ),
-      ],
-      read: readTask(task.id),
     });
   });
 }

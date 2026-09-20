@@ -56,15 +56,27 @@ const warmUpTokenizer = (core: HighlighterCore): HighlighterCore => {
 };
 
 let pending: Promise<HighlighterCore> | null = null;
+let ready: HighlighterCore | null = null;
 
 const highlighter = (): Promise<HighlighterCore> => {
   pending ??= createHighlighterCore({
     themes: [import("@shikijs/themes/vesper")],
     langs: GRAMMARS,
     engine: createJavaScriptRegexEngine(),
-  }).then(warmUpTokenizer);
+  })
+    .then(warmUpTokenizer)
+    .then((core) => {
+      ready = core;
+      return core;
+    });
   return pending;
 };
+
+export const warmHighlighter = (): Promise<void> =>
+  highlighter().then(
+    () => undefined,
+    () => undefined,
+  );
 
 const COMPONENTS = {
   a: ({
@@ -81,13 +93,16 @@ const COMPONENTS = {
 };
 
 export function RichText({ text }: { text: string }): React.JSX.Element {
-  const [core, setCore] = useState<HighlighterCore | null>(null);
+  const [core, setCore] = useState<HighlighterCore | null>(() => ready);
   useEffect(() => {
+    if (ready !== null) {
+      return undefined;
+    }
     let live = true;
     void highlighter()
-      .then((ready) => {
+      .then((loaded) => {
         if (live) {
-          setCore(ready);
+          setCore(loaded);
         }
       })
       .catch(() => undefined);

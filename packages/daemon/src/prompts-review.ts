@@ -29,7 +29,7 @@ const chainGuide = (model: ReadModel, task: Task, agent: Agent): string => {
   }
   const position = chain.findIndex((reviewer) => reviewer.id === agent.id);
   const names = chain.map((reviewer) => `${reviewer.name} (${ROLE_TITLE[reviewer.role]})`);
-  return `Review chain for this task: ${names.join(" → ")}; you are stage ${String(position + 1)} of ${String(chain.length)}. Approving passes the branch to the next stage; request_changes sends it back to the author and the chain starts again from the first stage.`;
+  return `Review chain for this task: ${names.join(" → ")}; you are stage ${String(position + 1)} of ${String(chain.length)}. Approving passes the commit to the next stage; request_changes sends it back to the author and the chain starts again from the first stage.`;
 };
 
 const roundsGuide = (f: SessionFacts, model: ReadModel): string => {
@@ -40,21 +40,24 @@ const roundsGuide = (f: SessionFacts, model: ReadModel): string => {
     : `request_changes sends the work back to the author; it can do so ${String(left)} more time(s) before the task is blocked.`;
 };
 
+const checksGuide = (f: SessionFacts): string =>
+  f.project.verify.command === ""
+    ? "This floor runs no automatic checks: nothing was verified before you. Run the repository's own tests and checks yourself and treat their result as part of your verdict."
+    : `The office already ran \`${f.project.verify.command}\` on this exact commit and it passed; review what the checks cannot see.`;
+
 export const reviewPrompt = (f: SessionFacts, model: ReadModel): string[] => [
-  `You are reviewing branch ${f.branch} of the repository at ${REPO_IN_VOLUME} (base branch: ${f.project.defaultBranch}).`,
+  `You are reviewing commit ${f.commit ?? "at the tip of the branch"} on branch ${f.branch}, checked out in your own copy of the repository at ${REPO_IN_VOLUME} (base branch: ${f.project.defaultBranch}). The office recorded that commit when the author reported; only it is published and reviewed, and nothing you change in this copy reaches it.`,
   SANDBOX,
   repoRules(f.agent),
-  browserGuide(f.browser),
+  browserGuide(f.browser, false),
   serveGuide(f.preview, f.browser),
   servicesGuide(f.services),
   `Start with \`git -C ${REPO_IN_VOLUME} diff ${f.project.defaultBranch}...HEAD --stat\`, then the diff file by file; read surrounding code only where needed. If ${f.project.defaultBranch} is missing locally, review the branch's own commits with \`git log -p\`.`,
-  f.project.verify.command === ""
-    ? ""
-    : `The office already ran \`${f.project.verify.command}\` on this branch and it passed; review what the checks cannot see.`,
+  checksGuide(f),
   focus(f.agent),
   chainGuide(model, f.task, f.agent),
   criteriaGuide(f.task, "Judge each acceptance criterion; approve only when every one holds:"),
-  "Flag only what affects correctness, safety or the stated criteria, not style the checks already settle. You may run commands, tests and the application; do not modify files.",
+  "Flag only what affects correctness, safety or the stated criteria, not style the checks already settle. You may install dependencies, run commands, tests and the application in this copy; an edit here is yours alone and never reaches the branch, so a fix you want is a finding, not a commit.",
   `Task under review: ${f.task.title}`,
   `Protocol: call ho_review exactly once with verdict approve or request_changes and numbered findings (file:line), then stop. ${roundsGuide(f, model)}`,
 ];

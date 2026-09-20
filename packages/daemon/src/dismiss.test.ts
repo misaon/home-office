@@ -127,9 +127,9 @@ const statusAfterReport = (model: ReadModel, taskId: TaskId): string | undefined
   return last?.type === "task.status_changed" ? last.payload.to : undefined;
 };
 
-test("a floor with nobody to review approves its own work", () => {
+test("a floor with nobody to review holds the report for the human instead of closing it", () => {
   const model = floorWith(REX);
-  expect(statusAfterReport(model, inProgress(model, REX))).toBe("done");
+  expect(statusAfterReport(model, inProgress(model, REX))).toBe("blocked");
 });
 
 test("the same report waits for review once a head of development is there", () => {

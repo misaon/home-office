@@ -9,6 +9,7 @@ import {
   type Session,
   type SessionId,
   type SessionMode,
+  type SessionRuntime,
   type SessionServices,
   type SessionState,
   type TaskId,
@@ -100,6 +101,8 @@ export function changeSessionState(
     runtimeSessionId?: string;
     sandboxId?: string;
     services?: SessionServices;
+    runtime?: SessionRuntime;
+    confirmed?: { model?: string; effort?: string };
     reason?: string;
   },
   ctx: CommandContext,
@@ -108,7 +111,8 @@ export function changeSessionState(
     if (!isSessionActive(session.state)) {
       return ok({ events: [], read: readSession(session.id) });
     }
-    const { sessionId, state, runtimeSessionId, sandboxId, services, reason } = input;
+    const { sessionId, state, runtimeSessionId, sandboxId, services, runtime, confirmed, reason } =
+      input;
     return ok({
       events: [
         {
@@ -117,7 +121,8 @@ export function changeSessionState(
           payload: {
             sessionId,
             state,
-            ...compact({ runtimeSessionId, sandboxId, services, reason }),
+            ...compact({ runtimeSessionId, sandboxId, services, runtime, reason }),
+            ...(confirmed === undefined ? {} : { confirmed: compact(confirmed) }),
           },
         },
       ],

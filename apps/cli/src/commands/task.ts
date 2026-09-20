@@ -1,6 +1,6 @@
-import { compact, TaskPriority, TaskRating, TaskStatus } from "@ho/protocol";
+import { compact, ReviewStage, TaskPriority, TaskRating, TaskStatus } from "@ho/protocol";
 import { z } from "zod";
-import { bool, required, str } from "../flags.ts";
+import { bool, list, required, str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
 import { colour, print } from "../output.ts";
 import { findAgent, findProject, findTask, projectIdOf } from "./lookup.ts";
@@ -14,7 +14,8 @@ const statusColour = (status: TaskStatus): string => {
 
 export const taskCommand: Command = {
   name: "task",
-  summary: "the floor's work; move takes any status the state machine allows",
+  summary:
+    "the floor's work; move takes any status the state machine allows, waive drops a required review stage nobody on the floor can fill",
   subcommands: {
     list: {
       strings: { project: "<floor>", status: "a,b" },
@@ -42,7 +43,8 @@ export const taskCommand: Command = {
         assignee: "<agent>",
         priority: "low|normal|high",
       },
-      booleans: ["browser", "qa", "security"],
+      booleans: ["browser", "qa", "security", "no-head-review"],
+      repeatable: { "depends-on": "<task>" },
       required: ["project", "title"],
       run: async (parsed, client) => {
         const rpc = await client();
@@ -54,6 +56,13 @@ export const taskCommand: Command = {
         const assigneeId = assignee?.id;
         const qa = bool(parsed, "qa");
         const security = bool(parsed, "security");
+        const head = !bool(parsed, "no-head-review");
+        const dependsOn = await Promise.all(
+          list(parsed, "depends-on").map(async (ref) => {
+            const dependency = await findTask(rpc, ref);
+            return dependency.id;
+          }),
+        );
         const created = await rpc.tasks.create({
           projectId,
           title: required(parsed, "title"),
@@ -62,7 +71,8 @@ export const taskCommand: Command = {
             assigneeId,
             priority: TaskPriority.optional().parse(str(parsed, "priority")),
             browser: bool(parsed, "browser") ? true : undefined,
-            reviews: qa || security ? { qa, security } : undefined,
+            reviews: qa || security || !head ? { qa, security, head } : undefined,
+            dependsOn: dependsOn.length === 0 ? undefined : dependsOn,
           }),
         });
         return output(
@@ -135,6 +145,26 @@ export const taskCommand: Command = {
             `${colour.id(moved.id)} → ${statusColour(moved.status)}${reason === undefined ? "" : ` (${reason})`}`,
           ],
           moved,
+        );
+      },
+    },
+    waive: {
+      positionals: ["<task>", "<qa|security|head>"],
+      strings: { reason: "<text>" },
+      run: async (parsed, client) => {
+        const [taskRef = "", stage] = parsed.positionals;
+        const rpc = await client();
+        const task = await findTask(rpc, taskRef);
+        const waived = await rpc.tasks.waiveReview({
+          id: task.id,
+          stage: ReviewStage.parse(stage),
+          ...compact({ reason: str(parsed, "reason") }),
+        });
+        return output(
+          [
+            `${colour.id(waived.id)} ${String(stage)} review waived, now ${statusColour(waived.status)}`,
+          ],
+          waived,
         );
       },
     },

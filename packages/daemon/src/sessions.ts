@@ -1,12 +1,11 @@
 import {
   type AgentRuntime,
-  changeSessionState,
   createChannel,
   endSession,
-  rateLimitedReason,
-  recordSessionUsage,
+  remainingBudget,
   type SandboxProvider,
   type SecretStore,
+  spentOnTask,
   startSession,
   transitionTask,
 } from "@ho/core";
@@ -19,8 +18,6 @@ import {
   type Session,
   type SessionId,
   type SessionMode,
-  type SessionServices,
-  type SessionState,
   SYSTEM_ACTOR,
   type TaskId,
 } from "@ho/protocol";
@@ -31,11 +28,11 @@ import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
 import type { RunnerGateway } from "./runner-gateway.ts";
 import { createRuntimes } from "./runtimes.ts";
+import { handleRuntimeEvent, type Spent } from "./session-events.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import { recordSessionEnd, traceHeader } from "./session-record.ts";
 import { recoverSessions } from "./session-recover.ts";
 import { type Ending, runSession } from "./session-run.ts";
-import { gapOf, traceOf } from "./session-trace.ts";
 import { elapsedMs } from "./timing.ts";
 import type { TraceStore } from "./traces.ts";
 
@@ -57,7 +54,12 @@ export type SessionDeps = {
 
 type Subscriber = { sessionId: SessionId | null; push: (event: LiveEvent) => void };
 
-type Running = { taskId: TaskId; controller: AbortController; done: Promise<void> };
+type Running = {
+  taskId: TaskId;
+  controller: AbortController;
+  done: Promise<void>;
+  spent: Spent;
+};
 
 export class SessionManager {
   readonly #deps: SessionDeps;
@@ -115,6 +117,7 @@ export class SessionManager {
     if (task === undefined || agent === undefined || project === undefined) {
       throw new Error(`cannot start a session for task ${taskId}: task, agent or project missing`);
     }
+    const budget = remainingBudget(agent, spentOnTask(office.model, taskId, agentId));
     const session = await office.execute(SYSTEM_ACTOR, (m, ctx) =>
       startSession(m, { taskId, agentId, mode }, ctx),
     );
@@ -130,34 +133,53 @@ export class SessionManager {
         agent: agent.name,
         mode,
         resumedFrom: previous?.id,
+        budget,
       },
       "session starting",
     );
-    traces.open(session.id, traceHeader(session, task, agent, project, previous));
+    try {
+      traces.open(session.id, traceHeader(session, task, agent, project, previous));
+    } catch (error) {
+      const reason = `the session trace could not be opened: ${errorMessage(error)}`;
+      await this.#end(session.id, { state: "failed", reason }).catch(() => null);
+      await this.#block(taskId, reason);
+      throw new Error(reason, { cause: error });
+    }
     const controller = new AbortController();
-    const budget = setTimeout(() => {
+    const wall = setTimeout(() => {
       log.warn({ sessionId: session.id, taskId }, "wall-time budget exhausted");
-      controller.abort();
+      controller.abort(
+        new Error(
+          `wall-time budget of ${String(agent.budgets.maxWallMinutes)} minute(s) exhausted`,
+        ),
+      );
     }, agent.budgets.maxWallMinutes * 60_000);
     if (this.#stopping) {
-      controller.abort();
+      controller.abort(new Error("daemon is stopping"));
     }
-    const done = this.#run({
+    const ctx: SessionContext = {
       session,
       task,
       agent,
       project,
       previous,
       signal: controller.signal,
-    })
+      budget,
+    };
+    const done = this.#run(ctx)
       .catch((error: unknown) => {
         log.error({ sessionId: session.id, err: errorMessage(error) }, "session teardown failed");
       })
       .finally(() => {
-        clearTimeout(budget);
+        clearTimeout(wall);
         this.#running.delete(session.id);
       });
-    this.#running.set(session.id, { taskId, controller, done });
+    this.#running.set(session.id, {
+      taskId,
+      controller,
+      done,
+      spent: { toolCalls: 0, costUsd: null },
+    });
     return session;
   }
 
@@ -166,14 +188,14 @@ export class SessionManager {
     if (running === undefined) {
       return false;
     }
-    running.controller.abort();
+    running.controller.abort(new Error("stopped by the human"));
     return true;
   }
 
   async stopTask(taskId: TaskId): Promise<void> {
     const running = [...this.#running.values()].filter((entry) => entry.taskId === taskId);
     for (const { controller } of running) {
-      controller.abort();
+      controller.abort(new Error("the task was stopped"));
     }
     await Promise.allSettled(running.map(({ done }) => done));
   }
@@ -183,7 +205,7 @@ export class SessionManager {
     await Promise.allSettled(this.#starting);
     const running = [...this.#running.values()];
     for (const { controller } of running) {
-      controller.abort();
+      controller.abort(new Error("daemon is stopping"));
     }
     await Promise.allSettled(running.map(({ done }) => done));
   }
@@ -195,21 +217,6 @@ export class SessionManager {
         subscriber.push(live);
       }
     }
-  }
-
-  #state(
-    sessionId: SessionId,
-    state: SessionState,
-    extra: {
-      runtimeSessionId?: string;
-      sandboxId?: string;
-      services?: SessionServices;
-      reason?: string;
-    } = {},
-  ): Promise<Session> {
-    return this.#deps.office.execute(SYSTEM_ACTOR, (m, ctx) =>
-      changeSessionState(m, { sessionId, state, ...extra }, ctx),
-    );
   }
 
   #end(sessionId: SessionId, ending: Ending): Promise<Session> {
@@ -231,39 +238,15 @@ export class SessionManager {
 
   async #onEvent(ctx: SessionContext, event: RuntimeEvent): Promise<void> {
     this.#emit(ctx.session.id, event);
-    this.#deps.traces.observe(ctx.session.id, event);
-    const gap = gapOf(event);
-    if (gap !== null) {
-      this.#deps.log.warn(
-        { sessionId: ctx.session.id, taskId: ctx.task.id, agent: ctx.agent.name, ...gap },
-        "the sandbox lacks a tool the agent reached for",
-      );
-    }
-    const trace = traceOf(event);
-    if (trace !== null) {
-      this.#deps.log.debug(
-        { sessionId: ctx.session.id, taskId: ctx.task.id, agent: ctx.agent.name, ...trace },
-        `agent ${event.kind}`,
-      );
-    }
-    const { office } = this.#deps;
-    if (event.kind === "usage") {
-      await office.execute(SYSTEM_ACTOR, (m, c) =>
-        recordSessionUsage(
-          m,
-          { sessionId: ctx.session.id, usage: event.usage, ...compact({ costUsd: event.costUsd }) },
-          c,
-        ),
-      );
-    } else if (event.kind === "rate_limited") {
-      await this.#state(ctx.session.id, "idle", { reason: rateLimitedReason(event.retryAt) });
-    } else if (event.kind === "init") {
-      await this.#state(ctx.session.id, "running", { runtimeSessionId: event.runtimeSessionId });
-    } else if (
-      (event.kind === "text_delta" || event.kind === "tool_call") &&
-      office.model.sessions.get(ctx.session.id)?.state === "idle"
-    ) {
-      await this.#state(ctx.session.id, "running");
+    const running = this.#running.get(ctx.session.id);
+    const reason = await handleRuntimeEvent(
+      this.#deps,
+      ctx,
+      event,
+      running?.spent ?? { toolCalls: 0, costUsd: null },
+    );
+    if (reason !== null) {
+      running?.controller.abort(new Error(reason));
     }
   }
 
@@ -289,9 +272,13 @@ export class SessionManager {
       await this.#block(ctx.task.id, message);
       ending = { state: "failed", reason: message };
     } finally {
-      await held.provisioned?.dispose();
+      await held.provisioned?.dispose().catch((error: unknown) => {
+        log.warn({ sessionId, err: errorMessage(error) }, "session cleanup failed");
+      });
     }
-    await this.#end(sessionId, ending).catch(() => null);
+    await this.#end(sessionId, ending).catch((error: unknown) => {
+      log.error({ sessionId, err: errorMessage(error) }, "session end could not be recorded");
+    });
     await recordSessionEnd(this.#deps, ctx, ending, elapsedMs(started));
   }
 }

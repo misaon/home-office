@@ -1,7 +1,7 @@
 import { type Cancellation, createChannel, type RuntimeSession } from "@ho/core";
 import { errorMessage, type RuntimeEvent } from "@ho/protocol";
 import type { OfficeConnection } from "./connection.ts";
-import { newTurn, stopToEvent, updateToEvents } from "./events.ts";
+import { newTurn, stopToEvents, updateToEvents } from "./events.ts";
 import { isAuthRequired, type Negotiated, raceExit } from "./negotiate.ts";
 import type { AcpPreset } from "./presets.ts";
 
@@ -27,7 +27,8 @@ export function createPrompt(
     events.push({
       kind: "init",
       runtimeSessionId: sessionId,
-      model: spec.model,
+      model: negotiated.model ?? spec.model,
+      ...(negotiated.effort === null ? {} : { effort: negotiated.effort }),
       plugins: [],
       pluginErrors: [],
       tools: 0,
@@ -57,7 +58,9 @@ export function createPrompt(
     )
       .then(
         (response) => {
-          events.push(stopToEvent(response.stopReason, turn, sessionId));
+          for (const event of stopToEvents(response.stopReason, turn, sessionId)) {
+            events.push(event);
+          }
         },
         (error: unknown) => {
           events.push({

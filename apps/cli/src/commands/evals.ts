@@ -28,7 +28,12 @@ const who = (person: { name: string; departed: boolean }): string =>
   (person.departed ? `${person.name} (left)` : person.name).padEnd(17);
 
 const outcome = (counts: Counts): string =>
-  `finished ${String(counts.finished)}  first-pass ${String(counts.firstPass)} (${share(counts.firstPass, counts.finished)})  blocked ${String(counts.blocked)}  failed ${String(counts.failed)}  rounds/task ${per(counts.reviewRounds, counts.finished)}`;
+  `finished ${String(counts.finished)}  first-pass ${String(counts.firstPass)} (${share(counts.firstPass, counts.finished)})  blocked ${String(counts.blocked)}  failed ${String(counts.failed)}  rounds/task ${per(counts.reviewRounds, counts.finished)}  failed checks ${String(counts.verifyFailures)}`;
+
+const ran = (score: EvalScorecard["agents"][number]): string =>
+  score.runs.length === 0
+    ? `${score.model}/${score.effort}`
+    : score.runs.map((run) => `${run.model}/${run.effort}×${String(run.sessions)}`).join(" ");
 
 const money = (counts: Counts): string =>
   counts.costKnown === 0
@@ -46,7 +51,7 @@ const spend = (counts: Counts): string => {
 
 const officeLines = (card: EvalScorecard): string[] => [
   `window: ${card.since ?? "all time"} → ${card.until}`,
-  `OFFICE  ${outcome(card.office)}  rated ${String(card.office.ratedGood)} good / ${String(card.office.ratedBad)} bad`,
+  `OFFICE  ${outcome(card.office)}  rated ${String(card.office.ratedGood)} good / ${String(card.office.ratedBad)} bad  planning ${String(card.office.planning)} (not counted as work)`,
   `        ${spend(card.office)}`,
 ];
 
@@ -57,7 +62,7 @@ const employeeLines = (card: EvalScorecard): string[] =>
         "-- employees",
         ...card.agents.map(
           (a) =>
-            `${who(a)} ${a.role.padEnd(10)} ${`${a.model}/${a.effort}`.padEnd(14)} ${outcome(a)}  bad ${String(a.ratedBad)}  ${spend(a)}`,
+            `${who(a)} ${a.role.padEnd(10)} ${ran(a).padEnd(14)} ${outcome(a)}  bad ${String(a.ratedBad)}  ${spend(a)}`,
         ),
       ];
 

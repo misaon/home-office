@@ -1,4 +1,5 @@
 import type { AgentId, AgentRole, AuthKind, Attachment, Gender, TaskId } from "@ho/protocol";
+import type { FileChange } from "./transcript.ts";
 import {
   useMutation,
   type UseMutationOptions,
@@ -36,6 +37,7 @@ export type Design = {
   searchOpen: boolean;
   attachment: Attachment | null;
   lightbox: Attachment | null;
+  diff: FileChange | null;
   sheet: Sheet;
   sheetDraft: Member | null;
   agentDlg: AgentDialog | null;
@@ -64,6 +66,7 @@ const INITIAL = {
   searchOpen: false,
   attachment: null,
   lightbox: null,
+  diff: null,
   sheet: null,
   sheetDraft: null,
   agentDlg: null,

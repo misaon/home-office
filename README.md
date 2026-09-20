@@ -62,20 +62,42 @@ who reads the repository and creates the tasks. Delegation takes a goal in one s
 criteria written so that someone else can check them, plus what must not change and what is
 deliberately out of scope. If nobody can write a checkable criterion, they ask you instead of guessing.
 
-**Your checks are the gate.** Set one command per floor — `bun run check`, `make test`, whatever you
-already use. It runs in a network-less sandbox against the agent's commits. Failing work never reaches
-your branch; it goes back to the author with the real output attached.
+**Your checks are the gate, and they gate a commit.** Set one command per floor — `bun run check`,
+`make test`, whatever you already use. When the agent reports, the office reads the exact commit at
+HEAD, refuses a working tree with anything uncommitted or untracked in it, runs your command against
+that commit in a network-less sandbox, and publishes that commit and nothing else. The commit is
+recorded on the task, every review verdict names it, and a floor with no check command says so on the
+task instead of pretending. Failing work never reaches your branch; it goes back to the author with
+the real output attached. A floor whose `docker compose` services are part of the checks gets the same
+private engine for the verifier that the agent had, warm from the agent's own pulls.
 
-**Review is a chain of separate sessions.** Whoever specifies a task flags whether QA should test it
-and whether the security engineer should audit it; the head of development reviews every task last.
-Each reviewer gets the diff, the base branch, the verdicts before theirs and no write access, and must
-answer approve or request changes with numbered findings. Approval passes the branch to the next
-reviewer; rejected work returns to the author with the findings, the round is counted, and the chain
-starts over.
+**Review is a chain of separate sessions, and a requested review is never skipped.** Whoever
+specifies a task flags whether QA should test it and whether the security engineer should audit it;
+the head of development reviews every task last. Each reviewer gets their own copy of the repository
+checked out at the verified commit, the base branch and the verdicts before theirs; nothing they
+change in that copy can reach the branch, so a fix they want is a finding. They must answer approve or
+request changes with numbered findings. Approval passes the commit to the next reviewer; rejected work
+returns to the author with the findings, the round is counted, and the chain starts over. When a task
+asks for a role nobody on the floor holds, the planner is refused up front, and a task that reaches
+review without its reviewer blocks with the reason instead of closing — hire the role, or waive that
+one review from the task's card or with `ho task waive <task> qa`.
+
+**Tasks can build on each other.** The analyst passes the ids of the tasks a piece of work needs in
+`dependsOn`; the office holds the dependent task until they are done and starts its branch from the
+last of them, so the developer already has the result in the tree. The task that depends on all the
+others is where the whole request is checked as one.
 
 **Work survives a session ending.** Each task owns a Docker volume: the checkout, the branch, the
 provider's state, the build cache. A budget runs out, the daemon restarts, you close the lid — the next
-session resumes the same conversation in the same tree, or picks up from the notes if it cannot.
+session resumes the same conversation in the same tree, or picks up from the notes if it cannot. The
+garbage collector never removes the volume of a task that is still open, however old it is, and it
+stops any container whose session the office no longer considers running.
+
+**Budgets are per task and honest about what they can promise.** An agent's turn and dollar budgets
+count across every session it spends on a task, including retries after a failed check and rework
+after a review; a task that has used them up is set aside for you rather than restarted. Each agent's
+card says who enforces each limit: the runtime itself, the office at the next usage report, or nobody,
+because that sign-in does not meter spend.
 
 **A floor you can read at a glance.** The office is a top-down plan: reception, the boss's desk, twelve
 desks, a kitchen, a meeting room. Each agent is a character that walks it. Work moves as an envelope
@@ -161,12 +183,15 @@ branch, publish and intake policy, budgets, and the staff to hire:
   "defaultBranch": "main",
   "publish": { "mode": "pull-request", "draft": true },
   "verify": { "command": "bun run check" },
-  "budgets": { "maxTurnsPerTask": 60, "maxConcurrentSessions": 1, "maxWallMinutes": 60 }
+  "budgets": { "maxTurnsPerTask": 200, "maxConcurrentSessions": 1, "maxWallMinutes": 60 }
 }
 ```
 
 The office applies it when the daemon starts and whenever the file changes;
-`ho project export <floor>` writes the floor back out again. An `agents` list names the whole staff:
+`ho project export <floor>` writes the floor back out again. `services` takes `enabled`, `mode`
+(`rootless` or `rootful`) and `trust`: the private container engine is a privileged container, so it
+only starts once the repository is marked `"trust": "trusted"`, in this file, in Settings or with
+`ho project set <floor> --trust trusted`. Until then agents are told that services are off and why. An `agents` list names the whole staff:
 each entry has a `role` from boss, secretary, analyst, backend, frontend, devops, qa, security, head
 or developer, and a floor whose file names no staff keeps the default team. No credential ever goes in
 it — only which provider an agent uses, which is enough for the daemon to find the key in the Keychain.
@@ -176,15 +201,16 @@ A gitignored `.ho/config.local.json` layers over it for one machine.
 
 The point of the office is that an agent's mistake stays inside a box.
 
-|                                   |                                                                                                                                                                                                                             |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **The agent**                     | Its own container: a non-root user, a read-only root filesystem, memory, CPU and PID limits, scratch directories on tmpfs, and no bind mount into your filesystem except a read-only inbox for the files you attach in chat |
-| **Your checkout**                 | Never touched. The repository is cloned into a task volume, and finished work arrives as a new `ho/task-<id>` branch — your working tree and index are exactly where you left them                                          |
-| **Every git operation**           | A separate short-lived container with **no network at all** and hooks disabled                                                                                                                                              |
-| **Your check command**            | The same: no network, a fresh container, the agent's volume                                                                                                                                                                 |
-| **Secrets**                       | The macOS Keychain, handed to the sandbox as environment and nowhere else — not in process arguments, Docker labels, the event log or the office's own logs                                                                 |
-| **The daemon**                    | Bound to `127.0.0.1` behind a bearer token. Nothing listens outward                                                                                                                                                         |
-| **`docker compose` in your repo** | Optional, and served by a private engine started for that one task, reachable only from that task's sandbox. Your host daemon stays out of reach                                                                            |
+|                                   |                                                                                                                                                                                                                                        |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **The agent**                     | Its own container: a non-root user, a read-only root filesystem, memory, CPU and PID limits, scratch directories on tmpfs, and no bind mount into your filesystem except a read-only inbox for the files you attach in chat            |
+| **Your checkout**                 | Never touched. The repository is cloned into a task volume, and finished work arrives as a new `ho/task-<id>` branch — your working tree and index are exactly where you left them                                                     |
+| **Every git operation**           | A separate short-lived container with **no network at all** and hooks disabled                                                                                                                                                         |
+| **Your check command**            | The same: no network, a fresh container, the agent's volume at a clean checkout of the commit that gets published; a floor with services gets the task's private engine attached, still without network                                |
+| **Every review**                  | Its own volume with the verified commit checked out, separate from the author's; caches and dependencies survive between reviewers, edits go nowhere                                                                                   |
+| **Secrets**                       | The macOS Keychain, handed to the sandbox as environment and nowhere else — not in process arguments, Docker labels, the event log or the office's own logs                                                                            |
+| **The daemon**                    | Bound to `127.0.0.1` behind a bearer token. Nothing listens outward                                                                                                                                                                    |
+| **`docker compose` in your repo** | Optional, and served by a private engine started for that one task, reachable only from that task's sandbox. Your host daemon stays out of reach. The engine is a privileged container, which is why it needs the floor marked trusted |
 
 Every state change in the office is an event appended to a local SQLite log, so the board, the floor
 and the usage panel are all views of one history — and you can replay exactly what happened.
@@ -200,10 +226,12 @@ daemon:
   request) and a one-line summary when a session ends.
 - **The event log.** `ho.db` holds every state change the office ever made.
 - **Session traces.** `$HO_HOME/traces/<session id>.jsonl` keeps what each agent saw and did: the
-  configuration it ran with, the exact system prompt and opening message, the complete runtime
-  stream (tool inputs and outputs, usage per turn), the office's messages to it and the office's
-  milestones. `index.jsonl` next to them has one summary line per session. Traces older than
-  `retention.traceDays` (30 by default) are removed by the office's garbage collector.
+  configuration it ran with and the model the runtime confirmed, the exact system prompt and opening
+  message, the complete runtime stream (tool inputs and outputs, usage per turn), the office's
+  messages to it and the office's milestones, with the session's credentials and anything shaped
+  like a token or a private key replaced before the line is written. `index.jsonl` next to them has
+  one summary line per session. Traces older than `retention.traceDays` (30 by default) are removed
+  by the office's garbage collector.
 
 Rate delivered work from the task's card or with `ho task rate <task> good|bad --note "…"`. The
 verdict is stored on the task and joins the traces when the office's prompts and skills are
@@ -219,7 +247,11 @@ ho doctor                              # Docker, images, credentials, capacity
 ho project add app --path ~/code/app   # a new floor for a local repository, with the team of nine
 ho agent add Nico --role backend --project app --model sonnet
 ho task create --project app --title "Fix the focus trap in the settings dialog" --browser --qa
-ho session watch                       # live output from every running agent
+ho task create --project app --title "Use the new API" --depends-on <task>   # waits for it, builds on it
+ho task waive <task> qa                # let a task through a review stage nobody here can give
+ho project set app --services on --trust trusted   # allow the privileged engine for this repository
+ho agent set Nico --max-usd 5          # per task, across every session, where the provider reports cost
+ho session watch                       # live output from every running agent, each line tagged by session
 ho usage --since 24h                   # tokens per agent, floor and day
 ho remote pair --name phone            # pair a phone through the relay
 ```

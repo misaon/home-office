@@ -119,8 +119,12 @@ export type TaskSpec = z.infer<typeof TaskSpec>;
 
 export const REPORT_MAX = 4000;
 
+export const CommitSha = z.string().regex(/^[0-9a-f]{40}$/u);
+export type CommitSha = z.infer<typeof CommitSha>;
+
 export const TaskArtifacts = z.object({
   branch: z.string().min(1).optional(),
+  commit: CommitSha.optional(),
   prUrl: z.url().optional(),
   report: z.string().max(REPORT_MAX).optional(),
 });
@@ -132,11 +136,14 @@ export const NOTE_MAX = 8000;
 
 const BRIEF_MAX = 24_000;
 
+export const DEPENDENCIES_MAX = 20;
+
 export const TaskNote = z.object({
   at: IsoDateTime,
   author: Actor,
   kind: TaskNoteKind,
   text: z.string().min(1).max(NOTE_MAX),
+  commit: CommitSha.optional(),
 });
 export type TaskNote = z.infer<typeof TaskNote>;
 
@@ -205,6 +212,7 @@ export const Task = z.object({
   rating: TaskRating.optional(),
   reviewRounds: z.int().nonnegative().default(0),
   notes: z.array(TaskNote).default([]),
+  dependsOn: z.array(TaskId).max(DEPENDENCIES_MAX).default([]),
   source: TaskSource,
   artifacts: TaskArtifacts,
   priority: TaskPriority,
@@ -250,8 +258,19 @@ export const MailItem = z.object({
 });
 export type MailItem = z.infer<typeof MailItem>;
 
-export const SessionServices = z.enum(["ready", "failed"]);
+export const SessionServices = z.enum(["ready", "failed", "untrusted"]);
 export type SessionServices = z.infer<typeof SessionServices>;
+
+export const SessionRuntime = z.object({
+  model: z.string().min(1),
+  effort: EffortLevel,
+  promptHash: z.string().min(1),
+  skillPacks: z.array(z.string().min(1)),
+  image: z.string().min(1),
+  confirmedModel: z.string().min(1).optional(),
+  confirmedEffort: z.string().min(1).optional(),
+});
+export type SessionRuntime = z.infer<typeof SessionRuntime>;
 
 export const Session = z.object({
   id: SessionId,
@@ -262,6 +281,7 @@ export const Session = z.object({
   runtimeSessionId: z.string().optional(),
   sandboxId: z.string().optional(),
   services: SessionServices.optional(),
+  runtime: SessionRuntime.optional(),
   threadId: ChatThreadId.optional(),
   resumedFrom: SessionId.optional(),
   usage: Usage,

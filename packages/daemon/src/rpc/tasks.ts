@@ -5,6 +5,7 @@ import {
   rateTask,
   removeTask,
   transitionTask,
+  waiveReview,
 } from "@ho/core";
 import { HUMAN_ACTOR, notFound } from "@ho/protocol";
 import { DomainFailureError } from "../domain-failure.ts";
@@ -40,6 +41,9 @@ export const taskRoutes = {
   ),
   rate: base.tasks.rate.handler(({ input, context }) =>
     context.office.execute(HUMAN_ACTOR, (m, ctx) => rateTask(m, input, ctx)),
+  ),
+  waiveReview: base.tasks.waiveReview.handler(({ input, context }) =>
+    context.office.execute(HUMAN_ACTOR, (m, ctx) => waiveReview(m, input, ctx)),
   ),
   remove: base.tasks.remove.handler(async ({ input, context }) => {
     await context.sessions.stopTask(input.id);

@@ -93,6 +93,16 @@ export function FloorSwitches({ floor }: { floor: Floor }): React.JSX.Element {
           update.mutate({ services: { enabled: !floor.services } });
         }}
       />
+      <Switch
+        on={floor.trust === "trusted"}
+        title={t("settings.trustLabel")}
+        hint={t("settings.trustHint")}
+        onFlip={() => {
+          update.mutate({
+            services: { trust: floor.trust === "trusted" ? "untrusted" : "trusted" },
+          });
+        }}
+      />
     </>
   );
 }
