@@ -116,7 +116,10 @@ floor can run a Claude boss over a Qwen developer on your own Ollama — the off
 
 Every floor starts with the same nine, each with a skill pack for their part of the chain. Change
 their model, effort, budget or prompt, dismiss anyone you do not need, or hire your own; a floor with
-no team yet gets it when the daemon starts.
+no team yet gets it when the daemon starts. The frontend pack also carries pinned copies of
+Anthropic's `frontend-design`, Vercel's React skills and Web Interface Guidelines and ECC's Vue
+patterns, and every developer gets `modern-web-platform`, which names the syntax and platform
+features to reach for; sources and licences are listed in `images/agent/plugins/THIRD-PARTY.md`.
 
 | Who    | Role      | Default (Claude Code) | What they do                                                                           |
 | ------ | --------- | --------------------- | -------------------------------------------------------------------------------------- |

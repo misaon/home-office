@@ -22,7 +22,10 @@ description: "Load at the start of every review session, before the skill of you
 4. Set up only what you need to exercise the change: dependencies with the repository's own package
    manager, into /work; caches survive between reviews of this task. You can run commands, tests and
    the application. If the briefing says the floor runs no automatic checks, running the
-   repository's own tests is part of your job, not optional.
+   repository's own tests is part of your job, not optional. A server you start, you stop with the
+   pid you kept (`kill "$pid"`), never with `pkill -f <pattern>`: the pattern matches the shell
+   running your own command, which dies with exit 144 before the rest of the line runs. When the
+   change touches what a user sees, load `web-interface-guidelines` and check the diff against it.
 5. Then load the skill of your role — test-branch for QA, audit-branch for the security engineer,
    review-branch for the head of development — for what to look for. This skill is only the
    mechanics.

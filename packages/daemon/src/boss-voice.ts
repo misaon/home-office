@@ -12,8 +12,8 @@ import {
 import type { Logger } from "./logger.ts";
 import { followEvents, type Office } from "./office.ts";
 import type { OfficeGate } from "./office-gate.ts";
-import { describeOutcome } from "./outcome.ts";
-import { timingLine, timingOf } from "./task-timing.ts";
+import { outcomeOf } from "./outcome.ts";
+import { formatDuration, timingOf } from "./task-timing.ts";
 
 const REPORT_MAX = 600;
 
@@ -22,17 +22,38 @@ type Model = Office["model"];
 const nameOf = (model: Model, id: Agent["id"] | undefined): string =>
   id === undefined ? "somebody" : (model.agents.get(id)?.name ?? "a colleague");
 
-const quote = (task: Task): string => `“${task.title}”`;
+const quote = (task: Task): string => `**“${task.title}”**`;
+
+const bold = (name: string): string => `**${name}**`;
 
 const whoWorks = (model: Model, id: Agent["id"] | undefined): string => {
   const agent = id === undefined ? undefined : model.agents.get(id);
   return agent === undefined
-    ? nameOf(model, id)
-    : `${agent.name} (${ROLE_TITLE[agent.role]}, ${agent.model}, ${agent.effort} effort)`;
+    ? bold(nameOf(model, id))
+    : `${bold(agent.name)} (${ROLE_TITLE[agent.role]} · \`${agent.model}\` · ${agent.effort} effort)`;
+};
+
+const pullRequestLink = (url: string): string => {
+  const number = /\/pull\/(?<number>\d+)/u.exec(url)?.groups?.["number"];
+  return number === undefined ? `[pull request](${url})` : `pull request [#${number}](${url})`;
 };
 
 const pullRequestNote = (task: Task): string =>
-  task.artifacts.prUrl === undefined ? "" : ` (pull request: ${task.artifacts.prUrl})`;
+  task.artifacts.prUrl === undefined ? "" : ` (${pullRequestLink(task.artifacts.prUrl)})`;
+
+const doneLines = (model: Model, task: Task, reason: string | undefined, at: string): string => {
+  const outcome = outcomeOf(task, reason, REPORT_MAX);
+  const timing = timingOf(model, task, at);
+  return [
+    `✅ ${quote(task)} is done.`,
+    `⏱️ From the request to here: ${bold(formatDuration(timing.sinceRequestMs))}; ${String(timing.sessions)} session${timing.sessions === 1 ? "" : "s"} spent ${formatDuration(timing.agentMs)} on it.`,
+    outcome.account === "" ? "" : `\n${outcome.account}\n`,
+    outcome.prUrl === null ? "" : `🔗 ${pullRequestLink(outcome.prUrl)}`,
+    outcome.branch === null ? "" : `🌿 Branch \`${outcome.branch}\``,
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
+};
 
 function statusLine(
   model: Model,
@@ -44,39 +65,37 @@ function statusLine(
 ): string | null {
   if (task.kind === "triage") {
     return to === "failed" || to === "blocked"
-      ? `I could not process your message: ${reason ?? to}.`
+      ? `❌ I could not process your message: ${reason ?? to}.`
       : null;
   }
   if (task.kind === "plan") {
     return to === "failed" || (to === "blocked" && !isQuestionReason(reason))
-      ? `${nameOf(model, task.assigneeId)} could not finish planning ${quote(task)}: ${reason ?? to}.`
+      ? `❌ ${bold(nameOf(model, task.assigneeId))} could not finish planning ${quote(task)}: ${reason ?? to}.`
       : null;
   }
-  const worker = nameOf(model, task.assigneeId);
+  const worker = bold(nameOf(model, task.assigneeId));
   const mine = task.assigneeId === boss.id;
   if (to === "in_progress") {
-    return mine ? null : `${whoWorks(model, task.assigneeId)} is working on ${quote(task)}.`;
+    return mine ? null : `🔧 ${whoWorks(model, task.assigneeId)} is working on ${quote(task)}.`;
   }
   if (to === "review") {
-    return `${mine ? "I" : worker} finished ${quote(task)}${pullRequestNote(task)}; ${nameOf(model, task.reviewerId)} is reviewing it.`;
+    return `🔍 ${mine ? "I" : worker} finished ${quote(task)}${pullRequestNote(task)}; ${bold(nameOf(model, task.reviewerId))} is reviewing it.`;
   }
   if (to === "assigned") {
     return reason === "changes requested"
-      ? `${nameOf(model, task.reviewerId)} asked for changes on ${quote(task)}; it is back with ${mine ? "me" : worker}.`
+      ? `↩️ ${bold(nameOf(model, task.reviewerId))} asked for changes on ${quote(task)}; it is back with ${mine ? "me" : worker}.`
       : null;
   }
   if (to === "done") {
-    const outcome = describeOutcome(task, reason, REPORT_MAX);
-    const timing = timingLine(timingOf(model, task, at));
-    return `${quote(task)} is done. ${timing}${outcome === "" ? "" : `\n${outcome}`}`;
+    return doneLines(model, task, reason, at);
   }
   if (to === "blocked") {
     return isQuestionReason(reason)
       ? null
-      : `${quote(task)} is blocked${reason === undefined ? "" : `: ${reason}`}.`;
+      : `🚧 ${quote(task)} is blocked${reason === undefined ? "" : `: ${reason}`}.`;
   }
   if (to === "failed") {
-    return `${quote(task)} failed${reason === undefined ? "" : `: ${reason}`}.`;
+    return `❌ ${quote(task)} failed${reason === undefined ? "" : `: ${reason}`}.`;
   }
   return null;
 }
@@ -93,17 +112,19 @@ const createdLine = (model: Model, boss: Agent, task: Task): string | null => {
   }
   const byBoss = task.source.byAgentId === boss.id;
   if (task.kind === "plan") {
-    return byBoss ? `I have asked ${nameOf(model, task.assigneeId)} to plan ${quote(task)}.` : null;
+    return byBoss
+      ? `🗺️ I have asked ${bold(nameOf(model, task.assigneeId))} to plan ${quote(task)}.`
+      : null;
   }
   if (task.kind !== "work") {
     return null;
   }
   if (task.assigneeId === undefined) {
-    return `${quote(task)} waits in the inbox for an assignee.`;
+    return `📥 ${quote(task)} waits in the inbox for an assignee.`;
   }
   return byBoss
-    ? `I have handed ${quote(task)} to ${nameOf(model, task.assigneeId)}.`
-    : `${nameOf(model, task.source.byAgentId)} handed ${quote(task)} to ${nameOf(model, task.assigneeId)}.`;
+    ? `👉 I have handed ${quote(task)} to ${bold(nameOf(model, task.assigneeId))}.`
+    : `👉 ${bold(nameOf(model, task.source.byAgentId))} handed ${quote(task)} to ${bold(nameOf(model, task.assigneeId))}.`;
 };
 
 const nextStageLine = (model: Model, task: Task, reviewerId: Agent["id"] | null): string | null => {
@@ -117,7 +138,7 @@ const nextStageLine = (model: Model, task: Task, reviewerId: Agent["id"] | null)
   if (verdict?.author.kind !== "agent" || !verdict.text.startsWith("approve")) {
     return null;
   }
-  return `${nameOf(model, verdict.author.agentId)} approved ${quote(task)}; ${nameOf(model, reviewerId)} reviews it next.`;
+  return `✅ ${bold(nameOf(model, verdict.author.agentId))} approved ${quote(task)}; ${bold(nameOf(model, reviewerId))} reviews it next.`;
 };
 
 export function startBossVoice(

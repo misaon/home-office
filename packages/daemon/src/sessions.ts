@@ -23,6 +23,7 @@ import {
 } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
 import type { AttachmentStore } from "./attachments.ts";
+import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import type { Logger } from "./logger.ts";
 import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
@@ -237,6 +238,9 @@ export class SessionManager {
   }
 
   async #onEvent(ctx: SessionContext, event: RuntimeEvent): Promise<void> {
+    if (event.kind === "file_change" && !event.path.startsWith(`${REPO_IN_VOLUME}/`)) {
+      return;
+    }
     this.#emit(ctx.session.id, event);
     const running = this.#running.get(ctx.session.id);
     const reason = await handleRuntimeEvent(

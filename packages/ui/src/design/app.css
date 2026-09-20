@@ -543,6 +543,25 @@ button:disabled:hover,
     font-weight: 600;
     color: var(--color-ink-bright);
   }
+  .ho-md h1,
+  .ho-md h2,
+  .ho-md h3,
+  .ho-md h4 {
+    font-weight: 600;
+    color: var(--color-ink-bright);
+    line-height: 1.3;
+    margin-block: 0.9em 0.35em;
+  }
+  .ho-md h1 {
+    font-size: 1.15em;
+  }
+  .ho-md h2 {
+    font-size: 1.08em;
+  }
+  .ho-md h3,
+  .ho-md h4 {
+    font-size: 1em;
+  }
   .ho-md em {
     font-style: italic;
   }

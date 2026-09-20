@@ -221,9 +221,6 @@ export function useFloorActivity(floorId: ProjectId, thread: ThreadPick | "new")
         return [];
       }
       const { steps, text } = transcriptOf(events ?? []);
-      if (!active && steps.every((step) => step.change === null)) {
-        return [];
-      }
       const endedAt = session.endedAt ?? session.startedAt;
       return [
         {
@@ -237,7 +234,7 @@ export function useFloorActivity(floorId: ProjectId, thread: ThreadPick | "new")
           live: active,
           startedAt: session.startedAt,
           steps: active ? steps : steps.filter((step) => step.change !== null),
-          text: active ? text : "",
+          text,
           since: elapsed(session.startedAt, active ? now : new Date(endedAt).getTime()),
         },
       ];

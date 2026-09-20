@@ -1,4 +1,5 @@
 import type { SessionMode } from "@ho/protocol";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { diffOf } from "./diff.ts";
 import type { Activity, FileChange, Step } from "./live.ts";
@@ -24,6 +25,12 @@ const TOOL = `${MONO} text-10h text-accent-quote flex-[0_0_auto]`;
 const DETAIL = `${MONO} text-10h text-ink-label flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap`;
 
 const TEXT = "text-12h leading-text text-ink-soft border-t border-line pt-7 mt-1";
+
+const LAST_WORDS =
+  "relative text-11h leading-text text-ink-label border-t border-line pt-7 mt-1 w-full text-left bg-transparent border-x-0 border-b-0 cursor-pointer";
+
+const FADE =
+  "pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,var(--color-toast))]";
 
 const CLIP = "overflow-hidden text-ellipsis whitespace-nowrap";
 
@@ -133,6 +140,26 @@ function Header({ activity }: { activity: Activity }): React.JSX.Element {
   );
 }
 
+function LastWords({ text }: { text: string }): React.JSX.Element {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <button
+      type="button"
+      title={t(open ? "chat.lessText" : "chat.moreText")}
+      onClick={() => {
+        setOpen((shown) => !shown);
+      }}
+      className={LAST_WORDS}
+    >
+      <div className={open ? "" : "max-h-58 overflow-hidden"}>
+        <RichText text={text} />
+      </div>
+      {open ? null : <div className={FADE} />}
+    </button>
+  );
+}
+
 export function ChatTranscript({ activity }: { activity: Activity }): React.JSX.Element {
   const { t } = useTranslation();
   return (
@@ -152,10 +179,12 @@ export function ChatTranscript({ activity }: { activity: Activity }): React.JSX.
           <StepRow key={step.id} step={step} />
         ))}
       </div>
-      {activity.text === "" ? null : (
+      {activity.text === "" ? null : activity.live ? (
         <div className={TEXT}>
           <RichText text={activity.text} />
         </div>
+      ) : (
+        <LastWords text={activity.text} />
       )}
     </div>
   );

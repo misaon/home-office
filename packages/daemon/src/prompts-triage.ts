@@ -2,7 +2,13 @@ import { membersOf, type ReadModel, tasksOf } from "@ho/core";
 import { type AgentRole, CHAT_OUTBOX_DIR } from "@ho/protocol";
 import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
-import { filesGuide, REVIEW_FLAGS, rosterLines, type SessionFacts } from "./prompts-shared.ts";
+import {
+  CHAT_STYLE,
+  filesGuide,
+  REVIEW_FLAGS,
+  rosterLines,
+  type SessionFacts,
+} from "./prompts-shared.ts";
 
 const routingGuide = (roles: ReadonlySet<AgentRole>): string => {
   const errands = roles.has("secretary")
@@ -47,6 +53,7 @@ export const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
       ? "Browser: set browser: true on a task only when its result must be seen in a browser (UI work, screenshots); the developer and the reviewers then get headless Chromium."
       : "",
     deliveryGuide(f),
+    CHAT_STYLE,
     filesGuide(f.files),
     `Files: to send the human an image or a document, write it into ${CHAT_OUTBOX_DIR} and name the file in ho_reply's \`files\`. Screenshots the browser tools take land in ${BROWSER_OUTPUT_DIR}; copy the one you mean across. Accepted: png, jpg, gif, webp, pdf, txt, md, json, csv, up to 10 MB each.`,
     "Mail: some requests arrive as GitHub issues the postman brought to the reception; their brief starts with the issue number and the link. Quote the issue link in the brief. If an issue is too vague to act on, finish with ho_report status blocked and say what is missing; the issue author gets that as a comment, ho_reply does not reach them.",
