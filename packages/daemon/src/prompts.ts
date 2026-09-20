@@ -2,6 +2,7 @@ import type { ReadModel } from "@ho/core";
 import {
   type Agent,
   type AgentId,
+  clip,
   type Project,
   ROLE_TITLE,
   type Session,
@@ -54,9 +55,6 @@ const taskBrief = (task: Task): string =>
 const HANDOVER_CHARS = 6000;
 const NOTE_CHARS = 1500;
 const SINCE_MAX = 8;
-
-const clip = (text: string, limit: number): string =>
-  text.length <= limit ? text : `${text.slice(0, limit - 1).trimEnd()}…`;
 
 const formatNote = (note: TaskNote): string => `- [${note.kind}] ${clip(note.text, NOTE_CHARS)}`;
 

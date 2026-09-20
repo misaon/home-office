@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Plus } from "lucide-react";
+import { House, Plus } from "lucide-react";
 import { DISPLAY, MONO } from "./tokens.ts";
 import { useUi } from "../store.ts";
 
@@ -17,19 +17,7 @@ function EmptyMark(): React.JSX.Element {
   return (
     <div className="relative w-96 h-96 m-[0_auto_26px]">
       <div className="absolute inset-0 rounded-28 bg-accent grid place-items-center shadow-gold-far">
-        <svg
-          className="stroke-accent-ink"
-          width="42"
-          height="42"
-          viewBox="0 0 20 20"
-          fill="none"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M3 17V8l7-4 7 4v9" />
-          <path d="M8 17v-5h4v5" />
-        </svg>
+        <House size={42} strokeWidth={1.5} className="text-accent-ink" />
       </div>
       <div className="absolute -inset-10 rounded-36 border-[1.5px] border-accent-a45 animate-ring-3400" />
     </div>

@@ -7,13 +7,11 @@ import { usageQuery } from "../queries.ts";
 import { UsageHeader } from "./usage-header.tsx";
 import { UsageResources } from "./usage-resources.tsx";
 import { type Window, fmt, useDesign } from "./store.ts";
-import { DISPLAY, MONO, separator } from "./tokens.ts";
+import { CARD, DISPLAY, MONO, separator } from "./tokens.ts";
 
 type Row = { name: string; total: string; pct: string; detail: string; cache: string };
 
 const HEADING = `${MONO} text-10 tracking-caps-wider uppercase text-ink-label`;
-
-const CARD = "rounded-14 bg-card border border-edge overflow-hidden";
 
 const NAME = `${MONO} text-12 text-ink-dim overflow-hidden text-ellipsis whitespace-nowrap max-w-[45%]`;
 

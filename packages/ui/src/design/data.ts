@@ -23,7 +23,7 @@ type Presence = "working" | "idle";
 
 export type Member = {
   id: AgentId;
-  i: string;
+  initial: string;
   name: string;
   role: AgentRole;
   provider: string;
@@ -41,11 +41,11 @@ export type Member = {
 
 export type Card = {
   id: TaskId;
-  t: string;
-  p: Priority;
-  k: "code" | "triage" | "plan";
+  title: string;
+  priority: Priority;
+  kind: "code" | "triage" | "plan";
   who: string;
-  s: Lane;
+  lane: Lane;
   status: TaskStatus;
   criteria: readonly string[];
   rating: "good" | "bad" | null;

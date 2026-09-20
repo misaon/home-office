@@ -1,4 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog";
+import { House } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { hintFor, typedIn, useRepoInspection, type RepoDraft } from "./add-project-inspect.ts";
@@ -27,19 +28,7 @@ function NewFloorHead(): React.JSX.Element {
   return (
     <>
       <div className={ICON}>
-        <svg
-          className="stroke-accent-ink"
-          width="19"
-          height="19"
-          viewBox="0 0 20 20"
-          fill="none"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M3 17V8l7-4 7 4v9" />
-          <path d="M8 17v-5h4v5" />
-        </svg>
+        <House size={19} strokeWidth={1.7} className="text-accent-ink" />
       </div>
       <div className="flex-1 min-w-0">
         <div className={`${DISPLAY} font-bold text-21 tracking-tighter leading-title`}>

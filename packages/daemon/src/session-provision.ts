@@ -16,10 +16,9 @@ import type { Services, WorkBase } from "./prompts-shared.ts";
 import type { RunnerConnection } from "./runner-gateway.ts";
 import { checkout } from "./session-checkout.ts";
 import { sandboxSpec } from "./session-sandbox.ts";
-import { startServices } from "./session-services.ts";
 import type { SessionDeps } from "./sessions.ts";
 import { skillPacksFor } from "./skill-pack.ts";
-import { prepareTaskEngine, type TaskEngineRequest } from "./task-engine.ts";
+import { prepareTaskEngine, startServices, type TaskEngineRequest } from "./task-engine.ts";
 import { stopwatch } from "./timing.ts";
 import { reviewVolumeFor, taskVolumeFor } from "./volumes.ts";
 

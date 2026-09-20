@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { secretsStatusQuery } from "../queries.ts";
 import { useUi } from "../store.ts";
 import { SettingsFloor } from "./settings-floor.tsx";
-import { DISPLAY, MONO, pill, separator } from "./tokens.ts";
+import { CARD, DISPLAY, MONO, pill, separator } from "./tokens.ts";
 import { useFloors } from "./live.ts";
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
@@ -100,8 +100,6 @@ function CredRow({
 }
 
 const HEADING = `${MONO} text-10 tracking-caps-wider uppercase text-ink-label`;
-
-const CARD = "rounded-14 bg-card border border-edge overflow-hidden";
 
 function Rule({ name, count }: { name: string; count: string }): React.JSX.Element {
   return (

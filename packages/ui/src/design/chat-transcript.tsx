@@ -5,7 +5,7 @@ import { diffOf } from "./diff.ts";
 import type { Activity, FileChange, Step } from "./live.ts";
 import { RichText } from "./markdown.tsx";
 import { useDesign } from "./store.ts";
-import { MONO } from "./tokens.ts";
+import { ELLIPSIS, MONO } from "./tokens.ts";
 
 const CARD =
   "flex flex-col gap-6 py-10 px-12 rounded-14 rounded-bl-5 bg-toast border border-border w-full max-w-[92%] mr-auto animate-lift-300";
@@ -35,8 +35,6 @@ const LAST_WORDS =
 
 const FADE =
   "pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,var(--color-toast))]";
-
-const CLIP = "overflow-hidden text-ellipsis whitespace-nowrap";
 
 const CHANGE =
   "flex items-center gap-7 min-w-0 w-full py-4 px-7 -mx-7 rounded-7 border-0 bg-transparent text-left cursor-pointer transition-colors duration-200";
@@ -90,7 +88,7 @@ function ChangeRow({ change }: { change: FileChange }): React.JSX.Element {
       className={`hover:bg-accent-a08 ${CHANGE}`}
     >
       <span className="flex-[0_0_auto] w-9 text-10h text-accent-soft">✎</span>
-      <span className={`${MONO} text-10h min-w-0 flex-1 ${CLIP}`}>
+      <span className={`${MONO} text-10h min-w-0 flex-1 ${ELLIPSIS}`}>
         <span className="text-ink-label">{directory}</span>
         <span className="text-ink-soft">{base}</span>
       </span>
@@ -140,7 +138,7 @@ function Header({ activity, changed }: { activity: Activity; changed: number }):
       ) : (
         <span className="text-10h text-good-soft">✓</span>
       )}
-      <span className={`ml-3 flex-1 min-w-0 ${CLIP}`}>
+      <span className={`ml-3 flex-1 min-w-0 ${ELLIPSIS}`}>
         {activity.live
           ? `${activity.name} ${t(DOING[activity.mode])}…`
           : `${activity.name} ${t(DONE[activity.mode])} · ${t("chat.changedFiles", { count: changed })}`}
@@ -178,11 +176,11 @@ export function ChatTranscript({ activity }: { activity: Activity }): React.JSX.
     <div className={CARD}>
       <Header activity={activity} changed={changes.length} />
       <div className={META}>
-        <span className={`${CLIP} flex-[0_0_auto]`}>{t(`roles.${activity.role}`)}</span>
+        <span className={`${ELLIPSIS} flex-[0_0_auto]`}>{t(`roles.${activity.role}`)}</span>
         <span aria-hidden="true">·</span>
-        <span className={`${CLIP} min-w-0 text-accent-quote`}>{activity.model}</span>
+        <span className={`${ELLIPSIS} min-w-0 text-accent-quote`}>{activity.model}</span>
         <span aria-hidden="true">·</span>
-        <span className={`${CLIP} flex-[0_0_auto]`}>
+        <span className={`${ELLIPSIS} flex-[0_0_auto]`}>
           {t("chat.effort", { level: activity.effort })}
         </span>
       </div>

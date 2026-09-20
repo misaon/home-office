@@ -1,7 +1,7 @@
 import { Popover } from "@base-ui/react/popover";
 import { useTranslation } from "react-i18next";
 import { FloorRow } from "./floor-row.tsx";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useFloors } from "./live.ts";
 import { useUi } from "../store.ts";
 import { useDesign } from "./store.ts";
@@ -33,17 +33,7 @@ export function FloorMenu({ onPicked }: { onPicked: () => void }): React.JSX.Ele
       <Popover.Positioner className="z-70 outline-none" sideOffset={10} align="start">
         <Popover.Popup aria-label={t("project.floors")} className={PANEL}>
           <div className={SEARCH}>
-            <svg
-              className="stroke-ink-meta"
-              width="12"
-              height="12"
-              viewBox="0 0 14 14"
-              fill="none"
-              strokeWidth="1.5"
-            >
-              <circle cx="6" cy="6" r="4.2" />
-              <line x1="9.2" y1="9.2" x2="12.4" y2="12.4" strokeLinecap="round" />
-            </svg>
+            <Search size={12} strokeWidth={1.5} className="text-ink-meta" />
             <input
               value={floorQuery}
               onChange={(e) => {

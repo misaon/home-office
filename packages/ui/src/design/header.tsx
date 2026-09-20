@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { ChevronsUpDown, PencilRuler, Settings2 } from "lucide-react";
 import { CONNECTION_KEY, useUi } from "../store.ts";
 import { type Tab, useDesign } from "./store.ts";
 import { DISPLAY, MONO } from "./tokens.ts";
@@ -128,18 +129,7 @@ function HeaderFloor(): React.JSX.Element | null {
         >
           {floor.name}
         </span>
-        <svg
-          className="flex-[0_0_auto] stroke-ink-meta"
-          width="10"
-          height="10"
-          viewBox="0 0 12 12"
-          fill="none"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-        >
-          <polyline points="3,4.6 6,1.8 9,4.6" />
-          <polyline points="3,7.4 6,10.2 9,7.4" />
-        </svg>
+        <ChevronsUpDown size={10} strokeWidth={1.4} className="flex-[0_0_auto] text-ink-meta" />
       </Popover.Trigger>
       <FloorMenu
         onPicked={() => {
@@ -184,18 +174,7 @@ export function Header({
               }}
               className={`hover:text-ink hover:border-border-hover hover:bg-raised ${TOOL}`}
             >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 14 14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-              >
-                <rect x="1.6" y="1.6" width="10.8" height="10.8" rx="2" />
-                <line x1="1.6" y1="5.4" x2="12.4" y2="5.4" />
-                <line x1="5.4" y1="5.4" x2="5.4" y2="12.4" />
-              </svg>
+              <PencilRuler size={12} strokeWidth={1.4} />
               {t("app.editorButton")}
             </button>
           ) : null}
@@ -206,17 +185,7 @@ export function Header({
             }}
             className={`hover:text-ink hover:border-border-hover hover:bg-raised ${TOOL}`}
           >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.4"
-            >
-              <circle cx="7" cy="7" r="2.4" />
-              <circle cx="7" cy="7" r="5.4" />
-            </svg>
+            <Settings2 size={12} strokeWidth={1.4} />
             {t("app.setup")}
           </button>
         </div>

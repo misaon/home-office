@@ -3,7 +3,7 @@ import { type Project, SYSTEM_ACTOR, type Task } from "@ho/protocol";
 import { pushFromVolume } from "./git-bridge.ts";
 import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
 import { openPullRequest } from "./publish.ts";
-import { candidateOf } from "./session-candidate.ts";
+import { candidateOf, settledTrace } from "./session-candidate.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import type { Outcome } from "./session-run.ts";
 import type { SessionDeps } from "./sessions.ts";
@@ -74,11 +74,7 @@ async function pushProgress(
 ): Promise<void> {
   const pushMs = await pushBranch(deps, ctx, project, provisioned, "HEAD");
   await record(deps, ctx, { branch: provisioned.branch });
-  deps.traces.write(
-    ctx.session.id,
-    { kind: "settled", status, branch: provisioned.branch, prUrl: null, pushMs },
-    true,
-  );
+  settledTrace(deps, ctx, { status, branch: provisioned.branch, prUrl: null, pushMs });
 }
 
 async function settleWork(
@@ -88,7 +84,7 @@ async function settleWork(
   outcome: Outcome,
   current: Task,
 ): Promise<void> {
-  const { office, mcp, log, traces } = deps;
+  const { office, mcp, log } = deps;
   const project = office.model.projects.get(ctx.project.id) ?? ctx.project;
   const actor = { kind: "agent", agentId: ctx.agent.id } as const;
   if (current.status !== "in_progress") {
@@ -106,11 +102,7 @@ async function settleWork(
         fileReport(m, ctx.task.id, { status: "blocked", summary }, c),
       );
     }
-    traces.write(
-      ctx.session.id,
-      { kind: "settled", status: "blocked", branch: provisioned.branch, prUrl: null, pushMs },
-      true,
-    );
+    settledTrace(deps, ctx, { status: "blocked", branch: provisioned.branch, prUrl: null, pushMs });
     return;
   }
   const candidate = await candidateOf(deps, ctx, project, provisioned);
@@ -141,7 +133,7 @@ async function settleWork(
     prMs,
   };
   log.info({ sessionId: ctx.session.id, taskId: ctx.task.id, ...settled }, "work settled");
-  traces.write(ctx.session.id, { kind: "settled", ...settled }, true);
+  settledTrace(deps, ctx, settled);
 }
 
 export async function settle(

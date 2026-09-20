@@ -1,4 +1,5 @@
 import { type Message } from "./data.ts";
+import { CircleQuestionMark, FileText } from "lucide-react";
 import { MONO } from "./tokens.ts";
 import { useTranslation } from "react-i18next";
 import { type Attachment, isImageType } from "@ho/protocol";
@@ -28,19 +29,7 @@ function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX.Elemen
         }}
         className={`hover:border-accent-a70 ${FILE}`}
       >
-        <svg
-          className="flex-[0_0_auto] stroke-accent-quote"
-          width="13"
-          height="13"
-          viewBox="0 0 14 14"
-          fill="none"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M8 1.5H3.6v11h6.8V4z" />
-          <path d="M8 1.5V4h2.4" />
-        </svg>
+        <FileText size={13} strokeWidth={1.4} className="flex-[0_0_auto] text-accent-quote" />
         <span
           className={`flex-1 min-w-0 ${MONO} text-10h text-accent-quote overflow-hidden text-ellipsis whitespace-nowrap`}
         >
@@ -134,18 +123,7 @@ export function ChatMessage({
           <ChatThumbs attachments={message.attachments} />
           {message.asks === undefined ? null : (
             <div className={ASK_TAG}>
-              <svg
-                width="11"
-                height="11"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              >
-                <path d="M4.3 4.3a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1.1v.3" />
-                <circle cx="6" cy="9.4" r=".6" fill="currentColor" stroke="none" />
-              </svg>
+              <CircleQuestionMark size={11} strokeWidth={1.5} />
               <span>{t("chat.awaitingAnswer")}</span>
             </div>
           )}

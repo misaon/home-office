@@ -22,6 +22,9 @@ export const separator = (first: boolean): string =>
   first ? "border-t border-transparent" : "border-t border-rule";
 
 export const MONO = "font-mono";
+export const ELLIPSIS = "overflow-hidden text-ellipsis whitespace-nowrap";
+export const CARD = "rounded-14 bg-card border border-edge overflow-hidden";
+export const TOP = "flex items-baseline justify-between gap-10 mb-14";
 export const DISPLAY = "font-display";
 
 declare module "react" {

@@ -2,13 +2,11 @@ import { useTranslation } from "react-i18next";
 import { CAP, INPUT } from "./dialog-sheet.tsx";
 import type { Found, RepoDraft } from "./add-project-inspect.ts";
 import { SelectField } from "./select-field.tsx";
-import { MONO } from "./tokens.ts";
+import { ELLIPSIS, MONO } from "./tokens.ts";
 
 const ROW = "flex items-center gap-11 mt-18 py-13 px-14 rounded-13 transition-all duration-280";
 
 const BADGE = `w-26 h-26 flex-[0_0_26px] rounded-8 grid place-items-center ${MONO} text-11`;
-
-const ELLIPSIS = "overflow-hidden text-ellipsis whitespace-nowrap";
 
 export function FloorDetails({
   draft,

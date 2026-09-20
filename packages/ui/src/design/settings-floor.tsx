@@ -34,7 +34,7 @@ export function SettingsFloor({
   const current = useUi((s) => s.floorId) === floor.id;
   const flash = useDesign((s) => s.flash);
   const confirm = useDesign((s) => s.confirm);
-  const openTasks = floor.cards.filter((x) => x.s !== "done").length;
+  const openTasks = floor.cards.filter((card) => card.lane !== "done").length;
 
   const remove = useOfficeMutation({
     mutationFn: () => requireClient().projects.remove({ id: floor.id }),

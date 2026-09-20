@@ -37,7 +37,7 @@ export function TeamRow({
         <div
           className={`${AVATAR} ${chief ? "bg-gold" : "bg-edge-lit"} ${chief ? "text-accent-ink-deep" : "text-ink-mute"}`}
         >
-          <span>{person.i}</span>
+          <span>{person.initial}</span>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-7">

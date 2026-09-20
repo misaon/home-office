@@ -9,6 +9,14 @@ const OUTPUT_LOG_CHARS = 2000;
 const DIRTY_LIST_MAX = 20;
 const DIRTY_COMMAND = "git status --porcelain";
 
+export const settledTrace = (
+  deps: SessionDeps,
+  ctx: SessionContext,
+  facts: Readonly<Record<string, unknown>>,
+): void => {
+  deps.traces.write(ctx.session.id, { kind: "settled", ...facts }, true);
+};
+
 type Verification =
   | { kind: "passed"; skipped: boolean }
   | { kind: "failed" }
@@ -62,16 +70,26 @@ async function verified(
     return { kind: "passed", skipped: false };
   }
   deps.log.warn({ ...facts, output: result.output.slice(-OUTPUT_LOG_CHARS) }, "checks failed");
-  await deps.office.execute(SYSTEM_ACTOR, (m, c) =>
+  await failCheck(deps, ctx, project, { command, output: result.output, commit });
+  return { kind: "failed" };
+}
+
+type CheckFailure = { command: string; output: string; commit: CommitSha };
+
+const failCheck = (
+  deps: SessionDeps,
+  ctx: SessionContext,
+  project: Project,
+  failure: CheckFailure,
+): Promise<Task> =>
+  deps.office.execute(SYSTEM_ACTOR, (m, c) =>
     recordVerificationFailure(
       m,
       ctx.task.id,
-      { command, output: result.output, maxAttempts: project.verify.maxAttempts, commit },
+      { ...failure, maxAttempts: project.verify.maxAttempts },
       c,
     ),
   );
-  return { kind: "failed" };
-}
 
 const uncommitted = (
   deps: SessionDeps,
@@ -88,19 +106,11 @@ const uncommitted = (
     { sessionId: ctx.session.id, taskId: ctx.task.id, commit: tree.sha, dirty: tree.dirty.length },
     "the working tree has uncommitted changes; nothing is verified or published",
   );
-  return deps.office.execute(SYSTEM_ACTOR, (m, c) =>
-    recordVerificationFailure(
-      m,
-      ctx.task.id,
-      {
-        command: DIRTY_COMMAND,
-        output: `The office verifies and publishes commits only, and HEAD ${tree.sha} does not contain everything in the working tree:\n${shown}${more}\n\nCommit what belongs to the task and remove the rest, then report again.`,
-        maxAttempts: project.verify.maxAttempts,
-        commit: tree.sha,
-      },
-      c,
-    ),
-  );
+  return failCheck(deps, ctx, project, {
+    command: DIRTY_COMMAND,
+    output: `The office verifies and publishes commits only, and HEAD ${tree.sha} does not contain everything in the working tree:\n${shown}${more}\n\nCommit what belongs to the task and remove the rest, then report again.`,
+    commit: tree.sha,
+  });
 };
 
 const blockUnavailable = (
@@ -137,11 +147,11 @@ export async function candidateOf(
   }
   if (tree.dirty.length > 0) {
     await uncommitted(deps, ctx, project, tree);
-    deps.traces.write(
-      ctx.session.id,
-      { kind: "settled", status: "uncommitted", branch: provisioned.branch, commit: tree.sha },
-      true,
-    );
+    settledTrace(deps, ctx, {
+      status: "uncommitted",
+      branch: provisioned.branch,
+      commit: tree.sha,
+    });
     return null;
   }
   await provisioned.stopServices();
@@ -151,30 +161,22 @@ export async function candidateOf(
     return null;
   }
   if (verification.kind === "failed") {
-    deps.traces.write(
-      ctx.session.id,
-      { kind: "settled", status: "checks_failed", branch: provisioned.branch, commit: tree.sha },
-      true,
-    );
+    settledTrace(deps, ctx, {
+      status: "checks_failed",
+      branch: provisioned.branch,
+      commit: tree.sha,
+    });
     return null;
   }
   const after = await inspectWorkingTree(deps.provider, deps.config, provisioned.volume).catch(
     () => null,
   );
   if (after !== null && after.sha !== tree.sha) {
-    await deps.office.execute(SYSTEM_ACTOR, (m, c) =>
-      recordVerificationFailure(
-        m,
-        ctx.task.id,
-        {
-          command: project.verify.command,
-          output: `the checks moved HEAD from ${tree.sha} to ${after.sha}; a check must not commit`,
-          maxAttempts: project.verify.maxAttempts,
-          commit: tree.sha,
-        },
-        c,
-      ),
-    );
+    await failCheck(deps, ctx, project, {
+      command: project.verify.command,
+      output: `the checks moved HEAD from ${tree.sha} to ${after.sha}; a check must not commit`,
+      commit: tree.sha,
+    });
     return null;
   }
   if (verification.skipped) {

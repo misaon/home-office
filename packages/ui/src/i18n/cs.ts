@@ -120,7 +120,6 @@ export const cs: typeof en = {
     stopTitle: "Zastavit {{name}} uprostřed úkolu?",
     stopOk: "Zastavit {{name}}",
     stopped: "{{name}} zastaven",
-    thinking: "přemýšlí…",
     doingWork: "pracuje",
     doingReview: "reviduje",
     doingTriage: "čte vaši zprávu",

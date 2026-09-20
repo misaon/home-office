@@ -1,4 +1,4 @@
-import { compact, type RuntimeErrorCode, type RuntimeEvent } from "@ho/protocol";
+import { clip, compact, type RuntimeErrorCode, type RuntimeEvent } from "@ho/protocol";
 import { z } from "zod";
 import { fileChangeOf } from "./file-change.ts";
 
@@ -77,7 +77,7 @@ const summarize = (content: string | unknown[] | undefined): string => {
             return parsed.success ? parsed.data.text : "";
           })
           .join(" ");
-  return text.length > SUMMARY_MAX ? `${text.slice(0, SUMMARY_MAX - 1)}…` : text;
+  return clip(text, SUMMARY_MAX);
 };
 
 type ContentBlock = z.infer<typeof ContentBlock>;

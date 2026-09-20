@@ -1,7 +1,7 @@
 import { type Floor, type Lane } from "./data.ts";
 import { useTranslation } from "react-i18next";
 import { requireClient } from "../rpc.ts";
-import { DISPLAY } from "./tokens.ts";
+import { DISPLAY, TOP } from "./tokens.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
 import { type Chip, FilterChips } from "./filter-chips.tsx";
 
@@ -22,7 +22,7 @@ function BoardFilters({ floor }: { floor: Floor }): React.JSX.Element {
     key,
     label,
     dot,
-    count: key === "all" ? floor.cards.length : floor.cards.filter((c) => c.s === key).length,
+    count: key === "all" ? floor.cards.length : floor.cards.filter((c) => c.lane === key).length,
   }));
 
   return (
@@ -39,8 +39,6 @@ function BoardFilters({ floor }: { floor: Floor }): React.JSX.Element {
 
 const SEGMENT = "transition-[width] duration-500 ease-glide";
 
-const TOP = "flex items-baseline justify-between gap-10 mb-14";
-
 const SHARE = `${DISPLAY} font-bold text-30 tracking-display leading-flat whitespace-nowrap`;
 
 const BAR = "flex h-5 rounded-pill overflow-hidden gap-2 mb-14";
@@ -54,9 +52,9 @@ export function BoardHeader({ floor }: { floor: Floor }): React.JSX.Element {
   const confirm = useDesign((s) => s.confirm);
   const { cards } = floor;
   const total = cards.length === 0 ? 1 : cards.length;
-  const done = cards.filter((c) => c.s === "done").length;
+  const done = cards.filter((c) => c.lane === "done").length;
   const share = (lane: string): string =>
-    `${String(Math.round((cards.filter((c) => c.s === lane).length / total) * 100))}%`;
+    `${String(Math.round((cards.filter((c) => c.lane === lane).length / total) * 100))}%`;
 
   const clear = useOfficeMutation({
     mutationFn: () => requireClient().tasks.clear({ projectId: floor.id }),

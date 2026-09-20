@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { BoardCard } from "./board-card.tsx";
 import { BoardHeader } from "./board-header.tsx";
 import type { Floor, Lane } from "./data.ts";
-import { MONO } from "./tokens.ts";
+import { CARD, MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
 const LANES = [
@@ -14,8 +14,6 @@ const LANES = [
 
 const RULE = `${MONO} text-10 tracking-caps-wider uppercase text-ink-label`;
 
-const CARD = "rounded-14 bg-card border border-edge overflow-hidden";
-
 export function Board({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const boardFilter = useDesign((s) => s.boardFilter);
@@ -26,7 +24,7 @@ export function Board({ floor }: { floor: Floor }): React.JSX.Element {
       <div className="flex-1 min-h-0 overflow-y-auto p-16">
         {LANES.filter(([key]) => boardFilter === "all" || boardFilter === key).map(
           ([key, label, dot]) => {
-            const items = floor.cards.filter((x) => x.s === key);
+            const items = floor.cards.filter((card) => card.lane === key);
             return (
               <div key={key} className="mb-18">
                 <div className="flex items-center gap-8 mt-0 mx-2 mb-9">

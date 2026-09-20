@@ -1,13 +1,10 @@
 import type { SessionUpdate, StopReason, ToolCallContent } from "@agentclientprotocol/sdk";
-import { fileChangeEvent, type RuntimeEvent } from "@ho/protocol";
+import { clip, fileChangeEvent, type RuntimeEvent } from "@ho/protocol";
 
 const SUMMARY_MAX = 200;
 const TOOL_TITLES_MAX = 1024;
 
 type Blocks = readonly ToolCallContent[] | null | undefined;
-
-const clip = (text: string): string =>
-  text.length > SUMMARY_MAX ? `${text.slice(0, SUMMARY_MAX - 1)}…` : text;
 
 const contentText = (blocks: Blocks): string =>
   (blocks ?? [])
@@ -59,7 +56,7 @@ const settled = (
     kind: "tool_result",
     id,
     ok: status === "completed",
-    summary: clip(text === "" ? title : text),
+    summary: clip(text === "" ? title : text, SUMMARY_MAX),
   };
   const fresh = diffsOf(id, blocks);
   const remembered = turn.diffs.get(id) ?? [];

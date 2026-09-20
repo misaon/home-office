@@ -3,7 +3,7 @@ import type { ParseKeys } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type Check, CheckRow } from "./fault-check.tsx";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, RefreshCw } from "lucide-react";
 import {
   BODY,
   CARD,
@@ -67,20 +67,7 @@ function FaultActions({
         }}
         className={`hover:-translate-y-2 hover:shadow-lift-xl ${PRIMARY}`}
       >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M13.4 8a5.4 5.4 0 1 1-1.6-3.8" />
-          <polyline points="13.6,2 13.6,5 10.6,5" />
-        </svg>{" "}
-        <span>{t(primary)}</span>
+        <RefreshCw size={14} strokeWidth={1.7} /> <span>{t(primary)}</span>
       </button>
       <button
         type="button"

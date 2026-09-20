@@ -1,4 +1,5 @@
 import { type ChatSendInput, type ChatThreadTarget, errorMessage } from "@ho/protocol";
+import { ArrowRight, Upload } from "lucide-react";
 import type { TFunction } from "i18next";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,20 +23,7 @@ function DropHint(): React.JSX.Element {
   const { t } = useTranslation();
   return (
     <div className={DROP}>
-      <svg
-        className="stroke-accent"
-        width="22"
-        height="22"
-        viewBox="0 0 24 24"
-        fill="none"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M12 16V4" />
-        <polyline points="7,9 12,4 17,9" />
-        <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-      </svg>
+      <Upload size={22} strokeWidth={1.6} className="text-accent" />
       <span className="text-12h text-accent-soft font-medium">{t("chat.dropHere")}</span>
     </div>
   );
@@ -68,17 +56,7 @@ function AnsweringHint({ name }: { name: string }): React.JSX.Element {
   const { t } = useTranslation();
   return (
     <div className={ANSWERING}>
-      <svg
-        width="11"
-        height="11"
-        viewBox="0 0 12 12"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      >
-        <path d="M2 6h8M6.5 2.5 10 6l-3.5 3.5" />
-      </svg>
+      <ArrowRight size={11} strokeWidth={1.5} />
       <span>{t("chat.answering", { name })}</span>
     </div>
   );

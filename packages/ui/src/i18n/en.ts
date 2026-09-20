@@ -120,7 +120,6 @@ export const en = {
     stopTitle: "Stop {{name}} mid-task?",
     stopOk: "Stop {{name}}",
     stopped: "{{name}} stopped",
-    thinking: "is thinking…",
     doingWork: "is working",
     doingReview: "is reviewing",
     doingTriage: "is reading your message",

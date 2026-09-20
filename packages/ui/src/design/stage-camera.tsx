@@ -1,4 +1,5 @@
 import { Toggle } from "@base-ui/react/toggle";
+import { Minus, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentId } from "@ho/protocol";
@@ -31,17 +32,7 @@ function Round({
       onClick={onClick}
       className={`hover:bg-accent-a16 hover:text-accent-soft hover:scale-108 ${ROUND}`}
     >
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 12 12"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      >
-        {plus ? <line x1="6" y1="2.5" x2="6" y2="9.5" /> : null}
-        <line x1="2.5" y1="6" x2="9.5" y2="6" />
-      </svg>
+      {plus ? <Plus size={12} strokeWidth={1.6} /> : <Minus size={12} strokeWidth={1.6} />}
     </button>
   );
 }
