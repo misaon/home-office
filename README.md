@@ -200,6 +200,12 @@ branch, publish and intake policy, budgets, and the staff to hire:
   "publish": { "mode": "pull-request", "draft": true },
   "verify": { "command": "bun run check" },
   "acceptance": { "verify": "integration", "maxFixRounds": 2 },
+  "environment": {
+    "setup": ["bun install --frozen-lockfile"],
+    "run": "bun run dev",
+    "ready": { "url": "http://127.0.0.1:3000/health", "timeoutSeconds": 60 },
+    "checks": { "lint": "bun run lint", "test": "bun test" }
+  },
   "budgets": { "maxTurnsPerTask": 200, "maxConcurrentSessions": 1, "maxWallMinutes": 60 }
 }
 ```
@@ -220,6 +226,16 @@ conditions the boss or the analyst stated — and a single task closes on the ev
 filed. `always` verifies every request and every task criterion independently; `never` closes a
 request as soon as its tasks are done. `maxFixRounds` caps how many times a failed verification may
 reopen the work before the request blocks for you.
+
+`environment` describes how this project is set up and checked, once, for every agent that touches
+it. `setup` runs before each work, review and verification session in the agent's own sandbox
+(dependencies, toolchains), `services` when the floor's private engine is on, `seed` after them
+(migrations, fixtures); `run` starts the application in the background and `ready` waits for a URL
+or a command to answer, so the agent finds it running and is told where its log is. `checks` names
+the kinds of checks the project has — lint, unit, end-to-end — so nobody spends turns surveying the
+tooling. When a request opens, the office runs `setup` and every check once on the default branch
+and records the result on the request as its baseline: agents are told which checks already failed
+before they started, and a failure that matches the baseline is not counted as their regression.
 
 ## What runs where
 

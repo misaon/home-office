@@ -81,9 +81,27 @@ async function verified(
     return { kind: "passed", skipped: false };
   }
   deps.log.warn({ ...facts, output: result.output.slice(-OUTPUT_LOG_CHARS) }, "checks failed");
-  await failCheck(deps, ctx, project, { command, output: result.output, commit });
+  await failCheck(deps, ctx, project, {
+    command,
+    output: `${preexistingNote(deps, ctx, project)}${result.output}`,
+    commit,
+  });
   return { kind: "failed" };
 }
+
+const preexistingNote = (deps: SessionDeps, ctx: SessionContext, project: Project): string => {
+  const baseline =
+    ctx.task.mandateId === undefined
+      ? undefined
+      : deps.office.model.mandates.get(ctx.task.mandateId)?.baseline;
+  if (baseline === undefined) {
+    return "";
+  }
+  const known = baseline.checks.find((check) => check.name === "verify");
+  return known?.ok === false
+    ? `(the same check already fails on ${project.defaultBranch} at ${baseline.commit.slice(0, 12)}; compare the output below with that failure before you chase it)\n\n`
+    : "";
+};
 
 type CheckFailure = { command: string; output: string; commit: CommitSha };
 

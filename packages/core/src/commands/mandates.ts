@@ -1,4 +1,5 @@
 import {
+  type Baseline,
   type CriterionOrigin,
   compact,
   conflict,
@@ -139,6 +140,22 @@ export function patchMandateArtifacts(
           actor: ctx.actor,
           payload: { mandateId, artifacts: { ...mandate.artifacts, ...compact(artifacts) } },
         },
+      ],
+      read: readMandate(mandateId),
+    }),
+  );
+}
+
+export function recordBaseline(
+  model: ReadModel,
+  mandateId: MandateId,
+  baseline: Baseline,
+  ctx: CommandContext,
+): CommandResult<Mandate> {
+  return withMandate(model, mandateId, () =>
+    ok({
+      events: [
+        { type: "mandate.baseline_recorded", actor: ctx.actor, payload: { mandateId, baseline } },
       ],
       read: readMandate(mandateId),
     }),

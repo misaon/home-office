@@ -7,5 +7,12 @@
   "intake": { "enabled": false },
   "services": { "enabled": false, "mode": "rootless" },
   "verify": { "command": "bun run verify" },
+  "environment": {
+    "setup": ["bun install --frozen-lockfile"],
+    "checks": {
+      "lint": "oxlint --deny-warnings --ignore-pattern 'apps/desktop/**'",
+      "test": "bun test"
+    }
+  },
   "budgets": { "maxTurnsPerTask": 200, "maxConcurrentSessions": 1, "maxWallMinutes": 60 }
 }

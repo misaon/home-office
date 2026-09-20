@@ -21,7 +21,14 @@ import {
   type StoredEvent,
   SYSTEM_ACTOR,
 } from "@ho/protocol";
-import { fulfil, integrate, setMandateStatus, type StewardDeps } from "./mandate-actions.ts";
+import { baselineWorthRunning } from "./baseline.ts";
+import {
+  fulfil,
+  integrate,
+  recordBaselineFor,
+  setMandateStatus,
+  type StewardDeps,
+} from "./mandate-actions.ts";
 import { decisionBrief, failureReason } from "./mandate-report.ts";
 import { followEvents, type Office } from "./office.ts";
 
@@ -69,6 +76,7 @@ const soleTaskFailure = (assessment: Failed): Failed["taskCriteria"][number] | u
 export class MandateSteward {
   readonly #deps: StewardDeps;
   readonly #chains = new Map<MandateId, Promise<void>>();
+  readonly #baselines = new Map<MandateId, Promise<void>>();
   #following: { stop: () => Promise<void> } | null = null;
 
   constructor(deps: StewardDeps) {
@@ -100,7 +108,21 @@ export class MandateSteward {
 
   async stop(): Promise<void> {
     await this.#following?.stop();
-    await Promise.allSettled(this.#chains.values());
+    await Promise.allSettled([...this.#chains.values(), ...this.#baselines.values()]);
+  }
+
+  #baseline(mandate: Mandate, project: Project): void {
+    if (
+      mandate.baseline !== undefined ||
+      this.#baselines.has(mandate.id) ||
+      !baselineWorthRunning(project)
+    ) {
+      return;
+    }
+    const running = recordBaselineFor(this.#deps, mandate, project).finally(() => {
+      this.#baselines.delete(mandate.id);
+    });
+    this.#baselines.set(mandate.id, running);
   }
 
   steer(mandateId: MandateId): void {
@@ -126,6 +148,7 @@ export class MandateSteward {
     if (mandate === undefined || project === undefined || !isMandateOpen(mandate.status)) {
       return;
     }
+    this.#baseline(mandate, project);
     const assessment = assessMandate(office.model, mandate, project.acceptance);
     log.debug(
       { mandateId, status: mandate.status, round: mandate.round, assessment: assessment.kind },

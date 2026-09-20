@@ -1,6 +1,7 @@
 import { attachmentsOfTask, escalatedEffort, type RuntimeSession, setbacksOf } from "@ho/core";
 import { imageRefFor, PROVIDERS, type SessionRuntime } from "@ho/protocol";
 import { browserMcpServers } from "./browser.ts";
+import type { EnvironmentReport } from "./environment-report.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import { openingMessage, systemPrompt } from "./prompts.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
@@ -34,6 +35,7 @@ export const prepare = (
   deps: SessionDeps,
   ctx: SessionContext,
   provisioned: Provisioned,
+  environment: EnvironmentReport | null,
 ): Prepared => {
   const browser = browserFor(deps, ctx);
   const packs = skillPacksFor(ctx.agent, ctx.session.mode);
@@ -50,6 +52,7 @@ export const prepare = (
       browser,
       preview: ctx.project.preview,
       services: provisioned.services,
+      environment,
     },
     deps.office.model,
   );

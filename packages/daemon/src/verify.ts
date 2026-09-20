@@ -3,6 +3,7 @@ import {
   type SandboxProvider,
   type SandboxRunResult,
   type SandboxSpec,
+  type VolumeMount,
 } from "@ho/core";
 import type { Project, SessionId } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
@@ -49,6 +50,52 @@ const describe = (
   return tail(result);
 };
 
+type ContainerOptions = {
+  cmd: readonly string[];
+  env: Readonly<Record<string, string>>;
+  volumes: readonly VolumeMount[];
+};
+
+const containerSpec = (
+  config: DaemonConfig,
+  volume: string,
+  step: string,
+  network: string,
+  options: ContainerOptions,
+): SandboxSpec => ({
+  name: `${volume}-${step}`,
+  image: config.docker.agentImage,
+  cmd: options.cmd,
+  env: { CI: "1", HOME: "/home/agent", ...options.env },
+  user: "1000:1000",
+  workdir: REPO_IN_VOLUME,
+  labels: { [LABELS.managed]: "true", [LABELS.kind]: "verify" },
+  network,
+  volumes: [{ name: volume, target: "/work" }, ...options.volumes],
+  binds: [],
+  tmpfs: { "/tmp": "rw,nosuid,size=256m", "/home/agent": "rw,nosuid,size=256m" },
+  limits: {
+    memoryBytes: config.verify.memoryMb * MIB,
+    cpus: config.verify.cpus,
+    pids: config.verify.pids,
+  },
+  readonlyRootfs: false,
+  ports: [],
+});
+
+export const commandSpec = (
+  config: DaemonConfig,
+  volume: string,
+  step: string,
+  command: string,
+  network: string,
+): SandboxSpec =>
+  containerSpec(config, volume, step, network, {
+    cmd: ["/bin/sh", "-lc", command],
+    env: {},
+    volumes: [],
+  });
+
 const verifySpec = (
   config: DaemonConfig,
   project: Project,
@@ -56,39 +103,18 @@ const verifySpec = (
   engine: TaskEnginePlan | null,
 ): SandboxSpec => {
   const { command } = project.verify;
-  return {
-    name: `${volume}-verify`,
-    image: config.docker.agentImage,
-    cmd: engine === null ? ["/bin/sh", "-lc", command] : ["/bin/sh", "-c", WAIT_FOR_ENGINE],
+  if (engine === null) {
+    return commandSpec(config, volume, "verify", command, "none");
+  }
+  return containerSpec(config, volume, "verify", "none", {
+    cmd: ["/bin/sh", "-c", WAIT_FOR_ENGINE],
     env: {
-      CI: "1",
-      HOME: "/home/agent",
-      ...(engine === null
-        ? {}
-        : {
-            ...engineEnv(engine.mode),
-            HO_VERIFY_COMMAND: command,
-            HO_ENGINE_WAIT_SECONDS: String(Math.ceil(config.services.startTimeoutMs / 1000)),
-          }),
+      ...engineEnv(engine.mode),
+      HO_VERIFY_COMMAND: command,
+      HO_ENGINE_WAIT_SECONDS: String(Math.ceil(config.services.startTimeoutMs / 1000)),
     },
-    user: "1000:1000",
-    workdir: REPO_IN_VOLUME,
-    labels: { [LABELS.managed]: "true", [LABELS.kind]: "verify" },
-    network: "none",
-    volumes: [
-      { name: volume, target: "/work" },
-      ...(engine === null ? [] : [{ name: engine.socketVolume, target: engine.socketDir }]),
-    ],
-    binds: [],
-    tmpfs: { "/tmp": "rw,nosuid,size=256m", "/home/agent": "rw,nosuid,size=256m" },
-    limits: {
-      memoryBytes: config.verify.memoryMb * MIB,
-      cpus: config.verify.cpus,
-      pids: config.verify.pids,
-    },
-    readonlyRootfs: false,
-    ports: [],
-  };
+    volumes: [{ name: engine.socketVolume, target: engine.socketDir }],
+  });
 };
 
 async function runWithServices(

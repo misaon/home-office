@@ -1,6 +1,7 @@
 import { type ReadModel, tasksOfMandate } from "@ho/core";
 import { headline, type Mandate, type Task } from "@ho/protocol";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
+import { environmentGuide } from "./prompts-environment.ts";
 import {
   browserGuide,
   repoRules,
@@ -57,6 +58,7 @@ export const verifyPrompt = (f: SessionFacts, model: ReadModel): string[] => {
     browserGuide(f.browser, true),
     serveGuide(f.preview, f.browser),
     servicesGuide(f.services),
+    environmentGuide(f, model),
     `The request, as the human wrote it:\n${mandate.request}`,
     conditions(mandate),
     `Tasks that make up the result:\n${work.map((task) => taskLine(model, task)).join("\n")}`,

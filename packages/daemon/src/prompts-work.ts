@@ -1,6 +1,7 @@
 import { type ReadModel, reviewPlanOf, verifyAttempts } from "@ho/core";
 import { type Agent, type Project, ROLE_TITLE, type Task } from "@ho/protocol";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
+import { environmentGuide } from "./prompts-environment.ts";
 import {
   browserGuide,
   criteriaGuide,
@@ -59,6 +60,7 @@ export const workPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   browserGuide(f.browser, true),
   serveGuide(f.preview, f.browser),
   servicesGuide(f.services),
+  environmentGuide(f, model),
   dependenciesGuide(f.base),
   `Task: ${f.task.title}`,
   criteriaGuide(f.task, "You are done when every one of these holds:"),

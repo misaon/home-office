@@ -12,6 +12,7 @@ import {
   type Task,
 } from "@ho/protocol";
 import { BROWSER_OUTPUT_DIR } from "./browser.ts";
+import type { EnvironmentReport } from "./environment-report.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 
 export type Services =
@@ -41,6 +42,7 @@ export type SessionFacts = {
   browser: boolean;
   preview: Preview;
   services: Services;
+  environment: EnvironmentReport | null;
 };
 
 export const SANDBOX =

@@ -1,6 +1,7 @@
 import { type ReadModel, reviewChain } from "@ho/core";
 import { type Agent, type AgentRole, ROLE_TITLE, type Task } from "@ho/protocol";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
+import { environmentGuide } from "./prompts-environment.ts";
 import {
   browserGuide,
   criteriaGuide,
@@ -56,6 +57,7 @@ export const reviewPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   browserGuide(f.browser, false),
   serveGuide(f.preview, f.browser),
   servicesGuide(f.services),
+  environmentGuide(f, model),
   `Start with \`git -C ${REPO_IN_VOLUME} diff ${f.project.defaultBranch}...HEAD --stat\`, then the diff file by file; read surrounding code only where needed. If ${f.project.defaultBranch} is missing locally, review the branch's own commits with \`git log -p\`.`,
   checksGuide(f),
   focus(f.agent),

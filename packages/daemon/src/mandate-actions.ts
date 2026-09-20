@@ -2,6 +2,7 @@ import {
   changeMandateStatus,
   evidenceOf,
   patchMandateArtifacts,
+  recordBaseline,
   recordEvidence,
   type SandboxProvider,
 } from "@ho/core";
@@ -14,6 +15,7 @@ import {
   SYSTEM_ACTOR,
   type Task,
 } from "@ho/protocol";
+import { runBaseline } from "./baseline.ts";
 import type { DaemonConfig } from "./config.ts";
 import type { Logger } from "./logger.ts";
 import { integrateMandate } from "./mandate-integrate.ts";
@@ -41,6 +43,36 @@ export const setMandateStatus = (
   deps.office.execute(SYSTEM_ACTOR, (m, c) =>
     changeMandateStatus(m, mandate.id, to, clip(reason, REASON_MAX), c),
   );
+
+export async function recordBaselineFor(
+  deps: StewardDeps,
+  mandate: Mandate,
+  project: Project,
+): Promise<void> {
+  const { office, provider, config, home, log } = deps;
+  const started = Bun.nanoseconds();
+  try {
+    const baseline = await runBaseline(provider, config, home, project, mandate, () =>
+      office.clock.now().toISOString(),
+    );
+    await office.execute(SYSTEM_ACTOR, (m, c) => recordBaseline(m, mandate.id, baseline, c));
+    log.info(
+      {
+        mandateId: mandate.id,
+        commit: baseline.commit,
+        setup: baseline.setup.ok,
+        checks: baseline.checks.map((check) => ({ name: check.name, ok: check.ok, ms: check.ms })),
+        ms: Math.round((Bun.nanoseconds() - started) / 1e6),
+      },
+      "baseline recorded",
+    );
+  } catch (error) {
+    log.warn(
+      { mandateId: mandate.id, err: errorMessage(error) },
+      "the baseline could not be recorded; the request continues without it",
+    );
+  }
+}
 
 export type IntegrationOutcome =
   | { kind: "recorded" }
