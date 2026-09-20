@@ -109,6 +109,17 @@ for await (const event of session.prompt({ text: "Summarise the README." })) {
   process.stdout.write(`${describeEvent(event)}\n`);
 }
 session.close();
+const EXIT_GRACE_MS = 5000;
+const exitCode = await Promise.race([
+  channel.exited,
+  Bun.sleep(EXIT_GRACE_MS).then(() => {
+    process.stderr.write(
+      `the mock agent did not exit within ${String(EXIT_GRACE_MS)}ms; killing it\n`,
+    );
+    channel.signal("SIGKILL");
+    return channel.exited;
+  }),
+]);
 const kinds = events.map((e) => e.kind);
 const checks = {
   init: kinds[0] === "init",
@@ -116,7 +127,7 @@ const checks = {
   toolCall: kinds.includes("tool_call"),
   toolResultOk: events.some((e) => e.kind === "tool_result" && e.ok),
   result: events.some((e) => e.kind === "result" && e.ok && e.text.includes("2 MCP servers")),
-  exitCode: await channel.exited,
+  exitCode,
 };
 process.stdout.write(`CHECKS ${JSON.stringify(checks)}\n`);
 process.exit(Object.values(checks).every((v) => v === true || v === 0) ? 0 : 1);

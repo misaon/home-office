@@ -3,11 +3,13 @@ import {
   Actor,
   Agent,
   ChatMessage,
+  CommitSha,
   IsoDateTime,
   MailAck,
   MailItem,
   Project,
   Session,
+  SessionRuntime,
   SessionServices,
   SessionState,
   Task,
@@ -19,6 +21,7 @@ import {
   Usage,
 } from "./domain.ts";
 import { AgentId, ChatThreadId, EventId, MailItemId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import { ReviewStage } from "./roles.ts";
 
 const Envelope = z.object({ id: EventId, at: IsoDateTime, actor: Actor });
 
@@ -59,6 +62,12 @@ export const DomainEvent = z.discriminatedUnion("type", [
     taskId: TaskId,
     verdict: z.enum(["approve", "request_changes"]),
     rounds: z.int().nonnegative(),
+    commit: CommitSha.optional(),
+  }),
+  event("task.review_waived", {
+    taskId: TaskId,
+    stage: ReviewStage,
+    reason: z.string().max(500).optional(),
   }),
   event("task.rated", { taskId: TaskId, rating: TaskRating }),
   event("task.removed", { taskId: TaskId }),
@@ -83,6 +92,8 @@ export const DomainEvent = z.discriminatedUnion("type", [
     runtimeSessionId: z.string().optional(),
     sandboxId: z.string().optional(),
     services: SessionServices.optional(),
+    runtime: SessionRuntime.optional(),
+    confirmed: z.object({ model: z.string().optional(), effort: z.string().optional() }).optional(),
     reason: z.string().max(2000).optional(),
   }),
   event("session.usage_recorded", {

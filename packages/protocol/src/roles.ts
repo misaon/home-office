@@ -30,11 +30,15 @@ export const ROLE_TITLE: Readonly<Record<AgentRole, string>> = {
   developer: "developer",
 };
 
-export const REVIEW_STAGES = ["qa", "security", "head"] as const satisfies readonly AgentRole[];
+export const ReviewStage = z.enum(["qa", "security", "head"]);
+export type ReviewStage = z.infer<typeof ReviewStage>;
+
+export const REVIEW_STAGES = ReviewStage.options satisfies readonly AgentRole[];
 
 export const ReviewPlan = z.object({
   qa: z.boolean().default(false),
   security: z.boolean().default(false),
+  head: z.boolean().default(true),
 });
 export type ReviewPlan = z.infer<typeof ReviewPlan>;
 

@@ -24,6 +24,8 @@ const Counts = z.object({
   failed: z.int().nonnegative(),
   firstPass: z.int().nonnegative(),
   reviewRounds: z.int().nonnegative(),
+  verifyFailures: z.int().nonnegative(),
+  planning: z.int().nonnegative(),
   sessions: z.int().nonnegative(),
   minutes: z.number().nonnegative(),
   ratedGood: z.int().nonnegative(),
@@ -33,12 +35,20 @@ const Counts = z.object({
   costKnown: z.int().nonnegative(),
 });
 
+export const RunConfiguration = z.object({
+  model: z.string(),
+  effort: z.string(),
+  sessions: z.int().positive(),
+});
+export type RunConfiguration = z.infer<typeof RunConfiguration>;
+
 export const AgentScore = Counts.extend({
   agentId: AgentId,
   name: z.string(),
   role: AgentRole,
   model: z.string(),
   effort: EffortLevel,
+  runs: z.array(RunConfiguration),
   departed: z.boolean(),
 });
 export type AgentScore = z.infer<typeof AgentScore>;

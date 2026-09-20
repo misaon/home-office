@@ -1,22 +1,14 @@
-import {
-  attachmentsOfTask,
-  changeSessionState,
-  escalatedEffort,
-  type RuntimeSession,
-  setbacksOf,
-} from "@ho/core";
+import { changeSessionState, type RuntimeSession } from "@ho/core";
 import {
   compact,
-  PROVIDERS,
   REPORT_MAX,
   type RuntimeErrorCode,
   type RuntimeEvent,
+  type SessionRuntime,
+  type SessionServices,
   type SessionState,
   SYSTEM_ACTOR,
 } from "@ho/protocol";
-import { browserMcpServers } from "./browser.ts";
-import { REPO_IN_VOLUME } from "./git-bridge.ts";
-import { openingMessage, systemPrompt } from "./prompts.ts";
 import { secretEnvFor } from "./provider-secrets.ts";
 import {
   provision,
@@ -24,14 +16,11 @@ import {
   type SessionContext,
   sessionServicesOf,
 } from "./session-provision.ts";
-import { skillPacksFor } from "./skill-pack.ts";
 import { explainExit } from "./session-record.ts";
+import { openRuntime, prepare, type Prepared } from "./session-runtime.ts";
 import { settle } from "./session-settle.ts";
 import type { SessionDeps } from "./sessions.ts";
 import { elapsedMs } from "./timing.ts";
-
-const PLUGINS_ROOT = "/opt/ho/plugins";
-const HASH_CHARS = 12;
 
 export type Outcome = { report: string; failure: string | null };
 
@@ -41,98 +30,9 @@ type Consumed = Outcome & {
   turns: number;
 };
 
-type Prepared = { appendix: string; message: string; browser: boolean; packs: string[] };
-
-const hashOf = (text: string): string =>
-  new Bun.CryptoHasher("sha256").update(text).digest("hex").slice(0, HASH_CHARS);
-
-const plans = (ctx: SessionContext): boolean =>
-  ctx.session.mode === "triage" || ctx.session.mode === "plan";
-
-const browserFor = (deps: SessionDeps, ctx: SessionContext): boolean =>
-  deps.config.browser.enabled && (plans(ctx) || ctx.task.browser === true);
-
-const prepare = (deps: SessionDeps, ctx: SessionContext, provisioned: Provisioned): Prepared => {
-  const browser = browserFor(deps, ctx);
-  return {
-    browser,
-    packs: skillPacksFor(ctx.agent, ctx.session.mode),
-    appendix: systemPrompt(
-      {
-        agent: ctx.agent,
-        project: ctx.project,
-        task: ctx.task,
-        files: attachmentsOfTask(deps.office.model, ctx.task),
-        mode: ctx.session.mode,
-        branch: provisioned.branch,
-        browser,
-        preview: ctx.project.preview,
-        services: provisioned.services,
-      },
-      deps.office.model,
-    ),
-    message: openingMessage(ctx.task, ctx.session.mode, ctx.previous, ctx.agent.id),
-  };
-};
-
-const openRuntime = (
-  deps: SessionDeps,
-  ctx: SessionContext,
-  provisioned: Provisioned,
-  prepared: Prepared,
-  secrets: Readonly<Record<string, string>>,
-  resume: string | null,
-): Promise<RuntimeSession> => {
-  const mcpServers = {
-    ho: {
-      kind: "http" as const,
-      url: deps.mcpUrl(),
-      headers: { Authorization: `Bearer ${provisioned.mcpToken}` },
-    },
-    ...(prepared.browser && !plans(ctx) ? browserMcpServers(deps.config.browser.devtools) : {}),
-  };
-  const setbacks = ctx.session.mode === "work" ? setbacksOf(ctx.task) : 0;
-  const levels = PROVIDERS[ctx.agent.provider].effortLevels;
-  const spec = {
-    sessionId: ctx.session.id,
-    taskId: ctx.task.id,
-    agentId: ctx.agent.id,
-    provider: ctx.agent.provider,
-    auth: ctx.agent.auth,
-    model: ctx.agent.model,
-    effort: escalatedEffort(ctx.agent.effort, levels, setbacks),
-    maxTurns: ctx.agent.budgets.maxTurnsPerTask,
-    maxUsd: ctx.agent.budgets.maxUsdPerTask ?? null,
-    allowWrites: ctx.session.mode === "work",
-    systemPromptAppendix: prepared.appendix,
-    cwd: REPO_IN_VOLUME,
-    resume,
-    pluginDirs: prepared.packs.map((pack) => `${PLUGINS_ROOT}/${pack}`),
-    mcpServers,
-  };
-  const runtime = {
-    provider: spec.provider,
-    model: spec.model,
-    effort: spec.effort,
-    maxTurns: spec.maxTurns,
-    maxUsd: spec.maxUsd,
-    allowWrites: spec.allowWrites,
-    pluginDirs: spec.pluginDirs,
-    mcpServers: Object.keys(mcpServers),
-    browser: prepared.browser,
-    setbacks,
-    askedFor: ctx.agent.effort,
-    resume,
-    promptHash: hashOf(prepared.appendix),
-    promptChars: prepared.appendix.length,
-    openingChars: prepared.message.length,
-  };
-  deps.log.debug(
-    { sessionId: ctx.session.id, taskId: ctx.task.id, ...runtime },
-    "opening the runtime",
-  );
-  deps.traces.write(ctx.session.id, { kind: "runtime", ...runtime }, true);
-  return deps.runtimes[ctx.agent.provider].open(spec, provisioned.connection.channel, secrets);
+const abortReason = (signal: AbortSignal): string => {
+  const reason: unknown = signal.reason;
+  return reason instanceof Error ? reason.message : "session aborted (time budget or shutdown)";
 };
 
 async function consume(
@@ -167,7 +67,7 @@ async function consume(
     }
   }
   if (ctx.signal.aborted && outcome.failure === null) {
-    outcome.failure = "session aborted (time budget or shutdown)";
+    outcome.failure = abortReason(ctx.signal);
   }
   if (!sawResult && outcome.failure === null) {
     outcome.failure = "runtime ended without a result";
@@ -179,10 +79,10 @@ async function runPrompt(
   deps: SessionDeps,
   ctx: SessionContext,
   provisioned: Provisioned,
+  prepared: Prepared,
   secrets: Readonly<Record<string, string>>,
   onEvent: (event: RuntimeEvent) => Promise<void>,
 ): Promise<Outcome> {
-  const prepared = prepare(deps, ctx, provisioned);
   const resume = ctx.previous?.runtimeSessionId ?? null;
   deps.traces.write(ctx.session.id, {
     kind: "prompt",
@@ -259,7 +159,7 @@ const setState = (
   deps: SessionDeps,
   ctx: SessionContext,
   state: SessionState,
-  extra: { sandboxId?: string; services?: "ready" | "failed" } = {},
+  extra: { sandboxId?: string; services?: SessionServices; runtime?: SessionRuntime } = {},
 ): Promise<unknown> =>
   deps.office.execute(SYSTEM_ACTOR, (m, c) =>
     changeSessionState(m, { sessionId: ctx.session.id, state, ...extra }, c),
@@ -272,10 +172,14 @@ export async function runSession(
   onEvent: (event: RuntimeEvent) => Promise<void>,
 ): Promise<Ending> {
   const secretEnv = await secretEnvFor(deps.secrets, ctx.agent);
+  deps.traces.protect(ctx.session.id, Object.values(secretEnv));
   const provisioned = await provision(deps, ctx);
   hold(provisioned);
+  deps.traces.protect(ctx.session.id, [provisioned.mcpToken]);
+  const prepared = prepare(deps, ctx, provisioned);
   await setState(deps, ctx, "starting", {
     sandboxId: provisioned.sandbox.id,
+    runtime: prepared.runtime,
     ...compact({ services: sessionServicesOf(provisioned.services) }),
   });
   deps.log.info(
@@ -284,10 +188,11 @@ export async function runSession(
       mode: ctx.session.mode,
       resume: ctx.previous?.runtimeSessionId ?? null,
       uid: provisioned.connection.uid,
+      budget: ctx.budget,
     },
     "runner connected",
   );
-  const outcome = await runPrompt(deps, ctx, provisioned, secretEnv, onEvent);
+  const outcome = await runPrompt(deps, ctx, provisioned, prepared, secretEnv, onEvent);
   await setState(deps, ctx, "stopping");
   await settle(deps, ctx, provisioned, outcome);
   return {

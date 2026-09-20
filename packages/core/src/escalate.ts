@@ -1,5 +1,5 @@
 import { EffortLevel, type Task } from "@ho/protocol";
-import { verifyAttempts } from "./commands/tasks.ts";
+import { verifyAttempts } from "./commands/verification.ts";
 
 export const setbacksOf = (task: Task): number => verifyAttempts(task) + task.reviewRounds;
 

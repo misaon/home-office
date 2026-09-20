@@ -15,9 +15,14 @@ const contentText = (blocks: readonly ToolCallContent[] | undefined): string =>
     .filter((text) => text !== "")
     .join(" ");
 
-export type TurnState = { text: string; tools: Map<string, string> };
+export type TurnState = {
+  text: string;
+  tools: Map<string, string>;
+  toolCalls: number;
+  cost: { amount: number; currency: string } | null;
+};
 
-export const newTurn = (): TurnState => ({ text: "", tools: new Map() });
+export const newTurn = (): TurnState => ({ text: "", tools: new Map(), toolCalls: 0, cost: null });
 
 const finished = (
   id: string,
@@ -51,6 +56,7 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
       }
     }
     turn.tools.set(update.toolCallId, update.title);
+    turn.toolCalls += 1;
     const events: RuntimeEvent[] = [
       { kind: "tool_call", id: update.toolCallId, name, input: update.rawInput ?? update.title },
     ];
@@ -61,15 +67,16 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
     return events;
   }
   if (update.sessionUpdate === "usage_update") {
+    turn.cost =
+      update.cost === undefined || update.cost === null
+        ? turn.cost
+        : { amount: update.cost.amount, currency: update.cost.currency };
     return [
       {
         kind: "context",
         usedTokens: update.used,
         windowTokens: update.size,
-        cost:
-          update.cost === undefined || update.cost === null
-            ? null
-            : { amount: update.cost.amount, currency: update.cost.currency },
+        cost: turn.cost,
       },
     ];
   }
@@ -84,15 +91,33 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
   return [];
 }
 
-export function stopToEvent(stop: StopReason, turn: TurnState, sessionId: string): RuntimeEvent {
+const usageOf = (turn: TurnState): RuntimeEvent => ({
+  kind: "usage",
+  usage: {
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    turns: turn.toolCalls,
+  },
+  ...(turn.cost?.currency === "USD" ? { costUsd: Math.max(0, turn.cost.amount) } : {}),
+});
+
+export function stopToEvents(stop: StopReason, turn: TurnState, sessionId: string): RuntimeEvent[] {
   if (stop === "max_turn_requests") {
-    return { kind: "error", code: "max_turns", message: "the agent hit its turn limit" };
+    return [
+      usageOf(turn),
+      { kind: "error", code: "max_turns", message: "the agent hit its turn limit" },
+    ];
   }
-  return {
-    kind: "result",
-    ok: stop === "end_turn",
-    text: turn.text,
-    turns: 1,
-    runtimeSessionId: sessionId,
-  };
+  return [
+    usageOf(turn),
+    {
+      kind: "result",
+      ok: stop === "end_turn",
+      text: turn.text,
+      turns: turn.toolCalls,
+      runtimeSessionId: sessionId,
+    },
+  ];
 }

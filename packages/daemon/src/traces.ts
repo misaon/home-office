@@ -23,11 +23,14 @@ type Open = {
   header: Record<string, unknown>;
   summary: Record<string, unknown>;
   counters: TraceCounters;
+  secrets: Set<string>;
 };
 
 const INDEX_FILE = "index.jsonl";
 const SUFFIX = ".jsonl";
 const DAY_MS = 24 * 60 * 60 * 1000;
+const SECRET_MIN_CHARS = 8;
+const REDACTED = "***";
 const RECORDED_EVENTS = new Set<RuntimeEvent["kind"]>([
   "init",
   "usage",
@@ -37,6 +40,37 @@ const RECORDED_EVENTS = new Set<RuntimeEvent["kind"]>([
   "error",
   "permission_request",
 ]);
+
+const CREDENTIAL_SHAPES: readonly RegExp[] = [
+  /Bearer [A-Za-z0-9._~+/=-]{8,}/gu,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/gu,
+  /\bsk-ant-[A-Za-z0-9_-]{8,}/gu,
+  /\bsk-[A-Za-z0-9_-]{20,}/gu,
+  /\bgh[pousr]_[A-Za-z0-9]{20,}/gu,
+  /\bgithub_pat_[A-Za-z0-9_]{20,}/gu,
+  /\bAKIA[0-9A-Z]{16}\b/gu,
+  /\bAIza[0-9A-Za-z_-]{30,}/gu,
+  /\bxox[abprs]-[A-Za-z0-9-]{10,}/gu,
+  /\/\/[^\s/@"]+:[^\s/@"]+@/gu,
+];
+
+export const redactSecrets = (text: string, secrets: ReadonlySet<string>): string => {
+  let redacted = text;
+  for (const secret of secrets) {
+    redacted = redacted.replaceAll(secret, REDACTED);
+    redacted = redacted.replaceAll(JSON.stringify(secret).slice(1, -1), REDACTED);
+  }
+  for (const shape of CREDENTIAL_SHAPES) {
+    redacted = redacted.replaceAll(shape, (match) =>
+      match.startsWith("Bearer ")
+        ? `Bearer ${REDACTED}`
+        : match.startsWith("//")
+          ? `//${REDACTED}@`
+          : REDACTED,
+    );
+  }
+  return redacted;
+};
 
 const partialDelta = (text: string): boolean =>
   text.startsWith('{"type":"stream_event"') ||
@@ -86,10 +120,23 @@ export class TraceStore {
       header,
       summary: {},
       counters: freshCounters(),
+      secrets: new Set(),
     };
     this.#open.set(sessionId, open);
     this.#emit(open, { kind: "open", ...header });
     void chmod(path, 0o600).catch(() => undefined);
+  }
+
+  protect(sessionId: SessionId, values: readonly string[]): void {
+    const open = this.#open.get(sessionId);
+    if (open === undefined) {
+      return;
+    }
+    for (const value of values) {
+      if (value.length >= SECRET_MIN_CHARS) {
+        open.secrets.add(value);
+      }
+    }
   }
 
   write(sessionId: SessionId, record: TraceRecord, remember = false): void {
@@ -179,7 +226,11 @@ export class TraceStore {
       counters: open.counters,
       trace: open.path,
     };
-    await appendFile(join(this.#dir, INDEX_FILE), `${JSON.stringify(summary)}\n`, { mode: 0o600 });
+    await appendFile(
+      join(this.#dir, INDEX_FILE),
+      `${redactSecrets(JSON.stringify(summary), open.secrets)}\n`,
+      { mode: 0o600 },
+    );
     return open.counters;
   }
 
@@ -202,7 +253,8 @@ export class TraceStore {
   }
 
   #emit(open: Open, record: Record<string, unknown>): void {
-    settle(open.sink.write(`${JSON.stringify({ at: new Date().toISOString(), ...record })}\n`));
+    const line = JSON.stringify({ at: new Date().toISOString(), ...record });
+    settle(open.sink.write(`${redactSecrets(line, open.secrets)}\n`));
     settle(open.sink.flush());
   }
 }

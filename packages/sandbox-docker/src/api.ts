@@ -96,7 +96,14 @@ const VolumeSummary = z.object({
   Labels: z.record(z.string(), z.string()).nullable(),
 });
 export const VolumeList = z.object({ Volumes: z.array(VolumeSummary).nullable() });
-export const NetworkList = z.array(z.object({ Id: z.string(), Name: z.string() }));
+export const NetworkInspect = z.object({
+  Id: z.string(),
+  Name: z.string(),
+  Driver: z.string(),
+  Options: z.record(z.string(), z.string()).nullish(),
+  Labels: z.record(z.string(), z.string()).nullish(),
+});
+export type NetworkInspect = z.infer<typeof NetworkInspect>;
 export const ImageList = z.array(
   z.object({
     Id: z.string(),
@@ -174,7 +181,12 @@ export const hostLimits = (
 export const volumeMounts = (
   volumes: readonly VolumeMount[],
 ): { Type: string; Source: string; Target: string; ReadOnly: boolean }[] =>
-  volumes.map((v) => ({ Type: "volume", Source: v.name, Target: v.target, ReadOnly: false }));
+  volumes.map((v) => ({
+    Type: "volume",
+    Source: v.name,
+    Target: v.target,
+    ReadOnly: v.readonly === true,
+  }));
 
 const container = (id: string): string => `/containers/${encodeURIComponent(id)}`;
 

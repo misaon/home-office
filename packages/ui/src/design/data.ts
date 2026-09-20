@@ -1,11 +1,16 @@
 import type {
   AgentId,
   AuthKind,
+  BudgetGuarantees,
+  Budgets,
   Gender,
   Attachment,
   ChatMessageId,
   ChatThreadId,
   ProjectId,
+  RepositoryTrust,
+  ReviewPlan,
+  ReviewStage,
   TaskId,
   TaskStatus,
   AgentRole,
@@ -30,6 +35,8 @@ export type Member = {
   doing: string;
   since: string;
   prompt: string;
+  budgets: Budgets;
+  guarantees: BudgetGuarantees;
 };
 
 export type Card = {
@@ -42,6 +49,10 @@ export type Card = {
   status: TaskStatus;
   criteria: readonly string[];
   rating: "good" | "bad" | null;
+  commit: string | null;
+  buildsOn: readonly string[];
+  reviews: ReviewPlan;
+  missingReviews: readonly ReviewStage[];
   at: string;
 };
 
@@ -73,6 +84,7 @@ export type Floor = {
   pr: boolean;
   issues: boolean;
   services: boolean;
+  trust: RepositoryTrust;
   preview: { enabled: boolean; port: number };
   hiring: boolean;
   verify: string;

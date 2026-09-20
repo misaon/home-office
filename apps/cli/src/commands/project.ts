@@ -7,8 +7,11 @@ import {
   type RepoInspection,
   type RepoSource,
   repoUrl,
+  RepositoryTrust,
+  type ServicesPolicy,
 } from "@ho/protocol";
 import { resolve } from "node:path";
+import { z } from "zod";
 import { bool, int, list, onOff, str } from "../flags.ts";
 import type { HoClient } from "../client.ts";
 import { type Command, output } from "../cli.ts";
@@ -54,6 +57,21 @@ const intakeFrom = (flags: {
         dryRun: flags.dryRun,
       });
 
+const servicesFrom = (flags: {
+  services: boolean | undefined;
+  trust: string | undefined;
+  mode: string | undefined;
+}): Partial<ServicesPolicy> | undefined =>
+  Object.values(flags).every((value) => value === undefined)
+    ? undefined
+    : compact({
+        enabled: flags.services,
+        trust: RepositoryTrust.optional().parse(flags.trust),
+        mode: ServicesMode.optional().parse(flags.mode),
+      });
+
+const ServicesMode = z.enum(["rootless", "rootful"]);
+
 const inspect = async (
   client: HoClient,
   repo: RepoSource,
@@ -74,7 +92,7 @@ const describe = (
 export const projectCommand: Command = {
   name: "project",
   summary:
-    "floors in creation order; add takes a path or a git URL, --import copies characters from other floors, set changes the branch, delivery and GitHub intake, sync and export move the floor between the office and its own .ho/config.json",
+    "floors in creation order; add takes a path or a git URL, --import copies characters from other floors, set changes the branch, delivery, GitHub intake, the private container engine and whether the repository is trusted to run one, sync and export move the floor between the office and its own .ho/config.json",
   subcommands: {
     list: {
       run: async (_parsed, client) => {
@@ -142,6 +160,9 @@ export const projectCommand: Command = {
         labels: "a,b",
         interval: "<seconds>",
         "dry-run": "on|off",
+        services: "on|off",
+        trust: "trusted|untrusted",
+        mode: "rootless|rootful",
       },
       run: async (parsed, client) => {
         const rpc = await client();
@@ -159,11 +180,16 @@ export const projectCommand: Command = {
               interval: int(parsed, "interval"),
               dryRun: onOff(str(parsed, "dry-run")),
             }),
+            services: servicesFrom({
+              services: onOff(str(parsed, "services")),
+              trust: str(parsed, "trust"),
+              mode: str(parsed, "mode"),
+            }),
           }),
         });
         return output(
           [
-            `floor ${colour.bold(updated.name)}: branch ${updated.defaultBranch}, delivery ${updated.publish.mode}, intake ${updated.intake.enabled ? "on" : "off"}, checks ${updated.verify.command === "" ? "off" : updated.verify.command}`,
+            `floor ${colour.bold(updated.name)}: branch ${updated.defaultBranch}, delivery ${updated.publish.mode}, intake ${updated.intake.enabled ? "on" : "off"}, checks ${updated.verify.command === "" ? "off" : updated.verify.command}, services ${updated.services.enabled ? `${updated.services.mode} (${updated.services.trust})` : "off"}`,
           ],
           updated,
         );

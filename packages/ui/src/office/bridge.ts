@@ -204,6 +204,7 @@ export class Bridge {
       case "task.removed":
       case "task.edited":
       case "task.review_recorded":
+      case "task.review_waived":
       case "task.reviewer_assigned": {
         break;
       }

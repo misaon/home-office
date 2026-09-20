@@ -104,6 +104,15 @@ export const en = {
     rateNote: "What was right or wrong (optional)",
     ratedGood: "Rated: good work.",
     ratedBad: "Rated: not good.",
+    commit: "Verified commit",
+    commitNone: "No commit has passed the checks yet.",
+    buildsOn: "Builds on",
+    reviewPlan: "Review",
+    reviewOff: "no review asked",
+    reviewMissing:
+      "Nobody on this floor can review as {{role}}. Hire someone in Team, or waive this review.",
+    waive: "Waive {{role}} review",
+    waived: "{{role}} review waived",
   },
   chat: {
     removeAttachment: "Remove the attachment",
@@ -162,7 +171,10 @@ export const en = {
       "Publishes that one port from each sandbox to 127.0.0.1, so a dev server an agent starts opens in your browser. Off, nothing an agent serves can leave its container.",
     servicesLabel: "Own container engine",
     servicesHint:
-      "The repository's docker compose runs inside the sandbox. A session with services takes two of the daemon's slots.",
+      "The repository's docker compose runs inside the sandbox. A session with services takes two of the daemon's slots, and the engine only starts once the repository below is marked trusted.",
+    trustLabel: "Trusted repository",
+    trustHint:
+      "The private container engine is a privileged container: its code, its dependencies and whatever they pull can reach the Docker virtual machine. Turn this on only for repositories whose code you would run on this Mac yourself. Off, the engine stays down and agents are told why.",
     title: "Office settings",
     removeFloor: "Remove this floor",
     languageSet: "Office language changed",

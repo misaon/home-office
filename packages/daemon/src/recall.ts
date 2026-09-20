@@ -1,4 +1,4 @@
-import type { ReadModel } from "@ho/core";
+import { type ReadModel, sessionsOfTask } from "@ho/core";
 import { reviewVerdictOf, type ProjectId, type Task, type TaskId } from "@ho/protocol";
 
 const K1 = 1.2;
@@ -13,6 +13,8 @@ export type RecallHit = {
   title: string;
   status: Task["status"];
   who: string;
+  model: string | null;
+  verified: "checked" | "unchecked" | "unknown";
   daysAgo: number;
   report: string;
   findings: readonly string[];
@@ -39,6 +41,31 @@ const clip = (text: string, limit: number): string =>
   text.length <= limit ? text : `${text.slice(0, limit - 1).trimEnd()}…`;
 
 const ENDED: ReadonlySet<Task["status"]> = new Set(["done", "blocked", "failed", "cancelled"]);
+
+const modelOf = (model: ReadModel, task: Task): string | null => {
+  const [last] = sessionsOfTask(model, task.id)
+    .filter((session) => session.mode === "work" && session.runtime !== undefined)
+    .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt));
+  const runtime = last?.runtime;
+  return runtime === undefined
+    ? null
+    : `${runtime.confirmedModel ?? runtime.model}/${runtime.confirmedEffort ?? runtime.effort}`;
+};
+
+const verifiedOf = (task: Task): RecallHit["verified"] => {
+  if (task.artifacts.commit === undefined) {
+    return "unknown";
+  }
+  return task.notes.some(
+    (note) =>
+      note.kind === "info" &&
+      note.author.kind === "system" &&
+      note.commit === task.artifacts.commit &&
+      note.text.startsWith("no check command"),
+  )
+    ? "unchecked"
+    : "checked";
+};
 
 export function recall(
   model: ReadModel,
@@ -97,6 +124,8 @@ export function recall(
         task.assigneeId === undefined
           ? "unassigned"
           : (model.agents.get(task.assigneeId)?.name ?? "a colleague who has left"),
+      model: modelOf(model, task),
+      verified: verifiedOf(task),
       daysAgo: Math.max(0, Math.round((now - Date.parse(task.updatedAt)) / DAY_MS)),
       report: clip(reportOf(task), EXCERPT_CHARS),
       findings: findingsOf(task).map((text) => clip(text, FINDINGS_CHARS)),

@@ -10,12 +10,15 @@ const SOCKET_DIR: Record<EngineMode, string> = {
   rootful: "/run/ho",
 };
 
+type EngineRole = "session" | "verify";
+
 const socketPathFor = (mode: EngineMode): string => `${SOCKET_DIR[mode]}/docker.sock`;
 
-const engineNameFor = (sessionId: SessionId): string => `ho-engine-${sessionId.slice(-12)}`;
-const cacheVolumeFor = (taskVolume: string): string => `${taskVolume}-engine`;
-const socketVolumeFor = (taskVolume: string, sessionId: SessionId): string =>
-  `${taskVolume}-sock-${sessionId.slice(-8)}`;
+const engineNameFor = (role: EngineRole, sessionId: SessionId): string =>
+  `ho-${role === "verify" ? "verify-engine" : "engine"}-${sessionId.slice(-12)}`;
+const cacheVolumeFor = (workVolume: string): string => `${workVolume}-engine`;
+const socketVolumeFor = (role: EngineRole, workVolume: string, sessionId: SessionId): string =>
+  `${workVolume}-${role === "verify" ? "vsock" : "sock"}-${sessionId.slice(-8)}`;
 
 export const engineEnv = (mode: EngineMode): Record<string, string> => ({
   DOCKER_HOST: `unix://${socketPathFor(mode)}`,
@@ -31,8 +34,9 @@ const SOCKET_VOLUME_OPTS = {
 
 export type TaskEngineRequest = {
   mode: EngineMode;
+  role: EngineRole;
   sessionId: SessionId;
-  taskVolume: string;
+  workVolume: string;
   labels: Readonly<Record<string, string>>;
 };
 export type TaskEnginePlan = {
@@ -47,12 +51,12 @@ export async function prepareTaskEngine(
   request: TaskEngineRequest,
   stack: AsyncDisposableStack,
 ): Promise<TaskEnginePlan> {
-  const { mode, sessionId, taskVolume, labels } = request;
+  const { mode, role, sessionId, workVolume, labels } = request;
   const plan: TaskEnginePlan = {
     mode,
     socketDir: SOCKET_DIR[mode],
-    socketVolume: socketVolumeFor(taskVolume, sessionId),
-    cacheVolume: cacheVolumeFor(taskVolume),
+    socketVolume: socketVolumeFor(role, workVolume, sessionId),
+    cacheVolume: cacheVolumeFor(workVolume),
   };
   await provider.createVolume(plan.cacheVolume, { ...labels, [LABELS.kind]: "engine-cache" });
   await provider.createVolume(
@@ -73,13 +77,13 @@ export function startTaskEngine(
 ): Promise<SandboxHandle> {
   return provider.startEngine(
     {
-      name: engineNameFor(request.sessionId),
+      name: engineNameFor(request.role, request.sessionId),
       image: plan.mode === "rootful" ? config.services.rootfulImage : config.services.image,
       mode: plan.mode,
       labels: { ...request.labels, [LABELS.kind]: "engine" },
       attachTo: sandbox,
       volumes: [
-        { name: request.taskVolume, target: "/work" },
+        { name: request.workVolume, target: "/work" },
         { name: plan.socketVolume, target: plan.socketDir },
       ],
       cacheVolume: plan.cacheVolume,

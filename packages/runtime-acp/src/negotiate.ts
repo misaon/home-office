@@ -1,4 +1,9 @@
-import { type ClientConnection, type McpServer, PROTOCOL_VERSION } from "@agentclientprotocol/sdk";
+import {
+  type ClientConnection,
+  type McpServer,
+  PROTOCOL_VERSION,
+  type SessionConfigOption,
+} from "@agentclientprotocol/sdk";
 import type { RuntimeSessionSpec } from "@ho/core";
 import { errorMessage } from "@ho/protocol";
 import type { AcpPreset } from "./presets.ts";
@@ -10,7 +15,11 @@ export type Negotiated = {
   sessionId: string;
   resumed: boolean;
   servers: McpServer[];
+  model: string | null;
+  effort: string | null;
 };
+
+type Effective = { model: string | null; effort: string | null };
 
 export const isAuthRequired = (error: unknown): boolean =>
   typeof error === "object" && error !== null && "code" in error && error.code === AUTH_REQUIRED;
@@ -61,6 +70,24 @@ const mcpServers = (spec: RuntimeSessionSpec): McpServer[] =>
         },
   );
 
+const selectionOf = (
+  options: readonly SessionConfigOption[] | null | undefined,
+  category: "model" | "thought_level",
+): Extract<SessionConfigOption, { type: "select" }> | undefined =>
+  options?.find(
+    (option): option is Extract<SessionConfigOption, { type: "select" }> =>
+      option.type === "select" && option.category === category,
+  );
+
+const choicesOf = (
+  option: Extract<SessionConfigOption, { type: "select" }>,
+): { value: string; name: string }[] =>
+  option.options.flatMap((entry) => ("group" in entry ? entry.options : [entry]));
+
+const labelOf = (option: Extract<SessionConfigOption, { type: "select" }>): string =>
+  choicesOf(option).find((choice) => choice.value === option.currentValue)?.name ??
+  option.currentValue;
+
 export async function negotiate(
   conn: ClientConnection,
   preset: AcpPreset,
@@ -88,17 +115,54 @@ export async function negotiate(
     throw new Error(`${preset.name} does not accept HTTP MCP servers required by the office`);
   }
   const servers = mcpServers(spec);
+  const configure = async (
+    sessionId: string,
+    options: readonly SessionConfigOption[] | null = null,
+  ): Promise<Effective> => {
+    let current = options;
+    const wanted = { model: spec.model, thought_level: spec.effort } as const;
+    for (const category of ["model", "thought_level"] as const) {
+      const option = selectionOf(current, category);
+      const value = wanted[category];
+      if (
+        option === undefined ||
+        option.currentValue === value ||
+        !choicesOf(option).some((choice) => choice.value === value)
+      ) {
+        continue;
+      }
+      try {
+        const updated = await request(
+          agent.request("session/set_config_option", { sessionId, configId: option.id, value }),
+        );
+        current = updated.configOptions;
+      } catch (error) {
+        stderr(`session/set_config_option ${category} failed (${errorMessage(error)})`);
+      }
+    }
+    const model = selectionOf(current, "model");
+    const effort = selectionOf(current, "thought_level");
+    const effective = {
+      model: model === undefined ? null : labelOf(model),
+      effort: effort === undefined ? null : labelOf(effort),
+    };
+    if (effective.model !== null && effective.model !== spec.model) {
+      stderr(`the agent runs model ${effective.model}, not the configured ${spec.model}`);
+    }
+    return effective;
+  };
   const open = async (): Promise<Negotiated> => {
     if (spec.resume !== null && init.agentCapabilities?.loadSession === true) {
       try {
-        await request(
+        const loaded = await request(
           agent.request("session/load", {
             sessionId: spec.resume,
             cwd: spec.cwd,
             mcpServers: servers,
           }),
         );
-        return { sessionId: spec.resume, resumed: true, servers };
+        const effective = await configure(spec.resume, loaded.configOptions ?? null);
+        return { sessionId: spec.resume, resumed: true, servers, ...effective };
       } catch (error) {
         stderr(`session/load failed (${errorMessage(error)}); starting a new conversation`);
       }
@@ -106,7 +170,8 @@ export async function negotiate(
     const created = await request(
       agent.request("session/new", { cwd: spec.cwd, mcpServers: servers }),
     );
-    return { sessionId: created.sessionId, resumed: false, servers };
+    const effective = await configure(created.sessionId, created.configOptions ?? null);
+    return { sessionId: created.sessionId, resumed: false, servers, ...effective };
   };
   const authenticate = async (): Promise<void> => {
     const methods = init.authMethods ?? [];

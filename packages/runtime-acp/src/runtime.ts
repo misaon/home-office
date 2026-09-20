@@ -33,6 +33,7 @@ export function createAcpRuntime(preset: AcpPreset, options: AcpRuntimeOptions):
         prompt: createPrompt(office, spec, preset, negotiated, exited),
         close: () => {
           office.conn.close();
+          channel.closeStdin();
         },
       };
     },

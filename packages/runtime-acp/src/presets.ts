@@ -42,7 +42,7 @@ export const opencodePreset = (): AcpPreset => ({
     OPENCODE_CONFIG_CONTENT: JSON.stringify({
       $schema: "https://opencode.ai/config.json",
       model: spec.model,
-      permission: { edit: "allow", bash: "allow", webfetch: "allow" },
+      permission: { edit: spec.allowWrites ? "allow" : "deny", bash: "allow", webfetch: "allow" },
       autoupdate: false,
       share: "disabled",
       ...providerBlock(spec.model),

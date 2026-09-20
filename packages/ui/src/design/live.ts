@@ -1,8 +1,9 @@
-import { awaitsAnswer, chatOf } from "@ho/core";
+import { awaitsAnswer, chatOf, reviewPlanOf, type ReviewRoster } from "@ho/core";
 import { t } from "i18next";
 import {
   type Agent,
   type AgentId,
+  budgetGuaranteesFor,
   isSessionActive,
   type ProjectId,
   type SessionId,
@@ -87,8 +88,22 @@ function memberOf(agent: Agent, snapshot: Snapshot, now: number): Member {
         ? t("team.idle")
         : t("team.startedAgo", { since: since(session.startedAt, now) }),
     prompt: agent.basePrompt,
+    budgets: agent.budgets,
+    guarantees: budgetGuaranteesFor(agent.provider, agent.auth),
   };
 }
+
+const rosterOf = (snapshot: Snapshot, projectId: ProjectId): ReviewRoster => ({
+  agents: snapshot.agents,
+  agentsByProject: new Map([
+    [
+      projectId,
+      new Set(
+        [...snapshot.agents.values()].filter((a) => a.projectId === projectId).map((a) => a.id),
+      ),
+    ],
+  ]),
+});
 
 function cardOf(task: Task, snapshot: Snapshot): Card {
   return {
@@ -101,6 +116,11 @@ function cardOf(task: Task, snapshot: Snapshot): Card {
     s: LANES[task.status],
     status: task.status,
     rating: task.rating?.verdict ?? null,
+    commit: task.artifacts.commit ?? null,
+    buildsOn: task.dependsOn.map((id) => snapshot.tasks.get(id)?.title ?? id.slice(-8)),
+    reviews: task.reviews,
+    missingReviews:
+      task.kind === "work" ? reviewPlanOf(rosterOf(snapshot, task.projectId), task).missing : [],
     at: clock(task.updatedAt),
   };
 }
@@ -160,6 +180,7 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
     pr: project.publish.mode === "pull-request",
     issues: project.intake.enabled,
     services: project.services.enabled,
+    trust: project.services.trust,
     preview: project.preview,
     hiring: project.hiring.enabled,
     verify: project.verify.command,

@@ -1,19 +1,27 @@
 import {
+  type Agent,
   type AgentId,
   MODE_OF_KIND,
   type Project,
+  servicesAvailable,
   type SessionMode,
   type Task,
   type TaskId,
 } from "@ho/protocol";
-import { activeSessions } from "./model/queries.ts";
+import { budgetExhausted, spentOnTask } from "./budget.ts";
+import { activeSessions, openDependenciesOf } from "./model/queries.ts";
 import type { ReadModel } from "./model/read-model.ts";
 
 type SessionStart = { taskId: TaskId; agentId: AgentId; mode: SessionMode };
 
 type SessionSkip = { taskId: TaskId; agentId: AgentId; reason: string };
 
-export type SessionPlan = { starts: SessionStart[]; skipped: SessionSkip[]; capacity: number };
+export type SessionPlan = {
+  starts: SessionStart[];
+  skipped: SessionSkip[];
+  exhausted: SessionSkip[];
+  capacity: number;
+};
 
 const PRIORITY_RANK = { high: 0, normal: 1, low: 2 } as const;
 
@@ -23,7 +31,8 @@ export const needsEngine = (
   daemonEnabled: boolean,
   project: Pick<Project, "services">,
   mode: SessionMode,
-): boolean => daemonEnabled && project.services.enabled && (mode === "work" || mode === "review");
+): boolean =>
+  daemonEnabled && servicesAvailable(project.services) && (mode === "work" || mode === "review");
 
 const costOf = (
   model: ReadModel,
@@ -51,6 +60,21 @@ const candidateOf = (task: Task): SessionStart | null => {
   return null;
 };
 
+const waitingFor = (model: ReadModel, task: Task, start: SessionStart): string | null => {
+  if (start.mode !== "work") {
+    return null;
+  }
+  const open = openDependenciesOf(model, task);
+  return open.length === 0
+    ? null
+    : `waits for ${open.map((dependency) => `"${dependency.title}" (${dependency.status})`).join(", ")}`;
+};
+
+const overBudget = (model: ReadModel, agent: Agent, start: SessionStart): string | null =>
+  start.mode === "review"
+    ? null
+    : budgetExhausted(agent, spentOnTask(model, start.taskId, agent.id));
+
 export function planSessionStarts(
   model: ReadModel,
   maxConcurrentSessions: number,
@@ -73,9 +97,25 @@ export function planSessionStarts(
     );
   const starts: SessionStart[] = [];
   const skipped: SessionSkip[] = [];
+  const exhausted: SessionSkip[] = [];
   for (const task of candidates) {
     const start = candidateOf(task);
     if (start === null) {
+      continue;
+    }
+    const agent = model.agents.get(start.agentId);
+    if (agent === undefined) {
+      skipped.push({ ...start, reason: "no such agent" });
+      continue;
+    }
+    const waiting = waitingFor(model, task, start);
+    if (waiting !== null) {
+      skipped.push({ ...start, reason: waiting });
+      continue;
+    }
+    const spent = overBudget(model, agent, start);
+    if (spent !== null) {
+      exhausted.push({ ...start, reason: spent });
       continue;
     }
     if (capacity <= 0) {
@@ -90,11 +130,6 @@ export function planSessionStarts(
       });
       continue;
     }
-    const agent = model.agents.get(start.agentId);
-    if (agent === undefined) {
-      skipped.push({ ...start, reason: "no such agent" });
-      continue;
-    }
     if ((perAgent.get(start.agentId) ?? 0) >= agent.budgets.maxConcurrentSessions) {
       skipped.push({
         ...start,
@@ -106,5 +141,5 @@ export function planSessionStarts(
     perAgent.set(start.agentId, (perAgent.get(start.agentId) ?? 0) + 1);
     capacity -= cost;
   }
-  return { starts, skipped, capacity };
+  return { starts, skipped, exhausted, capacity };
 }

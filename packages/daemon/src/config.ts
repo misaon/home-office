@@ -80,6 +80,13 @@ export const DaemonConfig = z.object({
       pids: z.int().positive().default(2048),
     })
     .prefault({}),
+  verify: z
+    .object({
+      memoryMb: z.int().positive().default(3072),
+      cpus: z.number().positive().default(2),
+      pids: z.int().positive().default(1024),
+    })
+    .prefault({}),
 });
 export type DaemonConfig = z.infer<typeof DaemonConfig>;
 

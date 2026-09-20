@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { ATTACHMENTS_MAX, AttachmentName, CHAT_OUTBOX_DIR } from "./attachments.ts";
-import { EffortLevel, PublishMode, REPORT_MAX, TaskPriority, TaskSpec } from "./domain.ts";
+import {
+  DEPENDENCIES_MAX,
+  EffortLevel,
+  PublishMode,
+  REPORT_MAX,
+  TaskPriority,
+  TaskSpec,
+} from "./domain.ts";
 import { TaskId } from "./ids.ts";
 import { StaffRole } from "./roles.ts";
 
@@ -136,6 +143,13 @@ export const HoDelegateInput = z.object({
     .boolean()
     .describe(
       "true when the change touches authentication, authorisation, input handling, secrets, cryptography, network exposure, dependencies or a hot path where performance matters; the security engineer then reviews it before the head of development.",
+    ),
+  dependsOn: z
+    .array(TaskId)
+    .max(DEPENDENCIES_MAX)
+    .prefault([])
+    .describe(
+      "Task ids this task builds on, as earlier ho_delegate calls returned them. The task waits until every one of them is done, and its branch starts from the last of them, so the worker sees their result. The task that depends on all the others is where the whole request is checked as one.",
     ),
   priority: TaskPriority.optional(),
 });

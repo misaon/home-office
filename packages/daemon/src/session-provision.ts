@@ -1,9 +1,7 @@
-import { attachmentsOfTask, needsEngine, type SandboxHandle, type SandboxSpec } from "@ho/core";
+import { attachmentsOfTask, needsEngine, type RemainingBudget, type SandboxHandle } from "@ho/core";
 import {
   type Agent,
-  CHAT_INBOX_DIR,
-  CHAT_OUTBOX_DIR,
-  errorMessage,
+  type CommitSha,
   imageRefFor,
   type Project,
   PROVIDERS,
@@ -11,47 +9,21 @@ import {
   type SessionServices,
   type Task,
 } from "@ho/protocol";
-import type { DaemonConfig } from "./config.ts";
-import {
-  branchFor,
-  type GitIdentity,
-  hostGitIdentity,
-  prepareRepo,
-  REPO_IN_VOLUME,
-} from "./git-bridge.ts";
+import { branchFor, hostGitIdentity } from "./git-bridge.ts";
 import { LABELS } from "./labels.ts";
 import { sourcePathFor } from "./mirrors.ts";
-import type { Services } from "./prompts.ts";
+import type { Services, WorkBase } from "./prompts-shared.ts";
 import type { RunnerConnection } from "./runner-gateway.ts";
+import { checkout } from "./session-checkout.ts";
+import { sandboxSpec } from "./session-sandbox.ts";
+import { startServices } from "./session-services.ts";
 import type { SessionDeps } from "./sessions.ts";
 import { skillPacksFor } from "./skill-pack.ts";
-import {
-  engineEnv,
-  prepareTaskEngine,
-  startTaskEngine,
-  type TaskEnginePlan,
-  type TaskEngineRequest,
-} from "./task-engine.ts";
+import { prepareTaskEngine, type TaskEngineRequest } from "./task-engine.ts";
 import { stopwatch } from "./timing.ts";
+import { reviewVolumeFor, taskVolumeFor } from "./volumes.ts";
 
 const SANDBOX_STOP_GRACE_S = 5;
-
-const gitIdentity = (
-  agent: Agent,
-  committer: GitIdentity | null,
-): Readonly<Record<string, string>> => {
-  const slug = agent.name
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/gu, "-")
-    .replaceAll(/^-+|-+$/gu, "");
-  const address = `${slug === "" ? agent.id : slug}@agents.home-office.local`;
-  return {
-    GIT_AUTHOR_NAME: agent.name,
-    GIT_AUTHOR_EMAIL: address,
-    GIT_COMMITTER_NAME: committer?.name ?? agent.name,
-    GIT_COMMITTER_EMAIL: committer?.email ?? address,
-  };
-};
 
 export type SessionContext = {
   session: Session;
@@ -60,6 +32,7 @@ export type SessionContext = {
   project: Project;
   previous: Session | undefined;
   signal: AbortSignal;
+  budget: RemainingBudget;
 };
 
 export type Provisioned = {
@@ -68,99 +41,17 @@ export type Provisioned = {
   connection: RunnerConnection;
   volume: string;
   branch: string;
+  commit: CommitSha | null;
+  base: WorkBase | null;
   sourcePath: string;
   mcpToken: string;
+  labels: Readonly<Record<string, string>>;
+  stopServices: () => Promise<void>;
   dispose: () => Promise<void>;
 };
 
 export const sessionServicesOf = (services: Services): SessionServices | undefined =>
   services.kind === "off" ? undefined : services.kind;
-
-const sandboxSpec = (
-  config: DaemonConfig,
-  ctx: SessionContext,
-  volume: string,
-  stateVolume: string,
-  gatewayUrl: string,
-  token: string,
-  engine: TaskEnginePlan | null,
-  chat: { outbox: string; inbox: string },
-  committer: GitIdentity | null,
-): SandboxSpec => ({
-  name: `ho-session-${ctx.session.id.slice(-12)}`,
-  ports: ctx.project.preview.enabled ? [ctx.project.preview.port] : [],
-  image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
-  cmd: ["bun", "/usr/local/bin/ho-runner.js"],
-  env: {
-    HO_GATEWAY: gatewayUrl,
-    HO_SESSION_TOKEN: token,
-    HOME: "/home/agent",
-    TERM: "dumb",
-    ...gitIdentity(ctx.agent, committer),
-    ...(engine === null ? {} : engineEnv(engine.mode)),
-  },
-  user: "1000:1000",
-  workdir: REPO_IN_VOLUME,
-  labels: {
-    [LABELS.managed]: "true",
-    [LABELS.kind]: "session",
-    [LABELS.session]: ctx.session.id,
-    [LABELS.project]: ctx.project.id,
-  },
-  network: config.docker.network,
-  volumes: [
-    { name: volume, target: "/work" },
-    { name: stateVolume, target: PROVIDERS[ctx.agent.provider].stateDir },
-    ...(engine === null ? [] : [{ name: engine.socketVolume, target: engine.socketDir }]),
-  ],
-  binds: [
-    { source: chat.inbox, target: CHAT_INBOX_DIR, readonly: true },
-    { source: chat.outbox, target: CHAT_OUTBOX_DIR, readonly: false },
-  ],
-  tmpfs: {
-    "/tmp": "rw,nosuid,size=256m",
-    ...Object.fromEntries(
-      PROVIDERS[ctx.agent.provider].scratchDirs.map((dir) => [
-        dir,
-        "rw,nosuid,size=128m,uid=1000,gid=1000,mode=0755",
-      ]),
-    ),
-  },
-  limits: {
-    memoryBytes: config.limits.memoryMb * 1024 * 1024,
-    cpus: config.limits.cpus,
-    pids: config.limits.pids,
-  },
-  readonlyRootfs: true,
-});
-
-async function startServices(
-  deps: SessionDeps,
-  ctx: SessionContext,
-  request: TaskEngineRequest | null,
-  plan: TaskEnginePlan | null,
-  sandbox: SandboxHandle,
-  stack: AsyncDisposableStack,
-): Promise<Services> {
-  if (request === null || plan === null) {
-    return { kind: "off" };
-  }
-  try {
-    const engine = await startTaskEngine(deps.provider, deps.config, request, plan, sandbox);
-    stack.defer(async () => {
-      await deps.provider.stop(engine, 15).catch(() => null);
-      await deps.provider.remove(engine).catch(() => null);
-    });
-    return { kind: "ready" };
-  } catch (error) {
-    const message = errorMessage(error).slice(0, 500);
-    deps.log.warn(
-      { sessionId: ctx.session.id, err: message },
-      "task engine did not start; the session continues without its services",
-    );
-    return { kind: "failed", message };
-  }
-}
 
 const announceProvisioned = (
   deps: SessionDeps,
@@ -174,47 +65,20 @@ const announceProvisioned = (
   deps.traces.write(ctx.session.id, { kind: "provisioned", ...facts }, true);
 };
 
-export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {
-  const { provider, config, gateway, mcp, home, log } = deps;
-  ctx.signal.throwIfAborted();
-  const watch = stopwatch();
-  const volume = `ho-task-${ctx.task.id.slice(-12)}`;
-  const thread = ctx.session.mode === "triage" ? ctx.session.threadId : undefined;
-  const stateVolume =
-    thread === undefined
-      ? `${volume}-state-${ctx.agent.id.slice(-8)}`
-      : `ho-chat-${thread.slice(-12)}-state-${ctx.agent.id.slice(-8)}`;
-  const branch = ctx.task.artifacts.branch ?? branchFor(ctx.task.id);
-  const labels = {
-    [LABELS.managed]: "true",
-    [LABELS.session]: ctx.session.id,
-    [LABELS.project]: ctx.project.id,
-  };
-  await provider.ensureNetwork(config.docker.network, {
-    [LABELS.managed]: "true",
-    [LABELS.kind]: "network",
-  });
-  await provider.createVolume(volume, { ...labels, [LABELS.kind]: "task-volume" });
-  await provider.createVolume(stateVolume, { ...labels, [LABELS.kind]: "provider-state" });
-  const sourcePath = await sourcePathFor(home, ctx.project);
-  watch.lap("volumesMs");
-  log.debug(
-    { sessionId: ctx.session.id, volume, stateVolume, branch, sourcePath },
-    "volumes ready; preparing the repository",
-  );
-  await prepareRepo(provider, config, sourcePath, ctx.project.defaultBranch, volume, branch);
-  watch.lap("repoMs");
-  log.debug({ sessionId: ctx.session.id, branch }, "repository prepared");
-  const engineRequest: TaskEngineRequest | null = needsEngine(
-    config.services.enabled,
-    ctx.project,
-    ctx.session.mode,
-  )
-    ? { mode: ctx.project.services.mode, sessionId: ctx.session.id, taskVolume: volume, labels }
-    : null;
-  await using stack = new AsyncDisposableStack();
-  const plan =
-    engineRequest === null ? null : await prepareTaskEngine(provider, engineRequest, stack);
+type Wired = {
+  issued: ReturnType<RunnerGatewayIssue>;
+  mcpToken: string;
+  chat: { outbox: string; inbox: string };
+};
+
+type RunnerGatewayIssue = SessionDeps["gateway"]["issue"];
+
+async function wire(
+  deps: SessionDeps,
+  ctx: SessionContext,
+  stack: AsyncDisposableStack,
+): Promise<Wired> {
+  const { gateway, mcp, home } = deps;
   const issued = gateway.issue(ctx.session.id, ctx.signal);
   stack.defer(issued.cancel);
   const mcpToken = mcp.register({
@@ -239,6 +103,61 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     attachmentsOfTask(deps.office.model, ctx.task),
   );
   stack.defer(() => deps.attachments.closeInbox(ctx.session.id));
+  return { issued, mcpToken, chat: { outbox, inbox } };
+}
+
+export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {
+  const { provider, config, home, log } = deps;
+  ctx.signal.throwIfAborted();
+  const watch = stopwatch();
+  const reviewing = ctx.session.mode === "review";
+  const volume = reviewing ? reviewVolumeFor(ctx.task.id) : taskVolumeFor(ctx.task.id);
+  const thread = ctx.session.mode === "triage" ? ctx.session.threadId : undefined;
+  const stateVolume =
+    thread === undefined
+      ? `${taskVolumeFor(ctx.task.id)}-state-${ctx.agent.id.slice(-8)}`
+      : `ho-chat-${thread.slice(-12)}-state-${ctx.agent.id.slice(-8)}`;
+  const branch = ctx.task.artifacts.branch ?? branchFor(ctx.task.id);
+  const labels = {
+    [LABELS.managed]: "true",
+    [LABELS.session]: ctx.session.id,
+    [LABELS.project]: ctx.project.id,
+  };
+  await provider.ensureNetwork(config.docker.network, {
+    [LABELS.managed]: "true",
+    [LABELS.kind]: "network",
+  });
+  await provider.createVolume(volume, {
+    ...labels,
+    [LABELS.kind]: reviewing ? "review-volume" : "task-volume",
+  });
+  await provider.createVolume(stateVolume, { ...labels, [LABELS.kind]: "provider-state" });
+  const sourcePath = await sourcePathFor(home, ctx.project);
+  watch.lap("volumesMs");
+  log.debug(
+    { sessionId: ctx.session.id, volume, stateVolume, branch, sourcePath },
+    "volumes ready; preparing the repository",
+  );
+  const checked = await checkout(deps, ctx, sourcePath, volume, branch);
+  watch.lap("repoMs");
+  log.debug({ sessionId: ctx.session.id, branch, commit: checked.commit }, "repository prepared");
+  const engineRequest: TaskEngineRequest | null = needsEngine(
+    config.services.enabled,
+    ctx.project,
+    ctx.session.mode,
+  )
+    ? {
+        mode: ctx.project.services.mode,
+        role: "session",
+        sessionId: ctx.session.id,
+        workVolume: volume,
+        labels,
+      }
+    : null;
+  await using stack = new AsyncDisposableStack();
+  const plan =
+    engineRequest === null ? null : await prepareTaskEngine(provider, engineRequest, stack);
+  const wired = await wire(deps, ctx, stack);
   const sandbox = await provider.start(
     sandboxSpec(
       config,
@@ -246,9 +165,9 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
       volume,
       stateVolume,
       deps.gatewayUrl(),
-      issued.token,
+      wired.issued.token,
       plan,
-      { outbox, inbox },
+      wired.chat,
       await hostGitIdentity(),
     ),
   );
@@ -257,35 +176,41 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     await provider.remove(sandbox).catch(() => null);
   });
   watch.lap("sandboxMs");
-  const services = await startServices(deps, ctx, engineRequest, plan, sandbox, stack);
+  const engine = await startServices(deps, ctx, engineRequest, plan, sandbox, stack);
   if (engineRequest !== null) {
     watch.lap("engineMs");
   }
   log.debug(
-    { sessionId: ctx.session.id, sandbox: sandbox.id, services: services.kind },
+    { sessionId: ctx.session.id, sandbox: sandbox.id, services: engine.services.kind },
     "sandbox started; waiting for the runner to connect",
   );
-  const connection = await issued.connected;
+  const connection = await wired.issued.connected;
   ctx.signal.throwIfAborted();
   watch.lap("runnerMs");
   announceProvisioned(deps, ctx, {
     volume,
     stateVolume,
     branch,
+    commit: checked.commit,
+    base: checked.base?.branch ?? null,
     image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
-    services: services.kind,
+    services: engine.services.kind,
     ...watch.laps(),
     totalMs: watch.total(),
   });
   const owned = stack.move();
   return {
     sandbox,
-    services,
+    services: engine.services,
     connection,
     volume,
     branch,
+    commit: checked.commit,
+    base: checked.base,
     sourcePath,
-    mcpToken,
+    mcpToken: wired.mcpToken,
+    labels,
+    stopServices: engine.stop,
     dispose: () => owned.disposeAsync(),
   };
 }

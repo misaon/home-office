@@ -67,6 +67,20 @@ export const tasksOf = (
   projectId: ProjectId,
 ): Task[] => resolve(model.tasks, model.tasksByProject.get(projectId));
 
+export const dependenciesOf = (model: Pick<ReadModel, "tasks">, task: Task): Task[] =>
+  task.dependsOn.flatMap((id) => {
+    const dependency = model.tasks.get(id);
+    return dependency === undefined ? [] : [dependency];
+  });
+
+export const openDependenciesOf = (model: Pick<ReadModel, "tasks">, task: Task): Task[] =>
+  dependenciesOf(model, task).filter((dependency) => dependency.status !== "done");
+
+export const dependentsOf = (
+  model: Pick<ReadModel, "tasks" | "tasksByProject">,
+  task: Task,
+): Task[] => tasksOf(model, task.projectId).filter((other) => other.dependsOn.includes(task.id));
+
 export const findAgentByRef = (
   model: ReadModel,
   ref: string,

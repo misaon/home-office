@@ -21,6 +21,7 @@ export const RuntimeEvent = z.discriminatedUnion("kind", [
     kind: z.literal("init"),
     runtimeSessionId: z.string(),
     model: z.string(),
+    effort: z.string().optional(),
     plugins: z.array(z.string()),
     pluginErrors: z.array(z.string()),
     tools: z.int().nonnegative(),

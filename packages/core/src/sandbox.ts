@@ -9,7 +9,7 @@ export type ImageSpec = {
   contentHash: string;
 };
 
-export type VolumeMount = { name: string; target: string };
+export type VolumeMount = { name: string; target: string; readonly?: boolean };
 type BindMount = { source: string; target: string; readonly: boolean };
 
 export type SandboxSpec = {
@@ -45,12 +45,18 @@ export type EngineSpec = {
   limits: { memoryBytes: number; cpus: number; pids: number };
 };
 
-export type SandboxRunResult = { exitCode: number; stdout: string; stderr: string };
+export type SandboxRunResult = {
+  exitCode: number | null;
+  timedOut: boolean;
+  stdout: string;
+  stderr: string;
+};
 
 export type PruneScope = {
   labels: Readonly<Record<string, string>>;
   olderThanMs?: number;
   kinds: readonly ("containers" | "volumes" | "images")[];
+  keep?: (name: string) => boolean;
 };
 export type PruneReport = { containers: string[]; volumes: string[]; images: string[] };
 
@@ -83,6 +89,7 @@ export type SandboxProvider = {
   remove: (handle: SandboxHandle) => Promise<void>;
   inspect: (handle: SandboxHandle) => Promise<SandboxState>;
   run: (spec: SandboxSpec, timeoutMs?: number) => Promise<SandboxRunResult>;
+  wait: (handle: SandboxHandle, timeoutMs: number) => Promise<SandboxRunResult>;
   prune: (scope: PruneScope) => Promise<PruneReport>;
   inventory: (labels: Readonly<Record<string, string>>) => Promise<ResourceInventory>;
 };

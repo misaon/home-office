@@ -1,79 +1,26 @@
-import {
-  fileReport,
-  patchTaskArtifacts,
-  postAgentMessage,
-  recordVerificationFailure,
-  transitionTask,
-  verifyAttempts,
-} from "@ho/core";
+import { fileReport, patchTaskArtifacts, postAgentMessage, transitionTask } from "@ho/core";
 import { type Project, SYSTEM_ACTOR, type Task } from "@ho/protocol";
 import { pushFromVolume } from "./git-bridge.ts";
 import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
 import { openPullRequest } from "./publish.ts";
+import { candidateOf } from "./session-candidate.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import type { Outcome } from "./session-run.ts";
 import type { SessionDeps } from "./sessions.ts";
 import { elapsedMs } from "./timing.ts";
-import { runVerify, type VerifyResult } from "./verify.ts";
 
-const OUTPUT_LOG_CHARS = 2000;
-
-async function verified(
-  deps: SessionDeps,
-  ctx: SessionContext,
-  project: Project,
-  provisioned: Provisioned,
-): Promise<boolean> {
-  if (project.verify.command === "") {
-    return true;
-  }
-  const attempt = verifyAttempts(ctx.task) + 1;
-  const result: VerifyResult = await runVerify(
-    deps.provider,
-    deps.config,
-    project,
-    provisioned.volume,
-  ).catch((error: unknown) => ({
-    ok: false,
-    exitCode: null,
-    output: `the checks could not be run: ${String(error)}`,
-    ms: 0,
-  }));
-  const facts = {
-    sessionId: ctx.session.id,
-    taskId: ctx.task.id,
-    command: project.verify.command,
-    ok: result.ok,
-    exitCode: result.exitCode,
-    ms: result.ms,
-    attempt,
-  };
-  deps.traces.write(ctx.session.id, { kind: "verify", ...facts }, true);
-  if (result.ok) {
-    deps.log.info(facts, "checks passed");
-    return true;
-  }
-  deps.log.warn({ ...facts, output: result.output.slice(-OUTPUT_LOG_CHARS) }, "checks failed");
-  await deps.office.execute(SYSTEM_ACTOR, (m, c) =>
-    recordVerificationFailure(
-      m,
-      ctx.task.id,
-      {
-        command: project.verify.command,
-        output: result.output,
-        maxAttempts: project.verify.maxAttempts,
-      },
-      c,
-    ),
-  );
-  return false;
-}
+const summaryOf = (deps: SessionDeps, provisioned: Provisioned, outcome: Outcome): string => {
+  const filed = deps.mcp.report(provisioned.mcpToken);
+  const reported = outcome.report.trim();
+  return filed?.summary ?? (reported !== "" ? outcome.report : (outcome.failure ?? "(no report)"));
+};
 
 async function pushBranch(
   deps: SessionDeps,
   ctx: SessionContext,
   project: Project,
   provisioned: Provisioned,
+  ref: string,
 ): Promise<number> {
   const { provider, config, home } = deps;
   const started = Bun.nanoseconds();
@@ -83,13 +30,14 @@ async function pushBranch(
     provisioned.sourcePath,
     provisioned.volume,
     provisioned.branch,
+    ref,
   );
   if (project.repo.kind === "git") {
     await pushMirrorBranch(home, project, provisioned.branch);
   }
   const ms = elapsedMs(started);
   deps.log.debug(
-    { sessionId: ctx.session.id, taskId: ctx.task.id, branch: provisioned.branch, ms },
+    { sessionId: ctx.session.id, taskId: ctx.task.id, branch: provisioned.branch, ref, ms },
     "branch pushed",
   );
   return ms;
@@ -110,6 +58,29 @@ async function pullRequest(
   return openPullRequest(project, ctx.task, provisioned.branch, report);
 }
 
+const record = (
+  deps: SessionDeps,
+  ctx: SessionContext,
+  artifacts: Task["artifacts"],
+): Promise<Task> =>
+  deps.office.execute(SYSTEM_ACTOR, (m, c) => patchTaskArtifacts(m, ctx.task.id, artifacts, c));
+
+async function pushProgress(
+  deps: SessionDeps,
+  ctx: SessionContext,
+  project: Project,
+  provisioned: Provisioned,
+  status: Task["status"],
+): Promise<void> {
+  const pushMs = await pushBranch(deps, ctx, project, provisioned, "HEAD");
+  await record(deps, ctx, { branch: provisioned.branch });
+  deps.traces.write(
+    ctx.session.id,
+    { kind: "settled", status, branch: provisioned.branch, prUrl: null, pushMs },
+    true,
+  );
+}
+
 async function settleWork(
   deps: SessionDeps,
   ctx: SessionContext,
@@ -120,47 +91,55 @@ async function settleWork(
   const { office, mcp, log, traces } = deps;
   const project = office.model.projects.get(ctx.project.id) ?? ctx.project;
   const actor = { kind: "agent", agentId: ctx.agent.id } as const;
-  const record = (artifacts: Task["artifacts"]): Promise<Task> =>
-    office.execute(SYSTEM_ACTOR, (m, c) => patchTaskArtifacts(m, ctx.task.id, artifacts, c));
   if (current.status !== "in_progress") {
-    const pushMs = await pushBranch(deps, ctx, project, provisioned);
-    await record({ branch: provisioned.branch });
-    traces.write(
-      ctx.session.id,
-      { kind: "settled", status: current.status, branch: provisioned.branch, prUrl: null, pushMs },
-      true,
-    );
+    await pushProgress(deps, ctx, project, provisioned, current.status);
     return;
   }
   const filed = mcp.report(provisioned.mcpToken);
-  const reported = outcome.report.trim();
-  const summary =
-    filed?.summary ?? (reported !== "" ? outcome.report : (outcome.failure ?? "(no report)"));
-  const status =
-    outcome.failure !== null || filed?.status === "blocked"
-      ? "blocked"
-      : (filed?.status ?? "review");
-  if (status !== "blocked" && !(await verified(deps, ctx, project, provisioned))) {
+  const summary = summaryOf(deps, provisioned, outcome);
+  const blocked = outcome.failure !== null || filed?.status === "blocked";
+  if (blocked) {
+    const pushMs = await pushBranch(deps, ctx, project, provisioned, "HEAD");
+    await record(deps, ctx, { branch: provisioned.branch, report: summary });
+    if (office.model.tasks.get(ctx.task.id)?.status === "in_progress") {
+      await office.execute(actor, (m, c) =>
+        fileReport(m, ctx.task.id, { status: "blocked", summary }, c),
+      );
+    }
     traces.write(
       ctx.session.id,
-      { kind: "settled", status: "checks_failed", branch: provisioned.branch, prUrl: null },
+      { kind: "settled", status: "blocked", branch: provisioned.branch, prUrl: null, pushMs },
       true,
     );
     return;
   }
-  const pushMs = await pushBranch(deps, ctx, project, provisioned);
+  const candidate = await candidateOf(deps, ctx, project, provisioned);
+  if (candidate === null) {
+    return;
+  }
+  const pushMs = await pushBranch(deps, ctx, project, provisioned, candidate.sha);
   const prStarted = Bun.nanoseconds();
-  const prUrl = status === "blocked" ? null : await pullRequest(ctx, project, provisioned, summary);
+  const prUrl = await pullRequest(ctx, project, provisioned, summary);
   const prMs = prUrl === null ? 0 : elapsedMs(prStarted);
-  await record({
+  await record(deps, ctx, {
     branch: provisioned.branch,
+    commit: candidate.sha,
     report: summary,
     ...(prUrl === null ? {} : { prUrl }),
   });
   if (office.model.tasks.get(ctx.task.id)?.status === "in_progress") {
-    await office.execute(actor, (m, c) => fileReport(m, ctx.task.id, { status, summary }, c));
+    await office.execute(actor, (m, c) =>
+      fileReport(m, ctx.task.id, { status: "review", summary }, c),
+    );
   }
-  const settled = { status, branch: provisioned.branch, prUrl, pushMs, prMs };
+  const settled = {
+    status: office.model.tasks.get(ctx.task.id)?.status ?? "review",
+    branch: provisioned.branch,
+    commit: candidate.sha,
+    prUrl,
+    pushMs,
+    prMs,
+  };
   log.info({ sessionId: ctx.session.id, taskId: ctx.task.id, ...settled }, "work settled");
   traces.write(ctx.session.id, { kind: "settled", ...settled }, true);
 }
@@ -178,9 +157,7 @@ export async function settle(
     return;
   }
   const filed = mcp.report(provisioned.mcpToken);
-  const reported = outcome.report.trim();
-  const summary =
-    filed?.summary ?? (reported !== "" ? outcome.report : (outcome.failure ?? "(no report)"));
+  const summary = summaryOf(deps, provisioned, outcome);
   const blocked = outcome.failure !== null || filed?.status === "blocked";
   deps.log.debug(
     {

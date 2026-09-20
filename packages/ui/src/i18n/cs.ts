@@ -104,6 +104,15 @@ export const cs: typeof en = {
     rateNote: "Co bylo dobře nebo špatně (nepovinné)",
     ratedGood: "Hodnocení: dobrá práce.",
     ratedBad: "Hodnocení: špatná práce.",
+    commit: "Ověřený commit",
+    commitNone: "Kontrolami ještě žádný commit neprošel.",
+    buildsOn: "Staví na",
+    reviewPlan: "Revize",
+    reviewOff: "bez revize",
+    reviewMissing:
+      "Na tomto podlaží nikdo nemůže revidovat jako {{role}}. Najměte někoho v panelu Tým, nebo tuto revizi prominout.",
+    waive: "Prominout revizi: {{role}}",
+    waived: "Revize {{role}} prominuta",
   },
   chat: {
     removeAttachment: "Odebrat přílohu",
@@ -162,7 +171,10 @@ export const cs: typeof en = {
       "Vystaví tenhle jeden port z každého sandboxu na 127.0.0.1, takže dev server, který agent spustí, otevřete v prohlížeči. Vypnuto: nic, co agent servíruje, z kontejneru neodejde.",
     servicesLabel: "Vlastní kontejnerový engine",
     servicesHint:
-      "Docker compose z repozitáře běží uvnitř sandboxu. Session se službami zabere dva sloty daemona.",
+      "Docker compose z repozitáře běží uvnitř sandboxu. Session se službami zabere dva sloty daemona a engine se spustí, jen když je repozitář níže označen jako důvěryhodný.",
+    trustLabel: "Důvěryhodný repozitář",
+    trustHint:
+      "Vlastní kontejnerový engine je privilegovaný kontejner: kód repozitáře, jeho závislosti a cokoli, co stáhnou, dosáhnou na virtuální stroj Dockeru. Zapněte jen u repozitářů, jejichž kód byste na tomto Macu spustili sami. Vypnuto: engine nenaběhne a agenti dostanou vysvětlení.",
     title: "Nastavení kanceláře",
     removeFloor: "Odebrat toto podlaží",
     languageSet: "Jazyk kanceláře změněn",

@@ -92,6 +92,8 @@ const taskStatus = define({
       title: task.title,
       status: task.status,
       assigneeId: task.assigneeId ?? null,
+      reviews: task.reviews,
+      dependsOn: task.dependsOn,
       artifacts: task.artifacts,
       notes: task.notes.slice(-10),
     });
@@ -121,8 +123,14 @@ const recallPast = define({
     return Promise.resolve(
       hits
         .map((hit) => {
+          const evidence =
+            hit.verified === "checked"
+              ? "checks passed on the published commit"
+              : hit.verified === "unchecked"
+                ? "published without checks"
+                : "no verified commit on record";
           const lines = [
-            `## ${hit.title} — ${hit.status}, ${hit.who}, ${hit.daysAgo === 0 ? "today" : `${String(hit.daysAgo)} day(s) ago`}`,
+            `## ${hit.title} — ${hit.status}, ${hit.who}${hit.model === null ? "" : ` on ${hit.model}`}, ${hit.daysAgo === 0 ? "today" : `${String(hit.daysAgo)} day(s) ago`}; ${evidence}`,
           ];
           if (hit.report !== "") {
             lines.push(`Report: ${hit.report}`);
@@ -177,7 +185,7 @@ const handoff = define({
 const review = define({
   name: "ho_review",
   description:
-    "File your verdict on the branch under review. approve closes the task; request_changes sends it back to the author with your numbered findings.",
+    "File your verdict on the commit under review; the office records which commit you judged. approve passes it to the next reviewer or closes the task; request_changes sends it back to the author with your numbered findings.",
   schema: HoReviewInput,
   modes: ["review"],
   run: async (input, office, entry, actor) => {
@@ -189,7 +197,7 @@ const review = define({
 const delegate = define({
   name: "ho_delegate",
   description:
-    "Create a task on this floor and assign it to a colleague by name, or to yourself when you do the work. One task per independently verifiable piece of work; the fields are the specification the developer and the reviewers get, and qa/security decide who reviews it before the head of development.",
+    "Create a task on this floor and assign it to a colleague by name, or to yourself when you do the work. One task per independently verifiable piece of work; the fields are the specification the developer and the reviewers get, qa/security decide who reviews it before the head of development, and dependsOn holds it until the tasks it builds on are done.",
   schema: HoDelegateInput,
   modes: ["triage", "plan"],
   run: async (input, office, entry, actor) => {
