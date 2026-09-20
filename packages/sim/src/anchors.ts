@@ -147,13 +147,7 @@ const fixtureAnchor = (
   return middle === undefined ? [] : [spot(id, kind, middle)];
 };
 
-const WANDER_ROOMS: readonly RoomKind[] = [
-  "corridor",
-  "meeting",
-  "kitchen",
-  "team-room",
-  "terrace",
-];
+const WANDER_ROOMS: readonly RoomKind[] = ["terrace", "team-room", "kitchen"];
 
 export function anchorsOf(map: TileMap, layout: OfficeLayout): Anchor[] {
   const seats = layout.objects

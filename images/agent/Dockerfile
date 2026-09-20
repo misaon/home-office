@@ -38,6 +38,9 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
  && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 PUPPETEER_SKIP_DOWNLOAD=1 npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
  && test -f node_modules/@playwright/mcp/cli.js \
  && test -f node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm install -g pnpm@12.5.1 --no-audit --no-fund \
+ && pnpm --version
 COPY --chmod=0644 bin/ho-runner.js /usr/local/bin/ho-runner.js
 COPY plugins/ /opt/ho/plugins/
 ENV HOME=/home/agent \
@@ -47,6 +50,8 @@ ENV HOME=/home/agent \
     DO_NOT_TRACK=1 \
     XDG_CACHE_HOME=/work/.cache \
     npm_config_cache=/work/.cache/npm \
+    npm_config_store_dir=/work/.cache/pnpm-store \
+    npm_config_state_dir=/work/.cache/pnpm-state \
     BUN_INSTALL_CACHE_DIR=/work/.cache/bun \
     BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 \
     PIP_CACHE_DIR=/work/.cache/pip \

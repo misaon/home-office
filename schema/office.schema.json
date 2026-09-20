@@ -124,6 +124,12 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 5
+        },
+        "maxVerifyTurns": {
+          "default": 60,
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 500
         }
       }
     },

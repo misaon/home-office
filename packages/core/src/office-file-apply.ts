@@ -35,7 +35,7 @@ const verifyText = (p: VerifyPolicy): string =>
     : `\`${p.command}\` (${String(p.timeoutSeconds)}s, ${String(p.maxAttempts)} attempts)`;
 
 const acceptanceText = (p: AcceptancePolicy): string =>
-  `${p.verify}, ${String(p.maxFixRounds)} fix round(s)`;
+  `${p.verify}, ${String(p.maxFixRounds)} fix round(s), ${String(p.maxVerifyTurns)} verify turns`;
 
 const environmentText = (p: EnvironmentPolicy): string =>
   environmentDescribed(p)

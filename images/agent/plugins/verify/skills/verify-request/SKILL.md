@@ -12,9 +12,12 @@ result. You wrote none of it, and you change nothing: an edit in /work/repo reac
 1. Read the request and the numbered conditions in your briefing first, then
    `git -C /work/repo diff <base>...HEAD --stat` to see the whole change. Read code only to
    explain a failure you observed.
-2. Set the result up the way a user would run it: install with the repository's own package
-   manager into /work, start the application when it has one, leave it running. When the
-   briefing lists services, use them; do not probe for what the briefing does not list.
+2. Use the application the way the briefing says. When the office already started it, it is
+   running and its log is named: use it. When the environment names a run command, start it once
+   with that command and leave it running. When neither is there, do not try to boot it — no
+   installing services, no guessing at configuration, no second attempt — and verify statically:
+   templates, build output, tests, rendered files, saying in the evidence that the judgement is
+   static. When the briefing lists services, use them; never probe for what it does not list.
 3. Take each condition in turn and exercise it: the happy path exactly as worded, then the
    unhappy paths it implies (empty input, invalid input, a missing record, a denied permission),
    then the state after the action (what was stored, what was sent, what the next screen shows).
@@ -64,6 +67,10 @@ Not acceptable:
 
 ## When you are stuck
 
-If the application cannot be started at all and the briefing gives no way to do it, that is a
-`fail` on every condition that needs it, with the exact error as evidence. If the request itself
-is ambiguous, judge it as worded and say in the summary which reading you took.
+If the briefing gives no way to run the application, do not build one: judge each condition on
+what the repository shows — templates, build output, tests — and say so in the evidence. A
+condition that only a running application could show is then a `fail` with that reason. A
+condition about delivery — a branch, a pull request, a link, a report — is `not_checked`: the
+office produces those after your verdict. If the request itself is ambiguous, judge it as worded
+and say in the summary which reading you took. Your turns are capped; when they run low, file
+what you have rather than nothing.

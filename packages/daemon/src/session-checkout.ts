@@ -1,7 +1,7 @@
 import { dependenciesOf, type ReadModel } from "@ho/core";
 import type { CommitSha, Task } from "@ho/protocol";
-import { prepareRepo, prepareReviewCheckout } from "./git-bridge.ts";
-import type { WorkBase } from "./prompts-shared.ts";
+import { inRepo, prepareRepo, prepareReviewCheckout, run } from "./git-bridge.ts";
+import type { DiffSummary, WorkBase } from "./prompts-shared.ts";
 import type { SessionContext } from "./session-provision.ts";
 import type { SessionDeps } from "./sessions.ts";
 
@@ -32,7 +32,38 @@ const baseOf = (model: ReadModel, task: Task): WorkBase | null => {
       };
 };
 
-export type Checkout = { commit: CommitSha | null; base: WorkBase | null };
+export type Checkout = {
+  commit: CommitSha | null;
+  base: WorkBase | null;
+  diff: DiffSummary | null;
+};
+
+const SHORTSTAT =
+  /(?<files>\d+) files? changed(?:, (?<insertions>\d+) insertions?\(\+\))?(?:, (?<deletions>\d+) deletions?\(-\))?/u;
+
+const parseShortstat = (stdout: string): DiffSummary | null => {
+  const groups = SHORTSTAT.exec(stdout)?.groups;
+  if (groups?.["files"] === undefined) {
+    return stdout.trim() === "" ? { files: 0, insertions: 0, deletions: 0 } : null;
+  }
+  return {
+    files: Number(groups["files"]),
+    insertions: Number(groups["insertions"] ?? "0"),
+    deletions: Number(groups["deletions"] ?? "0"),
+  };
+};
+
+const diffSummary = async (
+  deps: SessionDeps,
+  volume: string,
+  defaultBranch: string,
+): Promise<DiffSummary | null> => {
+  const result = await run(
+    deps.provider,
+    inRepo(deps.config, volume, "diffstat", ["diff", "--shortstat", `${defaultBranch}...HEAD`]),
+  );
+  return result.ok ? parseShortstat(result.stdout) : null;
+};
 
 export async function checkout(
   deps: SessionDeps,
@@ -58,12 +89,13 @@ export async function checkout(
       branch,
       candidate,
     );
-    return { commit, base: null };
+    const diff = await diffSummary(deps, volume, ctx.project.defaultBranch);
+    return { commit, base: null, diff };
   }
   const base = ctx.session.mode === "work" ? baseOf(deps.office.model, ctx.task) : null;
   await prepareRepo(deps.provider, deps.config, source, volume, branch, {
     branch: base?.branch ?? ctx.project.defaultBranch,
     alsoFetch: base?.others ?? [],
   });
-  return { commit: null, base };
+  return { commit: null, base, diff: null };
 }

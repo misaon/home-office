@@ -68,7 +68,7 @@ export const HoReportInput = z.object({
     .max(MANDATE_CRITERIA_MAX)
     .optional()
     .describe(
-      'Triage and plan sessions: the conditions under which the human\'s whole request counts as done, each "When <condition>, the system shall <behaviour>" and observable on the combined result of every task. The office verifies them on the integrated branch once every task is done and reopens the work when one fails. Leave it out when the request is one task whose own criteria say it all.',
+      "Triage and plan sessions, and only when the request became two or more tasks: the conditions under which the human's whole request counts as done, each \"When <condition>, the system shall <behaviour>\", observable on the combined result and about the software's behaviour alone. Delivery is never a condition: the branch, the pull request, its link and the reports come from the office after verification. An independent colleague verifies these on the integrated branch once every task is done and a failure reopens the work. Leave it out for a single task: its own criteria and its reviewers settle it.",
     ),
 });
 export type HoReportInput = z.infer<typeof HoReportInput>;

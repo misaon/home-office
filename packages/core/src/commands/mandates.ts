@@ -12,6 +12,7 @@ import {
   type MandateStatus,
   type NewEvent,
   notFound,
+  type Task,
 } from "@ho/protocol";
 import { tasksOfMandate } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
@@ -32,6 +33,13 @@ const withMandate = <T>(
   const mandate = model.mandates.get(mandateId);
   return mandate === undefined ? err(notFound("mandate", mandateId)) : then(mandate);
 };
+
+export const wholeRequestNeedsConditions = (
+  model: ReadModel,
+  task: Task,
+): task is Task & { mandateId: MandateId } =>
+  task.mandateId !== undefined &&
+  tasksOfMandate(model, { id: task.mandateId }).filter((other) => other.kind === "work").length > 1;
 
 export const evidenceOf = (
   ctx: CommandContext,

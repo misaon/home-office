@@ -1,8 +1,10 @@
-import { bossOf, postAgentMessage } from "@ho/core";
+import { bossOf, postAgentMessage, tasksOfMandate } from "@ho/core";
 import {
   type Agent,
   errorMessage,
+  isMandateOpen,
   isQuestionReason,
+  type Mandate,
   ROLE_TITLE,
   type StoredEvent,
   SYSTEM_ACTOR,
@@ -37,12 +39,42 @@ const whoWorks = (model: Model, id: Agent["id"] | undefined): string => {
 const pullRequestNote = (task: Task): string =>
   task.artifacts.prUrl === undefined ? "" : ` (${pullRequestLink(task.artifacts.prUrl)})`;
 
-const doneLines = (model: Model, task: Task, reason: string | undefined, at: string): string => {
+const withAccount = (head: string, account: string): string =>
+  [head, account === "" ? "" : `\n${account}`].filter((line) => line !== "").join("\n");
+
+const mandateTaskDone = (
+  model: Model,
+  mandate: Mandate,
+  task: Task,
+  account: string,
+): string | null => {
+  if (!isMandateOpen(mandate.status)) {
+    return withAccount(`✅ ${quote(task)} is done.`, account);
+  }
+  const work = tasksOfMandate(model, mandate).filter((other) => other.kind === "work");
+  if (work.length <= 1) {
+    return null;
+  }
+  const remaining = work.filter(
+    (other) => other.id !== task.id && other.status !== "done" && other.status !== "cancelled",
+  ).length;
+  const next =
+    remaining === 0
+      ? "every task of the request is done, so the office now integrates and verifies the whole"
+      : `${String(remaining)} task${remaining === 1 ? "" : "s"} of the request remain${remaining === 1 ? "s" : ""}`;
+  return withAccount(`✅ ${quote(task)} is done; ${next}.`, account);
+};
+
+const doneLines = (
+  model: Model,
+  task: Task,
+  reason: string | undefined,
+  at: string,
+): string | null => {
   const outcome = outcomeOf(task, reason, REPORT_MAX);
-  if (task.mandateId !== undefined) {
-    return [`✅ ${quote(task)} is done.`, outcome.account === "" ? "" : `\n${outcome.account}`]
-      .filter((line) => line !== "")
-      .join("\n");
+  const mandate = task.mandateId === undefined ? undefined : model.mandates.get(task.mandateId);
+  if (mandate !== undefined) {
+    return mandateTaskDone(model, mandate, task, outcome.account);
   }
   const timing = timingOf(model, task, at);
   return [

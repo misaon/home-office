@@ -1,5 +1,5 @@
 import { homeSteps, lazyOccupancy, setSteps, walkSteps } from "./actors.ts";
-import { idleBehaviour } from "./behaviours.ts";
+import { breakBehaviour, idleBehaviour } from "./behaviours.ts";
 import type { Point } from "./grid.ts";
 import { advanceStep } from "./steps.ts";
 import {
@@ -125,6 +125,8 @@ export function tick(world: World, dtMs: number): void {
       if (world.time >= actor.idleUntil) {
         idleBehaviour(world, actor);
       }
+    } else {
+      breakBehaviour(world, actor);
     }
     advanceStep(world, actor, dtMs, occupancy);
   }

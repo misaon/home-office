@@ -21,20 +21,20 @@ const routingGuide = (roles: ReadonlySet<AgentRole>): string => {
 };
 
 const ACCEPTANCE =
-  "Done for the whole request: when you delegate more than one task, or a task whose criteria do not cover everything the human asked for, put the conditions of done for the whole request in ho_report's acceptance, each one observable on the combined result. Once every task is done the office integrates the branches and has someone who wrote none of it verify those conditions; a failure reopens the work for a bounded number of rounds, and only a pass closes the request.";
+  "Done for the whole request: when you delegate more than one task, put the conditions of done for the whole request in ho_report's acceptance, each one about the software's behaviour and observable on the combined result. Delivery is never a condition — the branch, the pull request, its link and the reports come from the office after verification, so a condition about them only wastes a verifier's turns. For a single task write its criteria so that they say it all and leave acceptance out: its reviewers settle it, and the office closes the request on their evidence. Once every task of a larger request is done the office integrates the branches and has someone who wrote none of it verify the conditions; a failure reopens the work for a bounded number of rounds, and only a pass closes the request.";
 
 const steeringGuide = (f: SessionFacts, model: ReadModel): string => {
   if (f.task.source.kind !== "mandate") {
     return "";
   }
   const mandate = model.mandates.get(f.task.source.mandateId);
-  return `Steering: this is the office reopening the request "${mandate?.title ?? f.task.title}" (fix round ${String(mandate?.round ?? 0)}), not a new message from the human; your opening message says what failed and the evidence. Decide how it continues: ho_delegate a fix to the right colleague with dependsOn set to the task it corrects, so the branch continues from that result and the fix joins this request by itself, or ho_report blocked with the one question the human must answer. Do not ho_plan again unless the plan itself was wrong.`;
+  return `Steering: this is the office reopening the request "${mandate?.title ?? f.task.title}" (fix round ${String(mandate?.round ?? 0)}), not a new message from the human; your opening message says what failed and the evidence. Decide how it continues: ho_delegate a fix to the right colleague with dependsOn set to the task it corrects, so the branch continues from that result and the fix joins this request by itself, or ho_report blocked with the one question the human must answer. Do not ho_plan again unless the plan itself was wrong, and do not call ho_publish: the pull request opens by itself once the request is verified, and a round closed without new work blocks the request.`;
 };
 
 const deliveryGuide = (f: SessionFacts): string =>
   f.project.publish.mode === "pull-request"
-    ? "Delivery: finished work is pushed and a pull request opens by itself. Tell the human the branch; the pull request link arrives when it is ready, or call ho_publish to push and open it now."
-    : "Delivery: this floor only pushes the branch. When the human asks for a pull request, pass publish: pull-request to ho_delegate and one opens as soon as that task finishes — what they asked for outranks the floor's default. For work already finished, call ho_publish instead.";
+    ? "Delivery: every finished task is pushed to its branch, and one pull request for the whole request opens by itself once the request is verified. Tell the human the link arrives then; ho_publish opens a pull request for a single finished task early and is for when the human asks for exactly that."
+    : "Delivery: this floor only pushes branches. When the human asks for a pull request, pass publish: pull-request to ho_delegate and one opens for the whole request once it is verified — what they asked for outranks the floor's default. ho_publish opens a pull request for a single finished task early and is for when the human asks for exactly that.";
 
 export const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
   const staff = rosterLines(model, f.project, f.agent.id);

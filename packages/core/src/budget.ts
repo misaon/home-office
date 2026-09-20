@@ -1,4 +1,4 @@
-import type { Agent, AgentId, Task } from "@ho/protocol";
+import type { AcceptancePolicy, Agent, AgentId, SessionMode, Task } from "@ho/protocol";
 import { sessionsOfTask } from "./model/queries.ts";
 import type { ReadModel } from "./model/read-model.ts";
 
@@ -25,13 +25,26 @@ export const spentOnTask = (
   return spent;
 };
 
-export const remainingBudget = (agent: Agent, spent: SpentBudget): RemainingBudget => ({
+const remainingBudget = (agent: Agent, spent: SpentBudget): RemainingBudget => ({
   turns: Math.max(0, agent.budgets.maxTurnsPerTask - spent.turns),
   usd:
     agent.budgets.maxUsdPerTask === undefined
       ? null
       : Math.max(0, agent.budgets.maxUsdPerTask - spent.costUsd),
 });
+
+export const sessionBudget = (
+  model: Pick<ReadModel, "sessions" | "sessionsByTask">,
+  agent: Agent,
+  task: Pick<Task, "id" | "reviewRounds">,
+  mode: SessionMode,
+  acceptance: AcceptancePolicy,
+): RemainingBudget => {
+  const remaining = remainingBudget(agent, spentOnTask(model, task, agent.id));
+  return mode === "verify"
+    ? { ...remaining, turns: Math.min(remaining.turns, acceptance.maxVerifyTurns) }
+    : remaining;
+};
 
 const roundName = (round: number): string =>
   round === 0 ? "this task's first round" : `review round ${String(round)} of this task`;

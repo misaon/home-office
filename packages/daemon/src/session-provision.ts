@@ -12,7 +12,7 @@ import {
 import { branchFor, hostGitIdentity } from "./git-bridge.ts";
 import { LABELS } from "./labels.ts";
 import { sourcePathFor } from "./mirrors.ts";
-import type { Services, WorkBase } from "./prompts-shared.ts";
+import type { DiffSummary, Services, WorkBase } from "./prompts-shared.ts";
 import type { RunnerConnection } from "./runner-gateway.ts";
 import { checkout } from "./session-checkout.ts";
 import { sandboxSpec } from "./session-sandbox.ts";
@@ -42,6 +42,7 @@ export type Provisioned = {
   branch: string;
   commit: CommitSha | null;
   base: WorkBase | null;
+  diff: DiffSummary | null;
   sourcePath: string;
   mcpToken: string;
   labels: Readonly<Record<string, string>>;
@@ -192,6 +193,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     branch,
     commit: checked.commit,
     base: checked.base?.branch ?? null,
+    diff: checked.diff,
     image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
     services: engine.services.kind,
     ...watch.laps(),
@@ -206,6 +208,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     branch,
     commit: checked.commit,
     base: checked.base,
+    diff: checked.diff,
     sourcePath,
     mcpToken: wired.mcpToken,
     labels,

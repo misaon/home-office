@@ -199,7 +199,7 @@ branch, publish and intake policy, budgets, and the staff to hire:
   "defaultBranch": "main",
   "publish": { "mode": "pull-request", "draft": true },
   "verify": { "command": "bun run check" },
-  "acceptance": { "verify": "integration", "maxFixRounds": 2 },
+  "acceptance": { "verify": "integration", "maxFixRounds": 2, "maxVerifyTurns": 60 },
   "environment": {
     "setup": ["bun install --frozen-lockfile"],
     "run": "bun run dev",
@@ -221,11 +221,15 @@ it — only which provider an agent uses, which is enough for the daemon to find
 A gitignored `.ho/config.local.json` layers over it for one machine.
 
 `acceptance` says when a request counts as done. `verify` is `integration` by default: a separate
-verification session runs only when there are conditions over the whole request — several tasks, or
-conditions the boss or the analyst stated — and a single task closes on the evidence its reviewers
-filed. `always` verifies every request and every task criterion independently; `never` closes a
-request as soon as its tasks are done. `maxFixRounds` caps how many times a failed verification may
-reopen the work before the request blocks for you.
+verification session runs only when the request became several tasks, against the conditions the
+boss or the analyst stated or, when they stated none, against the request as you wrote it; a single
+task closes on the evidence its reviewers filed, and conditions stated for one are dropped. `always`
+verifies every request and every task criterion independently; `never` closes a request as soon as
+its tasks are done. `maxFixRounds` caps how many times a failed verification may reopen the work
+before the request blocks for you. `maxVerifyTurns` caps the tool turns one verification session may
+spend: the verifier runs the application only the way `environment` describes, judges statically
+otherwise, marks a condition about delivery as not checked because the office produces the branch
+and the pull request after the verdict, and files what it has before the turns run out.
 
 `environment` describes how this project is set up and checked, once, for every agent that touches
 it. `setup` runs before each work, review and verification session in the agent's own sandbox
@@ -241,16 +245,16 @@ before they started, and a failure that matches the baseline is not counted as t
 
 The point of the office is that an agent's mistake stays inside a box.
 
-|                                   |                                                                                                                                                                                                                                                         |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **The agent**                     | Its own container: a non-root user, a read-only root filesystem, memory, CPU and PID limits, scratch directories on tmpfs, and no bind mount into your filesystem except a read-only inbox for the files you attach in chat                             |
-| **Your checkout**                 | Never touched. The repository is cloned into a task volume, and finished work arrives as a new `ho/task-<id>` branch, or `ho/mandate-<id>` when several tasks were merged for one request — your working tree and index are exactly where you left them |
-| **Every git operation**           | A separate short-lived container with **no network at all** and hooks disabled                                                                                                                                                                          |
-| **Your check command**            | The same: no network, a fresh container, the agent's volume at a clean checkout of the commit that gets published; a floor with services gets the task's private engine attached, still without network                                                 |
-| **Every review**                  | Its own volume with the verified commit checked out, separate from the author's; caches and dependencies survive between reviewers, edits go nowhere                                                                                                    |
-| **Secrets**                       | The macOS Keychain, handed to the sandbox as environment and nowhere else — not in process arguments, Docker labels, the event log or the office's own logs                                                                                             |
-| **The daemon**                    | Bound to `127.0.0.1` behind a bearer token. Nothing listens outward                                                                                                                                                                                     |
-| **`docker compose` in your repo** | Optional, and served by a private engine started for that one task, reachable only from that task's sandbox. Your host daemon stays out of reach. The engine is a privileged container, which is why it needs the floor marked trusted                  |
+|                                   |                                                                                                                                                                                                                                                                                   |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **The agent**                     | Its own container: a non-root user, a read-only root filesystem, memory, CPU and PID limits, scratch directories on tmpfs, and no bind mount into your filesystem except a read-only inbox for the files you attach in chat and the files colleagues reported on the same request |
+| **Your checkout**                 | Never touched. The repository is cloned into a task volume, and finished work arrives as a new `ho/task-<id>` branch, or `ho/mandate-<id>` when several tasks were merged for one request — your working tree and index are exactly where you left them                           |
+| **Every git operation**           | A separate short-lived container with **no network at all** and hooks disabled                                                                                                                                                                                                    |
+| **Your check command**            | The same: no network, a fresh container, the agent's volume at a clean checkout of the commit that gets published; a floor with services gets the task's private engine attached, still without network                                                                           |
+| **Every review**                  | Its own volume with the verified commit checked out, separate from the author's; caches and dependencies survive between reviewers, edits go nowhere                                                                                                                              |
+| **Secrets**                       | The macOS Keychain, handed to the sandbox as environment and nowhere else — not in process arguments, Docker labels, the event log or the office's own logs                                                                                                                       |
+| **The daemon**                    | Bound to `127.0.0.1` behind a bearer token. Nothing listens outward                                                                                                                                                                                                               |
+| **`docker compose` in your repo** | Optional, and served by a private engine started for that one task, reachable only from that task's sandbox. Your host daemon stays out of reach. The engine is a privileged container, which is why it needs the floor marked trusted                                            |
 
 Every state change in the office is an event appended to a local SQLite log, so the board, the floor
 and the usage panel are all views of one history — and you can replay exactly what happened.

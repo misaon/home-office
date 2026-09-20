@@ -61,6 +61,7 @@ const AcceptanceVerification = z.enum(["integration", "always", "never"]);
 export const AcceptancePolicy = z.object({
   verify: AcceptanceVerification.default("integration"),
   maxFixRounds: z.int().min(0).max(5).default(2),
+  maxVerifyTurns: z.int().min(10).max(500).default(60),
 });
 export type AcceptancePolicy = z.infer<typeof AcceptancePolicy>;
 

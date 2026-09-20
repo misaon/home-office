@@ -18,7 +18,7 @@ import {
 import { awaitsAnswer, membersOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, err, ok, type Result } from "../result.ts";
-import { evidenceEvent, evidenceOf } from "./mandates.ts";
+import { evidenceEvent, evidenceOf, wholeRequestNeedsConditions } from "./mandates.ts";
 import { missingReviewReason, reviewPlanOf } from "./review-plan.ts";
 import { handoffEvent, note, noteEvent, statusChange, withTask } from "./shared.ts";
 import { readTask } from "./tasks.ts";
@@ -144,7 +144,7 @@ export function fileReport(
       },
     ];
     const stated = input.acceptance ?? [];
-    if (task.kind !== "work" && stated.length > 0 && task.mandateId !== undefined) {
+    if (task.kind !== "work" && stated.length > 0 && wholeRequestNeedsConditions(model, task)) {
       events.push({
         type: "mandate.acceptance_stated",
         actor: ctx.actor,

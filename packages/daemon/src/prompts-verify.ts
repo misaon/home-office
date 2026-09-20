@@ -1,9 +1,11 @@
 import { type ReadModel, tasksOfMandate } from "@ho/core";
-import { headline, type Mandate, type Task } from "@ho/protocol";
+import { clip, headline, type Mandate, type Task } from "@ho/protocol";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import { environmentGuide } from "./prompts-environment.ts";
 import {
+  authorClaims,
   browserGuide,
+  changeSizeGuide,
   repoRules,
   SANDBOX,
   serveGuide,
@@ -12,9 +14,20 @@ import {
 } from "./prompts-shared.ts";
 
 const REPORT_HEADLINE_MAX = 160;
+const HINT_CHARS = 200;
+const HINTS_PER_TASK = 3;
 
 const METHOD =
-  "Exercise every condition the way the human would: start the application when it has one, walk the flow, try the unhappy paths the condition implies, check the narrow viewport and keyboard access when it is about a screen, and compare what you see with the request's own words, never with the developers' reports. Judge the integrated result as a whole: two tasks that each pass alone but disagree on an interface fail here. A condition you could not exercise is a fail with the reason, not a pass.";
+  "Exercise every condition the way the human would: walk the flow, try the unhappy paths the condition implies, check the narrow viewport and keyboard access when it is about a screen, and compare what you see with the request's own words, never with the developers' reports. Judge the integrated result as a whole: two tasks that each pass alone but disagree on an interface fail here.";
+
+const RUNNING =
+  "Running the result: when the briefing says the office already started the application, use it. When the environment names a run command, start it once with that command and no other way. When neither is there, do not try to boot the application — no installing services, no guessing at configuration, no second attempt — and verify statically instead: the templates, the output of a build step, the tests, the rendered files; say in the evidence that the judgement is static.";
+
+const SCOPE =
+  "A behaviour condition you could not exercise is a fail with the reason, never a pass. A condition about delivery — a branch, a pull request, a link, a report — is not yours: the office produces those after your verdict, so judge it not_checked with that reason.";
+
+const turnsGuide = (turns: number): string =>
+  `You have at most ${String(turns)} tool turns. Spend them on the conditions in order and file ho_verify before they run out: an unfinished verification counts for nothing.`;
 
 const CALIBRATION =
   "Acceptable evidence names the exact command or page, the input you gave and the output you observed, with a screenshot for anything visual; unacceptable evidence says it looks fine, points at code that exists, or restates a report. Read the skill verify-request before you start: it carries the checklist for web applications with examples of both.";
@@ -30,6 +43,18 @@ const taskLine = (model: ReadModel, task: Task): string => {
       ? ""
       : `: ${headline(task.artifacts.report, REPORT_HEADLINE_MAX)}`;
   return `- "${task.title}" by ${who ?? "a former colleague"} (${task.artifacts.branch ?? "no branch"} at ${task.artifacts.commit ?? "no commit"})${report}`;
+};
+
+const runHints = (model: ReadModel, work: readonly Task[]): string => {
+  const lines = work.flatMap((task) => {
+    const claims = [...authorClaims(model, task).values()].slice(0, HINTS_PER_TASK);
+    return claims.length === 0
+      ? []
+      : [`- "${task.title}": ${claims.map((claim) => clip(claim, HINT_CHARS)).join(" · ")}`];
+  });
+  return lines.length === 0
+    ? ""
+    : `How the authors say they ran and checked their work, useful for finding the way in and never evidence:\n${lines.join("\n")}`;
 };
 
 const conditions = (mandate: Mandate): string =>
@@ -62,8 +87,13 @@ export const verifyPrompt = (f: SessionFacts, model: ReadModel): string[] => {
     `The request, as the human wrote it:\n${mandate.request}`,
     conditions(mandate),
     `Tasks that make up the result:\n${work.map((task) => taskLine(model, task)).join("\n")}`,
+    runHints(model, work),
+    changeSizeGuide(f.diff, f.project.defaultBranch),
     METHOD,
+    RUNNING,
+    SCOPE,
     CALIBRATION,
+    turnsGuide(f.project.acceptance.maxVerifyTurns),
     `Start with \`git -C ${REPO_IN_VOLUME} diff ${f.project.defaultBranch}...HEAD --stat\` to see what changed as a whole, then exercise; read code only to explain a failure.`,
     PROTOCOL,
   ];

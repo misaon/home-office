@@ -4,6 +4,7 @@ import {
   type Attachment,
   CHAT_INBOX_DIR,
   CHAT_OUTBOX_DIR,
+  clip,
   type CommitSha,
   isSessionActive,
   type Project,
@@ -30,6 +31,8 @@ export type WorkBase = {
 
 type Preview = { enabled: boolean; port: number };
 
+export type DiffSummary = { files: number; insertions: number; deletions: number };
+
 export type SessionFacts = {
   agent: Agent;
   project: Project;
@@ -39,6 +42,7 @@ export type SessionFacts = {
   branch: string;
   commit: CommitSha | null;
   base: WorkBase | null;
+  diff: DiffSummary | null;
   browser: boolean;
   preview: Preview;
   services: Services;
@@ -109,12 +113,64 @@ export const dependenciesGuide = (base: WorkBase | null): string => {
 export const filesGuide = (files: readonly Attachment[]): string =>
   files.length === 0
     ? ""
-    : `Files from the human, read-only in ${CHAT_INBOX_DIR}: ${files.map((f) => f.name).join(", ")}.`;
+    : `Files in ${CHAT_INBOX_DIR}, read-only, from the human and from colleagues' reports on this request: ${files.map((f) => f.name).join(", ")}.`;
 
-export const criteriaGuide = (task: Task, lead: string): string =>
+export const authorClaims = (model: ReadModel, task: Task): ReadonlyMap<number, string> => {
+  const mandate = task.mandateId === undefined ? undefined : model.mandates.get(task.mandateId);
+  const { commit } = task.artifacts;
+  const claims = new Map<number, string>();
+  if (mandate === undefined || commit === undefined) {
+    return claims;
+  }
+  for (const entry of mandate.evidence) {
+    if (
+      entry.taskId === task.id &&
+      entry.method === "author" &&
+      entry.commit === commit &&
+      entry.criterion !== null
+    ) {
+      claims.set(entry.criterion, entry.proof);
+    }
+  }
+  return claims;
+};
+
+const CLAIM_CHARS = 300;
+
+export const criteriaGuide = (
+  task: Task,
+  lead: string,
+  claims: ReadonlyMap<number, string> = new Map(),
+): string =>
   task.spec === undefined
     ? ""
-    : `${lead}\n${task.spec.acceptanceCriteria.map((c, i) => `${String(i + 1)}. ${c}`).join("\n")}`;
+    : `${lead}\n${task.spec.acceptanceCriteria
+        .map((criterion, index) => {
+          const claim = claims.get(index);
+          const own =
+            claim === undefined
+              ? ""
+              : `\n   The author's own check, a claim to confirm rather than evidence: ${clip(claim, CLAIM_CHARS)}`;
+          return `${String(index + 1)}. ${criterion}${own}`;
+        })
+        .join("\n")}`;
+
+const SMALL_CHANGE_LINES = 60;
+const MEDIUM_CHANGE_LINES = 400;
+
+export const changeSizeGuide = (diff: DiffSummary | null, defaultBranch: string): string => {
+  if (diff === null) {
+    return "";
+  }
+  const lines = diff.insertions + diff.deletions;
+  const effort =
+    lines <= SMALL_CHANGE_LINES
+      ? "a small change: one careful pass over the diff, the checks or the one page it touches, and your verdict, in about fifteen turns; do not reinstall or rebuild what the environment already prepared"
+      : lines <= MEDIUM_CHANGE_LINES
+        ? "a medium change: read every hunk, run the checks once and exercise each criterion once, in about thirty turns"
+        : "a large change: read it module by module and spend your turns on the criteria first";
+  return `Size of the change against ${defaultBranch}: ${String(diff.files)} file(s), +${String(diff.insertions)} −${String(diff.deletions)}. That is ${effort}.`;
+};
 
 export const rosterLines = (model: ReadModel, project: Project, except: Agent["id"]): string[] =>
   membersOf(model, project.id)

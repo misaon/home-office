@@ -176,7 +176,7 @@ export const findMail = (
 };
 
 export function attachmentsOfTask(
-  model: Lineage & Pick<ReadModel, "chat">,
+  model: Lineage & Pick<ReadModel, "chat" | "tasksByMandate">,
   task: Task,
 ): readonly Attachment[] {
   const roots = new Set<TaskId>();
@@ -191,11 +191,14 @@ export function attachmentsOfTask(
     }
     current = parentOf(model, current);
   }
+  const siblings = new Set<TaskId>(
+    task.mandateId === undefined ? [] : (model.tasksByMandate.get(task.mandateId) ?? []),
+  );
   return chatOf(model, task.projectId)
-    .filter(
-      (m) =>
-        m.author.kind === "human" &&
-        ((m.taskId !== undefined && roots.has(m.taskId)) || sources.has(m.id)),
+    .filter((m) =>
+      m.author.kind === "human"
+        ? (m.taskId !== undefined && roots.has(m.taskId)) || sources.has(m.id)
+        : m.taskId !== undefined && (roots.has(m.taskId) || siblings.has(m.taskId)),
     )
     .flatMap((m) => m.attachments);
 }

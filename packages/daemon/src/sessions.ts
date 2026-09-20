@@ -2,10 +2,9 @@ import {
   type AgentRuntime,
   createChannel,
   endSession,
-  remainingBudget,
   type SandboxProvider,
   type SecretStore,
-  spentOnTask,
+  sessionBudget,
   startSession,
   transitionTask,
 } from "@ho/core";
@@ -120,7 +119,7 @@ export class SessionManager {
     if (task === undefined || agent === undefined || project === undefined) {
       throw new Error(`cannot start a session for task ${taskId}: task, agent or project missing`);
     }
-    const budget = remainingBudget(agent, spentOnTask(office.model, task, agentId));
+    const budget = sessionBudget(office.model, agent, task, mode, project.acceptance);
     if (mode !== "review" && budget.turns < LOW_TURNS) {
       log.warn(
         { taskId, agentId, agent: agent.name, turnsLeft: budget.turns, round: task.reviewRounds },

@@ -30,7 +30,7 @@ const budgetGuide = (agent: Agent): string =>
 
 const publishGuide = (task: Task, project: Project): string =>
   (task.publish ?? project.publish.mode) === "pull-request"
-    ? "Publishing: the office pushes the verified commit and opens the pull request once the checks pass; your report becomes its description."
+    ? "Publishing: the office pushes the verified commit to the task branch and opens one pull request for the whole request once it is verified; your report becomes part of its description, so do not promise a link yourself."
     : "Publishing: the office pushes the verified commit to the task branch; this floor does not open pull requests, so do not promise one.";
 
 const reviewersGuide = (model: ReadModel, task: Task): string => {

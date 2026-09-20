@@ -49,6 +49,7 @@ export const prepare = (
       branch: provisioned.branch,
       commit: provisioned.commit,
       base: provisioned.base,
+      diff: provisioned.diff,
       browser,
       preview: ctx.project.preview,
       services: provisioned.services,

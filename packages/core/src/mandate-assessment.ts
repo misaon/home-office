@@ -30,6 +30,9 @@ const independent = (evidence: Evidence, author: Agent["id"] | undefined): boole
   (evidence.method === "review" || evidence.method === "verification") &&
   !(evidence.by.kind === "agent" && evidence.by.agentId === author);
 
+const settles = (evidence: Evidence): boolean =>
+  evidence.verdict !== "not_checked" || evidence.method === "verification";
+
 const verdictOnTask = (
   mandate: Mandate,
   task: Task,
@@ -45,7 +48,7 @@ const verdictOnTask = (
         entry.taskId === task.id &&
         entry.criterion === index &&
         entry.commit === commit &&
-        entry.verdict !== "not_checked" &&
+        settles(entry) &&
         independent(entry, task.assigneeId),
     ),
   )?.verdict;
@@ -62,8 +65,7 @@ const verdictOnMandate = (mandate: Mandate, index: number): EvidenceVerdict | un
         entry.taskId === undefined &&
         entry.criterion === index &&
         entry.commit === commit &&
-        entry.method === "verification" &&
-        entry.verdict !== "not_checked",
+        entry.method === "verification",
     ),
   )?.verdict;
 };
@@ -133,6 +135,10 @@ const judge = (mandate: Mandate, done: Task[], policy: AcceptancePolicy): Assess
     return { kind: "failed", criteria: whole.failed, taskCriteria: failedTasks, checks };
   }
   const missingTasks = perTask ? taskCriteriaOf(mandate, done, "missing") : [];
+  const wholeNeeded = perTask || mandate.acceptance.length > 0 || done.length > 1;
+  if (wholeNeeded && mandate.acceptance.length === 0) {
+    return { kind: "verify", criteria: [], taskCriteria: missingTasks };
+  }
   if (whole.missing.length > 0 || missingTasks.length > 0) {
     return { kind: "verify", criteria: whole.missing, taskCriteria: missingTasks };
   }

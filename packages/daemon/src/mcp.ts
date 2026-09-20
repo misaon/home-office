@@ -19,7 +19,7 @@ const INSTRUCTIONS: Readonly<Record<SessionMode, string>> = {
     "Home Office tools for the boss. ho_plan hands a request to the analyst, who specifies and splits it; ho_delegate creates one task per independently verifiable piece of work, and its fields are the specification the developer and the reviewers get; ho_reply talks to the human; ho_hire adds a lasting colleague; ho_publish pushes a finished branch and opens its pull request. End with ho_report, status done.",
   plan: "Home Office tools for the analyst. Read the repository, then ho_delegate one task per independently verifiable piece of work, assigned to the colleague whose role fits; its fields are the specification the developer and the reviewers get. ho_reply tells the human the plan; ho_ask_human pauses for a decision only the human can make. End with ho_report, status done, and the conditions of done for the whole request in acceptance.",
   verify:
-    "Home Office tools for the verifier of a whole request. Exercise the integrated result against every condition in your briefing, then end with ho_verify exactly once: pass or fail, one judgement per condition, screenshots in files. ho_ask_human pauses for a human decision.",
+    "Home Office tools for the verifier of a whole request. Exercise the integrated result against every condition in your briefing — running the application only the way the briefing says, otherwise judging statically — then end with ho_verify exactly once: pass or fail, one judgement per condition, screenshots in files. ho_ask_human pauses for a human decision.",
 };
 
 const shorten = (input: unknown): string =>
