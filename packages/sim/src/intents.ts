@@ -14,6 +14,7 @@ import {
   anchorOf,
   type DeliveryRef,
   type Emotion,
+  forget,
   freeAnchors,
   release,
   reserve,
@@ -101,6 +102,7 @@ export function releaseWork(world: World, agentId: AgentId, ok: boolean): void {
   if (actor === undefined) {
     return;
   }
+  forget(world, actor, actor.work);
   actor.work = null;
   release(world, actor);
   const celebrate: Step[] = ok
@@ -186,6 +188,7 @@ export function sleep(world: World, agentId: AgentId): void {
   }
   const bed = world.rng.pick(freeAnchors(world, actor.floorId, "sleep", actor.kind));
   const spot = bed ?? world.rng.pick(freeAnchors(world, actor.floorId, "wander", actor.kind));
+  forget(world, actor, actor.work);
   actor.work = null;
   release(world, actor);
   if (bed !== undefined) {

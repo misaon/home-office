@@ -203,6 +203,26 @@ export function reserve(world: World, actor: Actor, floorId: string, anchorId: s
   return true;
 }
 
+export function forget(
+  world: World,
+  actor: Actor,
+  held: { floorId: string; anchorId: string } | null,
+): void {
+  if (
+    held === null ||
+    (actor.home?.floorId === held.floorId && actor.home.anchorId === held.anchorId)
+  ) {
+    return;
+  }
+  const floor = world.floors.get(held.floorId);
+  if (floor?.reservations.get(held.anchorId) === actor.id) {
+    floor.reservations.delete(held.anchorId);
+  }
+  if (actor.reservation?.anchorId === held.anchorId) {
+    actor.reservation = null;
+  }
+}
+
 export function release(world: World, actor: Actor): void {
   const current = actor.reservation;
   if (current === null) {
