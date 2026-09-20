@@ -2,6 +2,7 @@ import type { PruneReport, PruneScope } from "@ho/core";
 import type { ResourceInventory } from "@ho/protocol";
 import {
   ContainerList,
+  type ContainerSummary,
   type DockerApi,
   DockerApiError,
   ImageList,
@@ -85,11 +86,30 @@ const isoOrNull = (value: string | undefined): string | null => {
   return Number.isNaN(time) ? null : new Date(time).toISOString();
 };
 
+const describeContainers = (
+  containers: readonly ContainerSummary[],
+): ResourceInventory["containers"] =>
+  containers.map((c) => ({
+    name: nameOf(c),
+    state: c.State,
+    kind: c.Labels?.["ho.kind"] ?? "unknown",
+    sessionId: c.Labels?.["ho.session"] ?? null,
+    createdAt: iso(c.Created),
+  }));
+
+export const containers = async (
+  api: DockerApi,
+  labels: Readonly<Record<string, string>>,
+): Promise<ResourceInventory["containers"]> =>
+  describeContainers(
+    await api.json(ContainerList, "GET", `/containers/json?all=1&filters=${labelFilter(labels)}`),
+  );
+
 export async function inventory(
   api: DockerApi,
   labels: Readonly<Record<string, string>>,
 ): Promise<ResourceInventory> {
-  const [containers, volumes, df] = await Promise.all([
+  const [listed, volumes, df] = await Promise.all([
     api.json(ContainerList, "GET", `/containers/json?all=1&filters=${labelFilter(labels)}`),
     api.json(VolumeList, "GET", `/volumes?filters=${labelFilter(labels)}`),
     api.json(SystemDf, "GET", "/system/df"),
@@ -100,20 +120,14 @@ export async function inventory(
   const sizes = new Map(owned.map((v) => [v.Name, v.UsageData?.Size ?? null] as const));
   return {
     snapshot: {
-      containers: containers.length,
+      containers: listed.length,
       volumes: owned.length,
       imagesBytes: (df.Images ?? [])
         .filter((i) => has(i.Labels))
         .reduce((sum, i) => sum + i.Size, 0),
       volumesBytes: owned.reduce((sum, v) => sum + (v.UsageData?.Size ?? 0), 0),
     },
-    containers: containers.map((c) => ({
-      name: nameOf(c),
-      state: c.State,
-      kind: c.Labels?.["ho.kind"] ?? "unknown",
-      sessionId: c.Labels?.["ho.session"] ?? null,
-      createdAt: iso(c.Created),
-    })),
+    containers: describeContainers(listed),
     volumes: (volumes.Volumes ?? []).map((v) => ({
       name: v.Name,
       kind: v.Labels?.["ho.kind"] ?? "unknown",

@@ -31,10 +31,9 @@ async function reapOrphans(
   model: ReadModel,
   log: Logger,
 ): Promise<string[]> {
-  const inventory = await provider.inventory(MANAGED);
   const active = new Set<string>(model.activeSessions);
   const reaped: string[] = [];
-  for (const container of inventory.containers) {
+  for (const container of await provider.containers(MANAGED)) {
     if (
       container.state !== "running" ||
       !REAPED_CONTAINER_KINDS.has(container.kind) ||

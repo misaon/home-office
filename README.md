@@ -183,7 +183,7 @@ branch, publish and intake policy, budgets, and the staff to hire:
   "defaultBranch": "main",
   "publish": { "mode": "pull-request", "draft": true },
   "verify": { "command": "bun run check" },
-  "budgets": { "maxTurnsPerTask": 60, "maxConcurrentSessions": 1, "maxWallMinutes": 60 }
+  "budgets": { "maxTurnsPerTask": 200, "maxConcurrentSessions": 1, "maxWallMinutes": 60 }
 }
 ```
 

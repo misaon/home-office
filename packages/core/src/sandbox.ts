@@ -92,4 +92,7 @@ export type SandboxProvider = {
   wait: (handle: SandboxHandle, timeoutMs: number) => Promise<SandboxRunResult>;
   prune: (scope: PruneScope) => Promise<PruneReport>;
   inventory: (labels: Readonly<Record<string, string>>) => Promise<ResourceInventory>;
+  containers: (
+    labels: Readonly<Record<string, string>>,
+  ) => Promise<ResourceInventory["containers"]>;
 };

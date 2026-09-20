@@ -8,11 +8,11 @@ const RESTART_REASON =
 const INVENTORY_ATTEMPTS = 3;
 const INVENTORY_RETRY_MS = 2000;
 
-async function readInventory(deps: SessionDeps): Promise<ResourceInventory | null> {
+async function readInventory(deps: SessionDeps): Promise<ResourceInventory["containers"] | null> {
   const { provider, log } = deps;
   for (let attempt = 1; attempt <= INVENTORY_ATTEMPTS; attempt += 1) {
     try {
-      return await provider.inventory({ [LABELS.managed]: "true" });
+      return await provider.containers({ [LABELS.managed]: "true" });
     } catch (error) {
       log.warn(
         { attempt, of: INVENTORY_ATTEMPTS, err: errorMessage(error) },
@@ -43,7 +43,7 @@ export async function recoverSessions(
       "docker stayed silent; the sessions are closed on record and gc stops their containers once it answers",
     );
   }
-  const abandoned = (inventory?.containers ?? []).filter(
+  const abandoned = (inventory ?? []).filter(
     (item) => item.kind === "session" || item.kind === "engine",
   );
   for (const session of active) {

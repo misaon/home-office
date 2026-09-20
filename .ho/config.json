@@ -7,5 +7,5 @@
   "intake": { "enabled": false },
   "services": { "enabled": false, "mode": "rootless" },
   "verify": { "command": "bun run verify" },
-  "budgets": { "maxTurnsPerTask": 60, "maxConcurrentSessions": 1, "maxWallMinutes": 60 }
+  "budgets": { "maxTurnsPerTask": 200, "maxConcurrentSessions": 1, "maxWallMinutes": 60 }
 }

@@ -21,7 +21,7 @@ import {
   Wait,
 } from "./api.ts";
 import { startEngine } from "./engine.ts";
-import { inventory, prune } from "./housekeeping.ts";
+import { containers, inventory, prune } from "./housekeeping.ts";
 import { buildImage, imageHash } from "./image.ts";
 import { ensureNetwork } from "./network.ts";
 
@@ -173,5 +173,6 @@ export function createDockerProvider(options: {
     wait: (handle, timeoutMs) => waitForExit(api, handle.id, timeoutMs),
     prune: (scope) => prune(api, scope),
     inventory: (labels) => inventory(api, labels),
+    containers: (labels) => containers(api, labels),
   };
 }

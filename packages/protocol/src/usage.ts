@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const Budgets = z.object({
-  maxTurnsPerTask: z.int().positive().default(60),
+  maxTurnsPerTask: z.int().positive().default(200),
   maxConcurrentSessions: z.int().positive().default(1),
   maxWallMinutes: z.int().positive().default(60),
   maxReviewRounds: z.int().nonnegative().default(2),

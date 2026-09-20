@@ -1,4 +1,4 @@
-import { type ReadModel, verifyAttempts } from "@ho/core";
+import { type ReadModel, sessionsOfTask, verifyAttempts } from "@ho/core";
 import {
   addUsage,
   type Agent,
@@ -105,6 +105,9 @@ const addCounts = (into: Counts, from: Counts): void => {
   into.usage = addUsage(into.usage, from.usage);
 };
 
+const workSessionsOf = (model: ReadModel, task: Task): Session[] =>
+  sessionsOfTask(model, task.id).filter((session) => session.mode === "work");
+
 const flagOf = (task: Task, sessions: number): { flag: EvalFlag; detail: string } | null => {
   if (task.status === "failed") {
     return { flag: "failed", detail: "the session could not finish" };
@@ -179,7 +182,7 @@ export function scorecard(model: ReadModel, now: number, input: EvalInput): Eval
       countTask(counts, task);
       perAgent.set(task.assigneeId, counts);
     }
-    const sessions = model.sessionsByTask.get(task.id)?.size ?? 0;
+    const sessions = workSessionsOf(model, task).length;
     const flagged = flagOf(task, sessions);
     if (flagged !== null) {
       const assignee = task.assigneeId === undefined ? null : anyone(model, task.assigneeId);
