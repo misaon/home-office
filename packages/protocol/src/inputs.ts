@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { Attachments } from "./attachments.ts";
 import {
+  AcceptancePolicy,
   Agent,
   AuthKind,
   Budgets,
   DEPENDENCIES_MAX,
+  EnvironmentPolicy,
   HiringPolicy,
   IntakePolicy,
   IsoDateTime,
@@ -20,7 +22,8 @@ import {
   Usage,
   VerifyPolicy,
 } from "./domain.ts";
-import { AgentId, ChatThreadId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import { AgentId, ChatThreadId, MandateId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import { MandateStatus } from "./mandate.ts";
 import { patchOf } from "./patch.ts";
 import { ReviewPlan, ReviewStage } from "./roles.ts";
 
@@ -34,6 +37,8 @@ const ProjectFields = Project.pick({
   preview: true,
   services: true,
   verify: true,
+  acceptance: true,
+  environment: true,
 });
 export const ProjectCreateInput = ProjectFields.extend({
   importAgentIds: z.array(AgentId).default([]),
@@ -68,6 +73,8 @@ const ProjectPatch = patchOf(Project.pick({ name: true, repo: true, defaultBranc
   preview: patchOf(PreviewPolicy).optional(),
   services: patchOf(ServicesPolicy).optional(),
   verify: patchOf(VerifyPolicy).optional(),
+  acceptance: patchOf(AcceptancePolicy).optional(),
+  environment: patchOf(EnvironmentPolicy).optional(),
 });
 export const ProjectUpdateInput = z.object({ id: ProjectId, patch: ProjectPatch });
 export type ProjectUpdateInput = z.infer<typeof ProjectUpdateInput>;
@@ -145,6 +152,16 @@ export const TaskTransitionInput = z.object({
   reason: z.string().max(2000).optional(),
 });
 export type TaskTransitionInput = z.infer<typeof TaskTransitionInput>;
+
+export const MandateListInput = z.object({
+  projectId: ProjectId.optional(),
+  status: z.array(MandateStatus).min(1).optional(),
+});
+export const MandateAbandonInput = z.object({
+  id: MandateId,
+  reason: z.string().max(500).optional(),
+});
+export type MandateAbandonInput = z.infer<typeof MandateAbandonInput>;
 
 const ChatText = z.string().trim().min(1).max(20_000);
 

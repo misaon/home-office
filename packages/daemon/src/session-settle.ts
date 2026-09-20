@@ -1,8 +1,20 @@
-import { fileReport, patchTaskArtifacts, postAgentMessage, transitionTask } from "@ho/core";
-import { type Project, SYSTEM_ACTOR, type Task } from "@ho/protocol";
+import {
+  evidenceOf,
+  fileReport,
+  patchTaskArtifacts,
+  postAgentMessage,
+  recordEvidence,
+  transitionTask,
+} from "@ho/core";
+import {
+  type CommitSha,
+  type HoReportInput,
+  type Project,
+  SYSTEM_ACTOR,
+  type Task,
+} from "@ho/protocol";
 import { pushFromVolume } from "./git-bridge.ts";
-import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
-import { openPullRequest } from "./publish.ts";
+import { pushMirrorBranch } from "./mirrors.ts";
 import { candidateOf, settledTrace } from "./session-candidate.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import type { Outcome } from "./session-run.ts";
@@ -43,27 +55,47 @@ async function pushBranch(
   return ms;
 }
 
-async function pullRequest(
-  ctx: SessionContext,
-  project: Project,
-  provisioned: Provisioned,
-  report: string,
-): Promise<string | null> {
-  if ((ctx.task.publish ?? project.publish.mode) !== "pull-request") {
-    return null;
-  }
-  if (project.repo.kind === "local") {
-    await pushLocalBranch(project.repo.path, provisioned.branch);
-  }
-  return openPullRequest(project, ctx.task, provisioned.branch, report);
-}
-
 const record = (
   deps: SessionDeps,
   ctx: SessionContext,
   artifacts: Task["artifacts"],
 ): Promise<Task> =>
   deps.office.execute(SYSTEM_ACTOR, (m, c) => patchTaskArtifacts(m, ctx.task.id, artifacts, c));
+
+const authorEvidence = (
+  deps: SessionDeps,
+  ctx: SessionContext,
+  filed: HoReportInput | null,
+  commit: CommitSha,
+): Promise<unknown> => {
+  const { mandateId } = ctx.task;
+  const count = ctx.task.spec?.acceptanceCriteria.length ?? 0;
+  const claims = (filed?.criteria ?? []).filter((claim) => claim.index <= count);
+  if (mandateId === undefined || claims.length === 0) {
+    return Promise.resolve();
+  }
+  const actor = { kind: "agent", agentId: ctx.agent.id } as const;
+  return deps.office
+    .execute(actor, (m, c) =>
+      recordEvidence(
+        m,
+        mandateId,
+        claims.map((claim) =>
+          evidenceOf(c, {
+            sessionId: ctx.session.id,
+            taskId: ctx.task.id,
+            commit,
+            criterion: claim.index - 1,
+            method: "author",
+            verdict: "pass",
+            proof: claim.how,
+          }),
+        ),
+        c,
+      ),
+    )
+    .catch(() => null);
+};
 
 async function pushProgress(
   deps: SessionDeps,
@@ -109,16 +141,9 @@ async function settleWork(
   if (candidate === null) {
     return;
   }
+  await authorEvidence(deps, ctx, filed, candidate.sha);
   const pushMs = await pushBranch(deps, ctx, project, provisioned, candidate.sha);
-  const prStarted = Bun.nanoseconds();
-  const prUrl = await pullRequest(ctx, project, provisioned, summary);
-  const prMs = prUrl === null ? 0 : elapsedMs(prStarted);
-  await record(deps, ctx, {
-    branch: provisioned.branch,
-    commit: candidate.sha,
-    report: summary,
-    ...(prUrl === null ? {} : { prUrl }),
-  });
+  await record(deps, ctx, { branch: provisioned.branch, commit: candidate.sha, report: summary });
   if (office.model.tasks.get(ctx.task.id)?.status === "in_progress") {
     await office.execute(actor, (m, c) =>
       fileReport(m, ctx.task.id, { status: "review", summary }, c),
@@ -128,9 +153,7 @@ async function settleWork(
     status: office.model.tasks.get(ctx.task.id)?.status ?? "review",
     branch: provisioned.branch,
     commit: candidate.sha,
-    prUrl,
     pushMs,
-    prMs,
   };
   log.info({ sessionId: ctx.session.id, taskId: ctx.task.id, ...settled }, "work settled");
   settledTrace(deps, ctx, settled);
@@ -173,6 +196,22 @@ export async function settle(
               id: ctx.task.id,
               to: "blocked",
               reason: `review ended without a verdict: ${summary.slice(0, 1800)}`,
+            },
+            c,
+          ),
+        );
+      }
+      return;
+    }
+    case "verify": {
+      if (current.status === "in_progress") {
+        await office.execute(SYSTEM_ACTOR, (m, c) =>
+          transitionTask(
+            m,
+            {
+              id: ctx.task.id,
+              to: "blocked",
+              reason: `verification ended without a verdict: ${summary.slice(0, 1800)}`,
             },
             c,
           ),

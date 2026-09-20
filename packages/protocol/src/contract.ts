@@ -15,7 +15,8 @@ import {
   RemotePairing,
   RemoteStatus,
 } from "./remote.ts";
-import { AgentId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import { AgentId, MandateId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import { Mandate } from "./mandate.ts";
 import { Doctor, LiveEvent, ResourceInventory } from "./runtime-events.ts";
 import {
   AgentCopyInput,
@@ -28,6 +29,8 @@ import {
   DirectoryPickInput,
   EventsSubscribeInput,
   Health,
+  MandateAbandonInput,
+  MandateListInput,
   ProjectCreateInput,
   ProjectUpdateInput,
   RepoInspectInput,
@@ -97,6 +100,11 @@ export const contract = {
     clear: base
       .input(z.object({ projectId: ProjectId }))
       .output(z.object({ removed: z.int().nonnegative() })),
+  },
+  mandates: {
+    list: base.input(MandateListInput).output(z.array(Mandate)),
+    get: base.input(z.object({ id: MandateId })).output(Mandate),
+    abandon: base.input(MandateAbandonInput).output(Mandate),
   },
   chat: {
     send: base

@@ -200,6 +200,13 @@ export class Bridge {
       case "chat.cleared":
       case "chat.message_posted":
       case "mail.acknowledged":
+      case "mandate.opened":
+      case "mandate.acceptance_stated":
+      case "mandate.evidence_recorded":
+      case "mandate.artifacts_changed":
+      case "mandate.baseline_recorded":
+      case "mandate.status_changed":
+      case "mandate.round_opened":
       case "session.state_changed":
       case "session.usage_recorded":
       case "task.artifacts_changed":

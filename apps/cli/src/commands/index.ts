@@ -3,6 +3,7 @@ import { agentCommand } from "./agent.ts";
 import { chatCommand } from "./chat.ts";
 import { evalCommand } from "./evals.ts";
 import { intakeCommand, mailCommand } from "./intake.ts";
+import { mandateCommand } from "./mandate.ts";
 import { projectCommand } from "./project.ts";
 import { remoteCommand } from "./remote.ts";
 import { secretCommand } from "./secret.ts";
@@ -28,6 +29,7 @@ export const COMMANDS: readonly Command[] = [
   projectCommand,
   agentCommand,
   taskCommand,
+  mandateCommand,
   chatCommand,
   sessionCommand,
   intakeCommand,

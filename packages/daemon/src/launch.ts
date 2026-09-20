@@ -169,7 +169,7 @@ export async function launchDaemon(
   cleanup.defer(() => removeDaemonInfo(home));
   intake.start();
   cleanup.defer(() => intake.stop());
-  const jobs = await startFloorJobs({ office, sessions, config, gate, home, log });
+  const jobs = await startFloorJobs({ office, sessions, provider, config, gate, home, log });
   cleanup.defer(() => jobs.stop());
   let stopping: Promise<void> | null = null;
   const stop = (): Promise<void> => {

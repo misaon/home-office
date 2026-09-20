@@ -2,7 +2,16 @@ import { z } from "zod";
 import { TaskStatus } from "./domain.ts";
 
 const NotFound = z.object({
-  entity: z.enum(["project", "agent", "task", "session", "mail", "attachment", "device"]),
+  entity: z.enum([
+    "project",
+    "agent",
+    "task",
+    "session",
+    "mail",
+    "mandate",
+    "attachment",
+    "device",
+  ]),
   id: z.string(),
 });
 const Conflict = z.object({ reason: z.string() });

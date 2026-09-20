@@ -20,7 +20,25 @@ import {
   TaskStatus,
   Usage,
 } from "./domain.ts";
-import { AgentId, ChatThreadId, EventId, MailItemId, ProjectId, SessionId, TaskId } from "./ids.ts";
+import {
+  AgentId,
+  ChatThreadId,
+  EventId,
+  MailItemId,
+  MandateId,
+  ProjectId,
+  SessionId,
+  TaskId,
+} from "./ids.ts";
+import {
+  Baseline,
+  Evidence,
+  MANDATE_CRITERIA_MAX,
+  Mandate,
+  MandateArtifacts,
+  MandateCriterion,
+  MandateStatus,
+} from "./mandate.ts";
 import { ReviewStage } from "./roles.ts";
 
 const Envelope = z.object({ id: EventId, at: IsoDateTime, actor: Actor });
@@ -71,6 +89,26 @@ export const DomainEvent = z.discriminatedUnion("type", [
   }),
   event("task.rated", { taskId: TaskId, rating: TaskRating }),
   event("task.removed", { taskId: TaskId }),
+
+  event("mandate.opened", { mandate: Mandate }),
+  event("mandate.acceptance_stated", {
+    mandateId: MandateId,
+    acceptance: z.array(MandateCriterion).max(MANDATE_CRITERIA_MAX),
+  }),
+  event("mandate.evidence_recorded", { mandateId: MandateId, evidence: Evidence }),
+  event("mandate.artifacts_changed", { mandateId: MandateId, artifacts: MandateArtifacts }),
+  event("mandate.baseline_recorded", { mandateId: MandateId, baseline: Baseline }),
+  event("mandate.status_changed", {
+    mandateId: MandateId,
+    from: MandateStatus,
+    to: MandateStatus,
+    reason: z.string().max(2000).optional(),
+  }),
+  event("mandate.round_opened", {
+    mandateId: MandateId,
+    round: z.int().positive(),
+    reason: z.string().max(2000),
+  }),
 
   event("handoff.requested", {
     taskId: TaskId,

@@ -42,14 +42,15 @@ export const ReviewPlan = z.object({
 });
 export type ReviewPlan = z.infer<typeof ReviewPlan>;
 
-export const TaskKind = z.enum(["work", "triage", "plan"]);
+export const TaskKind = z.enum(["work", "triage", "plan", "verify"]);
 export type TaskKind = z.infer<typeof TaskKind>;
 
-export const SessionMode = z.enum(["work", "review", "triage", "plan"]);
+export const SessionMode = z.enum(["work", "review", "triage", "plan", "verify"]);
 export type SessionMode = z.infer<typeof SessionMode>;
 
 export const MODE_OF_KIND: Readonly<Record<TaskKind, SessionMode>> = {
   work: "work",
   triage: "triage",
   plan: "plan",
+  verify: "verify",
 };

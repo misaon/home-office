@@ -1,0 +1,8 @@
+{
+  "name": "ho-verify",
+  "description": "Home Office verification pack: proving that a whole request holds on the integrated result, condition by condition, with evidence a stranger could repeat",
+  "version": "0.1.0",
+  "author": {
+    "name": "Home Office"
+  }
+}

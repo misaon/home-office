@@ -9,6 +9,7 @@ export * from "./format.ts";
 export * from "./ids.ts";
 export * from "./inputs.ts";
 export * from "./intake.ts";
+export * from "./mandate.ts";
 export * from "./mcp.ts";
 export * from "./office-file.ts";
 export * from "./office-layout.ts";

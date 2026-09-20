@@ -63,5 +63,5 @@ export const reviewPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   criteriaGuide(f.task, "Judge each acceptance criterion; approve only when every one holds:"),
   "Flag only what affects correctness, safety or the stated criteria, not style the checks already settle. You may install dependencies, run commands, tests and the application in this copy; an edit here is yours alone and never reaches the branch, so a fix you want is a finding, not a commit.",
   `Task under review: ${f.task.title}`,
-  `Protocol: call ho_review exactly once with verdict approve or request_changes and numbered findings (file:line), then stop. ${roundsGuide(f, model)}`,
+  `Protocol: call ho_review exactly once with verdict approve or request_changes, numbered findings (file:line), and criteria: one judgement per acceptance criterion by its number — pass with what you ran or opened and saw, fail with what you saw instead, not_checked with why your stage does not cover it. The office keeps these as evidence on this commit and refuses approve while a criterion fails. Then stop. ${roundsGuide(f, model)}`,
 ];

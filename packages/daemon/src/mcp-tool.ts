@@ -49,7 +49,7 @@ export type AnyTool = {
   handle: (input: unknown, office: Office, entry: Entry, actor: Actor) => Promise<unknown>;
 };
 
-export const ALL: readonly SessionMode[] = ["work", "review", "triage", "plan"];
+export const ALL: readonly SessionMode[] = ["work", "review", "triage", "plan", "verify"];
 
 export const define = <S extends z.ZodObject>(tool: Tool<S>): AnyTool => ({
   ...tool,

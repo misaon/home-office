@@ -7,6 +7,8 @@ import {
   isSessionActive,
   type MailConnector,
   type MailItem,
+  type Mandate,
+  type MandateId,
   type ProjectId,
   type Session,
   type SessionMode,
@@ -44,11 +46,25 @@ export const latestThread = (
 
 const THREAD_WALK_MAX = 8;
 
+type Lineage = {
+  tasks: ReadonlyMap<TaskId, Task>;
+  mandates: ReadonlyMap<MandateId, Mandate>;
+};
+
+export const parentOf = (model: Lineage, task: Task): Task | undefined => {
+  const { source } = task;
+  if (source.kind === "delegation") {
+    return source.parentTaskId === undefined ? undefined : model.tasks.get(source.parentTaskId);
+  }
+  if (source.kind === "mandate") {
+    const root = model.mandates.get(source.mandateId)?.rootTaskId;
+    return root === undefined || root === task.id ? undefined : model.tasks.get(root);
+  }
+  return undefined;
+};
+
 export function threadOfTask(
-  model: {
-    chat: ReadonlyMap<ProjectId, readonly ChatMessage[]>;
-    tasks: ReadonlyMap<TaskId, Task>;
-  },
+  model: Lineage & { chat: ReadonlyMap<ProjectId, readonly ChatMessage[]> },
   task: Task,
 ): ChatThreadId | undefined {
   let current: Task | undefined = task;
@@ -57,10 +73,7 @@ export function threadOfTask(
     if (source.kind === "chat") {
       return chatOf(model, current.projectId).find((m) => m.id === source.messageId)?.threadId;
     }
-    if (source.kind !== "delegation" || source.parentTaskId === undefined) {
-      return undefined;
-    }
-    current = model.tasks.get(source.parentTaskId);
+    current = parentOf(model, current);
   }
   return undefined;
 }
@@ -69,6 +82,16 @@ export const tasksOf = (
   model: Pick<ReadModel, "tasks" | "tasksByProject">,
   projectId: ProjectId,
 ): Task[] => resolve(model.tasks, model.tasksByProject.get(projectId));
+
+export const mandatesOf = (
+  model: Pick<ReadModel, "mandates" | "mandatesByProject">,
+  projectId: ProjectId,
+): Mandate[] => resolve(model.mandates, model.mandatesByProject.get(projectId));
+
+export const tasksOfMandate = (
+  model: Pick<ReadModel, "tasks" | "tasksByMandate">,
+  mandate: Pick<Mandate, "id">,
+): Task[] => resolve(model.tasks, model.tasksByMandate.get(mandate.id));
 
 export const dependenciesOf = (model: Pick<ReadModel, "tasks">, task: Task): Task[] =>
   task.dependsOn.flatMap((id) => {
@@ -153,7 +176,7 @@ export const findMail = (
 };
 
 export function attachmentsOfTask(
-  model: Pick<ReadModel, "chat" | "tasks">,
+  model: Lineage & Pick<ReadModel, "chat">,
   task: Task,
 ): readonly Attachment[] {
   const roots = new Set<TaskId>();
@@ -166,10 +189,7 @@ export function attachmentsOfTask(
       sources.add(source.messageId);
       break;
     }
-    if (source.kind !== "delegation" || source.parentTaskId === undefined) {
-      break;
-    }
-    current = model.tasks.get(source.parentTaskId);
+    current = parentOf(model, current);
   }
   return chatOf(model, task.projectId)
     .filter(
@@ -181,7 +201,7 @@ export function attachmentsOfTask(
 }
 
 export function mailForTask(
-  model: Pick<ReadModel, "tasks" | "mail" | "mailBySource">,
+  model: Lineage & Pick<ReadModel, "mail" | "mailBySource">,
   task: Task,
 ): MailItem | undefined {
   let current: Task | undefined = task;
@@ -190,10 +210,7 @@ export function mailForTask(
     if (source.kind === "mail") {
       return findMail(model, current.projectId, source.connector, source.externalId);
     }
-    if (current.source.kind !== "delegation" || current.source.parentTaskId === undefined) {
-      return undefined;
-    }
-    current = model.tasks.get(current.source.parentTaskId);
+    current = parentOf(model, current);
   }
   return undefined;
 }

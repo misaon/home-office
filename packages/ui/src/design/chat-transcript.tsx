@@ -44,6 +44,7 @@ const DOING = {
   review: "chat.doingReview",
   triage: "chat.doingTriage",
   plan: "chat.doingPlan",
+  verify: "chat.doingVerify",
 } as const satisfies Record<SessionMode, string>;
 
 const DONE = {
@@ -51,6 +52,7 @@ const DONE = {
   review: "chat.doneReview",
   triage: "chat.doneTriage",
   plan: "chat.donePlan",
+  verify: "chat.doneVerify",
 } as const satisfies Record<SessionMode, string>;
 
 function Mark({ ok }: { ok: boolean | null }): React.JSX.Element {

@@ -1,5 +1,5 @@
 import { patchTaskArtifacts } from "@ho/core";
-import { githubRepoFromUrl, HUMAN_ACTOR, type Project, type Task, type TaskId } from "@ho/protocol";
+import { githubRepoFromUrl, HUMAN_ACTOR, type Project, type TaskId } from "@ho/protocol";
 import { exec } from "./host-exec.ts";
 import { daemonLog } from "./logger.ts";
 import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
@@ -86,11 +86,12 @@ const repoTarget = (project: Project): { cwd: string | undefined; target: string
   return { cwd: undefined, target: ["--repo", repo] };
 };
 
+export type PullRequestContent = { title: string; body: string };
+
 export async function openPullRequest(
   project: Project,
-  task: Task,
+  content: PullRequestContent,
   branch: string,
-  report: string,
 ): Promise<string | null> {
   const { cwd, target } = repoTarget(project);
   const existing = await gh(
@@ -124,9 +125,9 @@ export async function openPullRequest(
       "--base",
       project.defaultBranch,
       "--title",
-      task.title,
+      content.title,
       "--body",
-      report === "" ? task.brief : report,
+      content.body,
       ...(project.publish.draft ? ["--draft"] : []),
       ...target,
     ],
@@ -164,7 +165,12 @@ export async function publishTask(
     throw new Error("this task has no branch yet; nothing has been written for it");
   }
   await pushBranchToOrigin(home, project, branch);
-  const prUrl = await openPullRequest(project, task, branch, task.artifacts.report ?? task.brief);
+  const body = task.artifacts.report ?? task.brief;
+  const prUrl = await openPullRequest(
+    project,
+    { title: task.title, body: body === "" ? task.title : body },
+    branch,
+  );
   if (prUrl !== null) {
     await office.execute(HUMAN_ACTOR, (m, ctx) => patchTaskArtifacts(m, task.id, { prUrl }, ctx));
   }

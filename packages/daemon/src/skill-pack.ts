@@ -5,6 +5,7 @@ const MODE_PACK: Readonly<Record<SessionMode, string | null>> = {
   review: "review",
   triage: null,
   plan: null,
+  verify: "verify",
 };
 
 export const skillPacksFor = (agent: Agent, mode: SessionMode): string[] => {

@@ -47,12 +47,20 @@ flowchart LR
   QA --> Sec[Security audit<br/>when flagged]
   Sec --> Head[Head of development<br/>reviews last]
   QA & Sec & Head -->|request changes| Task
-  Head -->|approve| Done([Branch + draft pull request])
+  Head -->|approve| Integrate[Integrated branch<br/>of every task]
+  Integrate --> Verifier[Independent verifier<br/>checks the whole request]
+  Verifier -->|a condition fails| Fix[Fix round,<br/>bounded]
+  Fix --> Task
+  Verifier -->|every condition holds| Done([One draft pull request<br/>with the evidence])
 ```
 
 Nothing in that chain is a prompt you have to write twice. The boss is told how to route, the analyst
 how to specify, the developer how to report, each reviewer what to look for and to produce a verdict
-and nothing else — and the daemon, not the model, decides what happens next.
+and nothing else — and the daemon, not the model, decides what happens next. The request itself is
+kept as a _mandate_ until the whole of it holds: when every task is done and reviewed the office
+merges their branches, runs your checks on the result, and has someone who wrote none of it verify
+the conditions of done the boss or the analyst stated. A failed condition reopens the work for a
+bounded number of rounds; only a pass closes the request and opens the pull request.
 
 ## What you actually get
 
@@ -82,10 +90,15 @@ asks for a role nobody on the floor holds, the planner is refused up front, and 
 review without its reviewer blocks with the reason instead of closing — hire the role, or waive that
 one review from the task's card or with `ho task waive <task> qa`.
 
-**Tasks can build on each other.** The analyst passes the ids of the tasks a piece of work needs in
-`dependsOn`; the office holds the dependent task until they are done and starts its branch from the
-last of them, so the developer already has the result in the tree. The task that depends on all the
-others is where the whole request is checked as one.
+**Tasks can build on each other, and the request is checked as one.** The analyst passes the ids of
+the tasks a piece of work needs in `dependsOn`; the office holds the dependent task until they are
+done and starts its branch from the last of them, so the developer already has the result in the
+tree. When every task of a request is done, the office merges their branches into one, runs your
+checks on the merge, and an independent verifier — QA, or the head of development, never an author —
+exercises the conditions of done the planner stated and files one judgement per condition with the
+evidence. A failure comes back as a fix task or as a decision for the boss, at most `maxFixRounds`
+times; a pass opens one pull request for the whole request, with the request, the tasks and the
+evidence in its description.
 
 **Work survives a session ending.** Each task owns a Docker volume: the checkout, the branch, the
 provider's state, the build cache. A budget runs out, the daemon restarts, you close the lid — the next
@@ -186,6 +199,7 @@ branch, publish and intake policy, budgets, and the staff to hire:
   "defaultBranch": "main",
   "publish": { "mode": "pull-request", "draft": true },
   "verify": { "command": "bun run check" },
+  "acceptance": { "verify": "integration", "maxFixRounds": 2 },
   "budgets": { "maxTurnsPerTask": 200, "maxConcurrentSessions": 1, "maxWallMinutes": 60 }
 }
 ```
@@ -200,20 +214,27 @@ or developer, and a floor whose file names no staff keeps the default team. No c
 it — only which provider an agent uses, which is enough for the daemon to find the key in the Keychain.
 A gitignored `.ho/config.local.json` layers over it for one machine.
 
+`acceptance` says when a request counts as done. `verify` is `integration` by default: a separate
+verification session runs only when there are conditions over the whole request — several tasks, or
+conditions the boss or the analyst stated — and a single task closes on the evidence its reviewers
+filed. `always` verifies every request and every task criterion independently; `never` closes a
+request as soon as its tasks are done. `maxFixRounds` caps how many times a failed verification may
+reopen the work before the request blocks for you.
+
 ## What runs where
 
 The point of the office is that an agent's mistake stays inside a box.
 
-|                                   |                                                                                                                                                                                                                                        |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **The agent**                     | Its own container: a non-root user, a read-only root filesystem, memory, CPU and PID limits, scratch directories on tmpfs, and no bind mount into your filesystem except a read-only inbox for the files you attach in chat            |
-| **Your checkout**                 | Never touched. The repository is cloned into a task volume, and finished work arrives as a new `ho/task-<id>` branch — your working tree and index are exactly where you left them                                                     |
-| **Every git operation**           | A separate short-lived container with **no network at all** and hooks disabled                                                                                                                                                         |
-| **Your check command**            | The same: no network, a fresh container, the agent's volume at a clean checkout of the commit that gets published; a floor with services gets the task's private engine attached, still without network                                |
-| **Every review**                  | Its own volume with the verified commit checked out, separate from the author's; caches and dependencies survive between reviewers, edits go nowhere                                                                                   |
-| **Secrets**                       | The macOS Keychain, handed to the sandbox as environment and nowhere else — not in process arguments, Docker labels, the event log or the office's own logs                                                                            |
-| **The daemon**                    | Bound to `127.0.0.1` behind a bearer token. Nothing listens outward                                                                                                                                                                    |
-| **`docker compose` in your repo** | Optional, and served by a private engine started for that one task, reachable only from that task's sandbox. Your host daemon stays out of reach. The engine is a privileged container, which is why it needs the floor marked trusted |
+|                                   |                                                                                                                                                                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **The agent**                     | Its own container: a non-root user, a read-only root filesystem, memory, CPU and PID limits, scratch directories on tmpfs, and no bind mount into your filesystem except a read-only inbox for the files you attach in chat                             |
+| **Your checkout**                 | Never touched. The repository is cloned into a task volume, and finished work arrives as a new `ho/task-<id>` branch, or `ho/mandate-<id>` when several tasks were merged for one request — your working tree and index are exactly where you left them |
+| **Every git operation**           | A separate short-lived container with **no network at all** and hooks disabled                                                                                                                                                                          |
+| **Your check command**            | The same: no network, a fresh container, the agent's volume at a clean checkout of the commit that gets published; a floor with services gets the task's private engine attached, still without network                                                 |
+| **Every review**                  | Its own volume with the verified commit checked out, separate from the author's; caches and dependencies survive between reviewers, edits go nowhere                                                                                                    |
+| **Secrets**                       | The macOS Keychain, handed to the sandbox as environment and nowhere else — not in process arguments, Docker labels, the event log or the office's own logs                                                                                             |
+| **The daemon**                    | Bound to `127.0.0.1` behind a bearer token. Nothing listens outward                                                                                                                                                                                     |
+| **`docker compose` in your repo** | Optional, and served by a private engine started for that one task, reachable only from that task's sandbox. Your host daemon stays out of reach. The engine is a privileged container, which is why it needs the floor marked trusted                  |
 
 Every state change in the office is an event appended to a local SQLite log, so the board, the floor
 and the usage panel are all views of one history — and you can replay exactly what happened.
@@ -228,6 +249,13 @@ daemon:
   duration, the timing of each session phase (volumes, checkout, sandbox, runner, verify, push, pull
   request) and a one-line summary when a session ends.
 - **The event log.** `ho.db` holds every state change the office ever made.
+- **Requests and their evidence.** A message or an issue that turns into work is kept as a
+  _mandate_: the request in the human's own words, the conditions of done the boss or the analyst
+  states, every task it spawned, and one evidence record per acceptance criterion — who judged it,
+  on which commit, by what method (the floor's checks, the author's own account, a reviewer, the
+  final verifier) and with what proof. Reviewers file a judgement per criterion with their verdict,
+  and an approval that leaves a criterion failing is refused. `ho mandate list` and
+  `ho mandate show <mandate>` print them.
 - **Session traces.** `$HO_HOME/traces/<session id>.jsonl` keeps what each agent saw and did: the
   configuration it ran with and the model the runtime confirmed, the exact system prompt and opening
   message, the complete runtime stream (tool inputs and outputs, usage per turn), the office's
@@ -252,6 +280,8 @@ ho agent add Nico --role backend --project app --model sonnet
 ho task create --project app --title "Fix the focus trap in the settings dialog" --browser --qa
 ho task create --project app --title "Use the new API" --depends-on <task>   # waits for it, builds on it
 ho task waive <task> qa                # let a task through a review stage nobody here can give
+ho mandate list --project app          # every request: its status, round, conditions of done
+ho mandate show <mandate>              # the request, its tasks and the evidence per criterion
 ho project set app --services on --trust trusted   # allow the privileged engine for this repository
 ho agent set Nico --max-usd 5          # per task, across every session, where the provider reports cost
 ho session watch                       # live output from every running agent, each line tagged by session

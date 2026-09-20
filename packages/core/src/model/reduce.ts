@@ -1,4 +1,5 @@
 import { compact, type ProjectId, type StoredEvent, type TaskId } from "@ho/protocol";
+import { applyMandateEvent, removeMandatesOf } from "./reduce-mandate.ts";
 import {
   CHAT_TAIL,
   type Collection,
@@ -16,6 +17,9 @@ function applyTaskEvent(model: ReadModel, event: TaskEvent): void {
     const created = event.payload.task;
     model.tasks.set(created.id, created);
     indexInto(model.tasksByProject, created.projectId, created.id);
+    if (created.mandateId !== undefined) {
+      indexInto(model.tasksByMandate, created.mandateId, created.id);
+    }
     return;
   }
   const task = model.tasks.get(event.payload.taskId);
@@ -84,6 +88,10 @@ function applyTaskEvent(model: ReadModel, event: TaskEvent): void {
 }
 
 function removeTask(model: ReadModel, taskId: TaskId, projectId: ProjectId): void {
+  const mandateId = model.tasks.get(taskId)?.mandateId;
+  if (mandateId !== undefined) {
+    dropFrom(model.tasksByMandate, mandateId, taskId);
+  }
   const sessions = model.sessionsByTask.get(taskId);
   if (sessions !== undefined && sessions.size > 0) {
     model.revisions.sessions += 1;
@@ -109,6 +117,7 @@ function removeProject(model: ReadModel, projectId: ProjectId): void {
     removeTask(model, taskId, projectId);
   }
   model.tasksByProject.delete(projectId);
+  removeMandatesOf(model, projectId);
   model.chat.delete(projectId);
   for (const mail of model.mail.values()) {
     if (mail.projectId === projectId) {
@@ -136,6 +145,13 @@ const TOUCHES: Readonly<Record<StoredEvent["type"], Collection | null>> = {
   "task.review_waived": "tasks",
   "task.rated": "tasks",
   "task.removed": "tasks",
+  "mandate.opened": "mandates",
+  "mandate.acceptance_stated": "mandates",
+  "mandate.evidence_recorded": "mandates",
+  "mandate.artifacts_changed": "mandates",
+  "mandate.baseline_recorded": "mandates",
+  "mandate.status_changed": "mandates",
+  "mandate.round_opened": "mandates",
   "handoff.requested": null,
   "chat.message_posted": "chat",
   "chat.cleared": "chat",
@@ -163,7 +179,7 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
     }
     case "project.removed": {
       removeProject(model, event.payload.projectId);
-      for (const name of ["agents", "tasks", "sessions", "chat", "mail"] as const) {
+      for (const name of ["agents", "tasks", "sessions", "chat", "mail", "mandates"] as const) {
         model.revisions[name] += 1;
       }
       break;
@@ -196,6 +212,16 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
     case "task.review_recorded":
     case "task.review_waived": {
       applyTaskEvent(model, event);
+      break;
+    }
+    case "mandate.opened":
+    case "mandate.acceptance_stated":
+    case "mandate.evidence_recorded":
+    case "mandate.artifacts_changed":
+    case "mandate.baseline_recorded":
+    case "mandate.status_changed":
+    case "mandate.round_opened": {
+      applyMandateEvent(model, event);
       break;
     }
     case "handoff.requested": {

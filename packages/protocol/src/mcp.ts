@@ -9,7 +9,23 @@ import {
   TaskSpec,
 } from "./domain.ts";
 import { TaskId } from "./ids.ts";
+import { CRITERION_MAX, EvidenceVerdict, MANDATE_CRITERIA_MAX, PROOF_MAX } from "./mandate.ts";
 import { StaffRole } from "./roles.ts";
+
+const CRITERIA_MAX = 12;
+
+export const CriterionJudgement = z.object({
+  index: z.int().positive().describe("The criterion's number as the briefing lists it, from 1"),
+  verdict: EvidenceVerdict.describe(
+    "pass when you exercised it and it holds; fail when it does not; not_checked when your stage does not cover it and you say why",
+  ),
+  evidence: z
+    .string()
+    .min(1)
+    .max(PROOF_MAX)
+    .describe("What you ran or opened and what you observed, specific enough to repeat"),
+});
+export type CriterionJudgement = z.infer<typeof CriterionJudgement>;
 
 export const HoReportInput = z.object({
   status: z
@@ -31,6 +47,29 @@ export const HoReportInput = z.object({
     .describe(
       `Work sessions only: screenshots or other files for the human, written into ${CHAT_OUTBOX_DIR}; names only, no paths. Attach a screenshot of every change a user can see, so the result shows up in the office chat.`,
     ),
+  criteria: z
+    .array(
+      z.object({
+        index: z.int().positive().describe("The criterion's number as the briefing lists it"),
+        how: z
+          .string()
+          .min(1)
+          .max(PROOF_MAX)
+          .describe("The command you ran or the page you opened, and what you observed"),
+      }),
+    )
+    .max(CRITERIA_MAX)
+    .optional()
+    .describe(
+      "Work sessions: how you verified each acceptance criterion yourself. Recorded as your own evidence next to the reviewers'; a criterion you did not exercise is left out.",
+    ),
+  acceptance: z
+    .array(z.string().min(1).max(CRITERION_MAX))
+    .max(MANDATE_CRITERIA_MAX)
+    .optional()
+    .describe(
+      'Triage and plan sessions: the conditions under which the human\'s whole request counts as done, each "When <condition>, the system shall <behaviour>" and observable on the combined result of every task. The office verifies them on the integrated branch once every task is done and reopens the work when one fails. Leave it out when the request is one task whose own criteria say it all.',
+    ),
 });
 export type HoReportInput = z.infer<typeof HoReportInput>;
 
@@ -41,8 +80,44 @@ export const HoReviewInput = z.object({
     .min(1)
     .max(4000)
     .describe("Numbered findings with file:line references, or a short approval note."),
+  criteria: z
+    .array(CriterionJudgement)
+    .max(CRITERIA_MAX)
+    .describe(
+      "One entry per acceptance criterion of the task, by its number. The office keeps them as evidence on the commit you reviewed; approve is refused while any criterion fails.",
+    ),
 });
 export type HoReviewInput = z.infer<typeof HoReviewInput>;
+
+export const HoVerifyInput = z.object({
+  verdict: z
+    .enum(["pass", "fail"])
+    .describe("pass when every condition holds on the integrated result; fail otherwise"),
+  criteria: z
+    .array(CriterionJudgement)
+    .max(MANDATE_CRITERIA_MAX)
+    .describe("One entry per condition of the request, by its number in the briefing"),
+  taskCriteria: z
+    .array(CriterionJudgement.extend({ taskId: TaskId }))
+    .max(CRITERIA_MAX * 4)
+    .prefault([])
+    .describe(
+      "Only when the briefing lists task criteria that still lack independent evidence: one entry per such criterion, with the task id and the criterion's number in that task",
+    ),
+  summary: z
+    .string()
+    .min(1)
+    .max(REPORT_MAX)
+    .describe("What you exercised, what held and what failed, for the human. Markdown."),
+  files: z
+    .array(AttachmentName)
+    .max(ATTACHMENTS_MAX)
+    .prefault([])
+    .describe(
+      `Screenshots or other files written into ${CHAT_OUTBOX_DIR} that back your judgements; names only, no paths`,
+    ),
+});
+export type HoVerifyInput = z.infer<typeof HoVerifyInput>;
 
 export const HoRecallInput = z.object({
   query: z

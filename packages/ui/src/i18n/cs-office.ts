@@ -8,6 +8,7 @@ export const csOffice = {
     code: "kód",
     triage: "triage",
     plan: "plán",
+    verify: "ověření",
   },
   status: {
     inbox: "příchozí",

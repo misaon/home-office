@@ -14,6 +14,7 @@ import { planPrompt } from "./prompts-plan.ts";
 import { reviewPrompt } from "./prompts-review.ts";
 import type { SessionFacts } from "./prompts-shared.ts";
 import { triagePrompt } from "./prompts-triage.ts";
+import { verifyPrompt } from "./prompts-verify.ts";
 import { workPrompt } from "./prompts-work.ts";
 
 const skillsGuide = (agent: Agent): string =>
@@ -42,6 +43,7 @@ const BODY: Readonly<Record<SessionMode, (facts: SessionFacts, model: ReadModel)
   review: reviewPrompt,
   triage: triagePrompt,
   plan: planPrompt,
+  verify: verifyPrompt,
 };
 
 export const systemPrompt = (facts: SessionFacts, model: ReadModel): string =>

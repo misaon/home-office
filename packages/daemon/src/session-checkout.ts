@@ -42,7 +42,7 @@ export async function checkout(
   branch: string,
 ): Promise<Checkout> {
   const source = { path: sourcePath, defaultBranch: ctx.project.defaultBranch };
-  if (ctx.session.mode === "review") {
+  if (ctx.session.mode === "review" || ctx.session.mode === "verify") {
     const candidate = ctx.task.artifacts.commit ?? null;
     if (candidate === null) {
       deps.log.warn(

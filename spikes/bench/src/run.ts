@@ -68,6 +68,8 @@ function seed(agents: number, tasks: number): StoredEvent[] {
         preview: { enabled: false, port: 8788 },
         services: { enabled: false, mode: "rootless", trust: "untrusted" },
         verify: { command: "", timeoutSeconds: 900, maxAttempts: 2 },
+        acceptance: { verify: "integration", maxFixRounds: 2 },
+        environment: { setup: [], services: [], seed: [], checks: {}, timeoutSeconds: 600 },
         createdAt: AT,
         updatedAt: AT,
       },

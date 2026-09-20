@@ -6,6 +6,8 @@ import {
   type LiveEvent,
   type MailItem,
   type MailItemId,
+  type Mandate,
+  type MandateId,
   type Project,
   type ProjectId,
   type Session,
@@ -33,6 +35,7 @@ export type Snapshot = {
   sessions: ReadonlyMap<SessionId, Session>;
   chat: ReadonlyMap<ProjectId, readonly ChatMessage[]>;
   mail: ReadonlyMap<MailItemId, MailItem>;
+  mandates: ReadonlyMap<MandateId, Mandate>;
   activeByAgent: ReadonlyMap<AgentId, Session>;
 };
 
@@ -45,6 +48,7 @@ const copied: Record<Collection, number> = {
   sessions: -1,
   chat: -1,
   mail: -1,
+  mandates: -1,
 };
 
 const changed = (name: Collection): boolean => {
@@ -74,6 +78,8 @@ const takeSnapshot = (previous: Snapshot | null): Snapshot => {
     sessions: sessionsMoved ? new Map(model.sessions) : previous.sessions,
     chat: changed("chat") || previous === null ? new Map(model.chat) : previous.chat,
     mail: changed("mail") || previous === null ? new Map(model.mail) : previous.mail,
+    mandates:
+      changed("mandates") || previous === null ? new Map(model.mandates) : previous.mandates,
     activeByAgent: sessionsMoved ? activeByAgent() : previous.activeByAgent,
   };
 };

@@ -8,6 +8,7 @@ export const enOffice = {
     code: "code",
     triage: "triage",
     plan: "plan",
+    verify: "verification",
   },
   status: {
     inbox: "inbox",

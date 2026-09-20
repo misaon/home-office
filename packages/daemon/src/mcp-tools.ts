@@ -30,6 +30,7 @@ import { dismiss } from "./mcp-dismiss.ts";
 import { hire } from "./mcp-hire.ts";
 import { report } from "./mcp-report.ts";
 import { ALL, define, type AnyTool, type ToolResult } from "./mcp-tool.ts";
+import { verify } from "./mcp-verify.ts";
 import { publishTask } from "./publish.ts";
 
 export type { AnyTool, Entry, McpSessionContext, ToolResult } from "./mcp-tool.ts";
@@ -51,7 +52,7 @@ const taskStatus = define({
   description:
     "Call this when you lack context: a task's status, its artifacts (branch, report, pull request) and its last ten notes, including the office's check output and review findings. Defaults to your own task.",
   schema: HoTaskStatusInput,
-  modes: ["work", "triage", "plan"],
+  modes: ["work", "triage", "plan", "verify"],
   run: (input, office, entry) => {
     const id = input.taskId ?? entry.ctx.taskId;
     const task = office.model.tasks.get(id);
@@ -252,6 +253,7 @@ export const TOOLS: readonly AnyTool[] = [
   listAgents,
   handoff,
   review,
+  verify,
   delegate,
   plan,
   hire,

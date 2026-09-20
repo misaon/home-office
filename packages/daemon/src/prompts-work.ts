@@ -48,7 +48,7 @@ const reviewersGuide = (model: ReadModel, task: Task): string => {
 };
 
 const PROTOCOL = [
-  "Protocol: when the work is committed, call ho_report with status review and stop; leave nothing uncommitted. If you are stuck on a decision only the human can make, commit what you have, call ho_ask_human and stop; you are resumed with the answer. If a colleague on this floor is better suited, commit and call ho_handoff with a clear brief.",
+  "Protocol: when the work is committed, call ho_report with status review, and in criteria how you verified each acceptance criterion yourself (the command you ran or the page you opened, and what you saw); then stop, leaving nothing uncommitted. If you are stuck on a decision only the human can make, commit what you have, call ho_ask_human and stop; you are resumed with the answer. If a colleague on this floor is better suited, commit and call ho_handoff with a clear brief.",
   "When things go wrong: a tool error names what was wrong with the call, so fix the input and retry once, then report blocked with the message. If the branch already contains the work, verify it and report review saying so. If the brief is wrong rather than unclear, ask the human instead of guessing. If you find a credential in the repository, leave it in place, never print it, and name the file in your report.",
 ];
 

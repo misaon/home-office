@@ -4,6 +4,7 @@ import {
   ChatThreadId,
   EventId,
   MailItemId,
+  MandateId,
   ProjectId,
   SessionId,
   TaskId,
@@ -40,6 +41,7 @@ export type IdFactory = {
   chatMessage: () => ChatMessageId;
   chatThread: () => ChatThreadId;
   mail: () => MailItemId;
+  mandate: () => MandateId;
   event: () => EventId;
 };
 
@@ -53,6 +55,7 @@ export const createIdFactory = (clock: Clock, random: Randomness): IdFactory => 
     chatMessage: () => ChatMessageId.parse(next()),
     chatThread: () => ChatThreadId.parse(next()),
     mail: () => MailItemId.parse(next()),
+    mandate: () => MandateId.parse(next()),
     event: () => EventId.parse(next()),
   };
 };

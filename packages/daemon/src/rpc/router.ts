@@ -14,6 +14,7 @@ import {
 } from "@ho/core";
 import { errorMessage, HUMAN_ACTOR, isSessionActive, SecretKeyName } from "@ho/protocol";
 import { os } from "./implement.ts";
+import { mandateRoutes } from "./mandates.ts";
 import { remoteRoutes } from "./remote.ts";
 import { taskRoutes } from "./tasks.ts";
 import { ensureImages, imageStatus, neededVariants } from "../images.ts";
@@ -212,6 +213,7 @@ export const router = base.router({
     })),
   },
   tasks: taskRoutes,
+  mandates: mandateRoutes,
   remote: remoteRoutes,
   sessions: {
     list: base.sessions.list.handler(({ input, context }) =>

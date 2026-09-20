@@ -10,6 +10,7 @@ import {
   type TaskStatus,
 } from "@ho/protocol";
 import type { Logger } from "./logger.ts";
+import { mandateStatusLine, pullRequestLink, roundLine } from "./mandate-voice.ts";
 import { followEvents, type Office } from "./office.ts";
 import type { OfficeGate } from "./office-gate.ts";
 import { outcomeOf } from "./outcome.ts";
@@ -33,16 +34,16 @@ const whoWorks = (model: Model, id: Agent["id"] | undefined): string => {
     : `${bold(agent.name)} (${ROLE_TITLE[agent.role]} · \`${agent.model}\` · ${agent.effort} effort)`;
 };
 
-const pullRequestLink = (url: string): string => {
-  const number = /\/pull\/(?<number>\d+)/u.exec(url)?.groups?.["number"];
-  return number === undefined ? `[pull request](${url})` : `pull request [#${number}](${url})`;
-};
-
 const pullRequestNote = (task: Task): string =>
   task.artifacts.prUrl === undefined ? "" : ` (${pullRequestLink(task.artifacts.prUrl)})`;
 
 const doneLines = (model: Model, task: Task, reason: string | undefined, at: string): string => {
   const outcome = outcomeOf(task, reason, REPORT_MAX);
+  if (task.mandateId !== undefined) {
+    return [`✅ ${quote(task)} is done.`, outcome.account === "" ? "" : `\n${outcome.account}`]
+      .filter((line) => line !== "")
+      .join("\n");
+  }
   const timing = timingOf(model, task, at);
   return [
     `✅ ${quote(task)} is done.`,
@@ -64,14 +65,20 @@ function statusLine(
   at: string,
 ): string | null {
   if (task.kind === "triage") {
-    return to === "failed" || to === "blocked"
-      ? `❌ I could not process your message: ${reason ?? to}.`
-      : null;
+    if (to !== "failed" && to !== "blocked") {
+      return null;
+    }
+    return task.source.kind === "mandate"
+      ? `🚧 ${quote(task)} needs you: ${reason ?? to}`
+      : `❌ I could not process your message: ${reason ?? to}.`;
   }
   if (task.kind === "plan") {
     return to === "failed" || (to === "blocked" && !isQuestionReason(reason))
       ? `❌ ${bold(nameOf(model, task.assigneeId))} could not finish planning ${quote(task)}: ${reason ?? to}.`
       : null;
+  }
+  if (task.kind === "verify") {
+    return null;
   }
   const worker = bold(nameOf(model, task.assigneeId));
   const mine = task.assigneeId === boss.id;
@@ -189,17 +196,52 @@ export function startBossVoice(
       await say(boss, text, event.payload.taskId);
     }
   };
+  const onMandate = async (
+    event: Extract<StoredEvent, { type: "mandate.status_changed" | "mandate.round_opened" }>,
+  ): Promise<void> => {
+    const mandate = office.model.mandates.get(event.payload.mandateId);
+    const boss = mandate === undefined ? undefined : bossOf(office.model, mandate.projectId);
+    if (mandate === undefined || boss === undefined) {
+      return;
+    }
+    const text =
+      event.type === "mandate.round_opened"
+        ? roundLine(mandate, event.payload.round, event.payload.reason)
+        : mandateStatusLine(
+            office.model,
+            mandate,
+            event.payload.to,
+            event.payload.reason,
+            event.at,
+          );
+    if (text !== null) {
+      await say(boss, text, mandate.rootTaskId);
+    }
+  };
   const following = followEvents(
     office,
-    ["task.created", "task.status_changed", "task.reviewer_assigned"],
-    (event) =>
-      event.type === "task.created"
-        ? onCreated(event.payload.task)
-        : event.type === "task.status_changed"
-          ? onStatus(event)
-          : event.type === "task.reviewer_assigned"
-            ? onReviewer(event)
-            : undefined,
+    [
+      "task.created",
+      "task.status_changed",
+      "task.reviewer_assigned",
+      "mandate.status_changed",
+      "mandate.round_opened",
+    ],
+    (event) => {
+      if (event.type === "task.created") {
+        return onCreated(event.payload.task);
+      }
+      if (event.type === "task.status_changed") {
+        return onStatus(event);
+      }
+      if (event.type === "task.reviewer_assigned") {
+        return onReviewer(event);
+      }
+      if (event.type === "mandate.status_changed" || event.type === "mandate.round_opened") {
+        return onMandate(event);
+      }
+      return undefined;
+    },
     log,
     "boss voice",
   );
