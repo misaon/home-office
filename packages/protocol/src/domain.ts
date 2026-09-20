@@ -284,6 +284,7 @@ export const Session = z.object({
   runtime: SessionRuntime.optional(),
   threadId: ChatThreadId.optional(),
   resumedFrom: SessionId.optional(),
+  round: z.int().nonnegative().default(0),
   usage: Usage,
   costUsd: z.number().nonnegative().optional(),
   startedAt: IsoDateTime,

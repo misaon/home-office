@@ -84,7 +84,6 @@ export function transcriptOf(events: readonly LiveEvent[]): { steps: Step[]; tex
         ok: null,
         change: null,
       });
-      text = "";
     } else if (event.kind === "tool_result") {
       const step = steps.get(event.id);
       if (step !== undefined) {

@@ -8,7 +8,7 @@ export const enSetup = {
     dockerOk: "Docker {{version}}, API {{api}}, {{os}}/{{arch}}",
     dockerOld: "Docker API {{api}} is too old; {{min}} or newer is required",
     imagesIntro:
-      "The agent image bundles Claude Code, git, RTK, headless Chromium and the browser MCP servers. The first build downloads everything and takes a few minutes; later builds reuse cached layers.",
+      "The agent image bundles Claude Code, git, Node and Bun, PHP 8.5 with Composer, Python, RTK, headless Chromium and the browser MCP servers. The first build downloads everything and takes a few minutes; later builds reuse cached layers.",
     imagesWaiting: "waiting for Docker",
     imagesNoContexts: "this build carries no image build contexts",
     imagesMissing: "missing: {{refs}}",

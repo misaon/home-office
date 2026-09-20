@@ -7,7 +7,12 @@ description: Load in a work session when the task changes what a user sees or do
 
 1. Find the pattern before inventing one: the components, tokens and conventions the repository
    already uses for the same kind of element, and the i18n mechanism every visible string goes
-   through.
+   through. Then load the skills this pack carries for the work in front of you: `frontend-design`
+   when you shape new UI or its visual direction, `vercel-react-best-practices` and
+   `vercel-composition-patterns` for React, `vue-patterns` for Vue and Nuxt,
+   `make-interfaces-feel-better` for spacing, radii, motion and interaction states, and
+   `web-interface-guidelines` as the checklist before you report; `modern-web-platform` from the
+   work pack names the syntax and platform features to reach for.
 2. Accessibility to WCAG 2.2: every control reachable and operable with the keyboard alone, with a
    visible focus and a sensible order; real labels and alt text; sufficient contrast; targets at
    least 24 by 24 pixels; no meaning carried by colour alone; async results announced to assistive

@@ -1,19 +1,19 @@
-import type { Agent, AgentId, TaskId } from "@ho/protocol";
+import type { Agent, AgentId, Task } from "@ho/protocol";
 import { sessionsOfTask } from "./model/queries.ts";
 import type { ReadModel } from "./model/read-model.ts";
 
-export type SpentBudget = { turns: number; costUsd: number; costKnown: boolean };
+export type SpentBudget = { turns: number; costUsd: number; costKnown: boolean; round: number };
 
 export type RemainingBudget = { turns: number; usd: number | null };
 
 export const spentOnTask = (
   model: Pick<ReadModel, "sessions" | "sessionsByTask">,
-  taskId: TaskId,
+  task: Pick<Task, "id" | "reviewRounds">,
   agentId: AgentId,
 ): SpentBudget => {
-  const spent: SpentBudget = { turns: 0, costUsd: 0, costKnown: false };
-  for (const session of sessionsOfTask(model, taskId)) {
-    if (session.agentId !== agentId) {
+  const spent: SpentBudget = { turns: 0, costUsd: 0, costKnown: false, round: task.reviewRounds };
+  for (const session of sessionsOfTask(model, task.id)) {
+    if (session.agentId !== agentId || session.round !== task.reviewRounds) {
       continue;
     }
     spent.turns += session.usage.turns;
@@ -33,13 +33,16 @@ export const remainingBudget = (agent: Agent, spent: SpentBudget): RemainingBudg
       : Math.max(0, agent.budgets.maxUsdPerTask - spent.costUsd),
 });
 
+const roundName = (round: number): string =>
+  round === 0 ? "this task's first round" : `review round ${String(round)} of this task`;
+
 export const budgetExhausted = (agent: Agent, spent: SpentBudget): string | null => {
   if (spent.turns >= agent.budgets.maxTurnsPerTask) {
-    return `${agent.name} has spent the ${String(agent.budgets.maxTurnsPerTask)} turns this task allows (${String(spent.turns)} used across all sessions)`;
+    return `${agent.name} has spent the ${String(agent.budgets.maxTurnsPerTask)} turns allowed for ${roundName(spent.round)} (${String(spent.turns)} used)`;
   }
   const { maxUsdPerTask } = agent.budgets;
   if (maxUsdPerTask !== undefined && spent.costKnown && spent.costUsd >= maxUsdPerTask) {
-    return `${agent.name} has spent the $${maxUsdPerTask.toFixed(2)} this task allows ($${spent.costUsd.toFixed(2)} reported across all sessions)`;
+    return `${agent.name} has spent the $${maxUsdPerTask.toFixed(2)} allowed for ${roundName(spent.round)} ($${spent.costUsd.toFixed(2)} reported)`;
   }
   return null;
 };

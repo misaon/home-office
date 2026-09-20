@@ -1,4 +1,5 @@
 import type { SessionMode } from "@ho/protocol";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { diffOf } from "./diff.ts";
 import type { Activity, FileChange, Step } from "./live.ts";
@@ -17,13 +18,23 @@ const DOT = "w-5 h-5 rounded-half bg-accent";
 
 const ROW = "flex items-center gap-7 min-w-0";
 
-const STEPS = "flex flex-col-reverse gap-6 max-h-150 overflow-y-auto";
+const STEPS = "flex flex-col gap-6";
+
+const STEPS_SHOWN = 6;
+
+const FILES = "flex flex-col gap-1 py-4 px-7 rounded-9 bg-sunk border border-line";
 
 const TOOL = `${MONO} text-10h text-accent-quote flex-[0_0_auto]`;
 
 const DETAIL = `${MONO} text-10h text-ink-label flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap`;
 
 const TEXT = "text-12h leading-text text-ink-soft border-t border-line pt-7 mt-1";
+
+const LAST_WORDS =
+  "relative text-11h leading-text text-ink-label border-t border-line pt-7 mt-1 w-full text-left bg-transparent border-x-0 border-b-0 cursor-pointer";
+
+const FADE =
+  "pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,var(--color-toast))]";
 
 const CLIP = "overflow-hidden text-ellipsis whitespace-nowrap";
 
@@ -98,10 +109,17 @@ function ChangeRow({ change }: { change: FileChange }): React.JSX.Element {
   );
 }
 
-function StepRow({ step }: { step: Step }): React.JSX.Element {
-  if (step.change !== null) {
-    return <ChangeRow change={step.change} />;
+const latestChanges = (steps: readonly Step[]): FileChange[] => {
+  const byPath = new Map<string, FileChange>();
+  for (const step of steps) {
+    if (step.change !== null) {
+      byPath.set(step.change.path, step.change);
+    }
   }
+  return [...byPath.values()];
+};
+
+function StepRow({ step }: { step: Step }): React.JSX.Element {
   return (
     <div className={ROW}>
       <Mark ok={step.ok} />
@@ -111,9 +129,8 @@ function StepRow({ step }: { step: Step }): React.JSX.Element {
   );
 }
 
-function Header({ activity }: { activity: Activity }): React.JSX.Element {
+function Header({ activity, changed }: { activity: Activity; changed: number }): React.JSX.Element {
   const { t } = useTranslation();
-  const changed = activity.steps.filter((step) => step.change !== null).length;
   return (
     <div className={HEAD}>
       {activity.live ? (
@@ -133,11 +150,33 @@ function Header({ activity }: { activity: Activity }): React.JSX.Element {
   );
 }
 
+function LastWords({ text }: { text: string }): React.JSX.Element {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <button
+      type="button"
+      title={t(open ? "chat.lessText" : "chat.moreText")}
+      onClick={() => {
+        setOpen((shown) => !shown);
+      }}
+      className={LAST_WORDS}
+    >
+      <div className={open ? "" : "max-h-58 overflow-hidden"}>
+        <RichText text={text} />
+      </div>
+      {open ? null : <div className={FADE} />}
+    </button>
+  );
+}
+
 export function ChatTranscript({ activity }: { activity: Activity }): React.JSX.Element {
   const { t } = useTranslation();
+  const changes = latestChanges(activity.steps);
+  const plain = activity.steps.filter((step) => step.change === null);
   return (
     <div className={CARD}>
-      <Header activity={activity} />
+      <Header activity={activity} changed={changes.length} />
       <div className={META}>
         <span className={`${CLIP} flex-[0_0_auto]`}>{t(`roles.${activity.role}`)}</span>
         <span aria-hidden="true">·</span>
@@ -147,15 +186,26 @@ export function ChatTranscript({ activity }: { activity: Activity }): React.JSX.
           {t("chat.effort", { level: activity.effort })}
         </span>
       </div>
-      <div className={STEPS}>
-        {activity.steps.toReversed().map((step) => (
-          <StepRow key={step.id} step={step} />
-        ))}
-      </div>
-      {activity.text === "" ? null : (
+      {changes.length === 0 ? null : (
+        <div className={FILES}>
+          {changes.map((change) => (
+            <ChangeRow key={change.path} change={change} />
+          ))}
+        </div>
+      )}
+      {plain.length === 0 ? null : (
+        <div className={STEPS}>
+          {plain.slice(-STEPS_SHOWN).map((step) => (
+            <StepRow key={step.id} step={step} />
+          ))}
+        </div>
+      )}
+      {activity.text === "" ? null : activity.live ? (
         <div className={TEXT}>
           <RichText text={activity.text} />
         </div>
+      ) : (
+        <LastWords text={activity.text} />
       )}
     </div>
   );

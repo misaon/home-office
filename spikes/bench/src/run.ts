@@ -140,6 +140,7 @@ function seed(agents: number, tasks: number): StoredEvent[] {
           agentId,
           mode: "work",
           state: "running",
+          round: 0,
           usage: ZERO_USAGE,
           startedAt: AT,
         },

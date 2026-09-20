@@ -23,6 +23,7 @@ import {
 } from "@ho/protocol";
 import type { DaemonConfig } from "./config.ts";
 import type { AttachmentStore } from "./attachments.ts";
+import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import type { Logger } from "./logger.ts";
 import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
@@ -51,6 +52,8 @@ export type SessionDeps = {
   mcpUrl: () => string;
   log: Logger;
 };
+
+const LOW_TURNS = 20;
 
 type Subscriber = { sessionId: SessionId | null; push: (event: LiveEvent) => void };
 
@@ -117,7 +120,13 @@ export class SessionManager {
     if (task === undefined || agent === undefined || project === undefined) {
       throw new Error(`cannot start a session for task ${taskId}: task, agent or project missing`);
     }
-    const budget = remainingBudget(agent, spentOnTask(office.model, taskId, agentId));
+    const budget = remainingBudget(agent, spentOnTask(office.model, task, agentId));
+    if (mode !== "review" && budget.turns < LOW_TURNS) {
+      log.warn(
+        { taskId, agentId, agent: agent.name, turnsLeft: budget.turns, round: task.reviewRounds },
+        "the session starts with few turns left in this round",
+      );
+    }
     const session = await office.execute(SYSTEM_ACTOR, (m, ctx) =>
       startSession(m, { taskId, agentId, mode }, ctx),
     );
@@ -237,6 +246,13 @@ export class SessionManager {
   }
 
   async #onEvent(ctx: SessionContext, event: RuntimeEvent): Promise<void> {
+    if (event.kind === "file_change" && !event.path.startsWith(`${REPO_IN_VOLUME}/`)) {
+      this.#deps.log.debug(
+        { sessionId: ctx.session.id, path: event.path },
+        "file change outside the repository kept out of the chat",
+      );
+      return;
+    }
     this.#emit(ctx.session.id, event);
     const running = this.#running.get(ctx.session.id);
     const reason = await handleRuntimeEvent(

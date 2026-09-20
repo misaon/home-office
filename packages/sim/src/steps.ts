@@ -1,4 +1,4 @@
-import { facingTowards, findPath, neighboursOf, samePoint } from "./grid.ts";
+import { facingTowards, findPath, key, neighboursOf, samePoint } from "./grid.ts";
 import { nearestWalkable, type OccupancyIndex, occupied } from "./actors.ts";
 import { type Actor, release, speedOf, type Step, type World } from "./world.ts";
 
@@ -8,6 +8,7 @@ const finishStep = (actor: Actor): void => {
 };
 
 const BLOCKED_WAIT_MS = 500;
+const ORIGIN = { x: 0, y: 0 };
 function advanceWalk(
   world: World,
   actor: Actor,
@@ -67,8 +68,10 @@ function advanceWalk(
     }
     actor.moving = ahead;
     actor.facing = facingTowards(actor.tile, ahead);
-    const dx = ahead.x - actor.pos.x;
-    const dy = ahead.y - actor.pos.y;
+    const shift = floor.doorShift.get(key(ahead)) ?? ORIGIN;
+    const target = { x: ahead.x + shift.x, y: ahead.y + shift.y };
+    const dx = target.x - actor.pos.x;
+    const dy = target.y - actor.pos.y;
     const remaining = Math.hypot(dx, dy);
     if (remaining > budget) {
       actor.pos = {
@@ -78,7 +81,7 @@ function advanceWalk(
       return;
     }
     budget -= remaining;
-    actor.pos = { x: ahead.x, y: ahead.y };
+    actor.pos = target;
     actor.tile = { x: ahead.x, y: ahead.y };
     actor.moving = null;
     step.path.shift();

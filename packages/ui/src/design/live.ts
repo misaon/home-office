@@ -178,24 +178,29 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
   };
 }
 
-export function useBossSession(
+export function useThreadSession(
   floorId: ProjectId,
+  thread: ThreadPick | "new",
 ): { sessionId: SessionId; name: string; doing: string } | null {
   const snapshot = useUi((s) => s.snapshot);
-  const boss = [...snapshot.agents.values()].find(
-    (a) => a.projectId === floorId && a.role === "boss",
-  );
-  if (boss === undefined) {
-    return null;
-  }
-  const session = activeSessionOf(snapshot, boss.id);
-  if (session === undefined) {
+  const [running] = [...snapshot.activeByAgent.values()]
+    .filter((session) => {
+      const agent = snapshot.agents.get(session.agentId);
+      const task = snapshot.tasks.get(session.taskId);
+      return (
+        agent?.projectId === floorId &&
+        task !== undefined &&
+        (threadOfTask(snapshot, task) ?? "main") === thread
+      );
+    })
+    .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt));
+  if (running === undefined) {
     return null;
   }
   return {
-    sessionId: session.id,
-    name: boss.name,
-    doing: snapshot.tasks.get(session.taskId)?.title ?? "working",
+    sessionId: running.id,
+    name: snapshot.agents.get(running.agentId)?.name ?? "",
+    doing: snapshot.tasks.get(running.taskId)?.title ?? "working",
   };
 }
 
@@ -221,9 +226,6 @@ export function useFloorActivity(floorId: ProjectId, thread: ThreadPick | "new")
         return [];
       }
       const { steps, text } = transcriptOf(events ?? []);
-      if (!active && steps.every((step) => step.change === null)) {
-        return [];
-      }
       const endedAt = session.endedAt ?? session.startedAt;
       return [
         {
@@ -237,7 +239,7 @@ export function useFloorActivity(floorId: ProjectId, thread: ThreadPick | "new")
           live: active,
           startedAt: session.startedAt,
           steps: active ? steps : steps.filter((step) => step.change !== null),
-          text: active ? text : "",
+          text,
           since: elapsed(session.startedAt, active ? now : new Date(endedAt).getTime()),
         },
       ];

@@ -83,6 +83,7 @@ export function startSession(
     mode: input.mode,
     state: "starting",
     ...compact({ threadId, resumedFrom: previous?.id }),
+    round: task.reviewRounds,
     usage: ZERO_USAGE,
     startedAt: ctx.now,
   };

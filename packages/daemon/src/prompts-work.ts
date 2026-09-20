@@ -18,7 +18,7 @@ const COMMIT_RULE =
 
 const verifyGuide = (project: Project, task: Task): string => {
   if (project.verify.command === "") {
-    return `This floor has no check command: the office publishes your HEAD commit without running anything, records that fact on the task, and tells the reviewers so. Run the repository's own tests and checks yourself before you report. ${COMMIT_RULE}`;
+    return `This floor has no check command: the office publishes your HEAD commit without running anything, records that fact on the task, and tells the reviewers so. Before you report, run the checks the package you changed already defines — its build and test scripts, the linters its configuration names — and nothing more: do not survey the repository's tooling, and do not try to run an application whose services this sandbox does not have. ${COMMIT_RULE}`;
   }
   const left = Math.max(0, project.verify.maxAttempts - verifyAttempts(task));
   return `Done means \`${project.verify.command}\` passes. Run it yourself before you report. The office runs it again on your HEAD commit in a container with no network and an empty home directory, so everything the command needs must live under ${REPO_IN_VOLUME}; a failure comes back to you with the output, ${String(left)} more time(s) before the task is blocked. ${COMMIT_RULE}`;

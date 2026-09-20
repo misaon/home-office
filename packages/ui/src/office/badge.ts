@@ -1,10 +1,11 @@
 import type { SessionMode } from "@ho/protocol";
-import { type Actor, CELL_PX } from "@ho/sim";
+import type { Actor } from "@ho/sim";
 import { t as translate } from "i18next";
 import { Container, Graphics, Text } from "pixi.js";
 import { activeSessionOf, useUi } from "../store.ts";
+import { DOT_RADIUS } from "./dot.ts";
 
-const BODY = CELL_PX;
+const BODY = DOT_RADIUS;
 const RING_GAP = 6 * (BODY / 21);
 const RING_FROM = 0.85;
 const RING_TO = 2.4;

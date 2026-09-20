@@ -29,7 +29,11 @@ const chainGuide = (model: ReadModel, task: Task, agent: Agent): string => {
   }
   const position = chain.findIndex((reviewer) => reviewer.id === agent.id);
   const names = chain.map((reviewer) => `${reviewer.name} (${ROLE_TITLE[reviewer.role]})`);
-  return `Review chain for this task: ${names.join(" → ")}; you are stage ${String(position + 1)} of ${String(chain.length)}. Approving passes the commit to the next stage; request_changes sends it back to the author and the chain starts again from the first stage.`;
+  const earlier =
+    position <= 0
+      ? ""
+      : " The stages before you already ran the checks and exercised the result, in a browser when the task had one, and their verdicts are in your opening message: read them first and do not repeat their pass unless a finding makes you doubt it; your stage judges design, correctness and what it will cost to maintain.";
+  return `Review chain for this task: ${names.join(" → ")}; you are stage ${String(position + 1)} of ${String(chain.length)}. Approving passes the commit to the next stage; request_changes sends it back to the author and the chain starts again from the first stage.${earlier}`;
 };
 
 const roundsGuide = (f: SessionFacts, model: ReadModel): string => {

@@ -3,6 +3,7 @@ import {
   addFloor,
   type Anchor,
   floorTemplate,
+  freeDeskFor,
   RECEPTION_ANCHOR,
   removeActor,
   removeFloor,
@@ -14,21 +15,22 @@ import { model } from "../store.ts";
 
 type Kind = "boss" | "staff" | "receptionist";
 
-const seatOf = (world: World, floorId: string, kind: Kind): Anchor | undefined => {
-  const anchors = world.floors.get(floorId)?.template.anchors ?? [];
+const seatOf = (world: World, agent: Agent, kind: Kind): Anchor | undefined => {
+  const anchors = world.floors.get(agent.projectId)?.template.anchors ?? [];
   if (kind === "boss") {
     return anchors.find((anchor) => anchor.kind === "boss-desk");
   }
-  return kind === "receptionist"
-    ? anchors.find((anchor) => anchor.id === RECEPTION_ANCHOR)
-    : undefined;
+  if (kind === "receptionist") {
+    return anchors.find((anchor) => anchor.id === RECEPTION_ANCHOR);
+  }
+  return freeDeskFor(world, agent.projectId, agent.role, "staff");
 };
 
 function spawnAgent(world: World, agent: Agent, kind: Kind): void {
-  const seat = seatOf(world, agent.projectId, kind);
+  const seat = seatOf(world, agent, kind);
   const actor = spawnActor(world, agent.id, agent.projectId, {
     kind,
-    ...compact({ at: seat?.at }),
+    ...compact({ at: kind === "staff" ? undefined : seat?.at }),
   });
   if (seat !== undefined) {
     actor.facing = seat.facing;

@@ -70,10 +70,13 @@ const waitingFor = (model: ReadModel, task: Task, start: SessionStart): string |
     : `waits for ${open.map((dependency) => `"${dependency.title}" (${dependency.status})`).join(", ")}`;
 };
 
-const overBudget = (model: ReadModel, agent: Agent, start: SessionStart): string | null =>
-  start.mode === "review"
-    ? null
-    : budgetExhausted(agent, spentOnTask(model, start.taskId, agent.id));
+const overBudget = (
+  model: ReadModel,
+  agent: Agent,
+  task: Task,
+  mode: SessionMode,
+): string | null =>
+  mode === "review" ? null : budgetExhausted(agent, spentOnTask(model, task, agent.id));
 
 export function planSessionStarts(
   model: ReadModel,
@@ -113,7 +116,7 @@ export function planSessionStarts(
       skipped.push({ ...start, reason: waiting });
       continue;
     }
-    const spent = overBudget(model, agent, start);
+    const spent = overBudget(model, agent, task, start.mode);
     if (spent !== null) {
       exhausted.push({ ...start, reason: spent });
       continue;

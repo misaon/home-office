@@ -7,7 +7,7 @@ const SKILL_DESCRIPTION_MAX = 1024;
 const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const BODY_MAX = 64_000;
 const FILE_MAX = 256_000;
-const BUNDLED_DIRS = ["scripts", "references", "assets"];
+const BUNDLED_DIRS = ["scripts", "references", "assets", "rules"];
 
 export type SkillIndexEntry = { name: string; description: string };
 export type SkillBody = { name: string; description: string; body: string; files: string[] };

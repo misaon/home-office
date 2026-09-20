@@ -8,6 +8,11 @@
     "**/artifacts/**",
     "bun.lock",
     "**/.hutch/**",
-    "apps/desktop/resources/**"
+    "apps/desktop/resources/**",
+    "images/agent/plugins/frontend/skills/frontend-design/**",
+    "images/agent/plugins/frontend/skills/vercel-react-best-practices/**",
+    "images/agent/plugins/frontend/skills/vercel-composition-patterns/**",
+    "images/agent/plugins/frontend/skills/vue-patterns/**",
+    "images/agent/plugins/frontend/skills/make-interfaces-feel-better/**"
   ]
 }

@@ -10,7 +10,7 @@ export const csSetup: typeof enSetup = {
     dockerOk: "Docker {{version}}, API {{api}}, {{os}}/{{arch}}",
     dockerOld: "Docker API {{api}} je příliš staré; potřeba je {{min}} nebo novější",
     imagesIntro:
-      "Image zaměstnance obsahuje Claude Code, git, RTK, headless Chromium a browser MCP servery. První build všechno stahuje a trvá několik minut; další využijí cache.",
+      "Image zaměstnance obsahuje Claude Code, git, Node a Bun, PHP 8.5 s Composerem, Python, RTK, headless Chromium a browser MCP servery. První build všechno stahuje a trvá několik minut; další využijí cache.",
     imagesWaiting: "čekám na Docker",
     imagesNoContexts: "tento build neobsahuje build kontexty pro image",
     imagesMissing: "chybí: {{refs}}",

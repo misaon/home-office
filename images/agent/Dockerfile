@@ -13,6 +13,10 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
       chromium nodejs npm python3 py3-pip ttf-dejavu ttf-liberation unzip \
       coreutils diffutils findutils gawk grep sed jq build-base tzdata \
       docker-cli docker-cli-compose docker-cli-buildx \
+      php85 php85-ctype php85-curl php85-dom php85-fileinfo php85-iconv php85-intl php85-mbstring \
+      php85-openssl php85-pdo php85-pdo_mysql php85-pdo_pgsql php85-pdo_sqlite php85-phar php85-posix \
+      php85-session php85-simplexml php85-sockets php85-sodium php85-tokenizer php85-xml \
+      php85-xmlreader php85-xmlwriter php85-zip php85-bcmath composer \
  && adduser -D -u 1000 agent \
  && mkdir -p /work /home/agent/.cache /opt/ho/plugins /opt/ho/mcp \
  && chown -R agent:agent /work /home/agent

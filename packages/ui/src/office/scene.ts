@@ -7,19 +7,39 @@ import { useDesign } from "../design/store.ts";
 import { useUi } from "../store.ts";
 import { bridge } from "./bridge.ts";
 import { DOT, DOT_EDGE, DOT_SELECTED } from "./colours.ts";
+import { DOT_RADIUS } from "./dot.ts";
 import { MapView } from "./map-view.ts";
 
-const DOT_RADIUS = CELL_PX;
 const DRAG_SLOP_PX = 4;
+const HALO_RADIUS = DOT_RADIUS * 1.7;
+const HALO_MS = 1600;
 
-type DotView = { root: Container; shape: Graphics; badge: Badge; selected: boolean };
+type Look = { selected: boolean; colour: number | null };
 
-const paint = (shape: Graphics, selected: boolean): void => {
-  shape
+type DotView = { root: Container; halo: Graphics; shape: Graphics; badge: Badge; look: string };
+
+const lookKey = (look: Look): string => `${String(look.selected)}:${String(look.colour)}`;
+
+const paint = (view: DotView, look: Look): void => {
+  view.shape
     .clear()
     .circle(0, 0, DOT_RADIUS)
-    .fill(selected ? DOT_SELECTED : DOT)
+    .fill(look.selected ? DOT_SELECTED : (look.colour ?? DOT))
     .stroke({ color: DOT_EDGE, width: 1 });
+  view.halo.clear();
+  if (look.colour !== null) {
+    view.halo.circle(0, 0, HALO_RADIUS).fill({ color: look.colour, alpha: 0.35 });
+  }
+  view.look = lookKey(look);
+};
+
+const breathe = (view: DotView, busy: boolean, elapsedMs: number): void => {
+  view.halo.visible = busy;
+  if (busy) {
+    const wave = 0.5 - 0.5 * Math.cos((2 * Math.PI * (elapsedMs % HALO_MS)) / HALO_MS);
+    view.halo.scale.set(0.9 + 0.35 * wave);
+    view.halo.alpha = 0.45 + 0.55 * wave;
+  }
 };
 
 class OfficeScene extends MapView {
@@ -90,7 +110,6 @@ class OfficeScene extends MapView {
       return existing;
     }
     const shape = new Graphics({ eventMode: "static", cursor: "pointer" });
-    paint(shape, false);
     shape.on("pointertap", (e) => {
       e.stopPropagation();
       if (this.#drag?.moved !== true) {
@@ -98,10 +117,12 @@ class OfficeScene extends MapView {
       }
     });
     const badge = makeBadge();
+    const halo = new Graphics();
     const root = new Container();
-    root.addChild(badge.root, shape);
+    root.addChild(badge.root, halo, shape);
     this.world.addChild(root);
-    const view: DotView = { root, shape, badge, selected: false };
+    const view: DotView = { root, halo, shape, badge, look: "" };
+    paint(view, { selected: false, colour: null });
     this.#dots.set(actor.id, view);
     return view;
   }
@@ -120,12 +141,15 @@ class OfficeScene extends MapView {
       dot.root.visible = true;
       const at = bridge.positionOf(actor);
       dot.root.position.set((at.x + 0.5) * CELL_PX, (at.y + 0.5) * CELL_PX);
-      const isSelected = actor.id === selected;
-      if (dot.selected !== isSelected) {
-        dot.selected = isSelected;
-        paint(dot.shape, isSelected);
-      }
       const said = captionOf(actor);
+      const look: Look = {
+        selected: actor.id === selected,
+        colour: said?.busy === true ? said.colour : null,
+      };
+      if (dot.look !== lookKey(look)) {
+        paint(dot, look);
+      }
+      breathe(dot, said?.busy === true, elapsedMs);
       dot.badge.root.visible = said !== null;
       if (said !== null) {
         updateBadge(dot.badge, said, elapsedMs, this.camera.scale);

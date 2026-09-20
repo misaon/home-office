@@ -1,6 +1,7 @@
 import type { ReadModel } from "@ho/core";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import {
+  CHAT_STYLE,
   filesGuide,
   repoRules,
   REVIEW_FLAGS,
@@ -22,6 +23,7 @@ export const planPrompt = (f: SessionFacts, model: ReadModel): string[] => {
       ? "Browser: set browser: true on a task only when its result must be seen in a browser (UI work, screenshots)."
       : "",
     "Protocol: when the request cannot be specified without a decision only the human can make, ask one precise question with ho_ask_human and stop; you are resumed with the answer. Otherwise create the tasks with ho_delegate, tell the human the plan in one ho_reply — one line per task: who does it, which reviews it gets and what it builds on — then ho_report with status done and the same summary. If the request cannot be planned at all, ho_report with status blocked and say what is missing.",
+    CHAT_STYLE,
     filesGuide(f.files),
   ];
 };

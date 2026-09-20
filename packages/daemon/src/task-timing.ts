@@ -19,7 +19,7 @@ const twoUnits = (
     : `${String(whole)} ${big.unit} ${String(rest)} ${small.unit}`;
 };
 
-const formatDuration = (ms: number): string => {
+export const formatDuration = (ms: number): string => {
   const clamped = Math.max(0, ms);
   if (clamped < MINUTE) {
     return `${String(Math.round(clamped / SECOND))} s`;
@@ -71,6 +71,3 @@ export function timingOf(
     sessions: sessions.length,
   };
 }
-
-export const timingLine = (timing: TaskTiming): string =>
-  `From the request to here: ${formatDuration(timing.sinceRequestMs)}; ${String(timing.sessions)} session${timing.sessions === 1 ? "" : "s"} spent ${formatDuration(timing.agentMs)} on it.`;
