@@ -1,5 +1,6 @@
 import { Select } from "@base-ui/react/select";
-import { MONO } from "./tokens.ts";
+import { ChevronDown } from "lucide-react";
+import { ELLIPSIS, MONO } from "./tokens.ts";
 
 const LABEL = `${MONO} text-9h tracking-caps-wider uppercase text-ink-label mb-8`;
 
@@ -11,8 +12,6 @@ const POPUP =
 
 const OPTION =
   "w-full grid grid-cols-[18px_1fr] items-center gap-8 py-11 px-10 rounded-8 cursor-pointer text-left transition-all duration-180 text-ink-soft data-highlighted:bg-accent-a13 data-highlighted:text-accent-soft data-selected:bg-accent-a12 data-selected:text-accent-soft";
-
-const ELLIPSIS = "overflow-hidden text-ellipsis whitespace-nowrap";
 
 const DOT = "w-6 h-6 rounded-half justify-self-center bg-dot-idle group-data-selected:bg-accent";
 
@@ -53,20 +52,7 @@ export function SelectField({
           </span>
           <Select.Icon
             className="flex-[0_0_auto] transition-transform duration-250 data-popup-open:rotate-180"
-            render={
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                className="stroke-ink-meta"
-              >
-                <polyline points="3,4.5 6,8 9,4.5" />
-              </svg>
-            }
+            render={<ChevronDown size={12} strokeWidth={1.5} className="text-ink-meta" />}
           />
         </Select.Trigger>
         <Select.Portal>

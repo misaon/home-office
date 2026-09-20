@@ -1,4 +1,5 @@
 import { AlertDialog } from "@base-ui/react/alert-dialog";
+import { Info, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DISPLAY } from "./tokens.ts";
 
@@ -25,33 +26,9 @@ function AskMark({ danger }: { danger: boolean }): React.JSX.Element {
       className={`w-38 h-38 flex-[0_0_38px] rounded-12 grid place-items-center ${danger ? "bg-bad-a12" : "bg-accent-a14"} ${danger ? "text-bad-soft" : "text-accent-soft"}`}
     >
       {danger ? (
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 20 20"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-        >
-          <path d="M10 3.2 2.6 16h14.8z" />
-          <line x1="10" y1="8" x2="10" y2="11.6" />
-          <circle cx="10" cy="13.8" r=".9" fill="currentColor" stroke="none" />
-        </svg>
+        <TriangleAlert size={18} strokeWidth={1.7} />
       ) : (
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 20 20"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-        >
-          <circle cx="10" cy="10" r="7.2" />
-          <line x1="10" y1="6.4" x2="10" y2="10.4" />
-          <circle cx="10" cy="13.4" r=".9" fill="currentColor" stroke="none" />
-        </svg>
+        <Info size={18} strokeWidth={1.7} />
       )}
     </div>
   );

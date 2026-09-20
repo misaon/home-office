@@ -1,5 +1,5 @@
 import { compact, type EvalScorecard } from "@ho/protocol";
-import { str } from "../flags.ts";
+import { hoursOf, str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
 import { projectIdOf } from "./lookup.ts";
 
@@ -12,17 +12,6 @@ const share = (part: number, whole: number): string =>
 
 const per = (total: number, whole: number): string =>
   whole === 0 ? "n/a" : (total / whole).toFixed(1);
-
-const hoursOf = (since: string | undefined): number | undefined => {
-  if (since === undefined) {
-    return undefined;
-  }
-  const span = /^(?<amount>\d+)(?<unit>[hd]?)$/u.exec(since)?.groups;
-  if (span === undefined) {
-    throw new Error(`--since expects hours or days like 24h or 7d, got "${since}"`);
-  }
-  return Number(span["amount"]) * (span["unit"] === "d" ? 24 : 1);
-};
 
 const who = (person: { name: string; departed: boolean }): string =>
   (person.departed ? `${person.name} (left)` : person.name).padEnd(17);

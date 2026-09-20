@@ -125,7 +125,7 @@ function ReviewPlanPanel({ task }: { task: Card }): React.JSX.Element {
 
 function Provenance({ task }: { task: Card }): React.JSX.Element | null {
   const { t } = useTranslation();
-  if (task.k !== "code") {
+  if (task.kind !== "code") {
     return null;
   }
   return (
@@ -153,7 +153,7 @@ function Provenance({ task }: { task: Card }): React.JSX.Element | null {
 export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);
-  const tone = priority(task.p);
+  const tone = priority(task.priority);
   const canFinish = canTransition(task.status, "done");
   const canResume = task.who !== "" && canTransition(task.status, "assigned");
   const rateable = task.status !== "inbox" && task.status !== "planned";
@@ -167,10 +167,10 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
   });
 
   return (
-    <SheetShell title={task.t} titleClass="text-14 leading-card text-pretty">
+    <SheetShell title={task.title} titleClass="text-14 leading-card text-pretty">
       <div className="flex gap-6 mb-16 flex-wrap">
-        <span className={`${TAG} ${tone}`}>{t(`priority.${task.p}`)}</span>
-        <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`taskKind.${task.k}`)}</span>
+        <span className={`${TAG} ${tone}`}>{t(`priority.${task.priority}`)}</span>
+        <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`taskKind.${task.kind}`)}</span>
         <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`status.${task.status}`)}</span>
       </div>
       <div className={`${PANEL} mb-18`}>
@@ -195,7 +195,7 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
         </div>
       )}
       <Provenance task={task} />
-      {task.k === "code" ? <ReviewPlanPanel task={task} /> : null}
+      {task.kind === "code" ? <ReviewPlanPanel task={task} /> : null}
       {canFinish || canResume ? (
         <div className="flex gap-9">
           {canFinish ? (

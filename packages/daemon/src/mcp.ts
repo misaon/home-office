@@ -1,4 +1,4 @@
-import { type Actor, errorMessage, type HoReportInput, type SessionMode } from "@ho/protocol";
+import { type Actor, clip, errorMessage, type HoReportInput, type SessionMode } from "@ho/protocol";
 import { McpServer, WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import type { Logger } from "./logger.ts";
 import { type Entry, type McpSessionContext, text, TOOLS, type ToolResult } from "./mcp-tools.ts";
@@ -20,10 +20,8 @@ const INSTRUCTIONS: Readonly<Record<SessionMode, string>> = {
   plan: "Home Office tools for the analyst. Read the repository, then ho_delegate one task per independently verifiable piece of work, assigned to the colleague whose role fits; its fields are the specification the developer and the reviewers get. ho_reply tells the human the plan; ho_ask_human pauses for a decision only the human can make. End with ho_report, status done.",
 };
 
-const shorten = (input: unknown): string => {
-  const json = input === undefined ? "" : JSON.stringify(input);
-  return json.length <= INPUT_LOG_CHARS ? json : `${json.slice(0, INPUT_LOG_CHARS)}…`;
-};
+const shorten = (input: unknown): string =>
+  clip(input === undefined ? "" : JSON.stringify(input), INPUT_LOG_CHARS);
 
 export class McpGateway {
   readonly #entries = new Map<string, Entry>();

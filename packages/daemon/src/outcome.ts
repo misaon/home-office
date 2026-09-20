@@ -1,7 +1,4 @@
-import type { Task } from "@ho/protocol";
-
-const clip = (text: string, max: number): string =>
-  text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
+import { clip, type Task } from "@ho/protocol";
 
 const present = (parts: readonly (string | null)[]): string[] =>
   parts.filter((part): part is string => part !== null && part !== "");

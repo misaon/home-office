@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
@@ -24,17 +25,7 @@ export function ChatSearch({ hits }: { hits: string }): React.JSX.Element {
   return (
     <div className={BAR}>
       <div className={FIELD}>
-        <svg
-          className="flex-[0_0_auto] stroke-ink-label"
-          width="12"
-          height="12"
-          viewBox="0 0 14 14"
-          fill="none"
-          strokeWidth="1.5"
-        >
-          <circle cx="6" cy="6" r="4.2" />
-          <line x1="9.2" y1="9.2" x2="12.4" y2="12.4" strokeLinecap="round" />
-        </svg>
+        <Search size={12} strokeWidth={1.5} className="flex-[0_0_auto] text-ink-label" />
         <input
           ref={field}
           value={query}
@@ -54,17 +45,7 @@ export function ChatSearch({ hits }: { hits: string }): React.JSX.Element {
         }}
         className={`hover:text-ink ${CLOSE}`}
       >
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 10 10"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        >
-          <line x1="2" y1="2" x2="8" y2="8" />
-          <line x1="8" y1="2" x2="2" y2="8" />
-        </svg>
+        <X size={10} strokeWidth={1.5} />
       </button>
     </div>
   );

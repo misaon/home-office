@@ -4,6 +4,7 @@ import {
   type Agent,
   type AgentId,
   budgetGuaranteesFor,
+  headline,
   isSessionActive,
   type ProjectId,
   type SessionId,
@@ -52,7 +53,7 @@ function memberOf(agent: Agent, snapshot: Snapshot, now: number): Member {
   const task = session === undefined ? undefined : snapshot.tasks.get(session.taskId);
   return {
     id: agent.id,
-    i: agent.name.charAt(0).toUpperCase(),
+    initial: agent.name.charAt(0).toUpperCase(),
     name: agent.name,
     role: agent.role,
     provider: agent.provider,
@@ -87,12 +88,12 @@ const rosterOf = (snapshot: Snapshot, projectId: ProjectId): ReviewRoster => ({
 function cardOf(task: Task, snapshot: Snapshot): Card {
   return {
     id: task.id,
-    t: task.title,
-    p: task.priority,
-    k: task.kind === "work" ? "code" : task.kind,
+    title: task.title,
+    priority: task.priority,
+    kind: task.kind === "work" ? "code" : task.kind,
     criteria: task.spec?.acceptanceCriteria ?? [],
     who: task.assigneeId === undefined ? "" : (snapshot.agents.get(task.assigneeId)?.name ?? ""),
-    s: LANES[task.status],
+    lane: LANES[task.status],
     status: task.status,
     rating: task.rating?.verdict ?? null,
     commit: task.artifacts.commit ?? null,
@@ -128,12 +129,6 @@ function messageOf(message: ChatMessage, snapshot: Snapshot): Message {
 
 const CHIP_TITLE_MAX = 26;
 
-const chipTitle = (text: string): string => {
-  const firstLine = text.split("\n").find((line) => line.trim() !== "") ?? text;
-  const trimmed = firstLine.trim();
-  return trimmed.length <= CHIP_TITLE_MAX ? trimmed : `${trimmed.slice(0, CHIP_TITLE_MAX - 1)}…`;
-};
-
 function threadsOfChat(messages: readonly ChatMessage[], now: number): Thread[] {
   const threads = new Map<ThreadPick, Thread>();
   for (const message of messages) {
@@ -141,7 +136,7 @@ function threadsOfChat(messages: readonly ChatMessage[], now: number): Thread[] 
     const known = threads.get(id);
     threads.set(id, {
       id,
-      title: known?.title ?? chipTitle(message.text),
+      title: known?.title ?? headline(message.text, CHIP_TITLE_MAX),
       count: (known?.count ?? 0) + 1,
       at: message.at,
       when: ago(message.at, now),
@@ -247,14 +242,14 @@ export function useFloorActivity(floorId: ProjectId, thread: ThreadPick | "new")
     .toSorted((a, b) => a.startedAt.localeCompare(b.startedAt));
 }
 
-export function useAgentWork(agentId: AgentId): { id: TaskId; t: string; x: string }[] {
+export function useAgentWork(agentId: AgentId): { id: TaskId; when: string; title: string }[] {
   const snapshot = useUi((s) => s.snapshot);
   const now = useNow();
   return [...snapshot.tasks.values()]
     .filter((task) => task.assigneeId === agentId || task.reviewerId === agentId)
     .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 4)
-    .map((task) => ({ id: task.id, t: ago(task.updatedAt, now), x: task.title }));
+    .map((task) => ({ id: task.id, when: ago(task.updatedAt, now), title: task.title }));
 }
 
 export function useFloors(): Floor[] {

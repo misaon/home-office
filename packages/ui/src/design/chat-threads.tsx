@@ -1,10 +1,11 @@
 import { Popover } from "@base-ui/react/popover";
+import { Menu, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Floor, Thread, ThreadPick } from "./data.ts";
 import { requireClient } from "../rpc.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
-import { MONO } from "./tokens.ts";
+import { ELLIPSIS, MONO } from "./tokens.ts";
 
 const ROW = "flex-[0_0_auto] flex items-center gap-6 pt-10 px-16";
 
@@ -19,8 +20,6 @@ const CHIP_MAIN =
 const IDLE = "border-border-strong bg-transparent text-ink-quiet";
 
 const LIVE = "border-accent-a45 bg-accent-a10 text-accent-soft";
-
-const NAME = "overflow-hidden text-ellipsis whitespace-nowrap";
 
 const SQUARE =
   "w-26 h-26 flex-[0_0_26px] grid place-items-center rounded-8 border border-border-strong bg-transparent text-ink-quiet cursor-pointer transition-all duration-200";
@@ -41,22 +40,6 @@ const ITEM =
   "w-full flex items-center gap-8 py-8 px-9 rounded-9 border bg-transparent text-left cursor-pointer transition-all duration-200";
 
 const INLINE_LIMIT = 2;
-
-function Cross({ size }: { size: number }): React.JSX.Element {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 10 10"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    >
-      <line x1="2" y1="2" x2="8" y2="8" />
-      <line x1="8" y1="2" x2="2" y2="8" />
-    </svg>
-  );
-}
 
 function RemoveThread({
   floor,
@@ -99,7 +82,7 @@ function RemoveThread({
       }}
       className={`hover:text-bad-soft ${DROP} ${size === "chip" ? "w-18 h-18 flex-[0_0_18px]" : "w-22 h-22 flex-[0_0_22px]"}`}
     >
-      <Cross size={size === "chip" ? 8 : 10} />
+      <X size={size === "chip" ? 8 : 10} strokeWidth={1.5} />
     </button>
   );
 }
@@ -144,7 +127,7 @@ function ThreadMenu({
                   }}
                   className={`hover:border-accent-a45 ${ITEM} ${one.id === active ? LIVE : "border-transparent text-ink-quiet"}`}
                 >
-                  <span className={`flex-1 min-w-0 text-12h ${NAME}`}>{one.title}</span>
+                  <span className={`flex-1 min-w-0 text-12h ${ELLIPSIS}`}>{one.title}</span>
                   <span className={`${MONO} text-9h text-ink-label flex-[0_0_auto]`}>
                     {one.when}
                   </span>
@@ -199,15 +182,12 @@ export function ChatThreads({
         }}
         className={`hover:text-accent-soft hover:border-accent-a45 ${SQUARE}`}
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.5">
-          <line x1="6" y1="2" x2="6" y2="10" strokeLinecap="round" />
-          <line x1="2" y1="6" x2="10" y2="6" strokeLinecap="round" />
-        </svg>
+        <Plus size={12} strokeWidth={1.5} />
       </button>
       <div className={STRIP}>
         {active === "new" ? (
           <span className={`${CHIP} pr-10 ${LIVE}`}>
-            <span className={NAME}>{t("chat.newThread")}</span>
+            <span className={ELLIPSIS}>{t("chat.newThread")}</span>
           </span>
         ) : null}
         {floor.threads.map((thread) => (
@@ -224,7 +204,7 @@ export function ChatThreads({
               }}
               className={CHIP_MAIN}
             >
-              <span className={NAME}>{thread.title}</span>
+              <span className={ELLIPSIS}>{thread.title}</span>
               <span className={`${MONO} text-9h text-ink-label`}>{thread.count}</span>
             </button>
             <RemoveThread floor={floor} thread={thread} size="chip" />
@@ -239,11 +219,7 @@ export function ChatThreads({
             className={`hover:text-accent-soft hover:border-accent-a45 ${MORE}`}
           >
             <span className={`${MONO} text-9h`}>{floor.threads.length}</span>
-            <svg width="11" height="11" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.5">
-              <line x1="2" y1="3.5" x2="10" y2="3.5" strokeLinecap="round" />
-              <line x1="2" y1="6" x2="10" y2="6" strokeLinecap="round" />
-              <line x1="2" y1="8.5" x2="10" y2="8.5" strokeLinecap="round" />
-            </svg>
+            <Menu size={11} strokeWidth={1.5} />
           </Popover.Trigger>
           <ThreadMenu floor={floor} threads={floor.threads} active={active} onPick={pick} />
         </Popover.Root>

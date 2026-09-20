@@ -1,14 +1,11 @@
-import { compact, type StoredEvent, type Usage } from "@ho/protocol";
-import { int, str } from "../flags.ts";
+import { clip, compact, type StoredEvent, type Usage } from "@ho/protocol";
+import { hoursOf, int, str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
 import { line } from "../output.ts";
 
 const SUMMARY_MAX = 160;
 
-const summarize = (payload: unknown): string => {
-  const text = JSON.stringify(payload);
-  return text.length > SUMMARY_MAX ? `${text.slice(0, SUMMARY_MAX - 3)}...` : text;
-};
+const summarize = (payload: unknown): string => clip(JSON.stringify(payload), SUMMARY_MAX);
 
 const eventLine = (event: StoredEvent): string =>
   `${String(event.seq).padStart(6)}  ${event.at}  ${event.type.padEnd(22)}  ${summarize(event.payload)}`;
@@ -30,17 +27,6 @@ export const tailCommand: Command = {
 const fmt = (n: number): string => n.toLocaleString("en-US");
 const row = (label: string, u: Usage, sessions?: number): string =>
   `${label.padEnd(24)} in=${fmt(u.inputTokens).padStart(10)} out=${fmt(u.outputTokens).padStart(9)} cache=${fmt(u.cacheReadTokens).padStart(10)} write=${fmt(u.cacheWriteTokens).padStart(9)} turns=${String(u.turns).padStart(5)}${sessions === undefined ? "" : ` sessions=${String(sessions)}`}`;
-
-const hoursOf = (since: string | undefined): number | undefined => {
-  if (since === undefined) {
-    return undefined;
-  }
-  const span = /^(?<amount>\d+)(?<unit>[hd]?)$/u.exec(since)?.groups;
-  if (span === undefined) {
-    throw new Error(`--since expects hours or days like 24h or 7d, got "${since}"`);
-  }
-  return Number(span["amount"]) * (span["unit"] === "d" ? 24 : 1);
-};
 
 export const usageCommand: Command = {
   name: "usage",

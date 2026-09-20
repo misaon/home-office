@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 import { MONO } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
@@ -28,17 +29,7 @@ export function ChatAttachment({ file }: { file: string }): React.JSX.Element {
         }}
         className={`hover:bg-accent-a18 ${CLEAR}`}
       >
-        <svg
-          width="9"
-          height="9"
-          viewBox="0 0 10 10"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        >
-          <line x1="2" y1="2" x2="8" y2="8" />
-          <line x1="8" y1="2" x2="2" y2="8" />
-        </svg>
+        <X size={9} strokeWidth={1.5} />
       </button>
     </div>
   );

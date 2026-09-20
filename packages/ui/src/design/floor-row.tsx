@@ -20,8 +20,8 @@ function busyOf(floor: Floor): {
   ink: string;
 } {
   const working = floor.team.filter((p) => p.status === "working").length;
-  const running = floor.cards.filter((x) => x.s === "running").length;
-  const blocked = floor.cards.filter((x) => x.s === "blocked").length;
+  const running = floor.cards.filter((card) => card.lane === "running").length;
+  const blocked = floor.cards.filter((card) => card.lane === "blocked").length;
   const busy = working > 0 || running > 0;
   return {
     busy,
@@ -50,7 +50,7 @@ export function FloorRow({
 }): React.JSX.Element {
   const { t } = useTranslation();
   const busy = busyOf(floor);
-  const open = floor.cards.filter((x) => x.s !== "done").length;
+  const open = floor.cards.filter((card) => card.lane !== "done").length;
 
   return (
     <button

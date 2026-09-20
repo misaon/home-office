@@ -1,5 +1,5 @@
 import { type ReadModel, sessionsOfTask } from "@ho/core";
-import { reviewVerdictOf, type ProjectId, type Task, type TaskId } from "@ho/protocol";
+import { clip, type ProjectId, reviewVerdictOf, type Task, type TaskId } from "@ho/protocol";
 
 const K1 = 1.2;
 const B = 0.75;
@@ -36,9 +36,6 @@ const findingsOf = (task: Task): string[] =>
 
 const documentOf = (task: Task): string =>
   [task.title, task.brief, reportOf(task), ...findingsOf(task)].join("\n");
-
-const clip = (text: string, limit: number): string =>
-  text.length <= limit ? text : `${text.slice(0, limit - 1).trimEnd()}…`;
 
 const ENDED: ReadonlySet<Task["status"]> = new Set(["done", "blocked", "failed", "cancelled"]);
 

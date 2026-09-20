@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { ChevronLeft } from "lucide-react";
 import { DISPLAY } from "./tokens.ts";
 import { useDesign } from "./store.ts";
 
@@ -33,17 +34,7 @@ export function SheetShell({
           }}
           className="hover:text-accent-soft hover:border-accent-a45 w-30 h-30 flex-[0_0_30px] grid place-items-center border border-border-strong rounded-9 py-1 px-6 bg-transparent text-ink-quiet cursor-pointer transition-all duration-200"
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          >
-            <polyline points="7.5,2.5 4,6 7.5,9.5" />
-          </svg>
+          <ChevronLeft size={12} strokeWidth={1.6} />
         </button>
         <div className="flex-1 min-w-0">
           <div className={`${DISPLAY} font-semibold ${titleClass ?? "text-15"}`}>{title}</div>

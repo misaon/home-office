@@ -3,6 +3,7 @@ import {
   type AgentId,
   type ChatMessage,
   compact,
+  headline,
   type NewEvent,
   notFound,
   type Project,
@@ -19,11 +20,7 @@ import { type CommandContext, type CommandResult, err } from "../result.ts";
 
 export const TITLE_MAX = 200;
 
-export const titleFromText = (text: string): string => {
-  const firstLine = text.split("\n").find((line) => line.trim() !== "") ?? text;
-  const trimmed = firstLine.trim();
-  return trimmed.length <= TITLE_MAX ? trimmed : `${trimmed.slice(0, TITLE_MAX - 1)}…`;
-};
+export const titleFromText = (text: string): string => headline(text, TITLE_MAX);
 
 export const note = (ctx: CommandContext, kind: TaskNote["kind"], text: string): TaskNote => ({
   at: ctx.now,

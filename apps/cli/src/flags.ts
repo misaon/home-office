@@ -51,3 +51,14 @@ export const onOff = (value: string | undefined): boolean | undefined => {
   }
   throw new Error(`expected on|off, got "${value}"`);
 };
+
+export const hoursOf = (since: string | undefined): number | undefined => {
+  if (since === undefined) {
+    return undefined;
+  }
+  const span = /^(?<amount>\d+)(?<unit>[hd]?)$/u.exec(since)?.groups;
+  if (span === undefined) {
+    throw new Error(`--since expects hours or days like 24h or 7d, got "${since}"`);
+  }
+  return Number(span["amount"]) * (span["unit"] === "d" ? 24 : 1);
+};

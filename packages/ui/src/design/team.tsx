@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 import { TeamRow } from "./team-row.tsx";
 import { useDesign } from "./store.ts";
 import { type Chip, FilterChips } from "./filter-chips.tsx";
-import { DISPLAY } from "./tokens.ts";
+import { DISPLAY, TOP } from "./tokens.ts";
 
 type Key = "all" | "working" | "idle";
 
@@ -14,8 +14,6 @@ const FILTERS = [
   ["working", "team.working", "bg-accent"],
   ["idle", "team.idle", "bg-ink-idle"],
 ] as const satisfies readonly [Key, string, string | null][];
-
-const TOP = "flex items-baseline justify-between gap-10 mb-14";
 
 const COUNT = `${DISPLAY} font-bold text-30 tracking-display leading-flat whitespace-nowrap`;
 

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Trash2 } from "lucide-react";
 import { ClickableRow } from "./clickable-row.tsx";
 import type { Card, Floor } from "./data.ts";
 import { requireClient } from "../rpc.ts";
@@ -35,17 +36,17 @@ export function BoardCard({
     mutationFn: () => requireClient().tasks.remove({ id: card.id }),
   });
   const mine = card.who === bossOf(floor)?.name;
-  const ink = priorityInk(card.p);
-  const mark = priorityDot(card.p);
+  const ink = priorityInk(card.priority);
+  const mark = priorityDot(card.priority);
   const open = (): void => {
     set({ sheet: { type: "task", id: card.id } });
   };
 
   return (
-    <ClickableRow label={card.t} first={first} stripe={stripe} onOpen={open}>
+    <ClickableRow label={card.title} first={first} stripe={stripe} onOpen={open}>
       <div className={BODY}>
         <div className="flex items-start gap-10">
-          <div className={TITLE}>{card.t}</div>
+          <div className={TITLE}>{card.title}</div>
           <span
             className={`${AVATAR} ${mine ? "bg-accent-a18" : "bg-border"} ${mine ? "text-accent-soft" : "text-ink-mute"}`}
           >
@@ -59,8 +60,8 @@ export function BoardCard({
               e.stopPropagation();
               confirm({
                 title: t("board.removeTitle"),
-                body: t(card.s === "running" ? "board.removeRunning" : "board.removeConfirm", {
-                  title: card.t,
+                body: t(card.lane === "running" ? "board.removeRunning" : "board.removeConfirm", {
+                  title: card.title,
                   name: card.who,
                 }),
                 okLabel: t("board.removeAction"),
@@ -72,27 +73,16 @@ export function BoardCard({
             title={t("board.remove")}
             className={`hover:text-bad hover:bg-bad-a12 ${BIN}`}
           >
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 12 12"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              fill="none"
-              strokeLinecap="round"
-            >
-              <line x1="2" y1="3" x2="10" y2="3" />
-              <path d="M3.2 3v6.4a1 1 0 0 0 1 1h3.6a1 1 0 0 0 1-1V3" />
-            </svg>
+            <Trash2 size={11} strokeWidth={1.4} />
           </button>
         </div>
         <div className={META}>
           <span className={`flex items-center gap-5 ${ink}`}>
             <span className={`w-5 h-5 rounded-1 ${mark}`} />
-            <span>{t(`priority.${card.p}`)}</span>
+            <span>{t(`priority.${card.priority}`)}</span>
           </span>
           <span className="opacity-40">·</span>
-          <span>{t(`taskKind.${card.k}`)}</span>
+          <span>{t(`taskKind.${card.kind}`)}</span>
           <span className="opacity-40">·</span>
           <span>{card.who === "" ? t("board.unassigned") : card.who}</span>
           <span className="opacity-40">·</span>

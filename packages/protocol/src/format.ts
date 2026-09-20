@@ -13,3 +13,9 @@ export const formatBytes = (bytes: number | null): string => {
   const shown = unit === 0 ? String(Math.round(size)) : size.toFixed(size < 10 ? 1 : 0);
   return `${bytes < 0 ? "-" : ""}${shown} ${UNITS[unit] ?? "B"}`;
 };
+
+export const clip = (text: string, max: number): string =>
+  text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
+
+export const headline = (text: string, max: number): string =>
+  clip((text.split("\n").find((line) => line.trim() !== "") ?? text).trim(), max);
