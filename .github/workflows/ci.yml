@@ -140,7 +140,9 @@ jobs:
       # `mode=max` exports the layers of every stage the build walked through, so building `claude-code`
       # alone also caches `base` for the provider targets. Building `base` separately only loaded
       # a tag that nothing read.
-      - name: Build the agent image
+      # Every provider the office offers is built and started here, not only `claude-code`: a target that
+      # fails to build or whose CLI does not start is a provider the daemon advertises but cannot run.
+      - name: Build the agent images
         if: steps.scope.outputs.build == 'true'
         run: |
           cache=(--cache-from "type=gha,scope=agent-${{ matrix.arch }}")
@@ -148,6 +150,10 @@ jobs:
             cache+=(--cache-to "type=gha,mode=max,scope=agent-${{ matrix.arch }}")
           fi
           docker buildx build --load --target claude-code -t ho/agent:ci "${cache[@]}" images/agent
+          for target in opencode gemini-cli codex; do
+            docker buildx build --load --target "$target" -t "ho/agent-$target:ci" \
+              --cache-from "type=gha,scope=agent-${{ matrix.arch }}" images/agent
+          done
       - name: Smoke test the images
         if: steps.scope.outputs.build == 'true'
         run: |
@@ -155,7 +161,22 @@ jobs:
             | grep -q "HO_GATEWAY and HO_SESSION_TOKEN are required"
           docker run --rm --entrypoint sh ho/agent:ci -c \
             'claude --version && python3 -m pip --version && gcc --version && test -d /usr/share/zoneinfo'
+          docker run --rm --entrypoint sh ho/agent-opencode:ci -c 'opencode --version'
+          docker run --rm --entrypoint sh ho/agent-gemini-cli:ci -c 'gemini --version'
+          docker run --rm --entrypoint sh ho/agent-codex:ci -c 'codex-acp --version && codex --version'
           docker run --rm ho/git-bridge:ci --version
+      # `bun audit` and `npm audit` cover the JavaScript dependencies; the operating-system layers of the
+      # image (Alpine packages, Chromium, the toolchain) are scanned separately here. Unfixed advisories
+      # are reported but cannot block a merge nobody can act on.
+      - name: Scan the agent image for OS vulnerabilities
+        if: steps.scope.outputs.build == 'true'
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8
+        with:
+          image-ref: ho/agent:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
 
   # The branch ruleset requires a status check called `images`, and a matrix job reports one context per
   # leg instead. This job is that name: it succeeds only when every architecture did, so adding a third one
