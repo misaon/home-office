@@ -9,6 +9,14 @@ const OUTPUT_LOG_CHARS = 2000;
 const DIRTY_LIST_MAX = 20;
 const DIRTY_COMMAND = "git status --porcelain";
 
+export const settledTrace = (
+  deps: SessionDeps,
+  ctx: SessionContext,
+  facts: Readonly<Record<string, unknown>>,
+): void => {
+  deps.traces.write(ctx.session.id, { kind: "settled", ...facts }, true);
+};
+
 type Verification =
   | { kind: "passed"; skipped: boolean }
   | { kind: "failed" }
@@ -139,11 +147,11 @@ export async function candidateOf(
   }
   if (tree.dirty.length > 0) {
     await uncommitted(deps, ctx, project, tree);
-    deps.traces.write(
-      ctx.session.id,
-      { kind: "settled", status: "uncommitted", branch: provisioned.branch, commit: tree.sha },
-      true,
-    );
+    settledTrace(deps, ctx, {
+      status: "uncommitted",
+      branch: provisioned.branch,
+      commit: tree.sha,
+    });
     return null;
   }
   await provisioned.stopServices();
@@ -153,11 +161,11 @@ export async function candidateOf(
     return null;
   }
   if (verification.kind === "failed") {
-    deps.traces.write(
-      ctx.session.id,
-      { kind: "settled", status: "checks_failed", branch: provisioned.branch, commit: tree.sha },
-      true,
-    );
+    settledTrace(deps, ctx, {
+      status: "checks_failed",
+      branch: provisioned.branch,
+      commit: tree.sha,
+    });
     return null;
   }
   const after = await inspectWorkingTree(deps.provider, deps.config, provisioned.volume).catch(
