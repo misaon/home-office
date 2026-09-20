@@ -67,7 +67,7 @@ const intoReview = (
 export function fileReport(
   model: ReadModel,
   taskId: TaskId,
-  input: HoReportInput,
+  input: Pick<HoReportInput, "status" | "summary">,
   ctx: CommandContext,
 ): CommandResult<Task> {
   return withTask(model, taskId, (task) => {

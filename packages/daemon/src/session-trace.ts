@@ -54,6 +54,15 @@ export const traceOf = (event: RuntimeEvent): Record<string, unknown> | null => 
     case "permission_request": {
       return { id: event.id, tool: event.tool, input: shorten(event.input) };
     }
+    case "file_change": {
+      return {
+        id: event.id,
+        path: event.path,
+        beforeChars: event.before?.length ?? null,
+        afterChars: event.after.length,
+        truncated: event.truncated,
+      };
+    }
     case "usage": {
       return { ...event.usage };
     }

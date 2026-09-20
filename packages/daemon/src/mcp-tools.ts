@@ -1,11 +1,9 @@
 import {
   askHuman,
   delegateTask,
-  fileReport,
   handoffTask,
   isTerminal,
   membersOf,
-  patchTaskArtifacts,
   planTask,
   postAgentMessage,
   sessionsOfAgent,
@@ -22,7 +20,6 @@ import {
   HoPublishInput,
   HoRecallInput,
   HoReplyInput,
-  HoReportInput,
   HoReviewInput,
   HoTaskStatusInput,
   isSessionActive,
@@ -31,37 +28,11 @@ import { z } from "zod";
 import { recall } from "./recall.ts";
 import { dismiss } from "./mcp-dismiss.ts";
 import { hire } from "./mcp-hire.ts";
+import { report } from "./mcp-report.ts";
 import { ALL, define, type AnyTool, type ToolResult } from "./mcp-tool.ts";
 import { publishTask } from "./publish.ts";
 
 export type { AnyTool, Entry, McpSessionContext, ToolResult } from "./mcp-tool.ts";
-
-const report = define({
-  name: "ho_report",
-  description:
-    "End your work on the current task with a report. Call it exactly once: when your changes are committed (status review), when the triage or the plan is finished (status done), or when you cannot continue (status blocked, and the summary says why). The office runs the floor's checks and publishes committed work itself.",
-  schema: HoReportInput,
-  modes: ["work", "triage", "plan"],
-  run: async (input, office, entry, actor) => {
-    if (entry.ctx.mode === "work") {
-      if (entry.report !== null) {
-        throw new Error("a report was already submitted");
-      }
-      if (input.status === "done") {
-        throw new Error(
-          "a work session ends with status review or blocked; the office decides when a task is done",
-        );
-      }
-      await office.execute(actor, (m, c) =>
-        patchTaskArtifacts(m, entry.ctx.taskId, { report: input.summary }, c),
-      );
-      entry.report = input;
-      return "report received; the office runs the floor's checks, pushes your commits and hands the task on. Stop working now.";
-    }
-    const task = await office.execute(actor, (m, c) => fileReport(m, entry.ctx.taskId, input, c));
-    return `report filed; task is now ${task.status}. Stop working now.`;
-  },
-});
 
 const askTheHuman = define({
   name: "ho_ask_human",

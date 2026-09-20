@@ -49,7 +49,7 @@ export const reviewPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   `You are reviewing commit ${f.commit ?? "at the tip of the branch"} on branch ${f.branch}, checked out in your own copy of the repository at ${REPO_IN_VOLUME} (base branch: ${f.project.defaultBranch}). The office recorded that commit when the author reported; only it is published and reviewed, and nothing you change in this copy reaches it.`,
   SANDBOX,
   repoRules(f.agent),
-  browserGuide(f.browser),
+  browserGuide(f.browser, false),
   serveGuide(f.preview, f.browser),
   servicesGuide(f.services),
   `Start with \`git -C ${REPO_IN_VOLUME} diff ${f.project.defaultBranch}...HEAD --stat\`, then the diff file by file; read surrounding code only where needed. If ${f.project.defaultBranch} is missing locally, review the branch's own commits with \`git log -p\`.`,

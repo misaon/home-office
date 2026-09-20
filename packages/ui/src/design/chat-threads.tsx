@@ -11,7 +11,10 @@ const ROW = "flex-[0_0_auto] flex items-center gap-6 pt-10 px-16";
 const STRIP = "ho-strip flex-1 min-w-0 flex items-center gap-6 overflow-x-auto";
 
 const CHIP =
-  "flex items-center gap-7 h-26 flex-[0_0_auto] max-w-200 py-0 px-10 rounded-8 border text-11 cursor-pointer transition-all duration-200";
+  "flex items-center gap-4 h-26 flex-[0_0_auto] max-w-220 py-0 pl-10 pr-4 rounded-8 border text-11 transition-all duration-200";
+
+const CHIP_MAIN =
+  "flex items-center gap-7 min-w-0 h-full py-0 px-0 border-0 bg-transparent text-inherit cursor-pointer";
 
 const IDLE = "border-border-strong bg-transparent text-ink-quiet";
 
@@ -32,12 +35,74 @@ const SEARCH =
   "w-full mb-9 py-7 px-10 rounded-9 bg-sunk border border-border-strong text-12h placeholder:text-ink-ghost";
 
 const DROP =
-  "w-22 h-22 flex-[0_0_22px] grid place-items-center rounded-6 border-0 bg-transparent text-ink-label cursor-pointer transition-all duration-200 disabled:opacity-40";
+  "grid place-items-center rounded-6 border-0 bg-transparent text-ink-label cursor-pointer transition-all duration-200 disabled:opacity-40";
 
 const ITEM =
   "w-full flex items-center gap-8 py-8 px-9 rounded-9 border bg-transparent text-left cursor-pointer transition-all duration-200";
 
 const INLINE_LIMIT = 2;
+
+function Cross({ size }: { size: number }): React.JSX.Element {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 10 10"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    >
+      <line x1="2" y1="2" x2="8" y2="8" />
+      <line x1="8" y1="2" x2="2" y2="8" />
+    </svg>
+  );
+}
+
+function RemoveThread({
+  floor,
+  thread,
+  size,
+}: {
+  floor: Floor;
+  thread: Thread;
+  size: "chip" | "menu";
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const confirm = useDesign((s) => s.confirm);
+  const flash = useDesign((s) => s.flash);
+  const drop = useOfficeMutation({
+    mutationFn: (id: ThreadPick) =>
+      requireClient().chat.clear({
+        projectId: floor.id,
+        ...(id === "main" ? {} : { threadId: id }),
+      }),
+    onSuccess: (result) => {
+      flash(t("chat.cleared", { count: result.removed }));
+    },
+  });
+  return (
+    <button
+      type="button"
+      aria-label={t("chat.removeSession")}
+      title={t("chat.removeSession")}
+      disabled={drop.isPending}
+      onClick={(event) => {
+        event.stopPropagation();
+        confirm({
+          title: t("chat.clearTitle"),
+          body: t("chat.clearConfirm", { count: thread.count }),
+          okLabel: t("chat.clear"),
+          act: () => {
+            drop.mutate(thread.id);
+          },
+        });
+      }}
+      className={`hover:text-bad-soft ${DROP} ${size === "chip" ? "w-18 h-18 flex-[0_0_18px]" : "w-22 h-22 flex-[0_0_22px]"}`}
+    >
+      <Cross size={size === "chip" ? 8 : 10} />
+    </button>
+  );
+}
 
 function ThreadMenu({
   floor,
@@ -52,18 +117,6 @@ function ThreadMenu({
 }): React.JSX.Element {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
-  const confirm = useDesign((s) => s.confirm);
-  const flash = useDesign((s) => s.flash);
-  const drop = useOfficeMutation({
-    mutationFn: (id: ThreadPick) =>
-      requireClient().chat.clear({
-        projectId: floor.id,
-        ...(id === "main" ? {} : { threadId: id }),
-      }),
-    onSuccess: (result) => {
-      flash(t("chat.cleared", { count: result.removed }));
-    },
-  });
   const needle = query.trim().toLowerCase();
   const shown =
     needle === "" ? threads : threads.filter((one) => one.title.toLowerCase().includes(needle));
@@ -99,35 +152,7 @@ function ThreadMenu({
                     {one.count}
                   </span>
                 </button>
-                <button
-                  type="button"
-                  aria-label={t("chat.clear")}
-                  title={t("chat.clear")}
-                  disabled={drop.isPending}
-                  onClick={() => {
-                    confirm({
-                      title: t("chat.clearTitle"),
-                      body: t("chat.clearConfirm", { count: one.count }),
-                      okLabel: t("chat.clear"),
-                      act: () => {
-                        drop.mutate(one.id);
-                      },
-                    });
-                  }}
-                  className={`hover:text-bad-soft ${DROP}`}
-                >
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 10 10"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  >
-                    <line x1="2" y1="2" x2="8" y2="8" />
-                    <line x1="8" y1="2" x2="2" y2="8" />
-                  </svg>
-                </button>
+                <RemoveThread floor={floor} thread={one} size="menu" />
               </div>
             ))}
             {shown.length === 0 ? (
@@ -152,7 +177,7 @@ export function ChatThreads({
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);
   const [menuOpen, setMenuOpen] = useState(false);
-  const current = useRef<HTMLButtonElement>(null);
+  const current = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     current.current?.scrollIntoView({ inline: "nearest", block: "nearest" });
@@ -181,24 +206,29 @@ export function ChatThreads({
       </button>
       <div className={STRIP}>
         {active === "new" ? (
-          <span className={`${CHIP} ${LIVE}`}>
+          <span className={`${CHIP} pr-10 ${LIVE}`}>
             <span className={NAME}>{t("chat.newThread")}</span>
           </span>
         ) : null}
         {floor.threads.map((thread) => (
-          <button
+          <div
             key={thread.id}
             ref={thread.id === active ? current : undefined}
-            type="button"
-            title={thread.title}
-            onClick={() => {
-              pick(thread.id);
-            }}
             className={`hover:border-accent-a45 ${CHIP} ${thread.id === active ? LIVE : IDLE}`}
           >
-            <span className={NAME}>{thread.title}</span>
-            <span className={`${MONO} text-9h text-ink-label`}>{thread.count}</span>
-          </button>
+            <button
+              type="button"
+              title={thread.title}
+              onClick={() => {
+                pick(thread.id);
+              }}
+              className={CHIP_MAIN}
+            >
+              <span className={NAME}>{thread.title}</span>
+              <span className={`${MONO} text-9h text-ink-label`}>{thread.count}</span>
+            </button>
+            <RemoveThread floor={floor} thread={thread} size="chip" />
+          </div>
         ))}
       </div>
       {floor.threads.length > INLINE_LIMIT ? (

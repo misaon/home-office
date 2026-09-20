@@ -60,11 +60,12 @@ export type Message = {
   id: ChatMessageId;
   mine: boolean;
   who?: string;
+  at: string;
   time: string;
   text: string;
   threadId?: ChatThreadId;
   asks?: { taskId: TaskId; who: string };
-  attachment?: Attachment;
+  attachments: readonly Attachment[];
 };
 
 export type ThreadPick = ChatThreadId | "main";

@@ -3,6 +3,7 @@ import {
   type Agent,
   type Attachment,
   CHAT_INBOX_DIR,
+  CHAT_OUTBOX_DIR,
   type CommitSha,
   isSessionActive,
   type Project,
@@ -50,9 +51,11 @@ export const repoRules = (agent: Agent): string =>
     ? "House rules: this repository's CLAUDE.md, .claude/rules and .claude/skills are loaded for you; follow them over your habits. If the repository has an AGENTS.md that CLAUDE.md does not import, read it first and treat it the same way."
     : "House rules: read the repository's CLAUDE.md and AGENTS.md at the root before you start, unless your runtime already loaded them, and follow them over your habits.";
 
-export const browserGuide = (enabled: boolean): string =>
+const SHOW_THE_HUMAN = `Take a screenshot of every change a user can see, copy it into ${CHAT_OUTBOX_DIR} and name it in ho_report's files: the human then sees the result in the office chat.`;
+
+export const browserGuide = (enabled: boolean, reportsFiles: boolean): string =>
   enabled
-    ? `Browser: headless Chromium with the Playwright MCP tools (browser_navigate, browser_snapshot, browser_click, browser_take_screenshot and more); there is no display. Screenshots land in ${BROWSER_OUTPUT_DIR}; copy the ones that belong in the repository into the repository before committing. Close pages you no longer need.`
+    ? `Browser: headless Chromium with the Playwright MCP tools (browser_navigate, browser_snapshot, browser_click, browser_take_screenshot and more); there is no display. Screenshots land in ${BROWSER_OUTPUT_DIR}; copy the ones that belong in the repository into the repository before committing.${reportsFiles ? ` ${SHOW_THE_HUMAN}` : ""} Close pages you no longer need.`
     : "";
 
 export const serveGuide = (preview: Preview, browser: boolean): string => {

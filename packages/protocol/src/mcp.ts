@@ -24,6 +24,13 @@ export const HoReportInput = z.object({
     .describe(
       `Published verbatim as the pull-request description and, for tasks that came from an issue, as the comment on that issue. Markdown. Say what changed, how you verified it and what stays open; name no credentials and no paths outside the repository. At most ${String(REPORT_MAX)} characters.`,
     ),
+  files: z
+    .array(AttachmentName)
+    .max(ATTACHMENTS_MAX)
+    .prefault([])
+    .describe(
+      `Work sessions only: screenshots or other files for the human, written into ${CHAT_OUTBOX_DIR}; names only, no paths. Attach a screenshot of every change a user can see, so the result shows up in the office chat.`,
+    ),
 });
 export type HoReportInput = z.infer<typeof HoReportInput>;
 

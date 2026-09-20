@@ -20,6 +20,8 @@ const FORMAT: {
   rate_limited: (e, tag) => `${tag} rate limited until ${e.retryAt ?? "?"}`,
   error: (e, tag) => `${tag} error ${e.code}: ${e.message}`,
   permission_request: (e, tag) => `${tag} permission requested for ${e.tool}`,
+  file_change: (e, tag) =>
+    `${tag} ✎ ${e.path}${e.before === null ? " (new file)" : ""}${e.truncated ? " (truncated)" : ""}`,
   init: (e, tag) =>
     `${tag} init model=${e.model}${e.effort === undefined ? "" : ` effort=${e.effort}`} tools=${String(e.tools)} plugins=[${e.plugins.join(", ")}] mcp=[${e.mcpServers.join(", ")}]${e.pluginErrors.length > 0 ? ` plugin-errors=${e.pluginErrors.join("; ")}` : ""}`,
 };

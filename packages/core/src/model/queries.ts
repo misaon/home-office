@@ -45,7 +45,10 @@ export const latestThread = (
 const THREAD_WALK_MAX = 8;
 
 export function threadOfTask(
-  model: Pick<ReadModel, "chat" | "tasks">,
+  model: {
+    chat: ReadonlyMap<ProjectId, readonly ChatMessage[]>;
+    tasks: ReadonlyMap<TaskId, Task>;
+  },
   task: Task,
 ): ChatThreadId | undefined {
   let current: Task | undefined = task;

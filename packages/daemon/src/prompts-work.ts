@@ -56,7 +56,7 @@ export const workPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   `The repository is checked out at ${REPO_IN_VOLUME} on branch ${f.branch}. Work only inside it and commit with clear Conventional Commit messages.`,
   SANDBOX,
   repoRules(f.agent),
-  browserGuide(f.browser),
+  browserGuide(f.browser, true),
   serveGuide(f.preview, f.browser),
   servicesGuide(f.services),
   dependenciesGuide(f.base),

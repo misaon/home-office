@@ -57,16 +57,29 @@ function advanceWalk(
     }
     return;
   }
-  actor.moving = next;
   actor.activity = "walk";
-  actor.facing = facingTowards(actor.tile, next);
-  const distance = (speedOf(actor) * dtMs) / 1000;
-  const dx = next.x - actor.pos.x;
-  const dy = next.y - actor.pos.y;
-  const remaining = Math.hypot(dx, dy);
-  if (remaining <= distance) {
-    actor.pos = { x: next.x, y: next.y };
-    actor.tile = { x: next.x, y: next.y };
+  let budget = (speedOf(actor) * dtMs) / 1000;
+  let [ahead] = step.path;
+  while (ahead !== undefined) {
+    if (actor.moving === null && occupied(occupancy, actor, true)(ahead)) {
+      actor.facing = facingTowards(actor.tile, ahead);
+      return;
+    }
+    actor.moving = ahead;
+    actor.facing = facingTowards(actor.tile, ahead);
+    const dx = ahead.x - actor.pos.x;
+    const dy = ahead.y - actor.pos.y;
+    const remaining = Math.hypot(dx, dy);
+    if (remaining > budget) {
+      actor.pos = {
+        x: actor.pos.x + (dx / remaining) * budget,
+        y: actor.pos.y + (dy / remaining) * budget,
+      };
+      return;
+    }
+    budget -= remaining;
+    actor.pos = { x: ahead.x, y: ahead.y };
+    actor.tile = { x: ahead.x, y: ahead.y };
     actor.moving = null;
     step.path.shift();
     if (step.path.length === 0) {
@@ -76,13 +89,10 @@ function advanceWalk(
       } else {
         finishStep(actor);
       }
+      return;
     }
-    return;
+    [ahead] = step.path;
   }
-  actor.pos = {
-    x: actor.pos.x + (dx / remaining) * distance,
-    y: actor.pos.y + (dy / remaining) * distance,
-  };
 }
 
 export function advanceStep(

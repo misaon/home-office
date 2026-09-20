@@ -12,7 +12,7 @@ import { VERSION } from "./version.ts";
 const INPUT_LOG_CHARS = 500;
 
 const INSTRUCTIONS: Readonly<Record<SessionMode, string>> = {
-  work: "Home Office tools for a work session. Commit on the task branch, then end with ho_report: status review when the work is ready, blocked with the reason when you cannot continue. ho_ask_human pauses the task for a human decision, ho_handoff passes it to a named colleague, ho_task_status returns the notes and artifacts when you lack context. The office pushes and opens pull requests itself.",
+  work: "Home Office tools for a work session. Commit on the task branch, then end with ho_report: status review when the work is ready, its files carrying a screenshot of anything a user can see, blocked with the reason when you cannot continue. ho_ask_human pauses the task for a human decision, ho_handoff passes it to a named colleague, ho_task_status returns the notes and artifacts when you lack context. The office pushes and opens pull requests itself.",
   review:
     "Home Office tools for a review session. Read the diff, then end with ho_review exactly once: approve, or request_changes with numbered findings (file:line). ho_ask_human pauses the task for a human decision.",
   triage:

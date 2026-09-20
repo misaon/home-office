@@ -1,13 +1,15 @@
 import type { SessionUpdate, StopReason, ToolCallContent } from "@agentclientprotocol/sdk";
-import type { RuntimeEvent } from "@ho/protocol";
+import { fileChangeEvent, type RuntimeEvent } from "@ho/protocol";
 
 const SUMMARY_MAX = 200;
 const TOOL_TITLES_MAX = 1024;
 
+type Blocks = readonly ToolCallContent[] | null | undefined;
+
 const clip = (text: string): string =>
   text.length > SUMMARY_MAX ? `${text.slice(0, SUMMARY_MAX - 1)}…` : text;
 
-const contentText = (blocks: readonly ToolCallContent[] | undefined): string =>
+const contentText = (blocks: Blocks): string =>
   (blocks ?? [])
     .map((block) =>
       block.type === "content" && block.content.type === "text" ? block.content.text : "",
@@ -15,28 +17,55 @@ const contentText = (blocks: readonly ToolCallContent[] | undefined): string =>
     .filter((text) => text !== "")
     .join(" ");
 
+const diffsOf = (id: string, blocks: Blocks): RuntimeEvent[] =>
+  (blocks ?? []).flatMap((block): RuntimeEvent[] =>
+    block.type === "diff"
+      ? [fileChangeEvent(id, block.path, block.oldText ?? null, block.newText)]
+      : [],
+  );
+
 export type TurnState = {
   text: string;
   tools: Map<string, string>;
+  diffs: Map<string, RuntimeEvent[]>;
   toolCalls: number;
   cost: { amount: number; currency: string } | null;
 };
 
-export const newTurn = (): TurnState => ({ text: "", tools: new Map(), toolCalls: 0, cost: null });
+export const newTurn = (): TurnState => ({
+  text: "",
+  tools: new Map(),
+  diffs: new Map(),
+  toolCalls: 0,
+  cost: null,
+});
 
-const finished = (
+const remember = (turn: TurnState, id: string, blocks: Blocks): void => {
+  const diffs = diffsOf(id, blocks);
+  if (diffs.length > 0) {
+    turn.diffs.set(id, diffs);
+  }
+};
+
+const settled = (
+  turn: TurnState,
   id: string,
   status: "completed" | "failed",
   title: string,
-  content: readonly ToolCallContent[] | undefined,
-): RuntimeEvent => {
-  const text = contentText(content);
-  return {
+  blocks: Blocks,
+): RuntimeEvent[] => {
+  const text = contentText(blocks);
+  const result: RuntimeEvent = {
     kind: "tool_result",
     id,
     ok: status === "completed",
     summary: clip(text === "" ? title : text),
   };
+  const fresh = diffsOf(id, blocks);
+  const remembered = turn.diffs.get(id) ?? [];
+  turn.diffs.delete(id);
+  turn.tools.delete(id);
+  return status === "completed" ? [result, ...(fresh.length > 0 ? fresh : remembered)] : [result];
 };
 
 export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeEvent[] {
@@ -53,6 +82,7 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
       const oldest = turn.tools.keys().next();
       if (oldest.done !== true) {
         turn.tools.delete(oldest.value);
+        turn.diffs.delete(oldest.value);
       }
     }
     turn.tools.set(update.toolCallId, update.title);
@@ -61,8 +91,9 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
       { kind: "tool_call", id: update.toolCallId, name, input: update.rawInput ?? update.title },
     ];
     if (update.status === "completed" || update.status === "failed") {
-      turn.tools.delete(update.toolCallId);
-      events.push(finished(update.toolCallId, update.status, update.title, update.content));
+      events.push(...settled(turn, update.toolCallId, update.status, update.title, update.content));
+    } else {
+      remember(turn, update.toolCallId, update.content);
     }
     return events;
   }
@@ -82,11 +113,11 @@ export function updateToEvents(update: SessionUpdate, turn: TurnState): RuntimeE
   }
   if (update.sessionUpdate === "tool_call_update") {
     if (update.status !== "completed" && update.status !== "failed") {
+      remember(turn, update.toolCallId, update.content);
       return [];
     }
     const title = update.title ?? turn.tools.get(update.toolCallId) ?? "tool";
-    turn.tools.delete(update.toolCallId);
-    return [finished(update.toolCallId, update.status, title, update.content ?? undefined)];
+    return settled(turn, update.toolCallId, update.status, title, update.content);
   }
   return [];
 }

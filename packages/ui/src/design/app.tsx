@@ -8,6 +8,7 @@ import { Confirm } from "./confirm.tsx";
 import { EmptyOffice } from "./empty-office.tsx";
 import { FaultScreen } from "./fault.tsx";
 import { Header } from "./header.tsx";
+import { DiffDialog } from "./diff-dialog.tsx";
 import { Lightbox } from "./lightbox.tsx";
 import { Panel } from "./panel.tsx";
 import { Stage } from "./stage.tsx";
@@ -53,6 +54,7 @@ export function App(): React.JSX.Element {
   const hasFloors = useUi((s) => s.snapshot.projects.size > 0);
   const empty = useUi((s) => s.replayed && s.snapshot.projects.size === 0);
   const lightbox = useDesign((s) => s.lightbox);
+  const diff = useDesign((s) => s.diff);
   const editor = useDesign((s) => s.editor);
   const ask = useDesign((s) => s.ask);
   const set = useDesign((s) => s.set);
@@ -83,6 +85,7 @@ export function App(): React.JSX.Element {
         />
       ) : null}
       {lightbox === null ? null : <Lightbox attachment={lightbox} />}
+      {diff === null ? null : <DiffDialog change={diff} />}
       <FloorOverlays />
       <NewFloor />
       <Setup />

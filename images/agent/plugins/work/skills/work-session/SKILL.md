@@ -34,4 +34,5 @@ description: Load at the start of every work session and again before ho_report.
    engineer, the head of development), each in their own copy of the repository; write for them:
    what changed and why, how to run it, how you verified each acceptance criterion, what
    documentation you updated or why none needed it, and what stays open. The text also becomes the
-   pull-request description. Then stop.
+   pull-request description. When the session had browser tools and the change is visible, name
+   the screenshots you copied into /out/chat in `files`; the human sees them in the chat. Then stop.

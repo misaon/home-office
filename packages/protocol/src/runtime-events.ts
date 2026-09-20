@@ -42,6 +42,14 @@ export const RuntimeEvent = z.discriminatedUnion("kind", [
     input: z.unknown(),
   }),
   z.object({
+    kind: z.literal("file_change"),
+    id: z.string(),
+    path: z.string(),
+    before: z.string().nullable(),
+    after: z.string(),
+    truncated: z.boolean(),
+  }),
+  z.object({
     kind: z.literal("usage"),
     usage: Usage,
     costUsd: z.number().nonnegative().optional(),
@@ -64,6 +72,25 @@ export const RuntimeEvent = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("error"), code: RuntimeErrorCode, message: z.string() }),
 ]);
 export type RuntimeEvent = z.infer<typeof RuntimeEvent>;
+
+const FILE_CHANGE_MAX_CHARS = 100_000;
+
+const clipFile = (text: string): string =>
+  text.length <= FILE_CHANGE_MAX_CHARS ? text : text.slice(0, FILE_CHANGE_MAX_CHARS);
+
+export const fileChangeEvent = (
+  id: string,
+  path: string,
+  before: string | null,
+  after: string,
+): Extract<RuntimeEvent, { kind: "file_change" }> => ({
+  kind: "file_change",
+  id,
+  path,
+  before: before === null ? null : clipFile(before),
+  after: clipFile(after),
+  truncated: (before?.length ?? 0) > FILE_CHANGE_MAX_CHARS || after.length > FILE_CHANGE_MAX_CHARS,
+});
 
 export const LiveEvent = z.object({ sessionId: SessionId, at: IsoDateTime, event: RuntimeEvent });
 export type LiveEvent = z.infer<typeof LiveEvent>;

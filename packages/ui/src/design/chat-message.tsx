@@ -68,6 +68,27 @@ function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX.Elemen
   );
 }
 
+function ChatThumbs({
+  attachments,
+}: {
+  attachments: readonly Attachment[];
+}): React.JSX.Element | null {
+  const [only] = attachments;
+  if (only === undefined) {
+    return null;
+  }
+  if (attachments.length === 1) {
+    return <ChatThumb attachment={only} />;
+  }
+  return (
+    <div className="grid grid-cols-2 gap-8 mt-10 [&>*]:mt-0">
+      {attachments.map((attachment) => (
+        <ChatThumb key={attachment.id} attachment={attachment} />
+      ))}
+    </div>
+  );
+}
+
 const META = `${MONO} text-10 tracking-mono`;
 const BODY = "text-13h leading-text text-pretty";
 
@@ -100,7 +121,7 @@ export function ChatMessage({
           <div className={`${BODY} text-ink-bright`}>
             <RichText text={message.text} />
           </div>
-          {message.attachment === undefined ? null : <ChatThumb attachment={message.attachment} />}
+          <ChatThumbs attachments={message.attachments} />
         </div>
       ) : (
         <div className={message.asks === undefined ? THEIRS : ASKING}>
@@ -110,6 +131,7 @@ export function ChatMessage({
           <div className={`${BODY} text-ink-soft`}>
             <RichText text={message.text} />
           </div>
+          <ChatThumbs attachments={message.attachments} />
           {message.asks === undefined ? null : (
             <div className={ASK_TAG}>
               <svg

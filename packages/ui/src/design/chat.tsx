@@ -13,6 +13,11 @@ const LIST = "flex-1 min-h-0 overflow-y-auto p-16 flex flex-col gap-11";
 
 const STICK_WITHIN = 80;
 
+const ANNOUNCEMENT_GRACE_MS = 1500;
+
+const afterAnnouncement = (iso: string): string =>
+  new Date(new Date(iso).getTime() + ANNOUNCEMENT_GRACE_MS).toISOString();
+
 export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
   const { t } = useTranslation();
   const query = useDesign((s) => s.query);
@@ -22,12 +27,12 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
   const atBottom = useRef(true);
 
   const boss = bossOf(floor);
-  const activity = useFloorActivity(floor.id);
   const pick = useDesign((s) => s.thread);
   const active: ThreadPick | "new" =
     pick === "new" || floor.threads.some((thread) => thread.id === pick)
       ? pick
       : (floor.threads[0]?.id ?? "new");
+  const activity = useFloorActivity(floor.id, active);
   const inThread =
     active === "new"
       ? []
@@ -37,6 +42,15 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
   const needle = query.trim().toLowerCase();
   const shown =
     needle === "" ? inThread : inThread.filter((m) => m.text.toLowerCase().includes(needle));
+  const timeline = [
+    ...shown.map((message) => ({ key: message.id, at: message.at, order: 0, message })),
+    ...(needle === "" ? activity : []).map((one) => ({
+      key: one.sessionId,
+      at: afterAnnouncement(one.startedAt),
+      order: 1,
+      activity: one,
+    })),
+  ].toSorted((a, b) => a.at.localeCompare(b.at) || a.order - b.order);
 
   useEffect(() => {
     atBottom.current = true;
@@ -87,12 +101,17 @@ export function Chat({ floor }: { floor: Floor }): React.JSX.Element {
         }}
         className={LIST}
       >
-        {shown.map((m) => (
-          <ChatMessage key={m.id} message={m} boss={boss?.name ?? t("chat.colleague")} />
-        ))}
-        {activity.map((one) => (
-          <ChatTranscript key={one.id} activity={one} />
-        ))}
+        {timeline.map((item) =>
+          "message" in item ? (
+            <ChatMessage
+              key={item.key}
+              message={item.message}
+              boss={boss?.name ?? t("chat.colleague")}
+            />
+          ) : (
+            <ChatTranscript key={item.key} activity={item.activity} />
+          ),
+        )}
         {asking.length > 1 ? (
           <div className="text-10h text-warn text-center py-4">
             {t("chat.moreQuestions", { count: asking.length - 1 })}

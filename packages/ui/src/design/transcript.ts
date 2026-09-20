@@ -1,10 +1,32 @@
-import type { AgentId, LiveEvent } from "@ho/protocol";
+import type {
+  AgentId,
+  AgentRole,
+  LiveEvent,
+  RuntimeEvent,
+  SessionId,
+  SessionMode,
+} from "@ho/protocol";
 
-export type Step = { id: string; tool: string; detail: string; ok: boolean | null };
+export type FileChange = Extract<RuntimeEvent, { kind: "file_change" }>;
+
+export type Step = {
+  id: string;
+  tool: string;
+  detail: string;
+  ok: boolean | null;
+  change: FileChange | null;
+};
 
 export type Activity = {
   id: AgentId;
+  sessionId: SessionId;
   name: string;
+  role: AgentRole;
+  mode: SessionMode;
+  model: string;
+  effort: string;
+  live: boolean;
+  startedAt: string;
   steps: Step[];
   text: string;
   since: string;
@@ -27,6 +49,11 @@ const detailOf = (input: unknown): string => {
 
 const toolLabel = (name: string): string => name.replace(/^mcp__[^_]+__/u, "");
 
+const FENCE = /^\s*```/u;
+
+const insideFence = (dropped: readonly string[]): boolean =>
+  dropped.filter((line) => FENCE.test(line)).length % 2 === 1;
+
 const lastLines = (text: string): string => {
   if (text.length <= TEXT_TAIL) {
     return text;
@@ -41,7 +68,8 @@ const lastLines = (text: string): string => {
     }
     kept.unshift(line);
   }
-  return kept.join("\n");
+  const dropped = lines.slice(0, lines.length - kept.length);
+  return insideFence(dropped) ? ["```", ...kept].join("\n") : kept.join("\n");
 };
 
 export function transcriptOf(events: readonly LiveEvent[]): { steps: Step[]; text: string } {
@@ -54,6 +82,7 @@ export function transcriptOf(events: readonly LiveEvent[]): { steps: Step[]; tex
         tool: toolLabel(event.name),
         detail: detailOf(event.input),
         ok: null,
+        change: null,
       });
       text = "";
     } else if (event.kind === "tool_result") {
@@ -61,6 +90,15 @@ export function transcriptOf(events: readonly LiveEvent[]): { steps: Step[]; tex
       if (step !== undefined) {
         steps.set(event.id, { ...step, ok: event.ok });
       }
+    } else if (event.kind === "file_change") {
+      const step = steps.get(event.id) ?? {
+        id: event.id,
+        tool: "edit",
+        detail: event.path,
+        ok: true,
+        change: null,
+      };
+      steps.set(event.id, { ...step, change: event });
     } else if (event.kind === "text_delta") {
       text += event.text;
     }
