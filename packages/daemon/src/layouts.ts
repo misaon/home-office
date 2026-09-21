@@ -1,4 +1,11 @@
-import { type LayoutSaved, type LayoutStore, OfficeLayout } from "@ho/protocol";
+import {
+  type LayoutSaved,
+  type LayoutStore,
+  type OfficeLayout,
+  renderLayoutText,
+  StoredOfficeLayout,
+  textFromOffice,
+} from "@ho/protocol";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -25,7 +32,7 @@ export async function listLayouts(
       onProblem(file, "cannot be read");
       continue;
     }
-    const parsed = OfficeLayout.safeParse(parseJson(text));
+    const parsed = StoredOfficeLayout.safeParse(parseJson(text));
     if (parsed.success) {
       layouts.push(parsed.data);
     } else {
@@ -46,6 +53,6 @@ export async function saveLayout(
   }
   await mkdir(directory, { recursive: true });
   const path = join(directory, `${layout.id}.json`);
-  await writeFile(path, `${JSON.stringify(layout, null, 2)}\n`, "utf8");
+  await writeFile(path, renderLayoutText(textFromOffice(layout)), "utf8");
   return { id: layout.id, path };
 }

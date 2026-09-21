@@ -13,6 +13,8 @@ export * from "./mandate.ts";
 export * from "./mcp.ts";
 export * from "./office-file.ts";
 export * from "./office-layout.ts";
+export * from "./office-layout-text.ts";
+export * from "./office-layout-write.ts";
 export * from "./patch.ts";
 export * from "./providers.ts";
 export * from "./remote.ts";
