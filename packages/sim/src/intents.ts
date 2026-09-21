@@ -14,6 +14,7 @@ import {
   anchorOf,
   type DeliveryRef,
   type Emotion,
+  forget,
   freeAnchors,
   release,
   reserve,
@@ -88,6 +89,9 @@ export function assignWork(
     return false;
   }
   actor.work = { floorId, anchorId: anchor.id };
+  if (actor.meeting !== null) {
+    return true;
+  }
   setSteps(actor, [
     ...pendingDeliveries(actor),
     ...walkSteps(floorId, anchor.at),
@@ -101,8 +105,12 @@ export function releaseWork(world: World, agentId: AgentId, ok: boolean): void {
   if (actor === undefined) {
     return;
   }
+  forget(world, actor, actor.work);
   actor.work = null;
   release(world, actor);
+  if (actor.meeting !== null) {
+    return;
+  }
   const celebrate: Step[] = ok
     ? [{ kind: "dwell", activity: "celebrate", facing: "s", until: null, ms: CELEBRATE_MS }]
     : [];
@@ -179,6 +187,52 @@ export function receive(world: World, agentId: AgentId, from: AgentId): void {
   ]);
 }
 
+export function convene(
+  world: World,
+  floorId: string,
+  participants: readonly AgentId[],
+  meetingId: string,
+): boolean {
+  const spots = freeAnchors(world, floorId, "meeting");
+  let seated = 0;
+  for (const id of participants) {
+    const actor = world.actors.get(id);
+    if (actor === undefined || actor.floorId !== floorId || actor.meeting === meetingId) {
+      continue;
+    }
+    const spot = spots.shift();
+    if (spot === undefined) {
+      break;
+    }
+    if (!reserve(world, actor, floorId, spot.id)) {
+      continue;
+    }
+    seated += 1;
+    summon(world, actor);
+    actor.meeting = meetingId;
+    setEmotion(world, id, "talking", null);
+    setSteps(actor, [
+      ...pendingDeliveries(actor),
+      ...walkSteps(floorId, spot.at),
+      { kind: "hold", activity: "idle", facing: spot.facing },
+    ]);
+  }
+  return seated > 0;
+}
+
+export function adjourn(world: World, meetingId: string): void {
+  for (const actor of world.actors.values()) {
+    if (actor.meeting !== meetingId) {
+      continue;
+    }
+    actor.meeting = null;
+    release(world, actor);
+    setEmotion(world, actor.id, null, null);
+    setSteps(actor, [...pendingDeliveries(actor), ...resumeSteps(world, actor)]);
+    actor.idleUntil = world.time;
+  }
+}
+
 export function sleep(world: World, agentId: AgentId): void {
   const actor = world.actors.get(agentId);
   if (actor === undefined) {
@@ -186,6 +240,7 @@ export function sleep(world: World, agentId: AgentId): void {
   }
   const bed = world.rng.pick(freeAnchors(world, actor.floorId, "sleep", actor.kind));
   const spot = bed ?? world.rng.pick(freeAnchors(world, actor.floorId, "wander", actor.kind));
+  forget(world, actor, actor.work);
   actor.work = null;
   release(world, actor);
   if (bed !== undefined) {

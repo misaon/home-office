@@ -1,5 +1,5 @@
 import { manhattan, samePoint } from "./grid.ts";
-import { homeSteps, setSteps, walkSteps } from "./actors.ts";
+import { homeSteps, resumeSteps, setSteps, walkSteps } from "./actors.ts";
 import {
   type Actor,
   type Activity,
@@ -9,6 +9,7 @@ import {
   type NeedKind,
   release,
   reserve,
+  type Step,
   type World,
 } from "./world.ts";
 
@@ -27,12 +28,18 @@ const AWAY_CHANCE = 0.03;
 const AWAY_MIN_MS = 45_000;
 const AWAY_SPAN_MS = 90_000;
 
-const pressingNeed = (actor: Actor, allowed: readonly NeedKind[]): NeedKind | undefined =>
+const RESET_SPREAD = 0.3;
+
+const pressingNeed = (
+  actor: Actor,
+  allowed: readonly NeedKind[],
+  threshold = THRESHOLD,
+): NeedKind | undefined =>
   allowed
-    .filter((n) => actor.needs[n] >= THRESHOLD)
+    .filter((n) => actor.needs[n] >= threshold)
     .toSorted((a, b) => actor.needs[b] - actor.needs[a])[0];
 
-function satisfy(world: World, actor: Actor, need: NeedKind): boolean {
+function satisfy(world: World, actor: Actor, need: NeedKind, after: readonly Step[]): boolean {
   const plan = DWELL[need];
   const options = freeAnchors(world, actor.floorId, plan.anchor, actor.kind);
   const anchor =
@@ -42,15 +49,42 @@ function satisfy(world: World, actor: Actor, need: NeedKind): boolean {
   if (anchor === undefined || !reserve(world, actor, actor.floorId, anchor.id)) {
     return false;
   }
-  actor.needs[need] = 0;
+  actor.needs[need] = world.rng.next() * RESET_SPREAD;
   setSteps(actor, [
     ...walkSteps(actor.floorId, anchor.at),
     { kind: "dwell", activity: plan.activity, facing: anchor.facing, until: null, ms: plan.ms },
     { kind: "release" },
-    ...homeSteps(world, actor),
+    ...after,
   ]);
   actor.idleUntil = world.time + plan.ms;
   return true;
+}
+
+const BREAK_NEEDS: readonly NeedKind[] = ["restroom"];
+const BREAK_THRESHOLD = 0.95;
+const BREAK_CHANCE = 0.5;
+const BREAK_CHECK_MS = 15_000;
+
+export function breakBehaviour(world: World, actor: Actor): void {
+  const [step] = actor.steps;
+  if (
+    actor.work === null ||
+    actor.meeting !== null ||
+    step?.kind !== "hold" ||
+    actor.steps.length !== 1 ||
+    world.time < actor.idleUntil
+  ) {
+    return;
+  }
+  const need = pressingNeed(actor, BREAK_NEEDS, BREAK_THRESHOLD);
+  if (
+    need !== undefined &&
+    world.rng.chance(BREAK_CHANCE) &&
+    satisfy(world, actor, need, resumeSteps(world, actor))
+  ) {
+    return;
+  }
+  actor.idleUntil = world.time + BREAK_CHECK_MS;
 }
 
 function leaveFloor(world: World, actor: Actor, ms: number): boolean {
@@ -65,7 +99,11 @@ function leaveFloor(world: World, actor: Actor, ms: number): boolean {
 
 function bossIdle(world: World, actor: Actor): void {
   const need = pressingNeed(actor, BOSS_NEEDS);
-  if (need !== undefined && world.rng.chance(0.7) && satisfy(world, actor, need)) {
+  if (
+    need !== undefined &&
+    world.rng.chance(0.7) &&
+    satisfy(world, actor, need, homeSteps(world, actor))
+  ) {
     return;
   }
   const home = homeSteps(world, actor);
@@ -75,8 +113,9 @@ function bossIdle(world: World, actor: Actor): void {
   actor.idleUntil = world.time + 5000;
 }
 
-const WANDER_CHANCE = 0.15;
-const WANDER_MS = 6000;
+const WANDER_CHANCE = 0.35;
+const WANDER_MIN_MS = 8000;
+const WANDER_SPAN_MS = 12_000;
 const DESK_IDLE_MIN_MS = 8000;
 const DESK_IDLE_SPAN_MS = 14_000;
 
@@ -85,19 +124,24 @@ function wander(world: World, actor: Actor): boolean {
   if (spot === undefined || !reserve(world, actor, actor.floorId, spot.id)) {
     return false;
   }
+  const ms = WANDER_MIN_MS + world.rng.int(WANDER_SPAN_MS);
   setSteps(actor, [
     ...walkSteps(actor.floorId, spot.at),
-    { kind: "dwell", activity: "idle", facing: spot.facing, until: null, ms: WANDER_MS },
+    { kind: "dwell", activity: "idle", facing: spot.facing, until: null, ms },
     { kind: "release" },
     ...homeSteps(world, actor),
   ]);
-  actor.idleUntil = world.time + WANDER_MS;
+  actor.idleUntil = world.time + ms;
   return true;
 }
 
 function staffIdle(world: World, actor: Actor): void {
   const need = pressingNeed(actor, NEEDS);
-  if (need !== undefined && world.rng.chance(0.7) && satisfy(world, actor, need)) {
+  if (
+    need !== undefined &&
+    world.rng.chance(0.7) &&
+    satisfy(world, actor, need, homeSteps(world, actor))
+  ) {
     return;
   }
   if (

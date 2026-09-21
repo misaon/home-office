@@ -59,9 +59,9 @@ const bridgeSpec = (
   ports: [],
 });
 
-type BridgeOutcome = { ok: boolean; message: string; stdout: string };
+export type BridgeOutcome = { ok: boolean; message: string; stdout: string };
 
-const run = async (provider: SandboxProvider, spec: SandboxSpec): Promise<BridgeOutcome> => {
+export const run = async (provider: SandboxProvider, spec: SandboxSpec): Promise<BridgeOutcome> => {
   const started = Bun.nanoseconds();
   const result = await provider.run(spec);
   const outcome = {
@@ -95,7 +95,7 @@ const runOrThrow = async (
   return result;
 };
 
-const inRepo = (
+export const inRepo = (
   config: DaemonConfig,
   volume: string,
   step: string,

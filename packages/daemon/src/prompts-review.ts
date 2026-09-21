@@ -1,9 +1,13 @@
 import { type ReadModel, reviewChain } from "@ho/core";
 import { type Agent, type AgentRole, ROLE_TITLE, type Task } from "@ho/protocol";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
+import { environmentGuide } from "./prompts-environment.ts";
 import {
+  authorClaims,
   browserGuide,
+  changeSizeGuide,
   criteriaGuide,
+  lspGuide,
   repoRules,
   SANDBOX,
   serveGuide,
@@ -53,15 +57,22 @@ export const reviewPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   `You are reviewing commit ${f.commit ?? "at the tip of the branch"} on branch ${f.branch}, checked out in your own copy of the repository at ${REPO_IN_VOLUME} (base branch: ${f.project.defaultBranch}). The office recorded that commit when the author reported; only it is published and reviewed, and nothing you change in this copy reaches it.`,
   SANDBOX,
   repoRules(f.agent),
+  lspGuide(f.languages),
   browserGuide(f.browser, false),
   serveGuide(f.preview, f.browser),
   servicesGuide(f.services),
+  environmentGuide(f, model),
   `Start with \`git -C ${REPO_IN_VOLUME} diff ${f.project.defaultBranch}...HEAD --stat\`, then the diff file by file; read surrounding code only where needed. If ${f.project.defaultBranch} is missing locally, review the branch's own commits with \`git log -p\`.`,
+  changeSizeGuide(f.diff, f.project.defaultBranch),
   checksGuide(f),
   focus(f.agent),
   chainGuide(model, f.task, f.agent),
-  criteriaGuide(f.task, "Judge each acceptance criterion; approve only when every one holds:"),
+  criteriaGuide(
+    f.task,
+    "Judge each acceptance criterion; approve only when every one holds:",
+    authorClaims(model, f.task),
+  ),
   "Flag only what affects correctness, safety or the stated criteria, not style the checks already settle. You may install dependencies, run commands, tests and the application in this copy; an edit here is yours alone and never reaches the branch, so a fix you want is a finding, not a commit.",
   `Task under review: ${f.task.title}`,
-  `Protocol: call ho_review exactly once with verdict approve or request_changes and numbered findings (file:line), then stop. ${roundsGuide(f, model)}`,
+  `Protocol: call ho_review exactly once with verdict approve or request_changes, numbered findings (file:line), and criteria: one judgement per acceptance criterion by its number — pass with what you ran or opened and saw, fail with what you saw instead, not_checked with why your stage does not cover it. The office keeps these as evidence on this commit and refuses approve while a criterion fails. Then stop. ${roundsGuide(f, model)}`,
 ];

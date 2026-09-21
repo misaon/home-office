@@ -5,11 +5,14 @@ import {
   ChatMessageId,
   ChatThreadId,
   MailItemId,
+  MandateId,
   ProjectId,
   SessionId,
   TaskId,
 } from "./ids.ts";
 import {
+  AcceptancePolicy,
+  EnvironmentPolicy,
   HiringPolicy,
   IntakePolicy,
   PreviewPolicy,
@@ -18,7 +21,7 @@ import {
   ServicesPolicy,
   VerifyPolicy,
 } from "./policies.ts";
-import { AgentRole, ReviewPlan, SessionMode, TaskKind } from "./roles.ts";
+import { AgentRole, ReviewPlan, SessionMode, SessionServices, TaskKind } from "./roles.ts";
 import { Budgets, Usage } from "./usage.ts";
 
 export * from "./policies.ts";
@@ -103,6 +106,7 @@ const TaskSource = z.discriminatedUnion("kind", [
     externalId: z.string().min(1),
   }),
   z.object({ kind: z.literal("delegation"), byAgentId: AgentId, parentTaskId: TaskId.optional() }),
+  z.object({ kind: z.literal("mandate"), mandateId: MandateId }),
   z.object({ kind: z.literal("manual") }),
 ]);
 type TaskSource = z.infer<typeof TaskSource>;
@@ -134,7 +138,7 @@ const TaskNoteKind = z.enum(["handoff", "review", "question", "answer", "report"
 
 export const NOTE_MAX = 8000;
 
-const BRIEF_MAX = 24_000;
+export const BRIEF_MAX = 24_000;
 
 export const DEPENDENCIES_MAX = 20;
 
@@ -163,6 +167,8 @@ export const Project = z.object({
   preview: PreviewPolicy.prefault({}),
   services: ServicesPolicy.prefault({}),
   verify: VerifyPolicy.prefault({}),
+  acceptance: AcceptancePolicy.prefault({}),
+  environment: EnvironmentPolicy.prefault({}),
   staffedAt: IsoDateTime.optional(),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -199,6 +205,7 @@ export type TaskRating = z.infer<typeof TaskRating>;
 export const Task = z.object({
   id: TaskId,
   projectId: ProjectId,
+  mandateId: MandateId.optional(),
   kind: TaskKind.default("work"),
   title: z.string().min(1).max(200),
   brief: z.string().max(BRIEF_MAX),
@@ -258,9 +265,6 @@ export const MailItem = z.object({
 });
 export type MailItem = z.infer<typeof MailItem>;
 
-export const SessionServices = z.enum(["ready", "failed", "untrusted"]);
-export type SessionServices = z.infer<typeof SessionServices>;
-
 export const SessionRuntime = z.object({
   model: z.string().min(1),
   effort: EffortLevel,
@@ -287,6 +291,7 @@ export const Session = z.object({
   round: z.int().nonnegative().default(0),
   usage: Usage,
   costUsd: z.number().nonnegative().optional(),
+  planPercent: z.number().nonnegative().optional(),
   startedAt: IsoDateTime,
   endedAt: IsoDateTime.optional(),
 });

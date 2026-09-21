@@ -1,7 +1,11 @@
 import {
+  clip,
   type CommitSha,
   compact,
+  type EvidenceVerdict,
+  type NewEvent,
   NOTE_MAX,
+  PROOF_MAX,
   type Task,
   type TaskId,
   type TaskNote,
@@ -10,12 +14,59 @@ import {
 } from "@ho/protocol";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
+import { evidenceEvent, evidenceOf } from "./mandates.ts";
 import { note, noteEvent, statusChange, withTask } from "./shared.ts";
 import { canTransition, readTask } from "./tasks.ts";
 
 export const verifyAttempts = (task: Task): number =>
   task.notes.filter((n) => n.author.kind === "system" && n.text.startsWith(VERIFY_NOTE_PREFIX))
     .length;
+
+const checksEvidence = (
+  model: ReadModel,
+  ctx: CommandContext,
+  task: Task,
+  commit: CommitSha | undefined,
+  verdict: EvidenceVerdict,
+  proof: string,
+): NewEvent[] =>
+  task.mandateId === undefined || commit === undefined || !model.mandates.has(task.mandateId)
+    ? []
+    : [
+        evidenceEvent(
+          ctx,
+          task.mandateId,
+          evidenceOf(ctx, {
+            taskId: task.id,
+            commit,
+            criterion: null,
+            method: "checks",
+            verdict,
+            proof: clip(proof, PROOF_MAX),
+          }),
+        ),
+      ];
+
+export function recordChecksPassed(
+  model: ReadModel,
+  taskId: TaskId,
+  detail: { command: string; commit: CommitSha; ms: number },
+  ctx: CommandContext,
+): CommandResult<Task> {
+  return withTask(model, taskId, (task) =>
+    ok({
+      events: checksEvidence(
+        model,
+        ctx,
+        task,
+        detail.commit,
+        "pass",
+        `\`${detail.command}\` passed in ${String(Math.round(detail.ms / 1000))} s`,
+      ),
+      read: readTask(task.id),
+    }),
+  );
+}
 
 export function annotateTask(
   model: ReadModel,
@@ -54,6 +105,14 @@ export function recordVerificationFailure(
     );
     return ok({
       events: [
+        ...checksEvidence(
+          model,
+          ctx,
+          task,
+          detail.commit,
+          "fail",
+          `\`${detail.command}\` failed:\n${detail.output}`,
+        ),
         noteEvent(ctx, task, {
           ...note(ctx, "review", text),
           ...compact({ commit: detail.commit }),

@@ -1,6 +1,7 @@
 import { changeSessionState, type RuntimeSession } from "@ho/core";
 import {
   compact,
+  errorMessage,
   REPORT_MAX,
   type RuntimeErrorCode,
   type RuntimeEvent,
@@ -9,6 +10,7 @@ import {
   type SessionState,
   SYSTEM_ACTOR,
 } from "@ho/protocol";
+import { prepareEnvironment } from "./environment.ts";
 import { secretEnvFor } from "./provider-secrets.ts";
 import {
   provision,
@@ -176,7 +178,16 @@ export async function runSession(
   const provisioned = await provision(deps, ctx);
   hold(provisioned);
   deps.traces.protect(ctx.session.id, [provisioned.mcpToken]);
-  const prepared = prepare(deps, ctx, provisioned);
+  const environment = await prepareEnvironment(deps, ctx, provisioned).catch(
+    (error: unknown): null => {
+      deps.log.warn(
+        { sessionId: ctx.session.id, err: errorMessage(error) },
+        "the environment could not be prepared; the session starts without it",
+      );
+      return null;
+    },
+  );
+  const prepared = prepare(deps, ctx, provisioned, environment);
   await setState(deps, ctx, "starting", {
     sandboxId: provisioned.sandbox.id,
     runtime: prepared.runtime,

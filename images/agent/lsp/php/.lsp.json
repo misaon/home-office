@@ -1,0 +1,15 @@
+{
+  "php": {
+    "command": "intelephense",
+    "args": ["--stdio"],
+    "extensionToLanguage": {
+      ".php": "php"
+    },
+    "initializationOptions": {
+      "storagePath": "/work/.cache/intelephense",
+      "globalStoragePath": "/work/.cache/intelephense-global"
+    },
+    "startupTimeout": 30000,
+    "shutdownTimeout": 5000
+  }
+}

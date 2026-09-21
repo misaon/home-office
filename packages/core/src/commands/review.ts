@@ -4,6 +4,8 @@ import {
   type AgentRole,
   compact,
   conflict,
+  type CriterionJudgement,
+  type DomainError,
   type HoReportInput,
   type HoReviewInput,
   type NewEvent,
@@ -15,10 +17,69 @@ import {
 } from "@ho/protocol";
 import { awaitsAnswer, membersOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
-import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
+import { type CommandContext, type CommandResult, err, ok, type Result } from "../result.ts";
+import { evidenceEvent, evidenceOf, wholeRequestNeedsConditions } from "./mandates.ts";
 import { missingReviewReason, reviewPlanOf } from "./review-plan.ts";
 import { handoffEvent, note, noteEvent, statusChange, withTask } from "./shared.ts";
 import { readTask } from "./tasks.ts";
+
+const judgeCriteria = (
+  task: Task,
+  judgements: readonly CriterionJudgement[],
+): Result<CriterionJudgement[], DomainError> => {
+  const count = task.spec?.acceptanceCriteria.length ?? 0;
+  const seen = new Set<number>();
+  for (const judgement of judgements) {
+    if (judgement.index > count) {
+      return err(
+        conflict(
+          `this task has ${String(count)} acceptance criteria; there is no criterion ${String(judgement.index)}`,
+        ),
+      );
+    }
+    if (seen.has(judgement.index)) {
+      return err(conflict(`criterion ${String(judgement.index)} is judged twice`));
+    }
+    seen.add(judgement.index);
+  }
+  const missing = Array.from({ length: count }, (_, index) => index + 1).filter(
+    (index) => !seen.has(index),
+  );
+  return missing.length === 0
+    ? ok([...judgements])
+    : err(
+        conflict(
+          `judge every acceptance criterion: ${missing.map(String).join(", ")} missing; not_checked with the reason counts`,
+        ),
+      );
+};
+
+const reviewEvidence = (
+  model: ReadModel,
+  ctx: CommandContext,
+  task: Task,
+  judgements: readonly CriterionJudgement[],
+): NewEvent[] => {
+  const { mandateId } = task;
+  const { commit } = task.artifacts;
+  if (mandateId === undefined || commit === undefined || !model.mandates.has(mandateId)) {
+    return [];
+  }
+  return judgements.map((judgement) =>
+    evidenceEvent(
+      ctx,
+      mandateId,
+      evidenceOf(ctx, {
+        taskId: task.id,
+        commit,
+        criterion: judgement.index - 1,
+        method: "review",
+        verdict: judgement.verdict,
+        proof: judgement.evidence,
+      }),
+    ),
+  );
+};
 
 const REVIEW_ROLES: ReadonlySet<AgentRole> = new Set(REVIEW_STAGES);
 
@@ -67,7 +128,7 @@ const intoReview = (
 export function fileReport(
   model: ReadModel,
   taskId: TaskId,
-  input: Pick<HoReportInput, "status" | "summary">,
+  input: Pick<HoReportInput, "status" | "summary" | "acceptance">,
   ctx: CommandContext,
 ): CommandResult<Task> {
   return withTask(model, taskId, (task) => {
@@ -82,6 +143,17 @@ export function fileReport(
         payload: { taskId: task.id, artifacts: { ...task.artifacts, report: input.summary } },
       },
     ];
+    const stated = input.acceptance ?? [];
+    if (task.kind !== "work" && stated.length > 0 && wholeRequestNeedsConditions(model, task)) {
+      events.push({
+        type: "mandate.acceptance_stated",
+        actor: ctx.actor,
+        payload: {
+          mandateId: task.mandateId,
+          acceptance: stated.map((text) => ({ text, origin: "stated" as const })),
+        },
+      });
+    }
     const read = readTask(task.id);
     if (input.status === "blocked") {
       events.push(statusChange(ctx, task, "blocked", input.summary.slice(0, 2000)));
@@ -108,9 +180,22 @@ export function submitReview(
     if (task.status !== "review") {
       return err(conflict(`task is ${task.status}; only tasks in review accept a verdict`));
     }
+    const judged = judgeCriteria(task, input.criteria);
+    if (!judged.ok) {
+      return judged;
+    }
+    const failing = judged.value.filter((judgement) => judgement.verdict === "fail");
+    if (input.verdict === "approve" && failing.length > 0) {
+      return err(
+        conflict(
+          `criterion ${failing.map((judgement) => String(judgement.index)).join(", ")} fails; approve is refused, request changes instead`,
+        ),
+      );
+    }
     const rounds = input.verdict === "approve" ? task.reviewRounds : task.reviewRounds + 1;
     const { commit } = task.artifacts;
     const events: NewEvent[] = [
+      ...reviewEvidence(model, ctx, task, judged.value),
       noteEvent(ctx, task, {
         ...note(ctx, "review", formatReviewNote(input.verdict, input.findings)),
         ...compact({ commit }),

@@ -1,4 +1,4 @@
-import { OfficeLayout } from "@ho/protocol";
+import { type OfficeLayout, StoredOfficeLayout } from "@ho/protocol";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -37,7 +37,7 @@ function LoadFile({ load }: { load: (office: OfficeLayout) => void }): React.JSX
             }
             setPicked(file.name);
             void file.text().then((text) => {
-              const parsed = OfficeLayout.safeParse(parseJson(text));
+              const parsed = StoredOfficeLayout.safeParse(parseJson(text));
               if (parsed.success) {
                 setProblem(null);
                 load(parsed.data);

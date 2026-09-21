@@ -25,6 +25,7 @@ import {
   ok,
   type Result,
 } from "../result.ts";
+import { openMandate } from "./mandate-open.ts";
 import { statusChange, withProject, withTask } from "./shared.ts";
 import { checkDependencies, checkReviewers } from "./task-checks.ts";
 
@@ -73,6 +74,7 @@ const NO_REVIEWS: ReviewPlan = { qa: false, security: false, head: true };
 export const newTask = (
   ctx: CommandContext,
   fields: Pick<Task, "projectId" | "kind" | "title" | "brief" | "source"> & {
+    mandateId?: Task["mandateId"] | undefined;
     spec?: Task["spec"] | undefined;
     assigneeId?: Task["assigneeId"] | undefined;
     priority?: Task["priority"] | undefined;
@@ -81,10 +83,12 @@ export const newTask = (
     browser?: Task["browser"] | undefined;
     reviews?: Task["reviews"] | undefined;
     dependsOn?: Task["dependsOn"] | undefined;
+    artifacts?: Task["artifacts"] | undefined;
   },
 ): Task => ({
   id: ctx.ids.task(),
   projectId: fields.projectId,
+  ...compact({ mandateId: fields.mandateId }),
   kind: fields.kind,
   title: fields.title,
   brief: fields.brief,
@@ -96,7 +100,7 @@ export const newTask = (
   notes: fields.notes ?? [],
   dependsOn: fields.dependsOn ?? [],
   source: fields.source,
-  artifacts: {},
+  artifacts: fields.artifacts ?? {},
   priority: fields.priority ?? "normal",
   createdAt: ctx.now,
   updatedAt: ctx.now,
@@ -132,15 +136,20 @@ export function createTask(
     if (!dependencies.ok) {
       return dependencies;
     }
+    const mandateId = ctx.ids.mandate();
     const task = newTask(ctx, {
       ...input,
+      mandateId,
       reviews,
       dependsOn: dependencies.value,
       kind: "work",
       source: { kind: "manual" },
     });
     return ok({
-      events: [{ type: "task.created", actor: ctx.actor, payload: { task } }],
+      events: [
+        { type: "task.created", actor: ctx.actor, payload: { task } },
+        openMandate(ctx, mandateId, task),
+      ],
       read: readTask(task.id),
     });
   });

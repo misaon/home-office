@@ -21,5 +21,8 @@ export type ChatThreadId = z.infer<typeof ChatThreadId>;
 export const MailItemId = z.uuidv7().brand<"MailItemId">();
 export type MailItemId = z.infer<typeof MailItemId>;
 
+export const MandateId = z.uuidv7().brand<"MandateId">();
+export type MandateId = z.infer<typeof MandateId>;
+
 export const EventId = z.uuidv7().brand<"EventId">();
 export type EventId = z.infer<typeof EventId>;

@@ -1,11 +1,13 @@
 import { type ReadModel, reviewPlanOf, verifyAttempts } from "@ho/core";
 import { type Agent, type Project, ROLE_TITLE, type Task } from "@ho/protocol";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
+import { environmentGuide } from "./prompts-environment.ts";
 import {
   browserGuide,
   criteriaGuide,
   dependenciesGuide,
   filesGuide,
+  lspGuide,
   repoRules,
   SANDBOX,
   serveGuide,
@@ -29,7 +31,7 @@ const budgetGuide = (agent: Agent): string =>
 
 const publishGuide = (task: Task, project: Project): string =>
   (task.publish ?? project.publish.mode) === "pull-request"
-    ? "Publishing: the office pushes the verified commit and opens the pull request once the checks pass; your report becomes its description."
+    ? "Publishing: the office pushes the verified commit to the task branch and opens one pull request for the whole request once it is verified; your report becomes part of its description, so do not promise a link yourself."
     : "Publishing: the office pushes the verified commit to the task branch; this floor does not open pull requests, so do not promise one.";
 
 const reviewersGuide = (model: ReadModel, task: Task): string => {
@@ -48,7 +50,7 @@ const reviewersGuide = (model: ReadModel, task: Task): string => {
 };
 
 const PROTOCOL = [
-  "Protocol: when the work is committed, call ho_report with status review and stop; leave nothing uncommitted. If you are stuck on a decision only the human can make, commit what you have, call ho_ask_human and stop; you are resumed with the answer. If a colleague on this floor is better suited, commit and call ho_handoff with a clear brief.",
+  "Protocol: when the work is committed, call ho_report with status review, and in criteria how you verified each acceptance criterion yourself (the command you ran or the page you opened, and what you saw); then stop, leaving nothing uncommitted. If you are stuck on a decision only the human can make, commit what you have, call ho_ask_human and stop; you are resumed with the answer. If a colleague on this floor is better suited, commit and call ho_handoff with a clear brief.",
   "When things go wrong: a tool error names what was wrong with the call, so fix the input and retry once, then report blocked with the message. If the branch already contains the work, verify it and report review saying so. If the brief is wrong rather than unclear, ask the human instead of guessing. If you find a credential in the repository, leave it in place, never print it, and name the file in your report.",
 ];
 
@@ -56,9 +58,11 @@ export const workPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   `The repository is checked out at ${REPO_IN_VOLUME} on branch ${f.branch}. Work only inside it and commit with clear Conventional Commit messages.`,
   SANDBOX,
   repoRules(f.agent),
+  lspGuide(f.languages),
   browserGuide(f.browser, true),
   serveGuide(f.preview, f.browser),
   servicesGuide(f.services),
+  environmentGuide(f, model),
   dependenciesGuide(f.base),
   `Task: ${f.task.title}`,
   criteriaGuide(f.task, "You are done when every one of these holds:"),

@@ -19,6 +19,7 @@ import {
 import { bossOf, findAgentByRef, latestThread, membersOf, threadOfTask } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
+import { attachToMandate } from "./mandate-open.ts";
 import { chatEvent, handoffEvent, note, titleFromText, withAgent, withProject } from "./shared.ts";
 import { checkDependencies, checkReviewers } from "./task-checks.ts";
 import { newTask, readTask } from "./tasks.ts";
@@ -75,8 +76,10 @@ export function delegateTask(
       assignee === undefined
         ? undefined
         : note(ctx, "handoff", `delegated by ${delegator.name}: ${brief}`.slice(0, NOTE_MAX));
+    const attached = attachToMandate(model, ctx, parentTaskId);
     const task = newTask(ctx, {
       projectId: project.id,
+      mandateId: attached.mandateId,
       kind: "work",
       title: input.title,
       brief,
@@ -90,7 +93,10 @@ export function delegateTask(
       dependsOn: dependencies.value,
       notes: handoffNote === undefined ? [] : [handoffNote],
     });
-    const events: NewEvent[] = [{ type: "task.created", actor: ctx.actor, payload: { task } }];
+    const events: NewEvent[] = [
+      ...attached.events,
+      { type: "task.created", actor: ctx.actor, payload: { task } },
+    ];
     if (assignee !== undefined && handoffNote !== undefined) {
       events.push(handoffEvent(ctx, task.id, delegator.id, assignee.id, handoffNote.text));
     }
@@ -127,8 +133,10 @@ export function planTask(
     }
     const context = input.context.trim();
     const handoffNote = note(ctx, "handoff", `planning requested by ${boss.name}: ${input.title}`);
+    const attached = attachToMandate(model, ctx, parentTaskId);
     const task = newTask(ctx, {
       projectId: project.id,
+      mandateId: attached.mandateId,
       kind: "plan",
       title: input.title,
       brief: context === "" ? input.brief : `${input.brief}\n\nContext:\n${context}`,
@@ -139,6 +147,7 @@ export function planTask(
     });
     return ok({
       events: [
+        ...attached.events,
         { type: "task.created", actor: ctx.actor, payload: { task } },
         handoffEvent(ctx, task.id, boss.id, analyst.id, handoffNote.text),
       ],

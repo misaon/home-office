@@ -17,6 +17,7 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
       php85-openssl php85-pdo php85-pdo_mysql php85-pdo_pgsql php85-pdo_sqlite php85-phar php85-posix \
       php85-session php85-simplexml php85-sockets php85-sodium php85-tokenizer php85-xml \
       php85-xmlreader php85-xmlwriter php85-zip php85-bcmath composer \
+      sqlite postgresql17 postgresql17-client postgresql17-contrib mariadb mariadb-client redis \
  && adduser -D -u 1000 agent \
  && mkdir -p /work /home/agent/.cache /opt/ho/plugins /opt/ho/mcp \
  && chown -R agent:agent /work /home/agent
@@ -38,8 +39,20 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
  && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 PUPPETEER_SKIP_DOWNLOAD=1 npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
  && test -f node_modules/@playwright/mcp/cli.js \
  && test -f node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm install -g pnpm@12.5.1 --no-audit --no-fund \
+ && pnpm --version
+COPY lsp-servers/package*.json /opt/ho/lsp-servers/
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    cd /opt/ho/lsp-servers \
+ && npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
+ && test -x node_modules/.bin/typescript-language-server \
+ && test -x node_modules/.bin/pyright-langserver \
+ && test -x node_modules/.bin/intelephense
 COPY --chmod=0644 bin/ho-runner.js /usr/local/bin/ho-runner.js
+COPY --chmod=0755 bin/ho-db /usr/local/bin/ho-db
 COPY plugins/ /opt/ho/plugins/
+COPY lsp/ /opt/ho/lsp/
 ENV HOME=/home/agent \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
     PUPPETEER_SKIP_DOWNLOAD=1 \
@@ -47,11 +60,13 @@ ENV HOME=/home/agent \
     DO_NOT_TRACK=1 \
     XDG_CACHE_HOME=/work/.cache \
     npm_config_cache=/work/.cache/npm \
+    npm_config_store_dir=/work/.cache/pnpm-store \
+    npm_config_state_dir=/work/.cache/pnpm-state \
     BUN_INSTALL_CACHE_DIR=/work/.cache/bun \
     BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 \
     PIP_CACHE_DIR=/work/.cache/pip \
     GIT_CONFIG_GLOBAL=/tmp/gitconfig \
-    PATH=/opt/ho/provider/node_modules/.bin:$PATH
+    PATH=/opt/ho/provider/node_modules/.bin:/opt/ho/lsp-servers/node_modules/.bin:$PATH
 WORKDIR /work
 CMD ["bun", "/usr/local/bin/ho-runner.js"]
 

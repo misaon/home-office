@@ -14,6 +14,7 @@ import {
 } from "@ho/core";
 import { errorMessage, HUMAN_ACTOR, isSessionActive, SecretKeyName } from "@ho/protocol";
 import { os } from "./implement.ts";
+import { mandateRoutes } from "./mandates.ts";
 import { remoteRoutes } from "./remote.ts";
 import { taskRoutes } from "./tasks.ts";
 import { ensureImages, imageStatus, neededVariants } from "../images.ts";
@@ -22,9 +23,8 @@ import { listLayouts, saveLayout } from "../layouts.ts";
 import { buildsImages } from "../paths.ts";
 import { exportProject, syncProject } from "../office-config.ts";
 import { inspectRepo } from "../repo-inspect.ts";
-import { scorecard } from "../evals.ts";
-import { usageSummary } from "../usage.ts";
 import { guarded } from "./guarded.ts";
+import { evalRoutes, usageRoutes } from "./usage.ts";
 
 const base = os.use(guarded);
 const PRESENCE_BEAT_MS = 15_000;
@@ -130,16 +130,8 @@ export const router = base.router({
     ),
     gc: base.system.gc.handler(({ context }) => context.gc()),
   },
-  usage: {
-    summary: base.usage.summary.handler(({ input, context }) =>
-      usageSummary(context.office.model, context.office.clock.now().getTime(), input.sinceHours),
-    ),
-  },
-  evals: {
-    scorecard: base.evals.scorecard.handler(({ input, context }) =>
-      scorecard(context.office.model, context.office.clock.now().getTime(), input),
-    ),
-  },
+  usage: usageRoutes,
+  evals: evalRoutes,
   resources: {
     inventory: base.resources.inventory.handler(({ context }) =>
       context.provider.inventory(MANAGED),
@@ -212,6 +204,7 @@ export const router = base.router({
     })),
   },
   tasks: taskRoutes,
+  mandates: mandateRoutes,
   remote: remoteRoutes,
   sessions: {
     list: base.sessions.list.handler(({ input, context }) =>

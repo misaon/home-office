@@ -1,8 +1,17 @@
 import { mailForTask, type ReadModel } from "@ho/core";
-import type { MailAck, MailItem, Project, Task } from "@ho/protocol";
+import {
+  clip,
+  type MailAck,
+  type MailItem,
+  type MandateId,
+  type MandateStatus,
+  type Project,
+  type Task,
+} from "@ho/protocol";
 import { describeOutcome } from "./outcome.ts";
 
 const DETAIL_MAX = 3000;
+const REQUEST_MAX = 1500;
 
 export type SourceAck = { project: Project; mail: MailItem; ack: Omit<MailAck, "at"> };
 
@@ -40,7 +49,7 @@ export function outcomeAck(
     return null;
   }
   const task = model.tasks.get(taskId);
-  if (task === undefined || (task.kind === "triage" && to === "done")) {
+  if (task === undefined || task.mandateId !== undefined || task.kind === "triage") {
     return null;
   }
   const found = owner(model, task);
@@ -54,5 +63,37 @@ export function outcomeAck(
       outcome: to,
       detail: detail === "" ? `Task "${task.title}" is ${task.status}.` : detail,
     },
+  };
+}
+
+export function mandateAck(
+  model: ReadModel,
+  mandateId: MandateId,
+  to: MandateStatus,
+  reason: string | undefined,
+): SourceAck | null {
+  if (to !== "fulfilled" && to !== "blocked") {
+    return null;
+  }
+  const mandate = model.mandates.get(mandateId);
+  const root = mandate === undefined ? undefined : model.tasks.get(mandate.rootTaskId);
+  const found = root === undefined ? null : owner(model, root);
+  if (mandate === undefined || found === null) {
+    return null;
+  }
+  const { prUrl, branch } = mandate.artifacts;
+  const detail =
+    to === "fulfilled"
+      ? [
+          `Every condition of the request holds on the combined result${mandate.acceptance.length === 0 ? "" : ` (${String(mandate.acceptance.length)} verified)`}.`,
+          prUrl === undefined ? "" : `Pull request: ${prUrl}`,
+          branch === undefined ? "" : `Branch: ${branch}`,
+        ]
+          .filter((line) => line !== "")
+          .join("\n")
+      : `The request is blocked${reason === undefined ? "" : `: ${clip(reason, REQUEST_MAX)}`}`;
+  return {
+    ...found,
+    ack: { outcome: to === "fulfilled" ? "done" : "blocked", detail: clip(detail, DETAIL_MAX) },
   };
 }

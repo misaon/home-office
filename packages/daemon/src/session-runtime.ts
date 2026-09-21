@@ -1,13 +1,15 @@
 import { attachmentsOfTask, escalatedEffort, type RuntimeSession, setbacksOf } from "@ho/core";
 import { imageRefFor, PROVIDERS, type SessionRuntime } from "@ho/protocol";
 import { browserMcpServers } from "./browser.ts";
+import type { EnvironmentReport } from "./environment-report.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import { openingMessage, systemPrompt } from "./prompts.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import type { SessionDeps } from "./sessions.ts";
-import { skillPacksFor } from "./skill-pack.ts";
+import { lspPluginsFor, skillPacksFor } from "./skill-pack.ts";
 
 const PLUGINS_ROOT = "/opt/ho/plugins";
+const LSP_ROOT = "/opt/ho/lsp";
 const HASH_CHARS = 12;
 
 export type Prepared = {
@@ -15,6 +17,7 @@ export type Prepared = {
   message: string;
   browser: boolean;
   packs: string[];
+  lsp: string[];
   runtime: SessionRuntime;
 };
 
@@ -34,9 +37,11 @@ export const prepare = (
   deps: SessionDeps,
   ctx: SessionContext,
   provisioned: Provisioned,
+  environment: EnvironmentReport | null,
 ): Prepared => {
   const browser = browserFor(deps, ctx);
   const packs = skillPacksFor(ctx.agent, ctx.session.mode);
+  const lsp = lspPluginsFor(ctx.agent.provider, provisioned.languages);
   const appendix = systemPrompt(
     {
       agent: ctx.agent,
@@ -47,15 +52,19 @@ export const prepare = (
       branch: provisioned.branch,
       commit: provisioned.commit,
       base: provisioned.base,
+      diff: provisioned.diff,
+      languages: provisioned.languages,
       browser,
       preview: ctx.project.preview,
       services: provisioned.services,
+      environment,
     },
     deps.office.model,
   );
   return {
     browser,
     packs,
+    lsp,
     appendix,
     message: openingMessage(ctx.task, ctx.session.mode, ctx.previous, ctx.agent.id),
     runtime: {
@@ -102,7 +111,10 @@ export const openRuntime = (
     systemPromptAppendix: prepared.appendix,
     cwd: REPO_IN_VOLUME,
     resume,
-    pluginDirs: prepared.packs.map((pack) => `${PLUGINS_ROOT}/${pack}`),
+    pluginDirs: [
+      ...prepared.packs.map((pack) => `${PLUGINS_ROOT}/${pack}`),
+      ...prepared.lsp.map((language) => `${LSP_ROOT}/${language}`),
+    ],
     mcpServers,
   };
   const runtime = {

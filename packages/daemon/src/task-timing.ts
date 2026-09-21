@@ -1,4 +1,4 @@
-import { chatOf, type ReadModel, sessionsOfTask } from "@ho/core";
+import { chatOf, parentOf, type ReadModel, sessionsOfTask } from "@ho/core";
 import type { Task } from "@ho/protocol";
 
 const WALK_MAX = 8;
@@ -33,7 +33,7 @@ export const formatDuration = (ms: number): string => {
   return twoUnits(clamped, { size: DAY, unit: "d" }, { size: HOUR, unit: "h" });
 };
 
-function requestedAt(model: Pick<ReadModel, "tasks" | "chat">, task: Task): string {
+function requestedAt(model: Pick<ReadModel, "tasks" | "mandates" | "chat">, task: Task): string {
   let current: Task | undefined = task;
   let earliest = task.createdAt;
   for (let depth = 0; depth < WALK_MAX && current !== undefined; depth += 1) {
@@ -43,10 +43,7 @@ function requestedAt(model: Pick<ReadModel, "tasks" | "chat">, task: Task): stri
       const message = chatOf(model, current.projectId).find((m) => m.id === source.messageId);
       return message?.at ?? earliest;
     }
-    if (source.kind !== "delegation" || source.parentTaskId === undefined) {
-      return earliest;
-    }
-    current = model.tasks.get(source.parentTaskId);
+    current = parentOf(model, current);
   }
   return earliest;
 }
@@ -54,7 +51,7 @@ function requestedAt(model: Pick<ReadModel, "tasks" | "chat">, task: Task): stri
 export type TaskTiming = { sinceRequestMs: number; agentMs: number; sessions: number };
 
 export function timingOf(
-  model: Pick<ReadModel, "tasks" | "chat" | "sessions" | "sessionsByTask">,
+  model: Pick<ReadModel, "tasks" | "mandates" | "chat" | "sessions" | "sessionsByTask">,
   task: Task,
   at: string,
 ): TaskTiming {

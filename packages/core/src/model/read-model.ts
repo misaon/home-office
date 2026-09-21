@@ -5,6 +5,8 @@ import type {
   MailConnector,
   MailItem,
   MailItemId,
+  Mandate,
+  MandateId,
   Project,
   ProjectId,
   Session,
@@ -21,9 +23,12 @@ export type ReadModel = {
   sessions: Map<SessionId, Session>;
   chat: Map<ProjectId, ChatMessage[]>;
   mail: Map<MailItemId, MailItem>;
+  mandates: Map<MandateId, Mandate>;
   lastSeq: number;
   agentsByProject: Map<ProjectId, Set<AgentId>>;
   tasksByProject: Map<ProjectId, Set<TaskId>>;
+  mandatesByProject: Map<ProjectId, Set<MandateId>>;
+  tasksByMandate: Map<MandateId, Set<TaskId>>;
   sessionsByTask: Map<TaskId, Set<SessionId>>;
   sessionsByAgent: Map<AgentId, Set<SessionId>>;
   activeSessions: Set<SessionId>;
@@ -33,7 +38,14 @@ export type ReadModel = {
   revisions: Record<Collection, number>;
 };
 
-export type Collection = "projects" | "agents" | "tasks" | "sessions" | "chat" | "mail";
+export type Collection =
+  | "projects"
+  | "agents"
+  | "tasks"
+  | "sessions"
+  | "chat"
+  | "mail"
+  | "mandates";
 
 export const createReadModel = (): ReadModel => ({
   projects: new Map(),
@@ -43,16 +55,19 @@ export const createReadModel = (): ReadModel => ({
   sessions: new Map(),
   chat: new Map(),
   mail: new Map(),
+  mandates: new Map(),
   lastSeq: -1,
   agentsByProject: new Map(),
   tasksByProject: new Map(),
+  mandatesByProject: new Map(),
+  tasksByMandate: new Map(),
   sessionsByTask: new Map(),
   sessionsByAgent: new Map(),
   activeSessions: new Set(),
   mailBySource: new Map(),
   rateLimits: [],
   rateLimitsSeen: 0,
-  revisions: { projects: 0, agents: 0, tasks: 0, sessions: 0, chat: 0, mail: 0 },
+  revisions: { projects: 0, agents: 0, tasks: 0, sessions: 0, chat: 0, mail: 0, mandates: 0 },
 });
 
 export const RATE_LIMIT_TAIL = 1000;

@@ -1,8 +1,10 @@
 export { removeActor, settleAt, spawnActor } from "./actors.ts";
 export { NEIGHBOURS } from "./grid.ts";
 export {
+  adjourn,
   assignWork,
   carry,
+  convene,
   emotionFor,
   freeDeskFor,
   receive,

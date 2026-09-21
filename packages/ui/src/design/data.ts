@@ -7,6 +7,8 @@ import type {
   Attachment,
   ChatMessageId,
   ChatThreadId,
+  MandateId,
+  MandateStatus,
   ProjectId,
   RepositoryTrust,
   ReviewPlan,
@@ -39,21 +41,53 @@ export type Member = {
   guarantees: BudgetGuarantees;
 };
 
+type CardKind = "code" | "triage" | "plan" | "verify";
+
+export type CriterionEvidence = {
+  mark: "pass" | "fail" | "claimed" | "open";
+  by: string;
+  method: string;
+  proof: string;
+};
+
 export type Card = {
   id: TaskId;
   title: string;
   priority: Priority;
-  kind: "code" | "triage" | "plan";
+  kind: CardKind;
   who: string;
   lane: Lane;
   status: TaskStatus;
   criteria: readonly string[];
+  evidence: readonly CriterionEvidence[];
+  request: string | null;
   rating: "good" | "bad" | null;
   commit: string | null;
   buildsOn: readonly string[];
   reviews: ReviewPlan;
   missingReviews: readonly ReviewStage[];
   at: string;
+};
+
+type RequestTask = {
+  id: TaskId;
+  title: string;
+  kind: CardKind;
+  status: TaskStatus;
+  who: string;
+};
+
+export type Request = {
+  id: MandateId;
+  title: string;
+  request: string;
+  status: MandateStatus;
+  round: number;
+  conditions: readonly { text: string; evidence: CriterionEvidence }[];
+  tasks: readonly RequestTask[];
+  prUrl: string | null;
+  branch: string | null;
+  when: string;
 };
 
 export type Message = {

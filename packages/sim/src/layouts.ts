@@ -1,4 +1,4 @@
-import { OfficeLayout } from "@ho/protocol";
+import { type OfficeLayout, StoredOfficeLayout } from "@ho/protocol";
 import baseLayout from "../../../layouts/base.json";
 import { anchorsOf } from "./anchors.ts";
 import { compileLayout, type FloorTemplate } from "./map.ts";
@@ -8,7 +8,7 @@ export const OFFICE_SIZE = { width: 60, height: 34 } as const;
 let base: OfficeLayout | null = null;
 
 const baseOffice = (): OfficeLayout => {
-  base ??= OfficeLayout.parse(baseLayout);
+  base ??= StoredOfficeLayout.parse(baseLayout);
   return base;
 };
 

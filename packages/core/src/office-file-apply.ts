@@ -1,12 +1,15 @@
-import type {
-  IntakePolicy,
-  OfficeFile,
-  OfficeFileSync,
-  Project,
-  ProjectId,
-  PublishPolicy,
-  ServicesPolicy,
-  VerifyPolicy,
+import {
+  type AcceptancePolicy,
+  type EnvironmentPolicy,
+  environmentDescribed,
+  type IntakePolicy,
+  type OfficeFile,
+  type OfficeFileSync,
+  type Project,
+  type ProjectId,
+  type PublishPolicy,
+  type ServicesPolicy,
+  type VerifyPolicy,
 } from "@ho/protocol";
 import { withProject } from "./commands/shared.ts";
 import type { ReadModel } from "./model/read-model.ts";
@@ -30,6 +33,14 @@ const verifyText = (p: VerifyPolicy): string =>
   p.command === ""
     ? "off"
     : `\`${p.command}\` (${String(p.timeoutSeconds)}s, ${String(p.maxAttempts)} attempts)`;
+
+const acceptanceText = (p: AcceptancePolicy): string =>
+  `${p.verify}, ${String(p.maxFixRounds)} fix round(s), ${String(p.maxVerifyTurns)} verify turns`;
+
+const environmentText = (p: EnvironmentPolicy): string =>
+  environmentDescribed(p)
+    ? `${String(p.setup.length + p.services.length + p.seed.length)} setup command(s), ${String(Object.keys(p.checks).length)} check(s)${p.run === undefined ? "" : ", runs the app"}`
+    : "off";
 
 const projectNameTaken = (model: ReadModel, name: string, except: ProjectId): boolean =>
   [...model.projects.values()].some(
@@ -73,6 +84,18 @@ function planProject(
   if (file.verify !== undefined && !jsonEqual(file.verify, project.verify)) {
     patch.verify = file.verify;
     plan.changes.push(`verify: ${verifyText(project.verify)} → ${verifyText(file.verify)}`);
+  }
+  if (file.acceptance !== undefined && !jsonEqual(file.acceptance, project.acceptance)) {
+    patch.acceptance = file.acceptance;
+    plan.changes.push(
+      `acceptance: ${acceptanceText(project.acceptance)} → ${acceptanceText(file.acceptance)}`,
+    );
+  }
+  if (file.environment !== undefined && !jsonEqual(file.environment, project.environment)) {
+    patch.environment = file.environment;
+    plan.changes.push(
+      `environment: ${environmentText(project.environment)} → ${environmentText(file.environment)}`,
+    );
   }
   if (Object.keys(patch).length === 0) {
     return;

@@ -145,6 +145,19 @@ export function recordSessionUsage(
   );
 }
 
+export function recordSessionPlan(
+  model: ReadModel,
+  input: { sessionId: SessionId; percent: number },
+  ctx: CommandContext,
+): CommandResult<Session> {
+  return withSession(model, input.sessionId, () =>
+    ok({
+      events: [{ type: "session.plan_recorded", actor: ctx.actor, payload: input }],
+      read: readSession(input.sessionId),
+    }),
+  );
+}
+
 export function endSession(
   model: ReadModel,
   input: { sessionId: SessionId; state: "stopped" | "failed"; reason?: string },

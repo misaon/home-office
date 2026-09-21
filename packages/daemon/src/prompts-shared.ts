@@ -4,6 +4,7 @@ import {
   type Attachment,
   CHAT_INBOX_DIR,
   CHAT_OUTBOX_DIR,
+  clip,
   type CommitSha,
   isSessionActive,
   type Project,
@@ -12,7 +13,9 @@ import {
   type Task,
 } from "@ho/protocol";
 import { BROWSER_OUTPUT_DIR } from "./browser.ts";
+import type { EnvironmentReport } from "./environment-report.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
+import type { LspLanguage } from "./skill-pack.ts";
 
 export type Services =
   | { kind: "off" }
@@ -29,6 +32,8 @@ export type WorkBase = {
 
 type Preview = { enabled: boolean; port: number };
 
+export type DiffSummary = { files: number; insertions: number; deletions: number };
+
 export type SessionFacts = {
   agent: Agent;
   project: Project;
@@ -38,13 +43,27 @@ export type SessionFacts = {
   branch: string;
   commit: CommitSha | null;
   base: WorkBase | null;
+  diff: DiffSummary | null;
+  languages: readonly LspLanguage[];
   browser: boolean;
   preview: Preview;
   services: Services;
+  environment: EnvironmentReport | null;
 };
 
 export const SANDBOX =
-  "Sandbox: only /work and /tmp are writable; the rest of the filesystem, including your home directory, is read-only. Package caches already point into /work/.cache and survive between your sessions on this task. The git remote is a path this sandbox cannot reach, so fetch, pull and push fail, and there is no gh; the office moves commits for you. Nothing runs here besides what this briefing lists: no Docker engine and no database unless a Services line says so, so do not spend turns probing for them. Each shell command runs in a fresh shell, so a variable or a background job from one command is gone in the next.";
+  "Sandbox: only /work and /tmp are writable; the rest of the filesystem, including your home directory, is read-only. Package caches already point into /work/.cache and survive between your sessions on this task. The git remote is a path this sandbox cannot reach, so fetch, pull and push fail, and there is no gh; the office moves commits for you. Nothing runs here besides what this briefing lists: no Docker engine unless a Services line says so, so do not spend turns probing for one. Databases: PostgreSQL 17, MariaDB, Redis and SQLite are installed but not running; `ho-db postgres start`, `ho-db mariadb start` or `ho-db redis start` brings one up on 127.0.0.1 at its default port without a password (user agent for PostgreSQL, root for MariaDB), keeps its data under /work/.db across your sessions on this task and prints the connection URL; `ho-db <engine> status` and `stop` exist too. Each shell command runs in a fresh shell, so a variable or a background job from one command is gone in the next.";
+
+const LSP_NAMES: Readonly<Record<LspLanguage, string>> = {
+  typescript: "TypeScript and JavaScript",
+  python: "Python",
+  php: "PHP",
+};
+
+export const lspGuide = (languages: readonly LspLanguage[]): string =>
+  languages.length === 0
+    ? ""
+    : `Code navigation: the LSP tool is on for ${languages.map((language) => LSP_NAMES[language]).join(", ")} — go to definition, find references, hover for types, and diagnostics pushed to you after every edit. Use it for symbol lookups instead of grep, and fix the diagnostics it reports before you move on.`;
 
 export const repoRules = (agent: Agent): string =>
   agent.provider === "claude-code"
@@ -107,12 +126,64 @@ export const dependenciesGuide = (base: WorkBase | null): string => {
 export const filesGuide = (files: readonly Attachment[]): string =>
   files.length === 0
     ? ""
-    : `Files from the human, read-only in ${CHAT_INBOX_DIR}: ${files.map((f) => f.name).join(", ")}.`;
+    : `Files in ${CHAT_INBOX_DIR}, read-only, from the human and from colleagues' reports on this request: ${files.map((f) => f.name).join(", ")}.`;
 
-export const criteriaGuide = (task: Task, lead: string): string =>
+export const authorClaims = (model: ReadModel, task: Task): ReadonlyMap<number, string> => {
+  const mandate = task.mandateId === undefined ? undefined : model.mandates.get(task.mandateId);
+  const { commit } = task.artifacts;
+  const claims = new Map<number, string>();
+  if (mandate === undefined || commit === undefined) {
+    return claims;
+  }
+  for (const entry of mandate.evidence) {
+    if (
+      entry.taskId === task.id &&
+      entry.method === "author" &&
+      entry.commit === commit &&
+      entry.criterion !== null
+    ) {
+      claims.set(entry.criterion, entry.proof);
+    }
+  }
+  return claims;
+};
+
+const CLAIM_CHARS = 300;
+
+export const criteriaGuide = (
+  task: Task,
+  lead: string,
+  claims: ReadonlyMap<number, string> = new Map(),
+): string =>
   task.spec === undefined
     ? ""
-    : `${lead}\n${task.spec.acceptanceCriteria.map((c, i) => `${String(i + 1)}. ${c}`).join("\n")}`;
+    : `${lead}\n${task.spec.acceptanceCriteria
+        .map((criterion, index) => {
+          const claim = claims.get(index);
+          const own =
+            claim === undefined
+              ? ""
+              : `\n   The author's own check, a claim to confirm rather than evidence: ${clip(claim, CLAIM_CHARS)}`;
+          return `${String(index + 1)}. ${criterion}${own}`;
+        })
+        .join("\n")}`;
+
+const SMALL_CHANGE_LINES = 60;
+const MEDIUM_CHANGE_LINES = 400;
+
+export const changeSizeGuide = (diff: DiffSummary | null, defaultBranch: string): string => {
+  if (diff === null) {
+    return "";
+  }
+  const lines = diff.insertions + diff.deletions;
+  const effort =
+    lines <= SMALL_CHANGE_LINES
+      ? "a small change: one careful pass over the diff, the checks or the one page it touches, and your verdict, in about fifteen turns; do not reinstall or rebuild what the environment already prepared"
+      : lines <= MEDIUM_CHANGE_LINES
+        ? "a medium change: read every hunk, run the checks once and exercise each criterion once, in about thirty turns"
+        : "a large change: read it module by module and spend your turns on the criteria first";
+  return `Size of the change against ${defaultBranch}: ${String(diff.files)} file(s), +${String(diff.insertions)} −${String(diff.deletions)}. That is ${effort}.`;
+};
 
 export const rosterLines = (model: ReadModel, project: Project, except: Agent["id"]): string[] =>
   membersOf(model, project.id)

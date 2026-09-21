@@ -13,6 +13,7 @@ import { bossOf, findMail } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import type { IntakeItem } from "../ports.ts";
 import { type CommandContext, type CommandResult, entity, err, ok } from "../result.ts";
+import { openMandate } from "./mandate-open.ts";
 import { TITLE_MAX, withProject } from "./shared.ts";
 import { newTask, readTask } from "./tasks.ts";
 
@@ -52,8 +53,10 @@ export function receiveMail(
       });
     }
     const boss = bossOf(model, project.id);
+    const mandateId = boss === undefined ? ctx.ids.mandate() : undefined;
     const task = newTask(ctx, {
       projectId: project.id,
+      mandateId,
       kind: boss === undefined ? "work" : "triage",
       title: `Issue #${item.externalId}: ${item.title}`.slice(0, TITLE_MAX),
       brief: formatMailBrief(project, item),
@@ -76,6 +79,7 @@ export function receiveMail(
     const events: NewEvent[] = [
       { type: "mail.received", actor: ctx.actor, payload: { mail } },
       { type: "task.created", actor: ctx.actor, payload: { task } },
+      ...(mandateId === undefined ? [] : [openMandate(ctx, mandateId, task)]),
     ];
     return ok({
       events,

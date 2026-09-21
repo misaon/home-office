@@ -18,9 +18,10 @@ import { useEffect, useState } from "react";
 import { activeSessionOf, sortedFloors, useUi, type Snapshot } from "../store.ts";
 import type { Card, Floor, Lane, Member, Message, Thread, ThreadPick } from "./data.ts";
 import { ago, clock, elapsed, since } from "./clock.ts";
+import { cardEvidence } from "./live-mandates.ts";
 import { type Activity, transcriptOf } from "./transcript.ts";
 
-function useNow(everyMs = 30_000): number {
+export function useNow(everyMs = 30_000): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => {
@@ -92,6 +93,9 @@ function cardOf(task: Task, snapshot: Snapshot): Card {
     priority: task.priority,
     kind: task.kind === "work" ? "code" : task.kind,
     criteria: task.spec?.acceptanceCriteria ?? [],
+    evidence: cardEvidence(snapshot, task),
+    request:
+      task.mandateId === undefined ? null : (snapshot.mandates.get(task.mandateId)?.title ?? null),
     who: task.assigneeId === undefined ? "" : (snapshot.agents.get(task.assigneeId)?.name ?? ""),
     lane: LANES[task.status],
     status: task.status,

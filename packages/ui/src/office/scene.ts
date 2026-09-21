@@ -140,7 +140,7 @@ class OfficeScene extends MapView {
       const dot = view ?? this.#ensureDot(actor);
       dot.root.visible = true;
       const at = bridge.positionOf(actor);
-      dot.root.position.set((at.x + 0.5) * CELL_PX, (at.y + 0.5) * CELL_PX);
+      dot.root.position.set(at.x * CELL_PX, at.y * CELL_PX);
       const said = captionOf(actor);
       const look: Look = {
         selected: actor.id === selected,
@@ -200,7 +200,7 @@ export function startOffice(host: HTMLElement): OfficeHandle {
         const actor = bridge.world.actors.get(followed);
         if (actor !== undefined && !actor.hidden && actor.floorId === floorId) {
           const at = bridge.positionOf(actor);
-          scene.centreOnWorld((at.x + 0.5) * CELL_PX, (at.y + 0.5) * CELL_PX);
+          scene.centreOnWorld(at.x * CELL_PX, at.y * CELL_PX);
         }
       }
     } catch (error) {

@@ -7,7 +7,7 @@ import {
   type ProjectId,
   SYSTEM_ACTOR,
 } from "@ho/protocol";
-import { delegationAck, outcomeAck, type SourceAck } from "./intake-acks.ts";
+import { delegationAck, mandateAck, outcomeAck, type SourceAck } from "./intake-acks.ts";
 import type { Logger } from "./logger.ts";
 import { followEvents, type Office } from "./office.ts";
 
@@ -60,6 +60,7 @@ export class IntakeService {
         "project.removed",
         "task.created",
         "task.status_changed",
+        "mandate.status_changed",
       ],
       (event) => {
         if (event.type === "task.created") {
@@ -68,6 +69,10 @@ export class IntakeService {
         if (event.type === "task.status_changed") {
           const { taskId, to, reason } = event.payload;
           return this.#track(this.#tell(outcomeAck(this.#office.model, taskId, to, reason)));
+        }
+        if (event.type === "mandate.status_changed") {
+          const { mandateId, to, reason } = event.payload;
+          return this.#track(this.#tell(mandateAck(this.#office.model, mandateId, to, reason)));
         }
         this.#reschedule();
         return undefined;

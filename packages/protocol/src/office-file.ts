@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { AuthKind, BASE_PROMPT_MAX, Budgets, EffortLevel, Gender, ProviderId } from "./domain.ts";
 import { ProjectId } from "./ids.ts";
-import { IntakePolicy, PublishPolicy, ServicesPolicy, VerifyPolicy } from "./policies.ts";
+import {
+  AcceptancePolicy,
+  EnvironmentPolicy,
+  IntakePolicy,
+  PublishPolicy,
+  ServicesPolicy,
+  VerifyPolicy,
+} from "./policies.ts";
 import { AgentRole } from "./roles.ts";
 
 export const OFFICE_DIR = ".ho";
@@ -34,6 +41,8 @@ export const OfficeFile = z.strictObject({
   intake: IntakePolicy.optional(),
   services: ServicesPolicy.optional(),
   verify: VerifyPolicy.optional(),
+  acceptance: AcceptancePolicy.optional(),
+  environment: EnvironmentPolicy.optional(),
   budgets: Budgets.optional(),
   agents: z.array(OfficeFileAgent).max(100).optional(),
 });

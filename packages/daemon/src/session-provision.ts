@@ -12,12 +12,12 @@ import {
 import { branchFor, hostGitIdentity } from "./git-bridge.ts";
 import { LABELS } from "./labels.ts";
 import { sourcePathFor } from "./mirrors.ts";
-import type { Services, WorkBase } from "./prompts-shared.ts";
+import type { DiffSummary, Services, WorkBase } from "./prompts-shared.ts";
 import type { RunnerConnection } from "./runner-gateway.ts";
 import { checkout } from "./session-checkout.ts";
 import { sandboxSpec } from "./session-sandbox.ts";
 import type { SessionDeps } from "./sessions.ts";
-import { skillPacksFor } from "./skill-pack.ts";
+import { type LspLanguage, skillPacksFor } from "./skill-pack.ts";
 import { prepareTaskEngine, startServices, type TaskEngineRequest } from "./task-engine.ts";
 import { stopwatch } from "./timing.ts";
 import { reviewVolumeFor, taskVolumeFor } from "./volumes.ts";
@@ -42,6 +42,8 @@ export type Provisioned = {
   branch: string;
   commit: CommitSha | null;
   base: WorkBase | null;
+  diff: DiffSummary | null;
+  languages: readonly LspLanguage[];
   sourcePath: string;
   mcpToken: string;
   labels: Readonly<Record<string, string>>;
@@ -192,6 +194,8 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     branch,
     commit: checked.commit,
     base: checked.base?.branch ?? null,
+    diff: checked.diff,
+    languages: checked.languages,
     image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
     services: engine.services.kind,
     ...watch.laps(),
@@ -206,6 +210,8 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     branch,
     commit: checked.commit,
     base: checked.base,
+    diff: checked.diff,
+    languages: checked.languages,
     sourcePath,
     mcpToken: wired.mcpToken,
     labels,

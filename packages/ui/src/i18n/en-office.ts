@@ -8,6 +8,7 @@ export const enOffice = {
     code: "code",
     triage: "triage",
     plan: "plan",
+    verify: "verification",
   },
   status: {
     inbox: "inbox",
@@ -35,7 +36,14 @@ export const enOffice = {
     context: "context {{percent}} %",
     chipTitle: "Usage",
     chipNote:
-      "What this office measured in the last day. No provider tells it a plan's quota, so none is shown.",
+      "What this office measured in the last day. The plan meters come from your Claude Code login on this Mac, the same numbers /usage shows.",
+    planFive: "Plan · 5 h",
+    planWeek: "Plan · 7 d",
+    planResets: "resets in {{when}}",
+    planShareTitle: "{{title}}: {{percent}} % of your 5 h plan window; the window is at {{five}} %",
+    planNoTask: "Your 5 h plan window is at {{five}} %; no task of this thread has drawn on it yet",
+    planSignIn: "Sign in to Claude Code on this Mac (run claude once) to see your plan limit.",
+    planUnavailable: "Plan limit unavailable: {{message}}",
     in: "in",
     day: "24 h",
     byAgent: "By agent",

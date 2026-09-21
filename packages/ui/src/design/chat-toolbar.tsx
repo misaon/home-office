@@ -1,13 +1,24 @@
 import { Popover } from "@base-ui/react/popover";
+import type { PlanUsageStatus } from "@ho/protocol";
+import { useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { UsageMenu, useContextFill } from "./chat-usage-menu.tsx";
 import type { Floor, ThreadPick } from "./data.ts";
-import { ArrowUp, ChartNoAxesColumn, Plus, Square } from "lucide-react";
+import { ArrowUp, ChartNoAxesColumn, Gauge, Plus, Square } from "lucide-react";
 import { MONO } from "./tokens.ts";
+import { formatShare, type PlanShare, useThreadPlanShare } from "./live-plan.ts";
 import { useThreadSession } from "./live.ts";
+import { planUsageQuery } from "../queries.ts";
 import { requireClient } from "../rpc.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
+
+const planLabel = (status: PlanUsageStatus, share: PlanShare | null): string => {
+  if (status.kind !== "ok") {
+    return status.kind === "sign_in" ? "!" : "?";
+  }
+  return share === null ? "—" : `${formatShare(share.percent)} %`;
+};
 
 const SQUARE =
   "w-28 h-28 grid place-items-center border border-border-strong rounded-8 py-1 px-6 cursor-pointer transition-all duration-250 bg-transparent text-ink-quiet";
@@ -34,6 +45,22 @@ export function ChatToolbar({
   const file = useRef<HTMLInputElement>(null);
   const fill = useContextFill(floor.id);
   const running = useThreadSession(floor.id, active);
+  const plan = useQuery(planUsageQuery);
+  const share = useThreadPlanShare(floor.id, active, plan.data);
+  const planTitle =
+    plan.data === undefined || plan.data.kind === "off"
+      ? ""
+      : plan.data.kind === "sign_in"
+        ? t("usage.planSignIn")
+        : plan.data.kind === "unavailable"
+          ? t("usage.planUnavailable", { message: plan.data.message })
+          : share === null
+            ? t("usage.planNoTask", { five: Math.round(plan.data.usage.fiveHour?.percent ?? 0) })
+            : t("usage.planShareTitle", {
+                title: share.title,
+                percent: formatShare(share.percent),
+                five: Math.round(plan.data.usage.fiveHour?.percent ?? 0),
+              });
   const flash = useDesign((s) => s.flash);
   const stop = useOfficeMutation({
     mutationFn: (id: NonNullable<typeof running>["sessionId"]) =>
@@ -86,6 +113,15 @@ export function ChatToolbar({
           }}
         />
       </Popover.Root>
+      {plan.data === undefined || plan.data.kind === "off" ? null : (
+        <span
+          title={planTitle}
+          className={`${METER} cursor-default ${share?.running === true ? "text-accent-soft" : "text-ink-quiet"}`}
+        >
+          <Gauge size={12} strokeWidth={1.5} />
+          <span className={`${MONO} text-10h`}>{planLabel(plan.data, share)}</span>
+        </span>
+      )}
       {running === null ? (
         <button
           type="button"

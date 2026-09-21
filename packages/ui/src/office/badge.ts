@@ -28,6 +28,7 @@ const PULSE: Readonly<Record<SessionMode, number>> = {
   review: 0xa78bfa,
   triage: 0x60a5fa,
   plan: 0x60a5fa,
+  verify: 0x2dd4bf,
 };
 const CARRYING = 0xffc531;
 

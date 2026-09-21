@@ -109,12 +109,17 @@ export const OBJECT_SPEC: Readonly<Record<ObjectKind, ObjectSpec>> = {
   "standing-ashtray": { w: 1, h: 1, blocks: true, onWall: false, arrow: false },
 };
 
-const LAYOUT_MAX = 200;
+export const objectSize = (kind: ObjectKind, facing: Facing): { w: number; h: number } => {
+  const spec = OBJECT_SPEC[kind];
+  return facing === "e" || facing === "w" ? { w: spec.h, h: spec.w } : { w: spec.w, h: spec.h };
+};
 
-const cell = z.int().min(0).max(LAYOUT_MAX);
-const span = z.int().min(1).max(LAYOUT_MAX);
+export const LAYOUT_MAX = 200;
 
-const LayoutRect = z.object({ x: cell, y: cell, w: span, h: span });
+export const LayoutCell = z.int().min(0).max(LAYOUT_MAX);
+export const LayoutSpan = z.int().min(1).max(LAYOUT_MAX);
+
+const LayoutRect = z.object({ x: LayoutCell, y: LayoutCell, w: LayoutSpan, h: LayoutSpan });
 export type LayoutRect = z.infer<typeof LayoutRect>;
 
 export const OfficeLayout = z.object({

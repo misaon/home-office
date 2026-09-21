@@ -1,10 +1,22 @@
-import { isSessionActive, type LiveEvent, type ProjectId } from "@ho/protocol";
+import { isSessionActive, type LiveEvent, type PlanWindow, type ProjectId } from "@ho/protocol";
 import { Popover } from "@base-ui/react/popover";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { usageQuery } from "../queries.ts";
+import { planUsageQuery, usageQuery } from "../queries.ts";
 import { useUi } from "../store.ts";
+import { resetIn } from "./live-plan.ts";
+import { useNow } from "./live.ts";
 import { fmt, useDesign } from "./store.ts";
+
+const barFor = (fill: number): string =>
+  fill > 0.9
+    ? "bg-[linear-gradient(90deg,var(--color-bad-deep),var(--color-bad-mid))]"
+    : fill > 0.7
+      ? "bg-[linear-gradient(90deg,var(--color-accent-dull),var(--color-warn))]"
+      : "bg-[linear-gradient(90deg,var(--color-accent-deep),var(--color-accent))]";
+
+const fgFor = (fill: number): string =>
+  fill > 0.9 ? "text-bad-soft" : fill > 0.7 ? "text-warn" : "text-accent-soft";
 
 const POPOVER =
   "w-284 p-14 rounded-14 bg-pop border border-border-strong shadow-lightbox origin-(--transform-origin) transition-[opacity,translate] duration-300 ease-out data-starting-style:opacity-0 data-starting-style:translate-y-8 data-ending-style:opacity-0";
@@ -60,6 +72,32 @@ function Meter({
   );
 }
 
+function PlanMeter({
+  name,
+  window,
+  now,
+}: {
+  name: string;
+  window: PlanWindow | null;
+  now: number;
+}): React.JSX.Element | null {
+  const { t } = useTranslation();
+  if (window === null) {
+    return null;
+  }
+  const fill = window.percent / 100;
+  const reset = resetIn(window.resetsAt, now);
+  return (
+    <Meter
+      name={name}
+      value={`${String(Math.round(window.percent))} %${reset === null ? "" : ` · ${t("usage.planResets", { when: reset })}`}`}
+      pct={`${String(Math.min(100, Math.max(1, Math.round(window.percent))))}%`}
+      bar={barFor(fill)}
+      fg={fgFor(fill)}
+    />
+  );
+}
+
 export function UsageMenu({
   floorId,
   onOpenFull,
@@ -71,6 +109,8 @@ export function UsageMenu({
   const set = useDesign((s) => s.set);
   const fill = useContextFill(floorId);
   const query = useQuery({ ...usageQuery(24), refetchInterval: 15_000 });
+  const plan = useQuery(planUsageQuery);
+  const now = useNow();
   const totals = query.data?.totals;
   const spent = totals === undefined ? 0 : totals.inputTokens + totals.outputTokens;
 
@@ -86,16 +126,22 @@ export function UsageMenu({
               name={t("usage.contextLabel")}
               value={t("usage.context", { percent: Math.round(fill * 100) })}
               pct={`${String(Math.max(1, Math.round(fill * 100)))}%`}
-              bar={
-                fill > 0.9
-                  ? "bg-[linear-gradient(90deg,var(--color-bad-deep),var(--color-bad-mid))]"
-                  : fill > 0.7
-                    ? "bg-[linear-gradient(90deg,var(--color-accent-dull),var(--color-warn))]"
-                    : "bg-[linear-gradient(90deg,var(--color-accent-deep),var(--color-accent))]"
-              }
-              fg={fill > 0.9 ? "text-bad-soft" : fill > 0.7 ? "text-warn" : "text-accent-soft"}
+              bar={barFor(fill)}
+              fg={fgFor(fill)}
             />
           )}
+          {plan.data?.kind === "ok" ? (
+            <>
+              <PlanMeter name={t("usage.planFive")} window={plan.data.usage.fiveHour} now={now} />
+              <PlanMeter name={t("usage.planWeek")} window={plan.data.usage.sevenDay} now={now} />
+            </>
+          ) : plan.data?.kind === "sign_in" ? (
+            <div className="text-11h text-warn mb-13">{t("usage.planSignIn")}</div>
+          ) : plan.data?.kind === "unavailable" ? (
+            <div className="text-11h text-ink-meta mb-13">
+              {t("usage.planUnavailable", { message: plan.data.message })}
+            </div>
+          ) : null}
           <div className={`${ROW} mb-12`}>
             <span className="text-11h text-ink-meta">{t("usage.day")}</span>
             <span className="font-mono text-11 text-ink-dim">{fmt(spent)}</span>

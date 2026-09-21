@@ -1,6 +1,6 @@
 import type { Facing, OfficeLayout, RoomKind } from "@ho/protocol";
-import type { Point } from "./grid.ts";
-import type { Anchor, AnchorKind, TileMap } from "./map.ts";
+import { facingTowards, type Grid, type Point } from "./grid.ts";
+import { type Anchor, type AnchorKind, gridFromMap, type TileMap } from "./map.ts";
 
 export const RECEPTION_ANCHOR = "reception-staff";
 
@@ -15,57 +15,59 @@ const DESK_GROUP: Readonly<Record<string, string>> = {
   "desk-analyst": "analyst",
 };
 
-const inFront = (rect: Rect, facing: Facing, distance = 1): Point => {
-  const middleX = rect.x + Math.floor((rect.w - 1) / 2);
-  const middleY = rect.y + Math.floor((rect.h - 1) / 2);
+const frontOf = (rect: Rect, facing: Facing, distance: number): Point => {
+  const middleX = rect.x + Math.floor(rect.w / 2);
+  const middleY = rect.y + Math.floor(rect.h / 2);
   const front: Readonly<Record<Facing, Point>> = {
     n: { x: middleX, y: rect.y - distance },
-    s: { x: middleX, y: rect.y + rect.h - 1 + distance },
+    s: { x: middleX, y: rect.y + rect.h + distance },
     w: { x: rect.x - distance, y: middleY },
-    e: { x: rect.x + rect.w - 1 + distance, y: middleY },
+    e: { x: rect.x + rect.w + distance, y: middleY },
   };
   return front[facing];
 };
 
-const roomCells = (layout: OfficeLayout, room: RoomKind): Point[] =>
-  layout.rooms
-    .filter((rect) => rect.room === room)
-    .flatMap((rect) =>
-      Array.from({ length: rect.h }, (_row, dy) =>
-        Array.from({ length: rect.w }, (_column, dx): Point => ({
-          x: rect.x + dx,
-          y: rect.y + dy,
-        })),
-      ).flat(),
-    );
+const roomOfCell = (map: TileMap, x: number, y: number): string | null =>
+  x < 0 || y < 0 || x >= map.width || y >= map.height
+    ? null
+    : (map.room[y * map.width + x] ?? null);
 
-const blockedAt = (map: TileMap, point: Point): boolean =>
-  point.x < 0 ||
-  point.y < 0 ||
-  point.x >= map.width ||
-  point.y >= map.height ||
-  map.blocked[point.y * map.width + point.x] === 1;
-
-const free = (map: TileMap, cells: readonly Point[]): Point[] =>
-  cells.filter((cell) => !blockedAt(map, cell));
+const roomVertices = (map: TileMap, grid: Grid, room: RoomKind): Point[] => {
+  const vertices: Point[] = [];
+  for (let y = 1; y < map.height; y += 1) {
+    for (let x = 1; x < map.width; x += 1) {
+      const at = { x, y };
+      if (
+        grid.isWalkable(at) &&
+        roomOfCell(map, x - 1, y - 1) === room &&
+        roomOfCell(map, x, y - 1) === room &&
+        roomOfCell(map, x - 1, y) === room &&
+        roomOfCell(map, x, y) === room
+      ) {
+        vertices.push(at);
+      }
+    }
+  }
+  return vertices;
+};
 
 const distance = (a: Point, b: Point): number => Math.hypot(a.x - b.x, a.y - b.y);
 
-const nearestTo = (cells: readonly Point[], target: Point): Point | undefined =>
-  cells.toSorted((a, b) => distance(a, target) - distance(b, target))[0];
+const nearestTo = (points: readonly Point[], target: Point): Point | undefined =>
+  points.toSorted((a, b) => distance(a, target) - distance(b, target))[0];
 
-const farthestFrom = (cells: readonly Point[], target: Point): Point | undefined =>
-  cells.toSorted((a, b) => distance(b, target) - distance(a, target))[0];
+const farthestFrom = (points: readonly Point[], target: Point): Point | undefined =>
+  points.toSorted((a, b) => distance(b, target) - distance(a, target))[0];
 
-const centroid = (cells: readonly Point[]): Point | undefined => {
-  if (cells.length === 0) {
+const centroid = (points: readonly Point[]): Point | undefined => {
+  if (points.length === 0) {
     return undefined;
   }
-  const sum = cells.reduce((acc, cell) => ({ x: acc.x + cell.x, y: acc.y + cell.y }), {
+  const sum = points.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), {
     x: 0,
     y: 0,
   });
-  return nearestTo(cells, { x: sum.x / cells.length, y: sum.y / cells.length });
+  return nearestTo(points, { x: sum.x / points.length, y: sum.y / points.length });
 };
 
 const spot = (
@@ -76,52 +78,52 @@ const spot = (
   group?: string,
 ): Anchor => (group === undefined ? { id, kind, at, facing } : { id, kind, at, facing, group });
 
-const seatOf = (map: TileMap, piece: Placed, index: number): Anchor | null => {
+const seatOf = (grid: Grid, piece: Placed, index: number): Anchor | null => {
   const group = piece.kind === "desk-boss" ? "boss" : DESK_GROUP[piece.kind];
   if (group === undefined) {
     return null;
   }
-  const at = inFront(piece, piece.facing);
-  if (blockedAt(map, at)) {
+  const at = frontOf(piece, piece.facing, 1);
+  if (!grid.isWalkable(at)) {
     return null;
   }
   const kind: AnchorKind = piece.kind === "desk-boss" ? "boss-desk" : "desk";
   return spot(`${kind}-${String(index + 1)}`, kind, at, OPPOSITE[piece.facing], group);
 };
 
-const elevatorAnchors = (map: TileMap, layout: OfficeLayout): Anchor[] => {
+const elevatorAnchors = (grid: Grid, layout: OfficeLayout): Anchor[] => {
   const lift = layout.objects.find((piece) => piece.kind === "elevator");
   if (lift === undefined) {
     return [];
   }
   const car = { x: lift.x + Math.floor(lift.w / 2), y: lift.y + Math.floor(lift.h / 2) };
-  const door = inFront(lift, lift.facing);
-  const entrance = inFront(lift, lift.facing, 2);
+  const door = frontOf(lift, lift.facing, 0);
+  const entrance = frontOf(lift, lift.facing, 1);
   return [
     spot("car", "car", car, lift.facing),
-    ...(blockedAt(map, door) ? [] : [spot("elevator", "elevator", door, lift.facing)]),
-    ...(blockedAt(map, entrance) ? [] : [spot("entrance", "entrance", entrance, lift.facing)]),
+    ...(grid.isWalkable(door) ? [spot("elevator", "elevator", door, lift.facing)] : []),
+    ...(grid.isWalkable(entrance) ? [spot("entrance", "entrance", entrance, lift.facing)] : []),
   ];
 };
 
-const receptionAnchors = (map: TileMap, layout: OfficeLayout): Anchor[] => {
+const receptionAnchors = (map: TileMap, grid: Grid, layout: OfficeLayout): Anchor[] => {
   const counter = layout.objects.find((piece) => piece.kind === "reception-counter");
   if (counter !== undefined) {
-    const behind = inFront(counter, OPPOSITE[counter.facing]);
-    const aside = { x: counter.x - 1, y: counter.y };
+    const behind = frontOf(counter, OPPOSITE[counter.facing], 1);
+    const aside = { x: counter.x - 1, y: counter.y + Math.floor(counter.h / 2) };
     return [
-      ...(blockedAt(map, behind)
-        ? []
-        : [spot(RECEPTION_ANCHOR, "reception", behind, counter.facing)]),
-      ...(blockedAt(map, aside) ? [] : [spot("mailbox", "mailbox", aside, counter.facing)]),
+      ...(grid.isWalkable(behind)
+        ? [spot(RECEPTION_ANCHOR, "reception", behind, counter.facing)]
+        : []),
+      ...(grid.isWalkable(aside) ? [spot("mailbox", "mailbox", aside, counter.facing)] : []),
     ];
   }
-  const cells = free(map, roomCells(layout, "reception"));
-  const middle = centroid(cells);
+  const vertices = roomVertices(map, grid, "reception");
+  const middle = centroid(vertices);
   if (middle === undefined) {
     return [];
   }
-  const corner = nearestTo(cells, { x: 0, y: 0 });
+  const corner = nearestTo(vertices, { x: 0, y: 0 });
   return [
     spot(RECEPTION_ANCHOR, "reception", middle, "w"),
     ...(corner === undefined || (corner.x === middle.x && corner.y === middle.y)
@@ -132,6 +134,7 @@ const receptionAnchors = (map: TileMap, layout: OfficeLayout): Anchor[] => {
 
 const fixtureAnchor = (
   map: TileMap,
+  grid: Grid,
   layout: OfficeLayout,
   id: string,
   kind: AnchorKind,
@@ -140,64 +143,88 @@ const fixtureAnchor = (
 ): Anchor[] => {
   const piece = layout.objects.find((candidate) => pieces.includes(candidate.kind));
   if (piece !== undefined) {
-    const at = inFront(piece, piece.facing);
-    return blockedAt(map, at) ? [] : [spot(id, kind, at, OPPOSITE[piece.facing])];
+    const at = frontOf(piece, piece.facing, 1);
+    return grid.isWalkable(at) ? [spot(id, kind, at, OPPOSITE[piece.facing])] : [];
   }
-  const middle = centroid(free(map, roomCells(layout, room)));
+  const middle = centroid(roomVertices(map, grid, room));
   return middle === undefined ? [] : [spot(id, kind, middle)];
 };
 
-const WANDER_ROOMS: readonly RoomKind[] = [
-  "corridor",
-  "meeting",
-  "kitchen",
-  "team-room",
-  "terrace",
-];
+const WANDER_ROOMS: readonly RoomKind[] = ["terrace", "team-room", "kitchen"];
+const MEETING_RING = 2;
+const MEETING_SPOTS = 8;
 
-export function anchorsOf(map: TileMap, layout: OfficeLayout): Anchor[] {
-  const seats = layout.objects
-    .map((piece, index) => seatOf(map, piece, index))
-    .filter((anchor): anchor is Anchor => anchor !== null);
-  const smoke = fixtureAnchor(map, layout, "smoke", "smoke", ["standing-ashtray"], "terrace");
-  const terrace = free(map, roomCells(layout, "terrace"));
-  const smokeSpot = smoke[0]?.at;
-  const relaxSpot = smokeSpot === undefined ? centroid(terrace) : farthestFrom(terrace, smokeSpot);
-  const relax = fixtureAnchor(
-    map,
-    layout,
-    "relax",
-    "relax",
-    ["lounge-chair", "hot-tub"],
-    "team-room",
-  );
-  const wander = WANDER_ROOMS.flatMap((room) => {
-    const cells = free(map, roomCells(layout, room));
-    const middle = centroid(cells);
+const angleAround = (centre: Point, at: Point): number =>
+  Math.atan2(at.y - centre.y, at.x - centre.x);
+
+const meetingAnchors = (map: TileMap, grid: Grid): Anchor[] => {
+  const vertices = roomVertices(map, grid, "meeting");
+  const centre = centroid(vertices);
+  if (centre === undefined) {
+    return [];
+  }
+  const ring = vertices
+    .filter((at) => Math.max(Math.abs(at.x - centre.x), Math.abs(at.y - centre.y)) === MEETING_RING)
+    .toSorted((a, b) => angleAround(centre, a) - angleAround(centre, b));
+  const every = Math.max(1, Math.floor(ring.length / MEETING_SPOTS));
+  return ring
+    .filter((_, index) => index % every === 0)
+    .slice(0, MEETING_SPOTS)
+    .map((at, index) =>
+      spot(`meeting-${String(index + 1)}`, "meeting", at, facingTowards(at, centre)),
+    );
+};
+
+const wanderAnchors = (map: TileMap, grid: Grid): Anchor[] =>
+  WANDER_ROOMS.flatMap((room) => {
+    const vertices = roomVertices(map, grid, room);
+    const middle = centroid(vertices);
     if (middle === undefined) {
       return [];
     }
-    const corner = farthestFrom(cells, middle);
+    const corner = farthestFrom(vertices, middle);
     const spots = [
       middle,
       ...(corner === undefined || distance(corner, middle) < 3 ? [] : [corner]),
     ];
     return spots.map((at, index) => spot(`wander-${room}-${String(index + 1)}`, "wander", at));
   });
+
+export function anchorsOf(map: TileMap, layout: OfficeLayout): Anchor[] {
+  const grid = gridFromMap(map);
+  const seats = layout.objects
+    .map((piece, index) => seatOf(grid, piece, index))
+    .filter((anchor): anchor is Anchor => anchor !== null);
+  const smoke = fixtureAnchor(map, grid, layout, "smoke", "smoke", ["standing-ashtray"], "terrace");
+  const terrace = roomVertices(map, grid, "terrace");
+  const smokeSpot = smoke[0]?.at;
+  const relaxSpot = smokeSpot === undefined ? centroid(terrace) : farthestFrom(terrace, smokeSpot);
+  const relax = fixtureAnchor(
+    map,
+    grid,
+    layout,
+    "relax",
+    "relax",
+    ["lounge-chair", "hot-tub"],
+    "team-room",
+  );
+  const furnished = layout.objects.some(
+    (piece) => piece.kind === "lounge-chair" || piece.kind === "hot-tub",
+  );
   return [
-    ...elevatorAnchors(map, layout),
-    ...receptionAnchors(map, layout),
+    ...elevatorAnchors(grid, layout),
+    ...receptionAnchors(map, grid, layout),
     ...seats,
-    ...fixtureAnchor(map, layout, "coffee", "coffee", ["coffee-machine"], "kitchen"),
-    ...fixtureAnchor(map, layout, "restroom", "restroom", ["toilet"], "toilets"),
+    ...fixtureAnchor(map, grid, layout, "coffee", "coffee", ["coffee-machine"], "kitchen"),
+    ...fixtureAnchor(map, grid, layout, "restroom", "restroom", ["toilet"], "toilets"),
     ...smoke,
-    ...(relax.length > 0 &&
-    layout.objects.some((piece) => piece.kind === "lounge-chair" || piece.kind === "hot-tub")
+    ...(relax.length > 0 && furnished
       ? relax
       : relaxSpot === undefined
         ? relax
         : [spot("relax", "relax", relaxSpot)]),
-    ...fixtureAnchor(map, layout, "sleep", "sleep", [], "team-room"),
-    ...wander,
+    ...fixtureAnchor(map, grid, layout, "sleep", "sleep", [], "team-room"),
+    ...meetingAnchors(map, grid),
+    ...wanderAnchors(map, grid),
   ];
 }

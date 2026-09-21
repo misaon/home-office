@@ -11,6 +11,7 @@ import {
 } from "@ho/protocol";
 import {
   type Actor,
+  adjourn,
   assignWork,
   carry,
   createWorld,
@@ -29,6 +30,7 @@ import { Interpolation } from "./interpolation.ts";
 import { model } from "../store.ts";
 import { Envelopes } from "./envelopes.ts";
 import { MailFlow } from "./mail-flow.ts";
+import { conveneFor, deciding, isDecision } from "./meetings.ts";
 import { syncRoster } from "./roster.ts";
 
 const MAX_DT_MS = 250;
@@ -88,6 +90,11 @@ export class Bridge {
         this.#seat(session);
       }
     }
+    for (const task of model.tasks.values()) {
+      if (isDecision(task) && deciding(task)) {
+        conveneFor(this.world, task);
+      }
+    }
   }
 
   #seat(session: Session): void {
@@ -122,6 +129,9 @@ export class Bridge {
   #onStatus(event: Extract<StoredEvent, { type: "task.status_changed" }>): void {
     const task = model.tasks.get(event.payload.taskId);
     const { from, to, reason } = event.payload;
+    if (task !== undefined && isDecision(task) && !deciding(task)) {
+      adjourn(this.world, task.id);
+    }
     if (task?.kind !== "work") {
       return;
     }
@@ -180,6 +190,8 @@ export class Bridge {
         const { task } = event.payload;
         if (task.kind === "triage" && task.source.kind === "chat") {
           this.#onChat(task);
+        } else if (isDecision(task)) {
+          conveneFor(this.world, task);
         }
         break;
       }
@@ -200,8 +212,16 @@ export class Bridge {
       case "chat.cleared":
       case "chat.message_posted":
       case "mail.acknowledged":
+      case "mandate.opened":
+      case "mandate.acceptance_stated":
+      case "mandate.evidence_recorded":
+      case "mandate.artifacts_changed":
+      case "mandate.baseline_recorded":
+      case "mandate.status_changed":
+      case "mandate.round_opened":
       case "session.state_changed":
       case "session.usage_recorded":
+      case "session.plan_recorded":
       case "task.artifacts_changed":
       case "task.assigned":
       case "task.removed":
