@@ -22,7 +22,7 @@ import {
 } from "./api.ts";
 import { startEngine } from "./engine.ts";
 import { containers, inventory, prune } from "./housekeeping.ts";
-import { buildImage, imageHash } from "./image.ts";
+import { buildImage, imageHash, imageId } from "./image.ts";
 import { ensureNetwork } from "./network.ts";
 
 const exposed = (ports: readonly number[]): Record<string, Record<string, never>> =>
@@ -125,6 +125,7 @@ export function createDockerProvider(options: {
       }
     },
     imageHash: (ref) => imageHash(api, ref),
+    imageId: (ref) => imageId(api, ref),
     ensureImage: async (spec, onLine, signal) => {
       if ((await imageHash(api, spec.ref)) !== spec.contentHash) {
         await buildImage(

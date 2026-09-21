@@ -136,7 +136,13 @@ export const DomainEvent = z.discriminatedUnion("type", [
     sandboxId: z.string().optional(),
     services: SessionServices.optional(),
     runtime: SessionRuntime.optional(),
-    confirmed: z.object({ model: z.string().optional(), effort: z.string().optional() }).optional(),
+    confirmed: z
+      .object({
+        model: z.string().optional(),
+        effort: z.string().optional(),
+        version: z.string().optional(),
+      })
+      .optional(),
     reason: z.string().max(2000).optional(),
   }),
   event("session.usage_recorded", {

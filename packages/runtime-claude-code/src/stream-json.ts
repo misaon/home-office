@@ -90,6 +90,7 @@ const systemEvents = (
         kind: "init",
         runtimeSessionId: line.session_id,
         model: line.model ?? "unknown",
+        ...compact({ version: line.claude_code_version }),
         plugins: (line.plugins ?? []).map((p) => p.name),
         pluginErrors: (line.plugin_errors ?? []).map((p) => `${p.plugin}: ${p.message}`),
         tools: line.tools?.length ?? 0,

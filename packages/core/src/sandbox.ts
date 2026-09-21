@@ -71,6 +71,7 @@ export type SandboxProvider = {
   readonly id: "docker";
   health: () => Promise<ProviderHealth>;
   imageHash: (ref: string) => Promise<string | null>;
+  imageId: (ref: string) => Promise<string | null>;
   ensureImage: (
     spec: ImageSpec,
     onLine?: (line: string) => void,

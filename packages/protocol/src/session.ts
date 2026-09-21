@@ -10,8 +10,10 @@ export const SessionRuntime = z.object({
   promptHash: z.string().min(1),
   skillPacks: z.array(z.string().min(1)),
   image: z.string().min(1),
+  imageDigest: z.string().min(1).optional(),
   confirmedModel: z.string().min(1).optional(),
   confirmedEffort: z.string().min(1).optional(),
+  confirmedVersion: z.string().min(1).optional(),
 });
 export type SessionRuntime = z.infer<typeof SessionRuntime>;
 

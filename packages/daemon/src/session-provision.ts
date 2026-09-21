@@ -1,4 +1,10 @@
-import { attachmentsOfTask, needsEngine, type RemainingBudget, type SandboxHandle } from "@ho/core";
+import {
+  attachmentsOfTask,
+  needsEngine,
+  type RemainingBudget,
+  type SandboxHandle,
+  type SandboxProvider,
+} from "@ho/core";
 import {
   type Agent,
   type CommitSha,
@@ -20,7 +26,7 @@ import type { SessionDeps } from "./sessions.ts";
 import { type LspLanguage, skillPacksFor } from "./skill-pack.ts";
 import { prepareTaskEngine, startServices, type TaskEngineRequest } from "./task-engine.ts";
 import { stopwatch } from "./timing.ts";
-import { reviewVolumeFor, taskVolumeFor } from "./volumes.ts";
+import { cacheVolumeFor, reviewVolumeFor, taskVolumeFor } from "./volumes.ts";
 
 const SANDBOX_STOP_GRACE_S = 5;
 
@@ -44,6 +50,7 @@ export type Provisioned = {
   base: WorkBase | null;
   diff: DiffSummary | null;
   languages: readonly LspLanguage[];
+  imageId: string | null;
   sourcePath: string;
   mcpToken: string;
   labels: Readonly<Record<string, string>>;
@@ -109,10 +116,13 @@ async function wire(
   return { issued, mcpToken, chat: { outbox, inbox, browser } };
 }
 
-export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {
-  const { provider, config, home, log } = deps;
-  ctx.signal.throwIfAborted();
-  const watch = stopwatch();
+type Volumes = { volume: string; stateVolume: string; cacheVolume: string };
+
+async function volumesFor(
+  provider: SandboxProvider,
+  ctx: SessionContext,
+  labels: Readonly<Record<string, string>>,
+): Promise<Volumes> {
   const reviewing = ctx.session.mode === "review";
   const volume = reviewing ? reviewVolumeFor(ctx.task.id) : taskVolumeFor(ctx.task.id);
   const thread = ctx.session.mode === "triage" ? ctx.session.threadId : undefined;
@@ -120,6 +130,24 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     thread === undefined
       ? `${taskVolumeFor(ctx.task.id)}-state-${ctx.agent.id.slice(-8)}`
       : `ho-chat-${thread.slice(-12)}-state-${ctx.agent.id.slice(-8)}`;
+  await provider.createVolume(volume, {
+    ...labels,
+    [LABELS.kind]: reviewing ? "review-volume" : "task-volume",
+  });
+  await provider.createVolume(stateVolume, { ...labels, [LABELS.kind]: "provider-state" });
+  const cacheVolume = cacheVolumeFor(ctx.project.id);
+  await provider.createVolume(cacheVolume, {
+    [LABELS.managed]: "true",
+    [LABELS.project]: ctx.project.id,
+    [LABELS.kind]: "project-cache",
+  });
+  return { volume, stateVolume, cacheVolume };
+}
+
+export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {
+  const { provider, config, home, log } = deps;
+  ctx.signal.throwIfAborted();
+  const watch = stopwatch();
   const branch = ctx.task.artifacts.branch ?? branchFor(ctx.task.id);
   const labels = {
     [LABELS.managed]: "true",
@@ -130,11 +158,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     [LABELS.managed]: "true",
     [LABELS.kind]: "network",
   });
-  await provider.createVolume(volume, {
-    ...labels,
-    [LABELS.kind]: reviewing ? "review-volume" : "task-volume",
-  });
-  await provider.createVolume(stateVolume, { ...labels, [LABELS.kind]: "provider-state" });
+  const { volume, stateVolume, cacheVolume } = await volumesFor(provider, ctx, labels);
   const sourcePath = await sourcePathFor(home, ctx.project);
   watch.lap("volumesMs");
   log.debug(
@@ -167,6 +191,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
       ctx,
       volume,
       stateVolume,
+      cacheVolume,
       deps.gatewayUrl(),
       wired.issued.token,
       plan,
@@ -190,15 +215,19 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
   const connection = await wired.issued.connected;
   ctx.signal.throwIfAborted();
   watch.lap("runnerMs");
+  const image = imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image);
+  const imageId = await provider.imageId(image).catch((): null => null);
   announceProvisioned(deps, ctx, {
     volume,
     stateVolume,
+    cacheVolume,
     branch,
     commit: checked.commit,
     base: checked.base?.branch ?? null,
     diff: checked.diff,
     languages: checked.languages,
-    image: imageRefFor(config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
+    image,
+    imageId,
     services: engine.services.kind,
     ...watch.laps(),
     totalMs: watch.total(),
@@ -214,6 +243,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
     base: checked.base,
     diff: checked.diff,
     languages: checked.languages,
+    imageId,
     sourcePath,
     mcpToken: wired.mcpToken,
     labels,

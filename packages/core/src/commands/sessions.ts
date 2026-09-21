@@ -103,7 +103,7 @@ export function changeSessionState(
     sandboxId?: string;
     services?: SessionServices;
     runtime?: SessionRuntime;
-    confirmed?: { model?: string; effort?: string };
+    confirmed?: { model?: string; effort?: string; version?: string };
     reason?: string;
   },
   ctx: CommandContext,

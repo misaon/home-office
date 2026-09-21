@@ -6,6 +6,7 @@ import { type GitIdentity, REPO_IN_VOLUME } from "./git-bridge.ts";
 import { LABELS } from "./labels.ts";
 import type { SessionContext } from "./session-provision.ts";
 import { engineEnv, type TaskEnginePlan } from "./task-engine.ts";
+import { CACHE_IN_VOLUME } from "./volumes.ts";
 
 const gitIdentity = (
   agent: Agent,
@@ -29,6 +30,7 @@ export const sandboxSpec = (
   ctx: SessionContext,
   volume: string,
   stateVolume: string,
+  cacheVolume: string,
   gatewayUrl: string,
   token: string,
   engine: TaskEnginePlan | null,
@@ -59,6 +61,7 @@ export const sandboxSpec = (
   network: config.docker.network,
   volumes: [
     { name: volume, target: "/work" },
+    { name: cacheVolume, target: CACHE_IN_VOLUME },
     { name: stateVolume, target: PROVIDERS[ctx.agent.provider].stateDir },
     ...(engine === null ? [] : [{ name: engine.socketVolume, target: engine.socketDir }]),
   ],

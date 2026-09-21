@@ -40,6 +40,7 @@ export const SystemLine = z.object({
   subtype: z.string(),
   session_id: z.string().optional(),
   model: z.string().optional(),
+  claude_code_version: z.string().optional(),
   tools: z.array(z.string()).optional(),
   plugins: z.array(z.object({ name: z.string() })).optional(),
   plugin_errors: z.array(z.object({ plugin: z.string(), message: z.string() })).optional(),

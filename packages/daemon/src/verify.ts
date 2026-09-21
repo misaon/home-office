@@ -101,11 +101,12 @@ export const commandSpec = (
   step: string,
   command: string,
   network: string,
+  volumes: readonly VolumeMount[] = [],
 ): SandboxSpec =>
   containerSpec(config, volume, step, network, {
     cmd: ["/bin/sh", "-lc", command],
     env: {},
-    volumes: [],
+    volumes,
   });
 
 const verifySpec = (

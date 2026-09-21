@@ -6,7 +6,7 @@ import { LABELS, MANAGED } from "./labels.ts";
 import type { Logger } from "./logger.ts";
 import { elapsedMs } from "./timing.ts";
 import type { TraceStore } from "./traces.ts";
-import { taskVolumeFor } from "./volumes.ts";
+import { cacheVolumeFor, taskVolumeFor } from "./volumes.ts";
 
 const INTERVAL_MS = 30 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -85,6 +85,15 @@ async function collectGarbage(
       }),
     );
   }
+  const caches = new Set([...model.projects.values()].map((project) => cacheVolumeFor(project.id)));
+  report = merge(
+    report,
+    await provider.prune({
+      labels: { ...MANAGED, [LABELS.kind]: "project-cache" },
+      kinds: ["volumes"],
+      keep: (name) => caches.has(name),
+    }),
+  );
   for (const kind of TRANSIENT_VOLUME_KINDS) {
     report = merge(
       report,

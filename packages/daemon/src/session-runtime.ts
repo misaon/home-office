@@ -6,7 +6,7 @@ import {
   type RuntimeSession,
   setbacksOf,
 } from "@ho/core";
-import { imageRefFor, PROVIDERS, type SessionRuntime } from "@ho/protocol";
+import { compact, imageRefFor, PROVIDERS, type SessionRuntime } from "@ho/protocol";
 import { browserMcpServers } from "./browser.ts";
 import type { EnvironmentReport } from "./environment-report.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
@@ -91,11 +91,12 @@ export const prepare = (
       promptHash: hashOf(appendix),
       skillPacks: packs,
       image: imageRefFor(deps.config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
+      ...compact({ imageDigest: provisioned.imageId ?? undefined }),
     },
   };
 };
 
-export const openRuntime = (
+export const openRuntime = async (
   deps: SessionDeps,
   ctx: SessionContext,
   provisioned: Provisioned,
@@ -147,6 +148,10 @@ export const openRuntime = (
     promptHash: prepared.runtime.promptHash,
     promptChars: prepared.appendix.length,
     openingChars: prepared.message.length,
+    image: prepared.runtime.image,
+    imageDigest: provisioned.imageId,
+    skillPackVersions: await deps.mcp.skillVersions(prepared.packs),
+    environmentHash: hashOf(JSON.stringify(ctx.project.environment)),
   };
   deps.log.debug(
     { sessionId: ctx.session.id, taskId: ctx.task.id, ...runtime },

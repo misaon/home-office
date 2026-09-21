@@ -78,6 +78,10 @@ export class McpGateway {
     return this.#entries.get(token)?.report ?? null;
   }
 
+  skillVersions(packs: readonly string[]): Promise<Record<string, string>> {
+    return this.#skills.versions(packs);
+  }
+
   reportFiles(token: string): readonly Attachment[] {
     return this.#entries.get(token)?.reportFiles ?? [];
   }

@@ -241,7 +241,8 @@ otherwise, marks a condition about delivery as not checked because the office pr
 and the pull request after the verdict, and files what it has before the turns run out.
 
 `environment` describes how this project is set up and checked, once, for every agent that touches
-it. `setup` runs before each work, review and verification session in the agent's own sandbox
+it. `setup` runs before each work, review and verification session in the agent's own sandbox, against
+a package cache the whole floor shares, so the second install of the same lockfile is a copy, not a download;
 (dependencies, toolchains), `services` when the floor's private engine is on, `seed` after them
 (migrations, fixtures); `run` starts the application in the background and `ready` waits for a URL
 or a command to answer, so the agent finds it running and is told where its log is. `checks` names

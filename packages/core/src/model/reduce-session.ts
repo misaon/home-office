@@ -24,6 +24,7 @@ const runtimeAfter = (
     ...compact({
       confirmedModel: payload.confirmed?.model ?? runtime.confirmedModel,
       confirmedEffort: payload.confirmed?.effort ?? runtime.confirmedEffort,
+      confirmedVersion: payload.confirmed?.version ?? runtime.confirmedVersion,
     }),
   };
 };

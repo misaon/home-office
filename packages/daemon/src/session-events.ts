@@ -40,6 +40,7 @@ const traceOf = (event: RuntimeEvent): Record<string, unknown> | null => {
     case "init": {
       return {
         model: event.model,
+        version: event.version ?? null,
         runtimeSessionId: event.runtimeSessionId,
         tools: event.tools,
         mcpServers: event.mcpServers,
@@ -234,7 +235,10 @@ export async function handleRuntimeEvent(
     }
     await state("running", {
       runtimeSessionId: event.runtimeSessionId,
-      confirmed: { model: event.model, ...compact({ effort: event.effort }) },
+      confirmed: {
+        model: event.model,
+        ...compact({ effort: event.effort, version: event.version }),
+      },
     });
   } else if (
     (event.kind === "text_delta" || event.kind === "tool_call") &&

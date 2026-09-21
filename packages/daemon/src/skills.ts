@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join, normalize } from "node:path";
+import { z } from "zod";
 
 const SKILL_NAME_MAX = 64;
 const SKILL_DESCRIPTION_MAX = 1024;
@@ -8,6 +9,8 @@ const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const BODY_MAX = 64_000;
 const FILE_MAX = 256_000;
 const BUNDLED_DIRS = ["scripts", "references", "assets", "rules"];
+
+const PluginManifest = z.object({ version: z.string().min(1) });
 
 export type SkillIndexEntry = { name: string; description: string };
 export type SkillBody = { name: string; description: string; body: string; files: string[] };
@@ -84,6 +87,21 @@ export class SkillLibrary {
     return this.#root === null || pack === "none" || pack.includes("/") || pack.includes("..")
       ? null
       : join(this.#root, pack, "skills");
+  }
+
+  async versions(packs: readonly string[]): Promise<Record<string, string>> {
+    const versions: Record<string, string> = {};
+    for (const pack of packs) {
+      const dir = this.#packDir(pack);
+      if (dir === null) {
+        continue;
+      }
+      const manifest = await readFile(join(dir, "..", ".claude-plugin", "plugin.json"), "utf8")
+        .then((text) => PluginManifest.safeParse(JSON.parse(text)))
+        .catch(() => null);
+      versions[pack] = manifest?.success === true ? manifest.data.version : "unknown";
+    }
+    return versions;
   }
 
   async index(packs: readonly string[]): Promise<SkillIndexEntry[]> {
