@@ -116,12 +116,26 @@ const traceOf = (event: RuntimeEvent): Record<string, unknown> | null => {
   return null;
 };
 
-export type Spent = { toolCalls: number; costUsd: number | null };
+export type Spent = { toolCalls: number; costUsd: number | null; overheadWarned: boolean };
 
-const overBudget = (ctx: SessionContext, spent: Spent, event: RuntimeEvent): string | null => {
+const OVERHEAD_SHARE = 0.75;
+
+const overBudget = (
+  deps: SessionDeps,
+  ctx: SessionContext,
+  spent: Spent,
+  event: RuntimeEvent,
+): string | null => {
   const guarantees = budgetGuaranteesFor(ctx.agent.provider, ctx.agent.auth);
   if (event.kind === "tool_call") {
     spent.toolCalls += 1;
+    if (!spent.overheadWarned && spent.toolCalls > Math.ceil(ctx.budget.turns * OVERHEAD_SHARE)) {
+      spent.overheadWarned = true;
+      deps.log.warn(
+        { ...idsOf(ctx), shape: ctx.task.shape, used: spent.toolCalls, allowed: ctx.budget.turns },
+        "the session is past three quarters of the turns its shape allows",
+      );
+    }
     return guarantees.turns === "office" && spent.toolCalls > ctx.budget.turns
       ? `turn budget exhausted: ${String(spent.toolCalls)} tool calls against ${String(ctx.budget.turns)} allowed for this task`
       : null;
@@ -188,7 +202,7 @@ export async function handleRuntimeEvent(
       traceFor(ctx),
     );
   deps.traces.observe(ctx.session.id, event);
-  const reason = overBudget(ctx, spent, event);
+  const reason = overBudget(deps, ctx, spent, event);
   describeEvent(deps, ctx, event);
   if (event.kind === "usage") {
     await office.execute(

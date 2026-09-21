@@ -87,6 +87,7 @@ export function delegateTask(
       source: { kind: "delegation", byAgentId: delegator.id, parentTaskId },
       assigneeId: assignee?.id,
       priority: input.priority,
+      shape: input.shape,
       publish: input.publish,
       browser: input.browser,
       reviews,

@@ -1,5 +1,5 @@
 import { type ReadModel, reviewPlanOf, verifyAttempts } from "@ho/core";
-import { type Agent, type Project, ROLE_TITLE, type Task } from "@ho/protocol";
+import { type Project, ROLE_TITLE, type Task } from "@ho/protocol";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import { environmentGuide } from "./prompts-environment.ts";
 import {
@@ -28,8 +28,8 @@ const verifyGuide = (project: Project, task: Task): string => {
   return `Done means \`${project.verify.command}\` passes. Run it yourself before you report. The office runs it again on your HEAD commit in a container with no network and an empty home directory, so everything the command needs must live under ${REPO_IN_VOLUME}; a failure comes back to you with the output, ${String(left)} more time(s) before the task is blocked. ${COMMIT_RULE}`;
 };
 
-const budgetGuide = (agent: Agent): string =>
-  `Budget: ${String(agent.budgets.maxTurnsPerTask)} tool turns for this task across all its sessions and ${String(agent.budgets.maxWallMinutes)} minutes for this session. Commit at every working checkpoint: uncommitted changes are lost when the budget runs out, committed ones are kept for the next session.`;
+const budgetGuide = (f: SessionFacts): string =>
+  `Budget: this is a ${f.task.shape} task, so you have ${String(f.budget.turns)} tool turns left in this round and ${String(f.budget.wallMinutes)} minutes for this session. Commit at every working checkpoint: uncommitted changes are lost when the budget runs out, committed ones are kept for the next session.`;
 
 const publishGuide = (task: Task, project: Project): string =>
   (task.publish ?? project.publish.mode) === "pull-request"
@@ -70,7 +70,7 @@ export const workPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   `Task: ${f.task.title}`,
   criteriaGuide(f.task, "You are done when every one of these holds:"),
   verifyGuide(f.project, f.task),
-  budgetGuide(f.agent),
+  budgetGuide(f),
   publishGuide(f.task, f.project),
   reviewersGuide(model, f.task),
   filesGuide(f.files),

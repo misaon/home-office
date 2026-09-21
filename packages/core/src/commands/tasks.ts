@@ -82,6 +82,7 @@ export const newTask = (
     publish?: Task["publish"] | undefined;
     browser?: Task["browser"] | undefined;
     reviews?: Task["reviews"] | undefined;
+    shape?: Task["shape"] | undefined;
     dependsOn?: Task["dependsOn"] | undefined;
     artifacts?: Task["artifacts"] | undefined;
   },
@@ -94,6 +95,7 @@ export const newTask = (
   brief: fields.brief,
   ...compact({ spec: fields.spec, publish: fields.publish, browser: fields.browser }),
   reviews: fields.reviews ?? NO_REVIEWS,
+  shape: fields.shape ?? "routine",
   status: fields.assigneeId === undefined ? "inbox" : "assigned",
   ...compact({ assigneeId: fields.assigneeId }),
   reviewRounds: 0,

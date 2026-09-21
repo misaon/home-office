@@ -4,6 +4,7 @@ import {
   fileReport,
   patchTaskArtifacts,
   postAgentMessage,
+  raiseTaskShape,
   recordEvidence,
   transitionTask,
 } from "@ho/core";
@@ -13,12 +14,14 @@ import {
   compact,
   type HoReportInput,
   type Project,
+  shapeFloorOf,
   SYSTEM_ACTOR,
   type Task,
 } from "@ho/protocol";
 import { pushFromVolume } from "./git-bridge.ts";
 import { pushMirrorBranch } from "./mirrors.ts";
 import { candidateOf, settledTrace } from "./session-candidate.ts";
+import { diffSummary } from "./session-checkout.ts";
 import { traceFor } from "./session-ids.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import type { Outcome } from "./session-run.ts";
@@ -67,6 +70,33 @@ const record = (
   deps.office
     .traced(traceFor(ctx))
     .execute(SYSTEM_ACTOR, (m, c) => patchTaskArtifacts(m, ctx.task.id, artifacts, c));
+
+const raiseShapeByDiff = async (
+  deps: SessionDeps,
+  ctx: SessionContext,
+  provisioned: Provisioned,
+  project: Project,
+): Promise<void> => {
+  const diff = await diffSummary(deps, provisioned.volume, project.defaultBranch);
+  if (diff === null) {
+    return;
+  }
+  const lines = diff.insertions + diff.deletions;
+  await deps.office
+    .traced(traceFor(ctx))
+    .execute(SYSTEM_ACTOR, (m, c) =>
+      raiseTaskShape(
+        m,
+        ctx.task.id,
+        {
+          floor: shapeFloorOf(lines),
+          reason: `the diff against ${project.defaultBranch} has ${String(diff.files)} file(s) and ${String(lines)} changed line(s)`,
+        },
+        c,
+      ),
+    )
+    .catch(() => null);
+};
 
 const authorEvidence = (
   deps: SessionDeps,
@@ -153,6 +183,7 @@ async function settleWork(
     return;
   }
   await authorEvidence(deps, ctx, filed, candidate.sha, deps.mcp.reportFiles(provisioned.mcpToken));
+  await raiseShapeByDiff(deps, ctx, provisioned, project);
   const pushMs = await pushBranch(deps, ctx, project, provisioned, candidate.sha);
   await record(deps, ctx, { branch: provisioned.branch, commit: candidate.sha, report: summary });
   if (office.model.tasks.get(ctx.task.id)?.status === "in_progress") {

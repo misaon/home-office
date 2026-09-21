@@ -27,6 +27,10 @@ description: Load before the first ho_delegate or ho_plan of a triage session, a
    - `outOfScope`: nearby work you are deliberately leaving out, so the developer does not drift.
    - `context`: only what the repository cannot tell: decisions already made, links, prior art. No
      pasted code.
+   - `shape`: `mechanical` for a rename, a copy or link change, a dependency bump, a one-line fix;
+     `routine` for an ordinary change with logic or layout to get right; `risky` for
+     authentication, payments, data migrations, public APIs, anything hard to reverse. The office
+     sizes budgets, effort and review depth by it and raises it when the diff turns out larger.
    - `qa: true` when a tester can exercise the result (user-visible behaviour, an API or data
      change); `security: true` when the change touches authentication, authorisation, input
      handling, secrets, cryptography, network exposure, dependencies or a hot path. The head of

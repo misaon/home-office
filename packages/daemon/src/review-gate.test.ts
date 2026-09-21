@@ -62,6 +62,7 @@ test("creating a task that asks for a reviewer the floor lacks is refused up fro
       title: "needs QA",
       brief: "",
       priority: "normal",
+      shape: "routine",
       reviews: { qa: true, security: false, head: true },
     },
     human(),
@@ -70,7 +71,7 @@ test("creating a task that asks for a reviewer the floor lacks is refused up fro
   expect(refused.ok ? "" : describeDomainError(refused.error)).toContain("QA engineer");
   const allowed = createTask(
     model,
-    { projectId: PROJECT, title: "no QA", brief: "", priority: "normal" },
+    { projectId: PROJECT, title: "no QA", brief: "", priority: "normal", shape: "routine" },
     human(),
   );
   expect(allowed.ok).toBe(true);

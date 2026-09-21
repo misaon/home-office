@@ -37,6 +37,7 @@ import {
   MandateStatus,
 } from "./mandate.ts";
 import { Session, SessionRuntime } from "./session.ts";
+import { TaskShape } from "./shape.ts";
 import { ReviewStage, SessionServices } from "./roles.ts";
 
 const Envelope = z.object({ id: EventId, at: IsoDateTime, actor: Actor });
@@ -73,6 +74,12 @@ export const DomainEvent = z.discriminatedUnion("type", [
     reason: z.string().max(2000).optional(),
   }),
   event("task.artifacts_changed", { taskId: TaskId, artifacts: TaskArtifacts }),
+  event("task.shape_raised", {
+    taskId: TaskId,
+    from: TaskShape,
+    to: TaskShape,
+    reason: z.string().max(500),
+  }),
   event("task.note_added", { taskId: TaskId, note: TaskNote }),
   event("task.review_recorded", {
     taskId: TaskId,

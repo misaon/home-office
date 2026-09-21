@@ -127,6 +127,7 @@ function seed(agents: number, tasks: number): StoredEvent[] {
           source: { kind: "manual" },
           artifacts: {},
           priority: "normal",
+          shape: "routine",
           createdAt: AT,
           updatedAt: AT,
         },

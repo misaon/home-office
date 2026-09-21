@@ -8,6 +8,7 @@ import {
   clip,
   type CommitSha,
   isSessionActive,
+  MECHANICAL_MAX_LINES,
   type Project,
   ROLE_TITLE,
   type Session,
@@ -56,6 +57,7 @@ export type SessionFacts = {
   services: Services;
   environment: EnvironmentReport | null;
   network: "bridge" | "none";
+  budget: { turns: number; wallMinutes: number };
 };
 
 export const SANDBOX =
@@ -203,7 +205,6 @@ export const criteriaGuide = (
         })
         .join("\n")}`;
 
-const SMALL_CHANGE_LINES = 60;
 const MEDIUM_CHANGE_LINES = 400;
 
 export const changeSizeGuide = (diff: DiffSummary | null, defaultBranch: string): string => {
@@ -212,7 +213,7 @@ export const changeSizeGuide = (diff: DiffSummary | null, defaultBranch: string)
   }
   const lines = diff.insertions + diff.deletions;
   const effort =
-    lines <= SMALL_CHANGE_LINES
+    lines <= MECHANICAL_MAX_LINES
       ? "a small change: one careful pass over the diff, the checks or the one page it touches, and your verdict, in about fifteen turns; do not reinstall or rebuild what the environment already prepared"
       : lines <= MEDIUM_CHANGE_LINES
         ? "a medium change: read every hunk, run the checks once and exercise each criterion once, in about thirty turns"
@@ -229,6 +230,9 @@ export const rosterLines = (model: ReadModel, project: Project, except: Agent["i
           sessionsOfAgent(model, agent.id).filter((s) => isSessionActive(s.state)).length,
         )})`,
     );
+
+export const SHAPE_GUIDE =
+  "Set shape on every ho_delegate: mechanical for a rename, a copy or link change, a dependency bump, a one-line fix, anything with no logic to get wrong; routine for an ordinary change with logic, layout or tests to get right; risky for authentication, authorisation, payments, data migrations, public APIs, anything hard to reverse or with security exposure. The office sizes the turn and time budgets, the effort and the depth of review by the shape (mechanical: 40 work turns, 15 review turns, 15 minutes a session; routine: 120, 40, 30; risky: 200, 60, 60, plus an independent verification of the whole result), and raises it when the diff turns out larger than the shape suggests.";
 
 export const REVIEW_FLAGS =
   "Set qa and security deliberately on every ho_delegate: qa true when a tester can exercise behaviour — a flow, a form, an API or data change, anything with states to walk through — and false for content, copy, styling, documentation, configuration and refactors, where the head of development checks the result in the browser without a separate QA pass; security true when the change touches authentication, authorisation, input handling, secrets, cryptography, network exposure, dependencies or a hot path where performance matters. The head of development reviews every task last. A flag names a role this floor must have: when nobody holds it, ho_delegate refuses, and you either hire that role first or set the flag false and say why in context. A review is never skipped silently.";

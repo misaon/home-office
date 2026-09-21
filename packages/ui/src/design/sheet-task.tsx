@@ -208,6 +208,9 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
     <SheetShell title={task.title} titleClass="text-14 leading-card text-pretty">
       <div className="flex gap-6 mb-16 flex-wrap">
         <span className={`${TAG} ${tone}`}>{t(`priority.${task.priority}`)}</span>
+        {task.kind === "code" ? (
+          <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`shape.${task.shape}`)}</span>
+        ) : null}
         <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`taskKind.${task.kind}`)}</span>
         <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`status.${task.status}`)}</span>
       </div>

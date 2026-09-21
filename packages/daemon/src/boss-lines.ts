@@ -166,11 +166,12 @@ export const createdLine = (
   const reviewers = reviewChain(model, task).map((reviewer) => bold(reviewer.name));
   const pullRequest = project.publish.mode === "pull-request" || task.publish === "pull-request";
   const to = bold(nameOf(model, voice, task.assigneeId));
+  const shaped = `${quote(task)} ${voice.shape(task.shape)}`;
   return byBoss
-    ? voice.handed(quote(task), to, reviewers, pullRequest)
+    ? voice.handed(shaped, to, reviewers, pullRequest)
     : voice.handedBy(
         bold(nameOf(model, voice, task.source.byAgentId)),
-        quote(task),
+        shaped,
         to,
         reviewers,
         pullRequest,

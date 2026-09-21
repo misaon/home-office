@@ -30,6 +30,7 @@ import {
   type StewardDeps,
 } from "./mandate-actions.ts";
 import { decisionBrief, failureReason } from "./mandate-report.ts";
+import { noticeUnconfiguredFloor } from "./floor-notice.ts";
 import { followEvents, type Office } from "./office.ts";
 
 const FOLLOWED: readonly StoredEvent["type"][] = [
@@ -149,6 +150,7 @@ export class MandateSteward {
       return;
     }
     this.#baseline(mandate, project);
+    await noticeUnconfiguredFloor(this.#deps, mandate, project);
     const assessment = assessMandate(office.model, mandate, project.acceptance);
     log.debug(
       { mandateId, status: mandate.status, round: mandate.round, assessment: assessment.kind },

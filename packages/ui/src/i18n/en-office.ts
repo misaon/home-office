@@ -4,6 +4,11 @@ export const enOffice = {
     normal: "normal",
     low: "low",
   },
+  shape: {
+    mechanical: "mechanical",
+    routine: "routine",
+    risky: "risky",
+  },
   taskKind: {
     code: "code",
     triage: "triage",

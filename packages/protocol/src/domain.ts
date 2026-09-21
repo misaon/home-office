@@ -22,6 +22,7 @@ import {
   VerifyPolicy,
 } from "./policies.ts";
 import { AgentRole, ReviewPlan, TaskKind } from "./roles.ts";
+import { TaskShape } from "./shape.ts";
 import { Budgets } from "./usage.ts";
 
 export * from "./policies.ts";
@@ -217,6 +218,7 @@ export const Task = z.object({
   publish: PublishMode.optional(),
   browser: z.boolean().optional(),
   reviews: ReviewPlan.prefault({}),
+  shape: TaskShape.default("routine"),
   rating: TaskRating.optional(),
   reviewRounds: z.int().nonnegative().default(0),
   notes: z.array(TaskNote).default([]),

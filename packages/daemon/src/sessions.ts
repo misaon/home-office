@@ -7,6 +7,7 @@ import {
   sessionBudget,
   startSession,
   transitionTask,
+  wallMinutesFor,
 } from "@ho/core";
 import {
   compact,
@@ -154,14 +155,11 @@ export class SessionManager {
       throw new Error(reason, { cause: error });
     }
     const controller = new AbortController();
+    const wallMinutes = wallMinutesFor(agent, task);
     const wall = setTimeout(() => {
-      log.warn({ sessionId: session.id, taskId }, "wall-time budget exhausted");
-      controller.abort(
-        new Error(
-          `wall-time budget of ${String(agent.budgets.maxWallMinutes)} minute(s) exhausted`,
-        ),
-      );
-    }, agent.budgets.maxWallMinutes * 60_000);
+      log.warn({ sessionId: session.id, taskId, wallMinutes }, "wall-time budget exhausted");
+      controller.abort(new Error(`wall-time budget of ${String(wallMinutes)} minute(s) exhausted`));
+    }, wallMinutes * 60_000);
     if (this.#stopping) {
       controller.abort(new Error("daemon is stopping"));
     }
@@ -186,7 +184,7 @@ export class SessionManager {
       taskId,
       controller,
       done,
-      spent: { toolCalls: 0, costUsd: null },
+      spent: { toolCalls: 0, costUsd: null, overheadWarned: false },
     });
     return session;
   }
@@ -259,7 +257,7 @@ export class SessionManager {
       this.#deps,
       ctx,
       event,
-      running?.spent ?? { toolCalls: 0, costUsd: null },
+      running?.spent ?? { toolCalls: 0, costUsd: null, overheadWarned: false },
     );
     if (reason !== null) {
       running?.controller.abort(new Error(reason));

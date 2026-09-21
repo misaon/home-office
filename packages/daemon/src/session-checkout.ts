@@ -65,7 +65,7 @@ const parseShortstat = (stdout: string): DiffSummary | null => {
   };
 };
 
-const diffSummary = async (
+export const diffSummary = async (
   deps: SessionDeps,
   volume: string,
   defaultBranch: string,

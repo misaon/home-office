@@ -6,6 +6,7 @@ import {
   CHAT_STYLE,
   filesGuide,
   REVIEW_FLAGS,
+  SHAPE_GUIDE,
   rosterLines,
   type SessionFacts,
 } from "./prompts-shared.ts";
@@ -52,6 +53,7 @@ export const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
         : "- nobody yet: you do the work yourself")
     }`,
     staff.length === 0 ? "" : routingGuide(roles),
+    SHAPE_GUIDE,
     REVIEW_FLAGS,
     ACCEPTANCE,
     f.project.hiring.enabled

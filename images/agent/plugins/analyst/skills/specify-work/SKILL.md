@@ -30,7 +30,10 @@ description: Load at the start of every plan session, before the first ho_delega
    only what the repository cannot tell the developer: decisions, links, the human's own words. No
    pasted code.
 7. Choose the assignee by the code the task touches: backend, frontend, DevOps or the general
-   developer; the secretary for documentation and mechanical errands. Set `qa: true` when a tester
+   developer; the secretary for documentation and mechanical errands. Set `shape`: `mechanical`
+   for a rename, a copy change, a dependency bump or a one-line fix, `routine` for an ordinary
+   change with logic to get right, `risky` for authentication, payments, migrations, public APIs
+   or anything hard to reverse; budgets, effort and review depth follow it. Set `qa: true` when a tester
    can exercise the outcome, `security: true` when the task touches authentication, authorisation,
    input handling, secrets, cryptography, network exposure, dependencies or a hot path, and
    `browser: true` only for work that must be seen in a browser. A flag names a role the floor must

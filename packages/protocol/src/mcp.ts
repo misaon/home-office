@@ -11,6 +11,7 @@ import {
 import { TaskId } from "./ids.ts";
 import { CRITERION_MAX, MANDATE_CRITERIA_MAX, PROOF_MAX } from "./mandate.ts";
 import { CRITERIA_MAX, FIDELITY_FIELDS } from "./mcp-evidence.ts";
+import { TaskShape } from "./shape.ts";
 import { StaffRole } from "./roles.ts";
 
 export const HoReportInput = z.object({
@@ -157,6 +158,9 @@ export const HoDelegateInput = z.object({
     .describe(
       "true only when the result must be seen in a browser (UI changes, screenshots): the worker and the reviewer then get headless Chromium with Playwright tools. Omit for everything else.",
     ),
+  shape: TaskShape.describe(
+    "mechanical: a rename, a copy or link change, a dependency bump, a one-line fix, anything with no logic to get wrong; routine: an ordinary change with logic, layout or tests to get right; risky: authentication, authorisation, payments, data migrations, public APIs, anything hard to reverse or with security exposure. The office sizes the budgets, the effort and the depth of review by it, and raises it when the diff turns out larger than the shape suggests.",
+  ),
   qa: z
     .boolean()
     .describe(

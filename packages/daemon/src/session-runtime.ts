@@ -1,4 +1,11 @@
-import { attachmentsOfTask, escalatedEffort, type RuntimeSession, setbacksOf } from "@ho/core";
+import {
+  attachmentsOfTask,
+  escalatedEffort,
+  shapedEffort,
+  wallMinutesFor,
+  type RuntimeSession,
+  setbacksOf,
+} from "@ho/core";
 import { imageRefFor, PROVIDERS, type SessionRuntime } from "@ho/protocol";
 import { browserMcpServers } from "./browser.ts";
 import type { EnvironmentReport } from "./environment-report.ts";
@@ -59,6 +66,7 @@ export const prepare = (
       services: provisioned.services,
       environment,
       network: deps.config.docker.network === "none" ? "none" : "bridge",
+      budget: { turns: ctx.budget.turns, wallMinutes: wallMinutesFor(ctx.agent, ctx.task) },
     },
     deps.office.model,
   );
@@ -71,7 +79,12 @@ export const prepare = (
     runtime: {
       model: ctx.agent.model,
       effort: escalatedEffort(
-        ctx.agent.effort,
+        shapedEffort(
+          ctx.agent.effort,
+          PROVIDERS[ctx.agent.provider].effortLevels,
+          ctx.task.shape,
+          ctx.session.mode,
+        ),
         PROVIDERS[ctx.agent.provider].effortLevels,
         setbacksFor(ctx),
       ),

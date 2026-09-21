@@ -8,6 +8,7 @@ import type {
   ChatMessageId,
   EvidenceBlocker,
   EvidenceFidelity,
+  TaskShape,
   ChatThreadId,
   MandateId,
   MandateStatus,
@@ -70,6 +71,7 @@ export type Card = {
   commit: string | null;
   buildsOn: readonly string[];
   reviews: ReviewPlan;
+  shape: TaskShape;
   missingReviews: readonly ReviewStage[];
   at: string;
 };

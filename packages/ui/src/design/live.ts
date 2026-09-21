@@ -103,6 +103,7 @@ function cardOf(task: Task, snapshot: Snapshot): Card {
     commit: task.artifacts.commit ?? null,
     buildsOn: task.dependsOn.map((id) => snapshot.tasks.get(id)?.title ?? id.slice(-8)),
     reviews: task.reviews,
+    shape: task.shape,
     missingReviews:
       task.kind === "work" ? reviewPlanOf(rosterOf(snapshot, task.projectId), task).missing : [],
     at: clock(task.updatedAt),

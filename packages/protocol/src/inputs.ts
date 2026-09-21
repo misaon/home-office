@@ -26,6 +26,7 @@ import { AgentId, ChatThreadId, MandateId, ProjectId, SessionId, TaskId } from "
 import { MandateStatus } from "./mandate.ts";
 import { patchOf } from "./patch.ts";
 import { ReviewPlan, ReviewStage } from "./roles.ts";
+import { TaskShape } from "./shape.ts";
 
 const ProjectFields = Project.pick({
   name: true,
@@ -125,6 +126,7 @@ export const TaskCreateInput = z.object({
   title: Task.shape.title,
   brief: Task.shape.brief.default(""),
   priority: TaskPriority.default("normal"),
+  shape: TaskShape.default("routine"),
   assigneeId: AgentId.optional(),
   browser: z.boolean().optional(),
   reviews: ReviewPlan.optional(),

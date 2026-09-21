@@ -1,4 +1,11 @@
-import { compact, ReviewStage, TaskPriority, TaskRating, TaskStatus } from "@ho/protocol";
+import {
+  compact,
+  ReviewStage,
+  TaskPriority,
+  TaskRating,
+  TaskShape,
+  TaskStatus,
+} from "@ho/protocol";
 import { z } from "zod";
 import { bool, list, required, str } from "../flags.ts";
 import { type Command, output } from "../cli.ts";
@@ -29,7 +36,7 @@ export const taskCommand: Command = {
         return output(
           tasks.map(
             (t) =>
-              `${t.id}  ${t.status.padEnd(11)}  ${t.priority.padEnd(6)}  ${t.title}${t.assigneeId === undefined ? "" : `  → ${t.assigneeId}`}`,
+              `${t.id}  ${t.status.padEnd(11)}  ${t.priority.padEnd(6)}  ${t.shape.padEnd(10)}  ${t.title}${t.assigneeId === undefined ? "" : `  → ${t.assigneeId}`}`,
           ),
           tasks,
         );
@@ -42,6 +49,7 @@ export const taskCommand: Command = {
         brief: "<text>",
         assignee: "<agent>",
         priority: "low|normal|high",
+        shape: "mechanical|routine|risky",
       },
       booleans: ["browser", "qa", "security", "no-head-review"],
       repeatable: { "depends-on": "<task>" },
@@ -70,6 +78,7 @@ export const taskCommand: Command = {
             brief: str(parsed, "brief"),
             assigneeId,
             priority: TaskPriority.optional().parse(str(parsed, "priority")),
+            shape: TaskShape.optional().parse(str(parsed, "shape")),
             browser: bool(parsed, "browser") ? true : undefined,
             reviews: qa || security || !head ? { qa, security, head } : undefined,
             dependsOn: dependsOn.length === 0 ? undefined : dependsOn,

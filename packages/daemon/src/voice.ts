@@ -1,4 +1,10 @@
-import { type AgentRole, type ChatLanguage, type EffortLevel, ROLE_TITLE } from "@ho/protocol";
+import {
+  type AgentRole,
+  type ChatLanguage,
+  type EffortLevel,
+  ROLE_TITLE,
+  type TaskShape,
+} from "@ho/protocol";
 
 export type ChecksState = "none" | "passed" | "failed" | "not_run";
 
@@ -48,6 +54,8 @@ export type Voice = {
   showResult: string;
   somebody: string;
   colleague: string;
+  shape: (shape: TaskShape) => string;
+  unconfiguredFloor: (suggestion: string | null) => string;
 };
 
 export const bold = (text: string): string => `**${text}**`;
@@ -137,6 +145,9 @@ const EN: Voice = {
   showResult: "Have a look at the result:",
   somebody: "somebody",
   colleague: "a colleague",
+  shape: (shape) => `(${shape})`,
+  unconfiguredFloor: (suggestion) =>
+    `🧭 This floor has no \`environment\` and no \`verify.command\` in .ho/config.json, so nothing runs automatically and every result rests on the reviewers alone.${suggestion === null ? "" : ` Suggested from the repository:\n\`\`\`json\n${suggestion}\n\`\`\``}`,
 };
 
 const ROLE_CS: Readonly<Record<AgentRole, string>> = {
@@ -150,6 +161,12 @@ const ROLE_CS: Readonly<Record<AgentRole, string>> = {
   security: "bezpečnostní inženýr",
   head: "vedoucí vývoje",
   developer: "vývojář",
+};
+
+const CS_SHAPE: Readonly<Record<TaskShape, string>> = {
+  mechanical: "mechanický",
+  routine: "běžný",
+  risky: "rizikový",
 };
 
 const pluralCs = (count: number, one: string, few: string, many: string): string =>
@@ -225,6 +242,9 @@ const CS: Voice = {
   showResult: "Podívejte se na výsledek:",
   somebody: "někdo",
   colleague: "kolega",
+  shape: (shape) => `(${CS_SHAPE[shape]})`,
+  unconfiguredFloor: (suggestion) =>
+    `🧭 Toto patro nemá v .ho/config.json žádné \`environment\` ani \`verify.command\`, takže automaticky neběží nic a každý výsledek stojí jen na reviewerech.${suggestion === null ? "" : ` Návrh podle repozitáře:\n\`\`\`json\n${suggestion}\n\`\`\``}`,
 };
 
 const VOICES: Readonly<Record<ChatLanguage, Voice>> = { en: EN, cs: CS };

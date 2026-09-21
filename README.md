@@ -69,6 +69,11 @@ the secretary and an obvious change to the right developer, and hands everything
 who reads the repository and creates the tasks. Delegation takes a goal in one sentence and acceptance
 criteria written so that someone else can check them, plus what must not change and what is
 deliberately out of scope. If nobody can write a checkable criterion, they ask you instead of guessing.
+Every task also carries a shape: `mechanical` (a rename, a copy change, a dependency bump), `routine`
+(an ordinary change with logic to get right) or `risky` (authentication, payments, migrations, public
+APIs). The shape sizes the turn and time budgets, the effort and the depth of review, a risky task gets
+an independent verification even on its own, and the office raises the shape when the diff turns out
+larger than announced.
 
 **Your checks are the gate, and they gate a commit.** Set one command per floor — `bun run check`,
 `make test`, whatever you already use. When the agent reports, the office reads the exact commit at
