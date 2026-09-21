@@ -77,7 +77,37 @@ const raiseOldTurnDefault: Migration = {
   },
 };
 
-const MIGRATIONS: readonly Migration[] = [renameAgentRole, raiseOldTurnDefault];
+const dropNamedEvidenceFiles: Migration = {
+  describe:
+    "evidence files became stored attachments; the bare file names recorded before that are dropped, the screenshots themselves stay on the chat message that carried them",
+  apply: (event) => {
+    if (event.type !== "mandate.evidence_recorded") {
+      return event;
+    }
+    const { payload } = event;
+    if (!isRecord(payload) || !isRecord(payload["evidence"])) {
+      return event;
+    }
+    const evidence: Record<string, unknown> = payload["evidence"];
+    const { files } = evidence;
+    if (!Array.isArray(files) || files.every((file) => isRecord(file))) {
+      return event;
+    }
+    return {
+      ...event,
+      payload: {
+        ...payload,
+        evidence: { ...evidence, files: files.filter((file) => isRecord(file)) },
+      },
+    };
+  },
+};
+
+const MIGRATIONS: readonly Migration[] = [
+  renameAgentRole,
+  raiseOldTurnDefault,
+  dropNamedEvidenceFiles,
+];
 
 export const upcastStoredEvent = (event: RawStoredEvent): Upcast => {
   const retired = RETIRED_TYPES[event.type];
