@@ -85,6 +85,7 @@ async function wire(
   const mcpToken = mcp.register({
     sessionId: ctx.session.id,
     taskId: ctx.task.id,
+    mandateId: ctx.task.mandateId,
     agentId: ctx.agent.id,
     projectId: ctx.project.id,
     mode: ctx.session.mode,

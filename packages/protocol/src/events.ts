@@ -8,8 +8,6 @@ import {
   MailAck,
   MailItem,
   Project,
-  Session,
-  SessionRuntime,
   SessionState,
   Task,
   TaskArtifacts,
@@ -38,6 +36,7 @@ import {
   MandateCriterion,
   MandateStatus,
 } from "./mandate.ts";
+import { Session, SessionRuntime } from "./session.ts";
 import { ReviewStage, SessionServices } from "./roles.ts";
 
 const Envelope = z.object({ id: EventId, at: IsoDateTime, actor: Actor });
@@ -137,6 +136,8 @@ export const DomainEvent = z.discriminatedUnion("type", [
     sessionId: SessionId,
     usage: Usage,
     costUsd: z.number().nonnegative().optional(),
+    costBasis: z.string().max(40).optional(),
+    ttftMs: z.int().nonnegative().optional(),
   }),
   event("session.ended", {
     sessionId: SessionId,

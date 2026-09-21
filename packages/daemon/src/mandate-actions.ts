@@ -20,6 +20,7 @@ import type { DaemonConfig } from "./config.ts";
 import type { Logger } from "./logger.ts";
 import { integrateMandate } from "./mandate-integrate.ts";
 import { conflictReason, pullRequestBody, pullRequestTitle } from "./mandate-report.ts";
+import { requestSummary } from "./mandate-summary.ts";
 import { pushLocalBranch } from "./mirrors.ts";
 import type { Office } from "./office.ts";
 import { openPullRequest } from "./publish.ts";
@@ -40,20 +41,23 @@ export const setMandateStatus = (
   to: MandateStatus,
   reason: string,
 ): Promise<unknown> =>
-  deps.office.execute(SYSTEM_ACTOR, (m, c) =>
-    changeMandateStatus(m, mandate.id, to, clip(reason, REASON_MAX), c),
-  );
+  deps.office
+    .traced({ correlationId: mandate.id })
+    .execute(SYSTEM_ACTOR, (m, c) =>
+      changeMandateStatus(m, mandate.id, to, clip(reason, REASON_MAX), c),
+    );
 
 export async function recordBaselineFor(
   deps: StewardDeps,
   mandate: Mandate,
   project: Project,
 ): Promise<void> {
-  const { office, provider, config, home, log } = deps;
+  const { provider, config, home, log } = deps;
+  const office = deps.office.traced({ correlationId: mandate.id });
   const started = Bun.nanoseconds();
   try {
     const baseline = await runBaseline(provider, config, home, project, mandate, () =>
-      office.clock.now().toISOString(),
+      deps.office.clock.now().toISOString(),
     );
     await office.execute(SYSTEM_ACTOR, (m, c) => recordBaseline(m, mandate.id, baseline, c));
     log.info(
@@ -85,7 +89,8 @@ export async function integrate(
   project: Project,
   done: readonly Task[],
 ): Promise<IntegrationOutcome> {
-  const { office, provider, config, home, log } = deps;
+  const { provider, config, home, log } = deps;
+  const office = deps.office.traced({ correlationId: mandate.id });
   log.info({ mandateId: mandate.id, tasks: done.length }, "integrating the request");
   let outcome;
   try {
@@ -153,9 +158,9 @@ export async function fulfil(
         branch,
       );
       if (prUrl !== null) {
-        await office.execute(SYSTEM_ACTOR, (m, c) =>
-          patchMandateArtifacts(m, mandate.id, { prUrl }, c),
-        );
+        await deps.office
+          .traced({ correlationId: mandate.id })
+          .execute(SYSTEM_ACTOR, (m, c) => patchMandateArtifacts(m, mandate.id, { prUrl }, c));
       }
     } catch (error) {
       log.warn(
@@ -169,5 +174,10 @@ export async function fulfil(
     mandate,
     "fulfilled",
     "every condition holds on the integrated result",
+  );
+  const now = office.clock.now().toISOString();
+  log.info(
+    requestSummary(office.model, office.model.mandates.get(mandate.id) ?? mandate, now),
+    "request fulfilled",
   );
 }

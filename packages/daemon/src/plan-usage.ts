@@ -2,6 +2,7 @@ import { type ReadModel, recordSessionPlan } from "@ho/core";
 import {
   errorMessage,
   isSessionActive,
+  type LiveEvent,
   type PlanUsage,
   type PlanUsageStatus,
   type Session,
@@ -17,6 +18,9 @@ import { type PlanUsageOutcome, readPlanUsage } from "./plan-usage-source.ts";
 const ACTIVE_POLL_MS = 60_000;
 const IDLE_POLL_MS = 600_000;
 const SETTLE_POLL_MS = 10_000;
+const SAMPLE_FRESH_MS = 600_000;
+
+type LiveStream = (signal: AbortSignal) => AsyncIterable<LiveEvent>;
 const CACHE_READ_WEIGHT = 0.1;
 const SHARE_DECIMALS = 100;
 
@@ -44,7 +48,11 @@ export class PlanUsageMeter {
   readonly #office: Office;
   readonly #log: Logger;
   readonly #enabled: boolean;
+  readonly #live: LiveStream;
+  readonly #controller = new AbortController();
   readonly #tracked = new Map<SessionId, Tracked>();
+  #listening: Promise<void> | null = null;
+  #sampledAt = 0;
   #last: PlanUsage | null = null;
   #status: PlanUsageStatus = { kind: "off", reason: "the meter has not started" };
   #timer: ReturnType<typeof setTimeout> | null = null;
@@ -52,10 +60,11 @@ export class PlanUsageMeter {
   #polling: Promise<void> | null = null;
   #stopped = false;
 
-  constructor(office: Office, log: Logger, enabled: boolean) {
+  constructor(office: Office, log: Logger, enabled: boolean, live: LiveStream) {
     this.#office = office;
     this.#log = log;
     this.#enabled = enabled;
+    this.#live = live;
   }
 
   status(): PlanUsageStatus {
@@ -81,6 +90,7 @@ export class PlanUsageMeter {
       this.#log,
       "plan usage",
     );
+    this.#listening = this.#listen();
     this.#schedule(0);
   }
 
@@ -90,8 +100,30 @@ export class PlanUsageMeter {
       clearTimeout(this.#timer);
       this.#timer = null;
     }
+    this.#controller.abort();
     await this.#following?.stop();
+    await this.#listening;
     await this.#polling;
+  }
+
+  async #listen(): Promise<void> {
+    try {
+      for await (const live of this.#live(this.#controller.signal)) {
+        if (live.event.kind === "plan_window") {
+          this.#sample(live.at, live.event);
+        }
+      }
+    } catch (error) {
+      this.#log.warn({ err: errorMessage(error) }, "plan usage stopped listening to sessions");
+    }
+  }
+
+  #sample(at: string, window: Extract<LiveEvent["event"], { kind: "plan_window" }>): void {
+    const usage: PlanUsage = { at, fiveHour: window.fiveHour, sevenDay: window.sevenDay };
+    this.#attribute(usage);
+    this.#last = usage;
+    this.#sampledAt = Date.now();
+    this.#status = { kind: "ok", usage, running: this.#running() };
   }
 
   #track(session: Session): void {
@@ -148,6 +180,11 @@ export class PlanUsageMeter {
       this.#attribute(outcome.usage);
       this.#last = outcome.usage;
       this.#status = { kind: "ok", usage: outcome.usage, running: this.#running() };
+    } else if (Date.now() - this.#sampledAt < SAMPLE_FRESH_MS) {
+      this.#log.debug(
+        { kind: outcome.kind, message: outcome.message },
+        "plan usage endpoint not read; keeping the runtime's own sample",
+      );
     } else {
       this.#status = outcome;
       this.#log.debug({ kind: outcome.kind, message: outcome.message }, "plan usage not read");

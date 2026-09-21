@@ -52,6 +52,7 @@ export const sandboxSpec = (
     [LABELS.managed]: "true",
     [LABELS.kind]: "session",
     [LABELS.session]: ctx.session.id,
+    [LABELS.task]: ctx.task.id,
     [LABELS.project]: ctx.project.id,
   },
   network: config.docker.network,

@@ -33,7 +33,9 @@ export async function startFloorJobs(deps: Deps): Promise<FloorJobs> {
   steward.start();
   const officeFiles = new OfficeConfigSync(office, home, log);
   officeFiles.start();
-  const plan = new PlanUsageMeter(office, log, config.plan.enabled);
+  const plan = new PlanUsageMeter(office, log, config.plan.enabled, (signal) =>
+    sessions.stream(null, signal),
+  );
   plan.start();
   return {
     planUsage: () => plan.status(),

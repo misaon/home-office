@@ -3,7 +3,7 @@ import { githubRepoFromUrl, HUMAN_ACTOR, type Project, type TaskId } from "@ho/p
 import { exec } from "./host-exec.ts";
 import { daemonLog } from "./logger.ts";
 import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
-import type { Office } from "./office.ts";
+import type { Commands } from "./office.ts";
 
 const GH_TIMEOUT_MS = 120_000;
 
@@ -178,7 +178,7 @@ const pushBranchToOrigin = async (
 };
 
 export async function publishTask(
-  office: Office,
+  office: Commands,
   home: string,
   taskId: TaskId,
 ): Promise<Published> {

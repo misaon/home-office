@@ -92,6 +92,10 @@ export class McpGateway {
       { instructions: INSTRUCTIONS[mode] },
     );
     const actor: Actor = { kind: "agent", agentId: entry.ctx.agentId };
+    const office = this.#office.traced({
+      correlationId: entry.ctx.mandateId,
+      causationId: sessionId,
+    });
     for (const tool of TOOLS) {
       if (
         !tool.modes.includes(mode) ||
@@ -109,7 +113,7 @@ export class McpGateway {
             "mcp tool called",
           );
           try {
-            const answer = text(await tool.handle(input, this.#office, entry, actor));
+            const answer = text(await tool.handle(input, office, entry, actor));
             const ms = elapsedMs(started);
             this.#traces.mcp(sessionId, { tool: tool.name, ok: true, ms });
             this.#log.debug(

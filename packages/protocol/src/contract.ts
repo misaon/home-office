@@ -1,6 +1,7 @@
 import { eventIterator, oc } from "@orpc/contract";
 import { z } from "zod";
-import { Agent, ChatMessage, IsoDateTime, MailItem, Project, Session, Task } from "./domain.ts";
+import { Agent, ChatMessage, IsoDateTime, MailItem, Project, Task } from "./domain.ts";
+import { Session } from "./session.ts";
 import { EvalInput, EvalScorecard } from "./evals.ts";
 import { RPC_ERRORS } from "./errors.ts";
 import { StoredEvent } from "./events.ts";

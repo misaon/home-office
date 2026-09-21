@@ -21,5 +21,6 @@ export * from "./providers.ts";
 export * from "./remote.ts";
 export * from "./repo.ts";
 export * from "./roles.ts";
+export * from "./session.ts";
 export * from "./runtime-events.ts";
 export * from "./upcast.ts";

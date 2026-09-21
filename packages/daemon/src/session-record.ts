@@ -1,6 +1,7 @@
 import { annotateTask } from "@ho/core";
 import { type Agent, type Project, type Session, SYSTEM_ACTOR, type Task } from "@ho/protocol";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
+import { idsOf } from "./session-ids.ts";
 import type { Ending } from "./session-run.ts";
 import type { SessionDeps } from "./sessions.ts";
 import type { TraceCounters } from "./traces.ts";
@@ -18,6 +19,7 @@ export const traceHeader = (
 ): Record<string, unknown> => ({
   sessionId: session.id,
   taskId: task.id,
+  mandateId: task.mandateId ?? null,
   agentId: agent.id,
   agent: agent.name,
   projectId: project.id,
@@ -61,6 +63,8 @@ export async function recordSessionEnd(
       endedAt: stored?.endedAt ?? null,
       durationMs,
       usage: stored?.usage ?? null,
+      costUsd: stored?.costUsd ?? null,
+      costBasis: stored?.costBasis ?? null,
       taskStatus: office.model.tasks.get(ctx.task.id)?.status ?? null,
     })
     .catch((error: unknown) => {
@@ -69,17 +73,23 @@ export async function recordSessionEnd(
     });
   log.info(
     {
-      sessionId,
-      taskId: ctx.task.id,
-      agent: ctx.agent.name,
+      ...idsOf(ctx),
       mode: ctx.session.mode,
       state: ending.state,
       reason: ending.reason,
       durationMs,
       usage: stored?.usage,
+      costUsd: stored?.costUsd,
+      costBasis: stored?.costBasis,
+      apiMs: stored?.usage.apiMs,
+      toolMs: counters?.toolMs,
       toolCalls: counters === null ? undefined : sum(counters.toolCalls),
       toolErrors: counters?.toolErrors,
       mcpRejections: counters?.mcpRejections,
+      idleWaits: counters?.idleWaits,
+      idleWaitSeconds: counters?.idleWaitSeconds,
+      maskedChecks: counters?.maskedChecks,
+      backgroundTasks: counters?.backgroundTasks,
       trace: counters === null ? undefined : traces.pathOf(sessionId),
     },
     "session ended",

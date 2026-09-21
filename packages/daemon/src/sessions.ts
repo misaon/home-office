@@ -126,9 +126,9 @@ export class SessionManager {
         "the session starts with few turns left in this round",
       );
     }
-    const session = await office.execute(SYSTEM_ACTOR, (m, ctx) =>
-      startSession(m, { taskId, agentId, mode }, ctx),
-    );
+    const session = await office
+      .traced({ correlationId: task.mandateId })
+      .execute(SYSTEM_ACTOR, (m, ctx) => startSession(m, { taskId, agentId, mode }, ctx));
     const previous =
       session.resumedFrom === undefined
         ? undefined
@@ -228,9 +228,10 @@ export class SessionManager {
   }
 
   #end(sessionId: SessionId, ending: Ending): Promise<Session> {
-    return this.#deps.office.execute(SYSTEM_ACTOR, (m, ctx) =>
-      endSession(m, { sessionId, state: ending.state, ...compact({ reason: ending.reason }) }, ctx),
-    );
+    const input = { sessionId, state: ending.state, ...compact({ reason: ending.reason }) };
+    return this.#deps.office
+      .traced({ causationId: sessionId })
+      .execute(SYSTEM_ACTOR, (m, ctx) => endSession(m, input, ctx));
   }
 
   async #block(taskId: TaskId, reason: string): Promise<void> {

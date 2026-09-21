@@ -1,69 +1,35 @@
-import { clip, compact, type RuntimeErrorCode, type RuntimeEvent } from "@ho/protocol";
-import { z } from "zod";
+import {
+  clip,
+  compact,
+  type PlanWindow,
+  type RuntimeErrorCode,
+  type RuntimeEvent,
+} from "@ho/protocol";
 import { fileChangeOf } from "./file-change.ts";
-
-const TextBlock = z.object({ type: z.literal("text"), text: z.string() });
-
-const ContentBlock = z.discriminatedUnion("type", [
+import {
+  type ContentBlock,
+  type ModelUsage,
+  type RateWindow,
+  type ResultLine,
+  StreamLine,
+  type SystemLine,
   TextBlock,
-  z.object({ type: z.literal("tool_use"), id: z.string(), name: z.string(), input: z.unknown() }),
-  z.object({
-    type: z.literal("tool_result"),
-    tool_use_id: z.string(),
-    content: z.union([z.string(), z.array(z.unknown())]).optional(),
-    is_error: z.boolean().optional(),
-  }),
-  z.object({ type: z.literal("thinking") }).loose(),
-]);
+  Usage,
+} from "./stream-json-schema.ts";
 
-const Usage = z.object({
-  input_tokens: z.int().nonnegative().default(0),
-  output_tokens: z.int().nonnegative().default(0),
-  cache_creation_input_tokens: z.int().nonnegative().default(0),
-  cache_read_input_tokens: z.int().nonnegative().default(0),
-});
-
-const StreamLine = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("system"),
-    subtype: z.string(),
-    session_id: z.string().optional(),
-    model: z.string().optional(),
-    tools: z.array(z.string()).optional(),
-    plugins: z.array(z.object({ name: z.string() })).optional(),
-    plugin_errors: z.array(z.object({ plugin: z.string(), message: z.string() })).optional(),
-    mcp_servers: z.array(z.object({ name: z.string(), status: z.string().optional() })).optional(),
-    error: z.string().optional(),
-    retry_delay_ms: z.int().optional(),
-    attempt: z.int().optional(),
-  }),
-  z.object({ type: z.literal("assistant"), message: z.object({ content: z.array(ContentBlock) }) }),
-  z.object({
-    type: z.literal("user"),
-    message: z.object({ content: z.union([z.string(), z.array(ContentBlock)]) }),
-    tool_use_result: z.unknown().optional(),
-  }),
-  z.object({
-    type: z.literal("stream_event"),
-    event: z.object({
-      type: z.string(),
-      delta: z.object({ type: z.string(), text: z.string().optional() }).optional(),
-    }),
-  }),
-  z.object({
-    type: z.literal("result"),
-    subtype: z.string(),
-    is_error: z.boolean(),
-    result: z.string().optional(),
-    structured_output: z.unknown().optional(),
-    session_id: z.string(),
-    num_turns: z.int(),
-    usage: Usage.optional(),
-    total_cost_usd: z.number().nonnegative().optional(),
-  }),
-]);
 const SPEND_LIMIT_PATTERN = /\b(?:spend|usage|weekly) limit\b/iu;
 const SUMMARY_MAX = 200;
+const SILENT_SYSTEM = new Set([
+  "status",
+  "thinking_tokens",
+  "task_started",
+  "task_updated",
+  "background_tasks_changed",
+  "vcs_state_changed",
+]);
+const EXIT_CODE = /exit code (?<code>-?\d+)/u;
+const PERCENT_DECIMALS = 10;
+
 const summarize = (content: string | unknown[] | undefined): string => {
   if (content === undefined) {
     return "";
@@ -79,8 +45,6 @@ const summarize = (content: string | unknown[] | undefined): string => {
           .join(" ");
   return clip(text, SUMMARY_MAX);
 };
-
-type ContentBlock = z.infer<typeof ContentBlock>;
 
 const userEvents = (content: string | ContentBlock[], toolUseResult: unknown): RuntimeEvent[] => {
   if (typeof content === "string") {
@@ -109,6 +73,121 @@ const RETRY_ERROR_CODES: Readonly<Record<string, RuntimeErrorCode>> = {
   invalid_request: "invalid_request",
 };
 
+const exitCodeOf = (summary: string): number | null => {
+  const code = EXIT_CODE.exec(summary)?.groups?.["code"];
+  return code === undefined ? null : Number(code);
+};
+
+const systemEvents = (
+  line: SystemLine,
+  raw: string,
+  now: () => Date,
+  onIgnored: (text: string) => void,
+): RuntimeEvent[] => {
+  if (line.subtype === "init" && line.session_id !== undefined) {
+    return [
+      {
+        kind: "init",
+        runtimeSessionId: line.session_id,
+        model: line.model ?? "unknown",
+        plugins: (line.plugins ?? []).map((p) => p.name),
+        pluginErrors: (line.plugin_errors ?? []).map((p) => `${p.plugin}: ${p.message}`),
+        tools: line.tools?.length ?? 0,
+        mcpServers: (line.mcp_servers ?? []).map((s) => s.name),
+      },
+    ];
+  }
+  if (line.subtype === "api_retry" && line.error === "rate_limit") {
+    const retryAt =
+      line.retry_delay_ms === undefined
+        ? null
+        : new Date(now().getTime() + line.retry_delay_ms).toISOString();
+    return [{ kind: "rate_limited", retryAt }];
+  }
+  const code = line.error === undefined ? undefined : RETRY_ERROR_CODES[line.error];
+  if (line.subtype === "api_retry" && code !== undefined) {
+    return [{ kind: "error", code, message: `api retry: ${line.error ?? ""}` }];
+  }
+  if (line.subtype === "task_notification") {
+    const summary = line.summary ?? "";
+    return [
+      {
+        kind: "background_done",
+        id: line.tool_use_id ?? line.task_id ?? "",
+        status: line.status ?? "unknown",
+        exitCode: exitCodeOf(summary),
+        summary: clip(summary, SUMMARY_MAX),
+      },
+    ];
+  }
+  if (!SILENT_SYSTEM.has(line.subtype)) {
+    onIgnored(raw);
+  }
+  return [];
+};
+
+const windowOf = (window: RateWindow | undefined): PlanWindow | null => {
+  if (window?.utilization === undefined || window.utilization === null) {
+    return null;
+  }
+  const percent = Math.round(window.utilization * 100 * PERCENT_DECIMALS) / PERCENT_DECIMALS;
+  const resetsAt =
+    window.resetsAt === undefined || window.resetsAt === null
+      ? null
+      : new Date(window.resetsAt * 1000).toISOString();
+  return { percent: Math.max(0, percent), resetsAt };
+};
+
+const costBasisOf = (modelUsage: ModelUsage): string | undefined => {
+  const bases = new Set(
+    Object.values(modelUsage)
+      .map((entry) => entry.costBasis)
+      .filter((basis): basis is string => basis !== undefined),
+  );
+  return bases.size === 0 ? undefined : [...bases].toSorted().join("+");
+};
+
+const resultEvents = (line: ResultLine): RuntimeEvent[] => {
+  const usage = line.usage ?? Usage.parse({});
+  const events: RuntimeEvent[] = [
+    {
+      kind: "usage",
+      usage: {
+        inputTokens: usage.input_tokens,
+        outputTokens: usage.output_tokens,
+        cacheReadTokens: usage.cache_read_input_tokens,
+        cacheWriteTokens: usage.cache_creation_input_tokens,
+        turns: line.num_turns,
+        ...compact({
+          thinkingTokens: usage.output_tokens_details?.thinking_tokens,
+          apiMs: line.duration_api_ms,
+        }),
+      },
+      ...compact({
+        costUsd: line.total_cost_usd,
+        costBasis: line.modelUsage === undefined ? undefined : costBasisOf(line.modelUsage),
+        ttftMs: line.ttft_ms,
+        wallMs: line.duration_ms,
+      }),
+    },
+  ];
+  if (line.is_error && line.subtype === "error_max_turns") {
+    events.push({ kind: "error", code: "max_turns", message: "turn budget exhausted" });
+  }
+  if (line.is_error && SPEND_LIMIT_PATTERN.test(line.result ?? "")) {
+    events.push({ kind: "rate_limited", retryAt: null });
+  }
+  events.push({
+    kind: "result",
+    ok: !line.is_error,
+    text: line.result ?? "",
+    ...compact({ structured: line.structured_output }),
+    turns: line.num_turns,
+    runtimeSessionId: line.session_id,
+  });
+  return events;
+};
+
 export function normalizeLine(
   raw: string,
   now: () => Date,
@@ -135,32 +214,7 @@ export function normalizeLine(
   const line = parsed.data;
   switch (line.type) {
     case "system": {
-      if (line.subtype === "init" && line.session_id !== undefined) {
-        return [
-          {
-            kind: "init",
-            runtimeSessionId: line.session_id,
-            model: line.model ?? "unknown",
-            plugins: (line.plugins ?? []).map((p) => p.name),
-            pluginErrors: (line.plugin_errors ?? []).map((p) => `${p.plugin}: ${p.message}`),
-            tools: line.tools?.length ?? 0,
-            mcpServers: (line.mcp_servers ?? []).map((s) => s.name),
-          },
-        ];
-      }
-      if (line.subtype === "api_retry" && line.error === "rate_limit") {
-        const retryAt =
-          line.retry_delay_ms === undefined
-            ? null
-            : new Date(now().getTime() + line.retry_delay_ms).toISOString();
-        return [{ kind: "rate_limited", retryAt }];
-      }
-      const code = line.error === undefined ? undefined : RETRY_ERROR_CODES[line.error];
-      if (line.subtype === "api_retry" && code !== undefined) {
-        return [{ kind: "error", code, message: `api retry: ${line.error ?? ""}` }];
-      }
-      onIgnored(raw);
-      return [];
+      return systemEvents(line, raw, now, onIgnored);
     }
     case "assistant": {
       return line.message.content.flatMap((block): RuntimeEvent[] =>
@@ -180,36 +234,21 @@ export function normalizeLine(
         ? [{ kind: "text_delta", text }]
         : [];
     }
-    case "result": {
-      const usage = line.usage ?? Usage.parse({});
-      const events: RuntimeEvent[] = [
+    case "rate_limit_event": {
+      const windows = line.rate_limit_info.unifiedWindows;
+      return [
         {
-          kind: "usage",
-          usage: {
-            inputTokens: usage.input_tokens,
-            outputTokens: usage.output_tokens,
-            cacheReadTokens: usage.cache_read_input_tokens,
-            cacheWriteTokens: usage.cache_creation_input_tokens,
-            turns: line.num_turns,
-          },
-          ...(line.total_cost_usd === undefined ? {} : { costUsd: line.total_cost_usd }),
+          kind: "plan_window",
+          fiveHour: windowOf(windows?.five_hour),
+          sevenDay: windowOf(windows?.seven_day),
         },
       ];
-      if (line.is_error && line.subtype === "error_max_turns") {
-        events.push({ kind: "error", code: "max_turns", message: "turn budget exhausted" });
-      }
-      if (line.is_error && SPEND_LIMIT_PATTERN.test(line.result ?? "")) {
-        events.push({ kind: "rate_limited", retryAt: null });
-      }
-      events.push({
-        kind: "result",
-        ok: !line.is_error,
-        text: line.result ?? "",
-        ...compact({ structured: line.structured_output }),
-        turns: line.num_turns,
-        runtimeSessionId: line.session_id,
-      });
-      return events;
+    }
+    case "tool_progress": {
+      return [];
+    }
+    case "result": {
+      return resultEvents(line);
     }
   }
   return [];

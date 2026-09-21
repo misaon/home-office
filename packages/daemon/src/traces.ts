@@ -2,6 +2,7 @@ import type { RunnerLine } from "@ho/core";
 import type { RuntimeEvent, SessionId } from "@ho/protocol";
 import { appendFile, chmod, mkdir, readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
+import { idleWaitSeconds, masksExitCode } from "./waste.ts";
 
 export type TraceLine = RunnerLine | { stream: "stdin"; text: string };
 
@@ -13,6 +14,11 @@ export type TraceCounters = {
   runtimeErrors: number;
   mcpCalls: number;
   mcpRejections: number;
+  toolMs: number;
+  idleWaits: number;
+  idleWaitSeconds: number;
+  maskedChecks: number;
+  backgroundTasks: number;
 };
 
 type TraceRecord = Record<string, unknown> & { kind: string };
@@ -24,6 +30,7 @@ type Open = {
   summary: Record<string, unknown>;
   counters: TraceCounters;
   secrets: Set<string>;
+  pending: Map<string, { name: string; at: number }>;
 };
 
 const INDEX_FILE = "index.jsonl";
@@ -39,6 +46,7 @@ const RECORDED_EVENTS = new Set<RuntimeEvent["kind"]>([
   "result",
   "error",
   "permission_request",
+  "background_done",
 ]);
 
 const CREDENTIAL_SHAPES: readonly RegExp[] = [
@@ -73,7 +81,7 @@ export const redactSecrets = (text: string, secrets: ReadonlySet<string>): strin
 };
 
 const partialDelta = (text: string): boolean =>
-  text.startsWith('{"type":"stream_event"') ||
+  (text.startsWith('{"type":"stream_event"') && !text.includes('"type":"message_delta"')) ||
   text.includes('"sessionUpdate":"agent_message_chunk"');
 
 const freshCounters = (): TraceCounters => ({
@@ -84,6 +92,11 @@ const freshCounters = (): TraceCounters => ({
   runtimeErrors: 0,
   mcpCalls: 0,
   mcpRejections: 0,
+  toolMs: 0,
+  idleWaits: 0,
+  idleWaitSeconds: 0,
+  maskedChecks: 0,
+  backgroundTasks: 0,
 });
 
 const settle = (result: number | Promise<number>): void => {
@@ -121,6 +134,7 @@ export class TraceStore {
       summary: {},
       counters: freshCounters(),
       secrets: new Set(),
+      pending: new Map(),
     };
     this.#open.set(sessionId, open);
     this.#emit(open, { kind: "open", ...header });
@@ -175,11 +189,27 @@ export class TraceStore {
     const { counters } = open;
     if (event.kind === "tool_call") {
       counters.toolCalls[event.name] = (counters.toolCalls[event.name] ?? 0) + 1;
+      open.pending.set(event.id, { name: event.name, at: Date.now() });
+      const seconds = idleWaitSeconds(event.name, event.input);
+      if (seconds > 0) {
+        counters.idleWaits += 1;
+        counters.idleWaitSeconds += seconds;
+      }
+      if (masksExitCode(event.name, event.input)) {
+        counters.maskedChecks += 1;
+      }
       return;
     }
     if (event.kind === "tool_result") {
       if (!event.ok) {
         counters.toolErrors += 1;
+      }
+      const started = open.pending.get(event.id);
+      if (started !== undefined) {
+        open.pending.delete(event.id);
+        const ms = Date.now() - started.at;
+        counters.toolMs += ms;
+        this.#emit(open, { kind: "tool", id: event.id, tool: started.name, ok: event.ok, ms });
       }
       return;
     }
@@ -187,6 +217,8 @@ export class TraceStore {
       counters.rateLimits += 1;
     } else if (event.kind === "error") {
       counters.runtimeErrors += 1;
+    } else if (event.kind === "background_done") {
+      counters.backgroundTasks += 1;
     }
     if (RECORDED_EVENTS.has(event.kind)) {
       this.#emit(open, { kind: "event", event });

@@ -1,7 +1,9 @@
 import { changeSessionState, rateLimitedReason, recordSessionUsage } from "@ho/core";
 import { budgetGuaranteesFor, clip, compact, type RuntimeEvent, SYSTEM_ACTOR } from "@ho/protocol";
+import { idsOf, traceFor } from "./session-ids.ts";
 import type { SessionContext } from "./session-provision.ts";
 import type { SessionDeps } from "./sessions.ts";
+import { idleWaitSeconds, masksExitCode } from "./waste.ts";
 
 const TRACE_MAX = 300;
 
@@ -64,7 +66,26 @@ const traceOf = (event: RuntimeEvent): Record<string, unknown> | null => {
       };
     }
     case "usage": {
-      return { ...event.usage };
+      return {
+        ...event.usage,
+        ...compact({
+          costUsd: event.costUsd,
+          costBasis: event.costBasis,
+          ttftMs: event.ttftMs,
+          wallMs: event.wallMs,
+        }),
+      };
+    }
+    case "background_done": {
+      return {
+        id: event.id,
+        status: event.status,
+        exitCode: event.exitCode,
+        summary: shorten(event.summary),
+      };
+    }
+    case "plan_window": {
+      return null;
     }
     case "context": {
       return {
@@ -123,17 +144,26 @@ const overBudget = (ctx: SessionContext, spent: Spent, event: RuntimeEvent): str
 const describeEvent = (deps: SessionDeps, ctx: SessionContext, event: RuntimeEvent): void => {
   const gap = gapOf(event);
   if (gap !== null) {
-    deps.log.warn(
-      { sessionId: ctx.session.id, taskId: ctx.task.id, agent: ctx.agent.name, ...gap },
-      "the sandbox lacks a tool the agent reached for",
-    );
+    deps.log.warn({ ...idsOf(ctx), ...gap }, "the sandbox lacks a tool the agent reached for");
+  }
+  if (event.kind === "tool_call") {
+    const seconds = idleWaitSeconds(event.name, event.input);
+    if (seconds > 0) {
+      deps.log.warn(
+        { ...idsOf(ctx), seconds, command: shorten(event.input) },
+        "the agent waits idle with sleep instead of watching the process",
+      );
+    }
+    if (masksExitCode(event.name, event.input)) {
+      deps.log.warn(
+        { ...idsOf(ctx), command: shorten(event.input) },
+        "a check runs behind a pipe that hides its exit code",
+      );
+    }
   }
   const trace = traceOf(event);
   if (trace !== null) {
-    deps.log.debug(
-      { sessionId: ctx.session.id, taskId: ctx.task.id, agent: ctx.agent.name, ...trace },
-      `agent ${event.kind}`,
-    );
+    deps.log.debug({ ...idsOf(ctx), ...trace }, `agent ${event.kind}`);
   }
 };
 
@@ -152,19 +182,32 @@ export async function handleRuntimeEvent(
       reason?: string;
     } = {},
   ): Promise<unknown> =>
-    office.execute(SYSTEM_ACTOR, (m, c) =>
-      changeSessionState(m, { sessionId: ctx.session.id, state: next, ...extra }, c),
+    office.execute(
+      SYSTEM_ACTOR,
+      (m, c) => changeSessionState(m, { sessionId: ctx.session.id, state: next, ...extra }, c),
+      traceFor(ctx),
     );
   deps.traces.observe(ctx.session.id, event);
   const reason = overBudget(ctx, spent, event);
   describeEvent(deps, ctx, event);
   if (event.kind === "usage") {
-    await office.execute(SYSTEM_ACTOR, (m, c) =>
-      recordSessionUsage(
-        m,
-        { sessionId: ctx.session.id, usage: event.usage, ...compact({ costUsd: event.costUsd }) },
-        c,
-      ),
+    await office.execute(
+      SYSTEM_ACTOR,
+      (m, c) =>
+        recordSessionUsage(
+          m,
+          {
+            sessionId: ctx.session.id,
+            usage: event.usage,
+            ...compact({
+              costUsd: event.costUsd,
+              costBasis: event.costBasis,
+              ttftMs: event.ttftMs,
+            }),
+          },
+          c,
+        ),
+      traceFor(ctx),
     );
   } else if (event.kind === "rate_limited") {
     await state("idle", { reason: rateLimitedReason(event.retryAt) });

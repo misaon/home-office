@@ -204,7 +204,7 @@ export class MandateSteward {
     mandate: Mandate,
     assessment: Extract<Assessment, { kind: "verify" }>,
   ): Promise<void> {
-    const { office } = this.#deps;
+    const office = this.#deps.office.traced({ correlationId: mandate.id });
     if (mandate.acceptance.length === 0) {
       await office.execute(SYSTEM_ACTOR, (m, c) =>
         stateAcceptance(
@@ -248,7 +248,8 @@ export class MandateSteward {
     reason: string,
     assessment: Failed | null,
   ): Promise<void> {
-    const { office, log } = this.#deps;
+    const { log } = this.#deps;
+    const office = this.#deps.office.traced({ correlationId: mandate.id });
     const tasks = tasksOfMandate(office.model, mandate);
     const decisions = tasks.filter(
       (task) => task.kind === "triage" && task.source.kind === "mandate",

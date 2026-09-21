@@ -16,6 +16,7 @@ import {
 import { pushFromVolume } from "./git-bridge.ts";
 import { pushMirrorBranch } from "./mirrors.ts";
 import { candidateOf, settledTrace } from "./session-candidate.ts";
+import { traceFor } from "./session-ids.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import type { Outcome } from "./session-run.ts";
 import type { SessionDeps } from "./sessions.ts";
@@ -60,7 +61,9 @@ const record = (
   ctx: SessionContext,
   artifacts: Task["artifacts"],
 ): Promise<Task> =>
-  deps.office.execute(SYSTEM_ACTOR, (m, c) => patchTaskArtifacts(m, ctx.task.id, artifacts, c));
+  deps.office
+    .traced(traceFor(ctx))
+    .execute(SYSTEM_ACTOR, (m, c) => patchTaskArtifacts(m, ctx.task.id, artifacts, c));
 
 const authorEvidence = (
   deps: SessionDeps,
@@ -116,7 +119,8 @@ async function settleWork(
   outcome: Outcome,
   current: Task,
 ): Promise<void> {
-  const { office, mcp, log } = deps;
+  const { mcp, log } = deps;
+  const office = deps.office.traced(traceFor(ctx));
   const project = office.model.projects.get(ctx.project.id) ?? ctx.project;
   const actor = { kind: "agent", agentId: ctx.agent.id } as const;
   if (current.status !== "in_progress") {
@@ -165,7 +169,8 @@ export async function settle(
   provisioned: Provisioned,
   outcome: Outcome,
 ): Promise<void> {
-  const { office, mcp } = deps;
+  const { mcp } = deps;
+  const office = deps.office.traced(traceFor(ctx));
   const actor = { kind: "agent", agentId: ctx.agent.id } as const;
   const current = office.model.tasks.get(ctx.task.id);
   if (current === undefined) {

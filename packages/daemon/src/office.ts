@@ -6,6 +6,7 @@ import {
   createIdFactory,
   createReadModel,
   type EventStore,
+  type EventTrace,
   type IdFactory,
   type ReadModel,
   type ReplayProblem,
@@ -54,6 +55,14 @@ const subjectOf = (event: StoredEvent): Record<string, unknown> => {
   return subject;
 };
 
+export type Commands = {
+  readonly model: ReadModel;
+  execute: <T>(
+    actor: Actor,
+    command: (model: ReadModel, ctx: CommandContext) => CommandResult<T>,
+  ) => Promise<T>;
+};
+
 export class Office {
   readonly model: ReadModel = createReadModel();
   readonly ids: IdFactory;
@@ -72,22 +81,31 @@ export class Office {
   execute<T>(
     actor: Actor,
     command: (model: ReadModel, ctx: CommandContext) => CommandResult<T>,
+    trace?: EventTrace,
   ): Promise<T> {
-    const result = this.#commands.then(() => this.#execute(actor, command));
+    const result = this.#commands.then(() => this.#execute(actor, command, trace));
     this.#commands = result.catch(() => undefined);
     return result;
+  }
+
+  traced(trace: EventTrace): Commands {
+    return {
+      model: this.model,
+      execute: (actor, command) => this.execute(actor, command, trace),
+    };
   }
 
   async #execute<T>(
     actor: Actor,
     command: (model: ReadModel, ctx: CommandContext) => CommandResult<T>,
+    trace: EventTrace | undefined,
   ): Promise<T> {
     const ctx: CommandContext = { ids: this.ids, now: this.clock.now().toISOString(), actor };
     const result = command(this.model, ctx);
     if (!result.ok) {
       throw new DomainFailureError(result.error);
     }
-    const stored = await this.store.append(result.value.events);
+    const stored = await this.store.append(result.value.events, trace);
     for (const event of stored) {
       applyEvent(this.model, event);
     }
