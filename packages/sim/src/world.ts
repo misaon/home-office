@@ -1,5 +1,5 @@
 import type { AgentId, Facing } from "@ho/protocol";
-import { type Grid, key, type Point } from "./grid.ts";
+import type { Grid, Point } from "./grid.ts";
 import { type Anchor, type AnchorKind, type FloorTemplate, gridFromMap } from "./map.ts";
 import { createRng, hashSeed, type Rng } from "./rng.ts";
 
@@ -85,6 +85,7 @@ export type Actor = {
   reservation: { floorId: string; anchorId: string } | null;
   work: { floorId: string; anchorId: string } | null;
   home: { floorId: string; anchorId: string } | null;
+  meeting: string | null;
   awayUntil: number | null;
   needs: Record<NeedKind, number>;
   emotion: { kind: Emotion; until: number | null } | null;
@@ -105,25 +106,6 @@ export type Floor = {
   grid: Grid;
   reservations: Map<string, AgentId>;
   elevator: Elevator;
-  doorShift: ReadonlyMap<number, Point>;
-};
-
-const doorShiftsOf = (template: FloorTemplate): Map<number, Point> => {
-  const shifts = new Map<number, Point>();
-  for (const piece of template.objects) {
-    if (!piece.id.startsWith("door-")) {
-      continue;
-    }
-    const middleX = piece.x + (piece.w - 1) / 2;
-    const middleY = piece.y + (piece.h - 1) / 2;
-    for (let dy = 0; dy < piece.h; dy += 1) {
-      for (let dx = 0; dx < piece.w; dx += 1) {
-        const cell = { x: piece.x + dx, y: piece.y + dy };
-        shifts.set(key(cell), { x: middleX - cell.x, y: middleY - cell.y });
-      }
-    }
-  }
-  return shifts;
 };
 
 export type World = {
@@ -155,7 +137,6 @@ export function addFloor(world: World, template: FloorTemplate): void {
     grid: gridFromMap(template.map),
     reservations: new Map(),
     elevator: { queue: [], phase: "closed", amount: 0, passenger: null, nextAt: 0 },
-    doorShift: doorShiftsOf(template),
   });
 }
 

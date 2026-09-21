@@ -69,6 +69,7 @@ export function breakBehaviour(world: World, actor: Actor): void {
   const [step] = actor.steps;
   if (
     actor.work === null ||
+    actor.meeting !== null ||
     step?.kind !== "hold" ||
     actor.steps.length !== 1 ||
     world.time < actor.idleUntil

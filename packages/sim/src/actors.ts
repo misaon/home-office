@@ -49,6 +49,7 @@ export function spawnActor(
     reservation: null,
     work: null,
     home: null,
+    meeting: null,
     awayUntil: null,
     needs: {
       coffee: world.rng.next() * 0.4,

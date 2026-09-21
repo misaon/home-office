@@ -30,6 +30,7 @@ export type AnchorKind =
   | "reception"
   | "elevator"
   | "car"
+  | "meeting"
   | "wander";
 
 export type Anchor = { id: string; kind: AnchorKind; at: Point; facing: Facing; group?: string };
@@ -132,9 +133,16 @@ export function compileLayout(
 }
 
 export function gridFromMap(map: TileMap): Grid {
-  const walkable = new Uint8Array(map.width * map.height);
-  for (let i = 0; i < walkable.length; i += 1) {
-    walkable[i] = map.blocked[i] === 1 ? 0 : 1;
+  const width = map.width + 1;
+  const height = map.height + 1;
+  const open = (x: number, y: number): boolean =>
+    x >= 0 && y >= 0 && x < map.width && y < map.height && map.blocked[y * map.width + x] === 0;
+  const walkable = new Uint8Array(width * height);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      walkable[y * width + x] =
+        open(x - 1, y - 1) && open(x, y - 1) && open(x - 1, y) && open(x, y) ? 1 : 0;
+    }
   }
-  return new Grid(map.width, map.height, walkable);
+  return new Grid(width, height, walkable);
 }
