@@ -1,0 +1,12 @@
+{
+  "python": {
+    "command": "pyright-langserver",
+    "args": ["--stdio"],
+    "extensionToLanguage": {
+      ".py": "python",
+      ".pyi": "python"
+    },
+    "startupTimeout": 30000,
+    "shutdownTimeout": 5000
+  }
+}

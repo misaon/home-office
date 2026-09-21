@@ -6,7 +6,7 @@ import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import { openingMessage, systemPrompt } from "./prompts.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import type { SessionDeps } from "./sessions.ts";
-import { skillPacksFor } from "./skill-pack.ts";
+import { lspPacksFor, skillPacksFor } from "./skill-pack.ts";
 
 const PLUGINS_ROOT = "/opt/ho/plugins";
 const HASH_CHARS = 12;
@@ -38,7 +38,10 @@ export const prepare = (
   environment: EnvironmentReport | null,
 ): Prepared => {
   const browser = browserFor(deps, ctx);
-  const packs = skillPacksFor(ctx.agent, ctx.session.mode);
+  const packs = [
+    ...skillPacksFor(ctx.agent, ctx.session.mode),
+    ...lspPacksFor(ctx.agent.provider, provisioned.languages),
+  ];
   const appendix = systemPrompt(
     {
       agent: ctx.agent,
@@ -50,6 +53,7 @@ export const prepare = (
       commit: provisioned.commit,
       base: provisioned.base,
       diff: provisioned.diff,
+      languages: provisioned.languages,
       browser,
       preview: ctx.project.preview,
       services: provisioned.services,

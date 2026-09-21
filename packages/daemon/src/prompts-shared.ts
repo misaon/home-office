@@ -15,6 +15,7 @@ import {
 import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import type { EnvironmentReport } from "./environment-report.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
+import type { LspLanguage } from "./skill-pack.ts";
 
 export type Services =
   | { kind: "off" }
@@ -43,6 +44,7 @@ export type SessionFacts = {
   commit: CommitSha | null;
   base: WorkBase | null;
   diff: DiffSummary | null;
+  languages: readonly LspLanguage[];
   browser: boolean;
   preview: Preview;
   services: Services;
@@ -50,7 +52,18 @@ export type SessionFacts = {
 };
 
 export const SANDBOX =
-  "Sandbox: only /work and /tmp are writable; the rest of the filesystem, including your home directory, is read-only. Package caches already point into /work/.cache and survive between your sessions on this task. The git remote is a path this sandbox cannot reach, so fetch, pull and push fail, and there is no gh; the office moves commits for you. Nothing runs here besides what this briefing lists: no Docker engine and no database unless a Services line says so, so do not spend turns probing for them. Each shell command runs in a fresh shell, so a variable or a background job from one command is gone in the next.";
+  "Sandbox: only /work and /tmp are writable; the rest of the filesystem, including your home directory, is read-only. Package caches already point into /work/.cache and survive between your sessions on this task. The git remote is a path this sandbox cannot reach, so fetch, pull and push fail, and there is no gh; the office moves commits for you. Nothing runs here besides what this briefing lists: no Docker engine unless a Services line says so, so do not spend turns probing for one. Databases: PostgreSQL 17, MariaDB, Redis and SQLite are installed but not running; `ho-db postgres start`, `ho-db mariadb start` or `ho-db redis start` brings one up on 127.0.0.1 at its default port without a password (user agent for PostgreSQL, root for MariaDB), keeps its data under /work/.db across your sessions on this task and prints the connection URL; `ho-db <engine> status` and `stop` exist too. Each shell command runs in a fresh shell, so a variable or a background job from one command is gone in the next.";
+
+const LSP_NAMES: Readonly<Record<LspLanguage, string>> = {
+  typescript: "TypeScript and JavaScript",
+  python: "Python",
+  php: "PHP",
+};
+
+export const lspGuide = (languages: readonly LspLanguage[]): string =>
+  languages.length === 0
+    ? ""
+    : `Code navigation: the LSP tool is on for ${languages.map((language) => LSP_NAMES[language]).join(", ")} — go to definition, find references, hover for types, and diagnostics pushed to you after every edit. Use it for symbol lookups instead of grep, and fix the diagnostics it reports before you move on.`;
 
 export const repoRules = (agent: Agent): string =>
   agent.provider === "claude-code"

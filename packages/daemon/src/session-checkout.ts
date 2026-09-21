@@ -4,6 +4,7 @@ import { inRepo, prepareRepo, prepareReviewCheckout, run } from "./git-bridge.ts
 import type { DiffSummary, WorkBase } from "./prompts-shared.ts";
 import type { SessionContext } from "./session-provision.ts";
 import type { SessionDeps } from "./sessions.ts";
+import { languagesOf, LSP_MARKERS, type LspLanguage } from "./skill-pack.ts";
 
 const baseOf = (model: ReadModel, task: Task): WorkBase | null => {
   const landed = dependenciesOf(model, task)
@@ -36,6 +37,17 @@ export type Checkout = {
   commit: CommitSha | null;
   base: WorkBase | null;
   diff: DiffSummary | null;
+  languages: readonly LspLanguage[];
+};
+
+const MARKERS = Object.values(LSP_MARKERS).flat();
+
+const languagesIn = async (deps: SessionDeps, volume: string): Promise<LspLanguage[]> => {
+  const result = await run(
+    deps.provider,
+    inRepo(deps.config, volume, "markers", ["ls-files", "--", ...MARKERS]),
+  );
+  return result.ok ? languagesOf(result.stdout.split("\n").filter((line) => line !== "")) : [];
 };
 
 const SHORTSTAT =
@@ -90,12 +102,12 @@ export async function checkout(
       candidate,
     );
     const diff = await diffSummary(deps, volume, ctx.project.defaultBranch);
-    return { commit, base: null, diff };
+    return { commit, base: null, diff, languages: await languagesIn(deps, volume) };
   }
   const base = ctx.session.mode === "work" ? baseOf(deps.office.model, ctx.task) : null;
   await prepareRepo(deps.provider, deps.config, source, volume, branch, {
     branch: base?.branch ?? ctx.project.defaultBranch,
     alsoFetch: base?.others ?? [],
   });
-  return { commit: null, base, diff: null };
+  return { commit: null, base, diff: null, languages: await languagesIn(deps, volume) };
 }

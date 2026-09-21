@@ -241,6 +241,16 @@ tooling. When a request opens, the office runs `setup` and every check once on t
 and records the result on the request as its baseline: agents are told which checks already failed
 before they started, and a failure that matches the baseline is not counted as their regression.
 
+The agent image carries what a sandbox usually lacks. **Databases without compose:** PostgreSQL 17,
+MariaDB, Redis and SQLite are installed; `ho-db postgres start`, `ho-db mariadb start` or
+`ho-db redis start` brings one up on `127.0.0.1` at its default port without a password, keeps its
+data in the task's volume under `/work/.db` and prints the connection URL — put the command in
+`environment.services` and every session finds the database running. **Language servers:** the
+image ships `typescript-language-server`, Pyright and Intelephense; a repository whose root has a
+`package.json` or `tsconfig.json`, a `pyproject.toml`, `requirements.txt` or `setup.py`, or a
+`composer.json` gets the matching LSP plugin loaded into every Claude Code session, so agents
+navigate by symbol instead of grepping and see type errors pushed to them after each edit.
+
 ## What runs where
 
 The point of the office is that an agent's mistake stays inside a box.

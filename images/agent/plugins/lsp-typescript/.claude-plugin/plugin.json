@@ -1,0 +1,8 @@
+{
+  "name": "ho-lsp-typescript",
+  "description": "Home Office: TypeScript and JavaScript language server for symbol navigation and diagnostics after every edit",
+  "version": "0.1.0",
+  "author": {
+    "name": "Home Office"
+  }
+}

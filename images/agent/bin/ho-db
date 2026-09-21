@@ -1,0 +1,95 @@
+#!/bin/sh
+set -eu
+
+root="${HO_DB_ROOT:-/work/.db}"
+engine="${1:-}"
+action="${2:-start}"
+
+usage() {
+  echo "usage: ho-db postgres|mariadb|redis start|stop|status" >&2
+  exit 2
+}
+
+wait_for() {
+  tries=0
+  until "$@" >/dev/null 2>&1; do
+    tries=$((tries + 1))
+    if [ "$tries" -ge 60 ]; then
+      return 1
+    fi
+    sleep 0.5
+  done
+}
+
+postgres() {
+  data="$root/postgres"
+  log="$root/postgres.log"
+  case "$action" in
+    start)
+      if [ ! -f "$data/PG_VERSION" ]; then
+        initdb -D "$data" -U agent --auth=trust --encoding=UTF8 >"$log" 2>&1
+      fi
+      if ! pg_ctl -D "$data" status >/dev/null 2>&1; then
+        pg_ctl -D "$data" -l "$log" -o "-k /tmp -h 127.0.0.1 -p 5432" -w start >/dev/null
+      fi
+      echo "postgres listening on 127.0.0.1:5432 as user agent without a password; data in $data, log in $log"
+      echo "DATABASE_URL=postgres://agent@127.0.0.1:5432/postgres"
+      ;;
+    stop) pg_ctl -D "$data" -m fast -w stop ;;
+    status) pg_ctl -D "$data" status ;;
+    *) usage ;;
+  esac
+}
+
+mariadb_engine() {
+  data="$root/mariadb"
+  log="$root/mariadb.log"
+  sock=/tmp/mysql.sock
+  case "$action" in
+    start)
+      if [ ! -d "$data/mysql" ]; then
+        mariadb-install-db --datadir="$data" --tmpdir=/tmp \
+          --auth-root-authentication-method=normal --skip-test-db >"$log" 2>&1
+      fi
+      if ! mariadb-admin --socket="$sock" -u root ping >/dev/null 2>&1; then
+        setsid nohup mariadbd --datadir="$data" --tmpdir=/tmp --socket="$sock" \
+          --skip-networking=0 --bind-address=127.0.0.1 --port=3306 --pid-file=/tmp/mariadb.pid \
+          --log-error="$log" >/dev/null 2>&1 &
+        wait_for mariadb-admin --socket="$sock" -u root ping
+      fi
+      echo "mariadb listening on 127.0.0.1:3306 as root without a password; data in $data, log in $log"
+      echo "DATABASE_URL=mysql://root@127.0.0.1:3306/mysql"
+      ;;
+    stop) mariadb-admin --socket="$sock" -u root shutdown ;;
+    status) mariadb-admin --socket="$sock" -u root ping ;;
+    *) usage ;;
+  esac
+}
+
+redis_engine() {
+  data="$root/redis"
+  log="$root/redis.log"
+  case "$action" in
+    start)
+      mkdir -p "$data"
+      if ! redis-cli -h 127.0.0.1 -p 6379 ping >/dev/null 2>&1; then
+        redis-server --daemonize yes --bind 127.0.0.1 --port 6379 --dir "$data" \
+          --logfile "$log" --pidfile /tmp/redis.pid >/dev/null
+        wait_for redis-cli -h 127.0.0.1 -p 6379 ping
+      fi
+      echo "redis listening on 127.0.0.1:6379 without a password; data in $data, log in $log"
+      echo "REDIS_URL=redis://127.0.0.1:6379"
+      ;;
+    stop) redis-cli -h 127.0.0.1 -p 6379 shutdown ;;
+    status) redis-cli -h 127.0.0.1 -p 6379 ping ;;
+    *) usage ;;
+  esac
+}
+
+mkdir -p "$root"
+case "$engine" in
+  postgres) postgres ;;
+  mariadb | mysql) mariadb_engine ;;
+  redis) redis_engine ;;
+  *) usage ;;
+esac

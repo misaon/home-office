@@ -1,0 +1,8 @@
+{
+  "name": "ho-lsp-php",
+  "description": "Home Office: Intelephense language server for PHP symbol navigation and diagnostics after every edit",
+  "version": "0.1.0",
+  "author": {
+    "name": "Home Office"
+  }
+}
