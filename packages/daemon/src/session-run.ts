@@ -11,6 +11,7 @@ import {
   SYSTEM_ACTOR,
 } from "@ho/protocol";
 import { prepareEnvironment } from "./environment.ts";
+import { closingMessage } from "./prompts.ts";
 import { secretEnvFor } from "./provider-secrets.ts";
 import {
   provision,
@@ -26,6 +27,8 @@ import type { SessionDeps } from "./sessions.ts";
 import { elapsedMs } from "./timing.ts";
 
 export type Outcome = { report: string; failure: string | null };
+
+export const GRACE_TURNS = 2;
 
 type Consumed = Outcome & {
   sawInit: boolean;
@@ -78,6 +81,60 @@ async function consume(
   return outcome;
 }
 
+const needsVerdict = (
+  deps: SessionDeps,
+  ctx: SessionContext,
+  token: string,
+  outcome: Consumed,
+): boolean =>
+  outcome.failureCode === "max_turns" &&
+  (ctx.session.mode === "review" || ctx.session.mode === "verify") &&
+  !deps.mcp.verdictFiled(token);
+
+async function verdictGrace(
+  deps: SessionDeps,
+  ctx: SessionContext,
+  provisioned: Provisioned,
+  prepared: Prepared,
+  secrets: Readonly<Record<string, string>>,
+  outcome: Consumed,
+  onEvent: (event: RuntimeEvent) => Promise<void>,
+): Promise<Consumed> {
+  const { mode } = ctx.session;
+  if (
+    (mode !== "review" && mode !== "verify") ||
+    !needsVerdict(deps, ctx, provisioned.mcpToken, outcome)
+  ) {
+    return outcome;
+  }
+  const runtimeSessionId = deps.office.model.sessions.get(ctx.session.id)?.runtimeSessionId ?? null;
+  if (runtimeSessionId === null) {
+    return outcome;
+  }
+  deps.log.warn(
+    { ...idsOf(ctx), mode, turns: outcome.turns, grace: GRACE_TURNS },
+    "the session ran out of turns without a verdict; it gets closing turns to file one",
+  );
+  const grace = await openRuntime(
+    deps,
+    ctx,
+    provisioned,
+    prepared,
+    secrets,
+    runtimeSessionId,
+    GRACE_TURNS,
+  );
+  let closing: Consumed;
+  try {
+    closing = await consume(grace, ctx, closingMessage(mode), onEvent);
+  } finally {
+    grace.close();
+  }
+  const filed = deps.mcp.verdictFiled(provisioned.mcpToken);
+  deps.traces.write(ctx.session.id, { kind: "grace", turns: closing.turns, filed }, true);
+  return { ...closing, turns: outcome.turns + closing.turns, sawInit: true };
+}
+
 async function runPrompt(
   deps: SessionDeps,
   ctx: SessionContext,
@@ -123,6 +180,7 @@ async function runPrompt(
         fresh.close();
       }
     }
+    outcome = await verdictGrace(deps, ctx, provisioned, prepared, secrets, outcome, onEvent);
     const ms = elapsedMs(started);
     deps.log.info(
       {

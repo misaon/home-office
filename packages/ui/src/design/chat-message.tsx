@@ -90,7 +90,13 @@ const THEIRS =
 const ASKING =
   "max-w-[92%] mr-auto py-11 px-13 rounded-15 rounded-bl-5 bg-toast border border-warn";
 
+const TROUBLE =
+  "max-w-[92%] mr-auto py-11 px-13 rounded-15 rounded-bl-5 bg-bad-a12 border border-bad-a45";
+
 const ASK_TAG = "flex items-center gap-6 mt-8 text-10h text-warn";
+
+const bubbleOf = (message: Message): string =>
+  message.asks === undefined ? (message.tone === "trouble" ? TROUBLE : THEIRS) : ASKING;
 
 export function ChatMessage({
   message,
@@ -113,7 +119,7 @@ export function ChatMessage({
           <ChatThumbs attachments={message.attachments} />
         </div>
       ) : (
-        <div className={message.asks === undefined ? THEIRS : ASKING}>
+        <div className={bubbleOf(message)}>
           <div className={`${META} text-ink-label mb-6`}>
             <span>{message.who ?? boss}</span> · <span>{message.time}</span>
           </div>

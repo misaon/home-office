@@ -55,6 +55,7 @@ export class McpGateway {
       replied: false,
       delegated: false,
       applicationReady: false,
+      verdict: false,
       report: null,
       reportFiles: [],
       skills: this.#skills,
@@ -80,6 +81,10 @@ export class McpGateway {
 
   skillVersions(packs: readonly string[]): Promise<Record<string, string>> {
     return this.#skills.versions(packs);
+  }
+
+  verdictFiled(token: string): boolean {
+    return this.#entries.get(token)?.verdict ?? false;
   }
 
   reportFiles(token: string): readonly Attachment[] {

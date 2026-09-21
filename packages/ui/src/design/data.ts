@@ -106,6 +106,7 @@ export type Message = {
   text: string;
   threadId?: ChatThreadId;
   asks?: { taskId: TaskId; who: string };
+  tone?: "trouble";
   attachments: readonly Attachment[];
 };
 

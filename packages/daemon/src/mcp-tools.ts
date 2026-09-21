@@ -169,6 +169,7 @@ const review = define({
     const task = await office.execute(actor, (m, c) =>
       submitReview(m, entry.ctx.taskId, { ...input, attachments }, c),
     );
+    entry.verdict = true;
     if (attachments.length > 0) {
       const language = office.model.projects.get(entry.ctx.projectId)?.language ?? "en";
       await office.execute(actor, (m, c) =>
