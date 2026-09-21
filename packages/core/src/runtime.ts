@@ -54,6 +54,7 @@ export type RunnerChannel = {
 
 export type RuntimeSession = {
   prompt: (input: { text: string }, signal?: Cancellation) => AsyncIterable<RuntimeEvent>;
+  send: (text: string) => boolean;
   close: () => void;
 };
 

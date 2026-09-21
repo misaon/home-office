@@ -11,6 +11,7 @@ import { PlanUsageMeter } from "./plan-usage.ts";
 import { startScheduler } from "./scheduler.ts";
 import type { SessionManager } from "./sessions.ts";
 import { hireDefaultTeams } from "./staffing.ts";
+import { startSteering } from "./steering.ts";
 
 type Deps = {
   office: Office;
@@ -28,6 +29,7 @@ export async function startFloorJobs(deps: Deps): Promise<FloorJobs> {
   const { office, sessions, provider, config, gate, home, log } = deps;
   await hireDefaultTeams(office, log);
   const voice = startBossVoice(office, log);
+  const steering = startSteering(office, sessions, log);
   const scheduler = startScheduler(office, sessions, config, gate, log);
   const steward = new MandateSteward({ office, provider, config, home, log });
   steward.start();
@@ -45,6 +47,7 @@ export async function startFloorJobs(deps: Deps): Promise<FloorJobs> {
       await steward.stop();
       await scheduler.stop();
       gate.close();
+      await steering.stop();
       await voice.stop();
     },
   };

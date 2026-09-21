@@ -39,6 +39,9 @@ const costOf = (
   session: { taskId: TaskId; mode: SessionMode },
   daemonEnabled: boolean,
 ): number => {
+  if (session.mode === "triage") {
+    return 0;
+  }
   const task = model.tasks.get(session.taskId);
   const project = task === undefined ? undefined : model.projects.get(task.projectId);
   return project !== undefined && needsEngine(daemonEnabled, project, session.mode)
@@ -121,11 +124,11 @@ export function planSessionStarts(
       exhausted.push({ ...start, reason: spent });
       continue;
     }
-    if (capacity <= 0) {
+    const cost = costOf(model, start, servicesEnabled);
+    if (cost > 0 && capacity <= 0) {
       skipped.push({ ...start, reason: "the office is at its concurrent-session limit" });
       continue;
     }
-    const cost = costOf(model, start, servicesEnabled);
     if (cost > capacity) {
       skipped.push({
         ...start,

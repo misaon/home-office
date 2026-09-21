@@ -8,7 +8,9 @@ import { followEvents, type Office } from "./office.ts";
 export function startBossVoice(office: Office, log: Logger): { stop: () => Promise<void> } {
   const say = async (boss: Agent, text: string, taskId: Task["id"]): Promise<void> => {
     await office
-      .execute(SYSTEM_ACTOR, (m, ctx) => postAgentMessage(m, boss.id, text, taskId, ctx))
+      .execute(SYSTEM_ACTOR, (m, ctx) =>
+        postAgentMessage(m, boss.id, text, taskId, ctx, { kind: "status" }),
+      )
       .catch((error: unknown) => {
         log.warn({ err: errorMessage(error) }, "boss status message failed");
       });

@@ -71,6 +71,10 @@ export function createClaudeCodeRuntime(options: ClaudeRuntimeOptions): AgentRun
 
       return {
         prompt,
+        send: (text) => {
+          channel.write(userMessage(text));
+          return true;
+        },
         close: () => {
           channel.signal("SIGTERM");
         },
