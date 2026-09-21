@@ -135,7 +135,8 @@ const judge = (mandate: Mandate, done: Task[], policy: AcceptancePolicy): Assess
     return { kind: "failed", criteria: whole.failed, taskCriteria: failedTasks, checks };
   }
   const missingTasks = perTask ? taskCriteriaOf(mandate, done, "missing") : [];
-  const wholeNeeded = perTask || mandate.acceptance.length > 0 || done.length > 1;
+  const risky = done.some((task) => task.shape === "risky");
+  const wholeNeeded = perTask || mandate.acceptance.length > 0 || done.length > 1 || risky;
   if (wholeNeeded && mandate.acceptance.length === 0) {
     return { kind: "verify", criteria: [], taskCriteria: missingTasks };
   }

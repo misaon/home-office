@@ -4,7 +4,9 @@ import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FIELD } from "./controls.tsx";
+import { ChatThumbs } from "./chat-message.tsx";
 import type { Card, CriterionEvidence, Floor } from "./data.ts";
+import { evidenceBasis } from "./evidence-basis.ts";
 import { requireClient } from "../rpc.ts";
 import { PRIMARY, SheetShell } from "./sheet-shell.tsx";
 import { MONO, priority } from "./tokens.ts";
@@ -141,15 +143,20 @@ function EvidenceLine({ evidence }: { evidence: CriterionEvidence }): React.JSX.
         : evidence.mark === "claimed"
           ? t("mandate.claimed", { name: evidence.by })
           : t("mandate.open");
+  const basis = evidenceBasis(t, evidence);
   return (
-    <div className={`${MONO} text-10 mt-3 flex gap-6 items-baseline`}>
-      <span className={mark.tone} aria-hidden="true">
-        {mark.glyph}
-      </span>
-      <span className="text-ink-meta">{text}</span>
-      {evidence.proof === "" ? null : (
-        <span className="text-ink-faint text-pretty">{evidence.proof}</span>
-      )}
+    <div className={`${MONO} text-10 mt-3`}>
+      <div className="flex gap-6 items-baseline">
+        <span className={mark.tone} aria-hidden="true">
+          {mark.glyph}
+        </span>
+        <span className="text-ink-meta">{text}</span>
+        {basis === "" ? null : <span className="text-warn">{basis}</span>}
+        {evidence.proof === "" ? null : (
+          <span className="text-ink-faint text-pretty">{evidence.proof}</span>
+        )}
+      </div>
+      <ChatThumbs attachments={evidence.files} />
     </div>
   );
 }
@@ -201,6 +208,9 @@ export function TaskSheet({ task, floor }: { task: Card; floor: Floor }): React.
     <SheetShell title={task.title} titleClass="text-14 leading-card text-pretty">
       <div className="flex gap-6 mb-16 flex-wrap">
         <span className={`${TAG} ${tone}`}>{t(`priority.${task.priority}`)}</span>
+        {task.kind === "code" ? (
+          <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`shape.${task.shape}`)}</span>
+        ) : null}
         <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`taskKind.${task.kind}`)}</span>
         <span className={`${TAG} bg-edge-lit text-ink-faint`}>{t(`status.${task.status}`)}</span>
       </div>

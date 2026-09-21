@@ -3,6 +3,7 @@ import { csEditor } from "./cs-editor.ts";
 import { csOffice } from "./cs-office.ts";
 import { csStaff } from "./cs-staff.ts";
 import { csSetup } from "./cs-setup.ts";
+import { csMandate } from "./cs-mandate.ts";
 import type { en } from "./en.ts";
 
 export const cs: typeof en = {
@@ -70,32 +71,7 @@ export const cs: typeof en = {
     male: "muž",
     neutral: "neutrální",
   },
-  mandate: {
-    title: "Zadání",
-    status: {
-      open: "otevřené",
-      verifying: "ověřuje se",
-      fulfilled: "hotovo",
-      blocked: "blokované",
-      abandoned: "zrušené",
-    },
-    round: "kolo {{count}}",
-    conditions: "Podmínky dokončení",
-    noConditions: "Podmínkami jsou akceptační kritéria jednotlivých úkolů.",
-    tasks: "Úkoly",
-    pass: "ověřil(a) {{name}}",
-    fail: "selhalo u {{name}}",
-    claimed: "tvrdí {{name}}, zatím neověřeno",
-    open: "zatím neověřeno",
-    partOf: "Součást zadání „{{title}}“",
-    pullRequest: "Pull request",
-    abandon: "Zrušit",
-    abandonTitle: "Zrušit toto zadání?",
-    abandonBody: "Otevřené úkoly zadání „{{title}}“ se zruší a nic dalšího se pro ně nedeleguje.",
-    abandoned: "Zadání zrušeno",
-    byHuman: "vy",
-    byOffice: "kancelář",
-  },
+  mandate: csMandate,
   board: {
     filters: "Filtrovat board podle stavu",
     remove: "Odebrat",

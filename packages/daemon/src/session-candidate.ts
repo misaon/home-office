@@ -8,6 +8,7 @@ import {
 import { type CommitSha, errorMessage, type Project, SYSTEM_ACTOR, type Task } from "@ho/protocol";
 import { inspectWorkingTree, type WorkingTree } from "./git-bridge.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
+import { traceFor } from "./session-ids.ts";
 import type { SessionDeps } from "./sessions.ts";
 import { runVerify, type VerifyResult } from "./verify.ts";
 
@@ -60,6 +61,11 @@ async function verified(
     );
     return { kind: "unavailable", reason };
   }
+  const outputFile = await deps.traces.writeArtifact(
+    ctx.session.id,
+    `checks-${String(attempt)}.log`,
+    result.transcript,
+  );
   const facts = {
     sessionId: ctx.session.id,
     taskId: ctx.task.id,
@@ -69,11 +75,13 @@ async function verified(
     exitCode: result.exitCode,
     ms: result.ms,
     attempt,
+    outputFile,
   };
   deps.traces.write(ctx.session.id, { kind: "verify", ...facts }, true);
   if (result.ok) {
     deps.log.info(facts, "checks passed");
     await deps.office
+      .traced(traceFor(ctx))
       .execute(SYSTEM_ACTOR, (m, c) =>
         recordChecksPassed(m, ctx.task.id, { command, commit, ms: result.ms }, c),
       )
@@ -111,14 +119,16 @@ const failCheck = (
   project: Project,
   failure: CheckFailure,
 ): Promise<Task> =>
-  deps.office.execute(SYSTEM_ACTOR, (m, c) =>
-    recordVerificationFailure(
-      m,
-      ctx.task.id,
-      { ...failure, maxAttempts: project.verify.maxAttempts },
-      c,
-    ),
-  );
+  deps.office
+    .traced(traceFor(ctx))
+    .execute(SYSTEM_ACTOR, (m, c) =>
+      recordVerificationFailure(
+        m,
+        ctx.task.id,
+        { ...failure, maxAttempts: project.verify.maxAttempts },
+        c,
+      ),
+    );
 
 const uncommitted = (
   deps: SessionDeps,
@@ -148,6 +158,7 @@ const blockUnavailable = (
   reason: string,
 ): Promise<unknown> =>
   deps.office
+    .traced(traceFor(ctx))
     .execute(SYSTEM_ACTOR, (m, c) =>
       transitionTask(
         m,
@@ -209,7 +220,7 @@ export async function candidateOf(
     return null;
   }
   if (verification.skipped) {
-    await deps.office.execute(SYSTEM_ACTOR, (m, c) =>
+    await deps.office.traced(traceFor(ctx)).execute(SYSTEM_ACTOR, (m, c) =>
       annotateTask(
         m,
         ctx.task.id,

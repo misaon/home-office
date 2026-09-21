@@ -1,5 +1,12 @@
-import { attachmentsOfTask, escalatedEffort, type RuntimeSession, setbacksOf } from "@ho/core";
-import { imageRefFor, PROVIDERS, type SessionRuntime } from "@ho/protocol";
+import {
+  attachmentsOfTask,
+  escalatedEffort,
+  shapedEffort,
+  wallMinutesFor,
+  type RuntimeSession,
+  setbacksOf,
+} from "@ho/core";
+import { compact, imageRefFor, PROVIDERS, type SessionRuntime } from "@ho/protocol";
 import { browserMcpServers } from "./browser.ts";
 import type { EnvironmentReport } from "./environment-report.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
@@ -58,6 +65,8 @@ export const prepare = (
       preview: ctx.project.preview,
       services: provisioned.services,
       environment,
+      network: deps.config.docker.network === "none" ? "none" : "bridge",
+      budget: { turns: ctx.budget.turns, wallMinutes: wallMinutesFor(ctx.agent, ctx.task) },
     },
     deps.office.model,
   );
@@ -70,18 +79,24 @@ export const prepare = (
     runtime: {
       model: ctx.agent.model,
       effort: escalatedEffort(
-        ctx.agent.effort,
+        shapedEffort(
+          ctx.agent.effort,
+          PROVIDERS[ctx.agent.provider].effortLevels,
+          ctx.task.shape,
+          ctx.session.mode,
+        ),
         PROVIDERS[ctx.agent.provider].effortLevels,
         setbacksFor(ctx),
       ),
       promptHash: hashOf(appendix),
       skillPacks: packs,
       image: imageRefFor(deps.config.docker.agentImage, PROVIDERS[ctx.agent.provider].image),
+      ...compact({ imageDigest: provisioned.imageId ?? undefined }),
     },
   };
 };
 
-export const openRuntime = (
+export const openRuntime = async (
   deps: SessionDeps,
   ctx: SessionContext,
   provisioned: Provisioned,
@@ -133,6 +148,10 @@ export const openRuntime = (
     promptHash: prepared.runtime.promptHash,
     promptChars: prepared.appendix.length,
     openingChars: prepared.message.length,
+    image: prepared.runtime.image,
+    imageDigest: provisioned.imageId,
+    skillPackVersions: await deps.mcp.skillVersions(prepared.packs),
+    environmentHash: hashOf(JSON.stringify(ctx.project.environment)),
   };
   deps.log.debug(
     { sessionId: ctx.session.id, taskId: ctx.task.id, ...runtime },

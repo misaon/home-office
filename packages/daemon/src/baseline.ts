@@ -6,6 +6,7 @@ import { LABELS } from "./labels.ts";
 import { sourcePathFor } from "./mirrors.ts";
 import { elapsedMs } from "./timing.ts";
 import { commandSpec } from "./verify.ts";
+import { CACHE_IN_VOLUME, cacheVolumeFor } from "./volumes.ts";
 
 const SUFFIX_CHARS = 12;
 const TAIL_MAX = 2000;
@@ -37,7 +38,9 @@ async function runSetup(
   let tail = "";
   for (const command of project.environment.setup) {
     const result = await provider.run(
-      commandSpec(config, volume, "baseline-setup", command, config.docker.network),
+      commandSpec(config, volume, "baseline-setup", command, config.docker.network, [
+        { name: cacheVolumeFor(project.id), target: CACHE_IN_VOLUME },
+      ]),
       Math.max(MIN_STEP_MS, budgetMs - elapsedMs(started)),
     );
     tail = tailOf(result);

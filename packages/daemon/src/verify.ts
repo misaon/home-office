@@ -19,12 +19,24 @@ import {
 import { elapsedMs } from "./timing.ts";
 
 const OUTPUT_MAX = 6000;
+const TRANSCRIPT_MAX = 512 * 1024;
 const OOM_EXIT_CODE = 137;
 const MIB = 1024 * 1024;
 const WAIT_FOR_ENGINE =
   'attempts=0; until docker version >/dev/null 2>&1; do attempts=$((attempts + 1)); if [ "$attempts" -ge "$HO_ENGINE_WAIT_SECONDS" ]; then echo "the task engine did not answer within $HO_ENGINE_WAIT_SECONDS seconds" >&2; exit 125; fi; sleep 1; done; exec /bin/sh -lc "$HO_VERIFY_COMMAND"';
 
-export type VerifyResult = { ok: boolean; exitCode: number | null; output: string; ms: number };
+export type VerifyResult = {
+  ok: boolean;
+  exitCode: number | null;
+  output: string;
+  transcript: string;
+  ms: number;
+};
+
+const transcriptOf = (result: SandboxRunResult): string => {
+  const text = `${result.stdout}\n${result.stderr}`;
+  return text.length <= TRANSCRIPT_MAX ? text : `…\n${text.slice(-TRANSCRIPT_MAX)}`;
+};
 
 export type VerifyServices = {
   sessionId: SessionId;
@@ -89,11 +101,12 @@ export const commandSpec = (
   step: string,
   command: string,
   network: string,
+  volumes: readonly VolumeMount[] = [],
 ): SandboxSpec =>
   containerSpec(config, volume, step, network, {
     cmd: ["/bin/sh", "-lc", command],
     env: {},
-    volumes: [],
+    volumes,
   });
 
 const verifySpec = (
@@ -165,6 +178,7 @@ export async function runVerify(
     ok: result.exitCode === 0,
     exitCode: result.exitCode,
     output: describe(result, config, project.verify.timeoutSeconds),
+    transcript: transcriptOf(result),
     ms: elapsedMs(started),
   };
 }

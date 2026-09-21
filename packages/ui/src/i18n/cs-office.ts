@@ -4,6 +4,11 @@ export const csOffice = {
     normal: "normální",
     low: "nízká",
   },
+  shape: {
+    mechanical: "mechanický",
+    routine: "běžný",
+    risky: "rizikový",
+  },
   taskKind: {
     code: "kód",
     triage: "triage",

@@ -114,6 +114,7 @@ export const ImageList = z.array(
   }),
 );
 export const ImageInspect = z.object({
+  Id: z.string().optional(),
   Config: z.object({ Labels: z.record(z.string(), z.string()).nullish() }).nullish(),
 });
 export const SystemDf = z.object({

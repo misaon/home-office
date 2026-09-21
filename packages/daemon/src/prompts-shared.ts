@@ -4,9 +4,11 @@ import {
   type Attachment,
   CHAT_INBOX_DIR,
   CHAT_OUTBOX_DIR,
+  type ChatLanguage,
   clip,
   type CommitSha,
   isSessionActive,
+  MECHANICAL_MAX_LINES,
   type Project,
   ROLE_TITLE,
   type Session,
@@ -16,6 +18,11 @@ import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import type { EnvironmentReport } from "./environment-report.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import type { LspLanguage } from "./skill-pack.ts";
+
+export const LANGUAGE_GUIDE: Readonly<Record<ChatLanguage, string>> = {
+  en: "Language: write to the human, your reports and your review findings in English.",
+  cs: "Language: write to the human, your reports and your review findings in Czech; code, identifiers, paths, branch names and commit messages stay English.",
+};
 
 export type Services =
   | { kind: "off" }
@@ -49,10 +56,40 @@ export type SessionFacts = {
   preview: Preview;
   services: Services;
   environment: EnvironmentReport | null;
+  network: "bridge" | "none";
+  budget: { turns: number; wallMinutes: number };
 };
 
 export const SANDBOX =
-  "Sandbox: only /work and /tmp are writable; the rest of the filesystem, including your home directory, is read-only. Package caches already point into /work/.cache and survive between your sessions on this task. The git remote is a path this sandbox cannot reach, so fetch, pull and push fail, and there is no gh; the office moves commits for you. Nothing runs here besides what this briefing lists: no Docker engine unless a Services line says so, so do not spend turns probing for one. Databases: PostgreSQL 17, MariaDB, Redis and SQLite are installed but not running; `ho-db postgres start`, `ho-db mariadb start` or `ho-db redis start` brings one up on 127.0.0.1 at its default port without a password (user agent for PostgreSQL, root for MariaDB), keeps its data under /work/.db across your sessions on this task and prints the connection URL; `ho-db <engine> status` and `stop` exist too. Each shell command runs in a fresh shell, so a variable or a background job from one command is gone in the next.";
+  "Sandbox: only /work and /tmp are writable; the rest of the filesystem, including your home directory, is read-only. Package caches already point into /work/.cache, a cache every session on this floor shares, so what a colleague installed before is already warm for you. The git remote is a path this sandbox cannot reach, so fetch, pull and push fail, and there is no gh; the office moves commits for you. Nothing runs here besides what this briefing lists: no Docker engine unless a Services line says so, so do not spend turns probing for one. Databases: PostgreSQL 17, MariaDB, Redis and SQLite are installed but not running; `ho-db postgres start`, `ho-db mariadb start` or `ho-db redis start` brings one up on 127.0.0.1 at its default port without a password (user agent for PostgreSQL, root for MariaDB), keeps its data under /work/.db across your sessions on this task and prints the connection URL; `ho-db <engine> status` and `stop` exist too. Each shell command runs in a fresh shell, so a variable or a background job from one command is gone in the next.";
+
+const applicationCapability = (f: SessionFacts): string => {
+  const application = f.environment?.application ?? null;
+  if (application !== null) {
+    return application.ready
+      ? `application started by the office${application.url === null ? "" : ` at ${application.url}`}`
+      : "application start attempted by the office and not ready";
+  }
+  return f.project.environment.run === undefined
+    ? "no run command configured, so nothing describes how to start the application"
+    : `run command configured (\`${f.project.environment.run}\`), not started`;
+};
+
+export const capabilitiesGuide = (f: SessionFacts): string =>
+  [
+    "Capabilities, as the office set them up:",
+    f.network === "none"
+      ? "no outbound network"
+      : "outbound internet yes (the git remote and gh excepted)",
+    f.browser ? "browser yes" : "no browser",
+    f.services.kind === "ready" ? "Docker engine yes" : "no Docker engine",
+    "databases on demand with ho-db",
+    f.preview.enabled ? `preview port ${String(f.preview.port)}` : "no preview port",
+    applicationCapability(f),
+  ].join(" · ");
+
+export const FIDELITY_GUIDE =
+  "Every criterion judgement carries fidelity: live when you exercised the running application (the one the office started, or the one you started with the environment's run command); substitute when you served a stand-in page, a mock or extracted markup instead; static when you judged from code, templates, build output or tests alone. Give via: the exact command or URL. When fidelity is not live, give blocker: not_prepared (the briefing describes no way to run it), not_attempted (a way existed and you did not use it; say why), or attempt_failed (you tried the described way and it failed; say how). A substitute is never presented as the application: never replace a link, an asset or a request with a placeholder and call it verified. Name the screenshots that back a judgement in its files, copied into /out/chat and listed in the call's files.";
 
 const LSP_NAMES: Readonly<Record<LspLanguage, string>> = {
   typescript: "TypeScript and JavaScript",
@@ -142,7 +179,7 @@ export const authorClaims = (model: ReadModel, task: Task): ReadonlyMap<number, 
       entry.commit === commit &&
       entry.criterion !== null
     ) {
-      claims.set(entry.criterion, entry.proof);
+      claims.set(entry.criterion, `[${entry.fidelity}] ${entry.proof}`);
     }
   }
   return claims;
@@ -168,7 +205,6 @@ export const criteriaGuide = (
         })
         .join("\n")}`;
 
-const SMALL_CHANGE_LINES = 60;
 const MEDIUM_CHANGE_LINES = 400;
 
 export const changeSizeGuide = (diff: DiffSummary | null, defaultBranch: string): string => {
@@ -177,7 +213,7 @@ export const changeSizeGuide = (diff: DiffSummary | null, defaultBranch: string)
   }
   const lines = diff.insertions + diff.deletions;
   const effort =
-    lines <= SMALL_CHANGE_LINES
+    lines <= MECHANICAL_MAX_LINES
       ? "a small change: one careful pass over the diff, the checks or the one page it touches, and your verdict, in about fifteen turns; do not reinstall or rebuild what the environment already prepared"
       : lines <= MEDIUM_CHANGE_LINES
         ? "a medium change: read every hunk, run the checks once and exercise each criterion once, in about thirty turns"
@@ -194,6 +230,9 @@ export const rosterLines = (model: ReadModel, project: Project, except: Agent["i
           sessionsOfAgent(model, agent.id).filter((s) => isSessionActive(s.state)).length,
         )})`,
     );
+
+export const SHAPE_GUIDE =
+  "Set shape on every ho_delegate: mechanical for a rename, a copy or link change, a dependency bump, a one-line fix, anything with no logic to get wrong; routine for an ordinary change with logic, layout or tests to get right; risky for authentication, authorisation, payments, data migrations, public APIs, anything hard to reverse or with security exposure. The office sizes the turn and time budgets, the effort and the depth of review by the shape (mechanical: 40 work turns, 15 review turns, 15 minutes a session; routine: 120, 40, 30; risky: 200, 60, 60, plus an independent verification of the whole result), and raises it when the diff turns out larger than the shape suggests.";
 
 export const REVIEW_FLAGS =
   "Set qa and security deliberately on every ho_delegate: qa true when a tester can exercise behaviour — a flow, a form, an API or data change, anything with states to walk through — and false for content, copy, styling, documentation, configuration and refactors, where the head of development checks the result in the browser without a separate QA pass; security true when the change touches authentication, authorisation, input handling, secrets, cryptography, network exposure, dependencies or a hot path where performance matters. The head of development reviews every task last. A flag names a role this floor must have: when nobody holds it, ho_delegate refuses, and you either hire that role first or set the flag false and say why in context. A review is never skipped silently.";

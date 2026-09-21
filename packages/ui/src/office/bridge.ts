@@ -199,6 +199,7 @@ export class Bridge {
         this.#mail.onMail(event.payload.mail, this.#watching);
         break;
       }
+      case "task.shape_raised":
       case "project.created":
       case "project.updated":
       case "project.removed":

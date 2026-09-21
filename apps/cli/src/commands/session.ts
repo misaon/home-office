@@ -14,7 +14,12 @@ const FORMAT: {
     e.ok
       ? `${tag} result ok=true turns=${String(e.turns)}`
       : `${tag} result ok=false turns=${String(e.turns)}\n${tag} ${e.text.slice(0, 1000)}`,
-  usage: (e, tag) => `${tag} usage ${JSON.stringify(e.usage)}`,
+  usage: (e, tag) =>
+    `${tag} usage ${JSON.stringify(e.usage)}${e.costUsd === undefined ? "" : ` $${e.costUsd.toFixed(3)}${e.costBasis === undefined ? "" : ` (${e.costBasis})`}`}`,
+  background_done: (e, tag) =>
+    `${tag} ⏳ background ${e.status}${e.exitCode === null ? "" : ` (exit ${String(e.exitCode)})`} ${e.summary}`,
+  plan_window: (e, tag) =>
+    `${tag} plan 5h ${e.fiveHour === null ? "?" : `${String(e.fiveHour.percent)}%`} · 7d ${e.sevenDay === null ? "?" : `${String(e.sevenDay.percent)}%`}`,
   context: (e, tag) =>
     `${tag} context ${String(e.usedTokens)}/${String(e.windowTokens)}${e.cost === null ? "" : ` cost ${e.cost.amount.toFixed(2)} ${e.cost.currency}`}`,
   rate_limited: (e, tag) => `${tag} rate limited until ${e.retryAt ?? "?"}`,
@@ -89,7 +94,7 @@ export const sessionCommand: Command = {
         return output(
           sessions.map(
             (s) =>
-              `${s.id}  ${s.state.padEnd(9)}  task=${s.taskId.slice(-8)}  agent=${s.agentId.slice(-8)}  turns=${String(s.usage.turns)}  ${String(s.usage.inputTokens)}in/${String(s.usage.outputTokens)}out/${String(s.usage.cacheReadTokens)}cache${s.services === undefined ? "" : `  services=${s.services}`}${s.runtime === undefined ? "" : `  ran=${s.runtime.confirmedModel ?? s.runtime.model}/${s.runtime.confirmedEffort ?? s.runtime.effort}`}`,
+              `${s.id}  ${s.state.padEnd(9)}  task=${s.taskId.slice(-8)}  agent=${s.agentId.slice(-8)}  turns=${String(s.usage.turns)}  ${String(s.usage.inputTokens)}in/${String(s.usage.outputTokens)}out/${String(s.usage.cacheReadTokens)}cache${s.costUsd === undefined ? "" : `  $${s.costUsd.toFixed(2)}`}${s.services === undefined ? "" : `  services=${s.services}`}${s.runtime === undefined ? "" : `  ran=${s.runtime.confirmedModel ?? s.runtime.model}/${s.runtime.confirmedEffort ?? s.runtime.effort}`}`,
           ),
           sessions,
         );

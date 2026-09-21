@@ -1,4 +1,5 @@
 import {
+  ChatLanguage,
   compact,
   OFFICE_DIR,
   OFFICE_FILE,
@@ -153,6 +154,7 @@ export const projectCommand: Command = {
       positionals: ["<floor>"],
       strings: {
         branch: "<name>",
+        language: "en|cs",
         pr: "on|off",
         draft: "on|off",
         intake: "on|off",
@@ -172,6 +174,7 @@ export const projectCommand: Command = {
           id: current.id,
           patch: compact({
             defaultBranch: str(parsed, "branch"),
+            language: ChatLanguage.optional().parse(str(parsed, "language")),
             verify: command === undefined ? undefined : { command },
             publish: publishFrom(onOff(str(parsed, "pr")), onOff(str(parsed, "draft"))),
             intake: intakeFrom({
@@ -189,7 +192,7 @@ export const projectCommand: Command = {
         });
         return output(
           [
-            `floor ${colour.bold(updated.name)}: branch ${updated.defaultBranch}, delivery ${updated.publish.mode}, intake ${updated.intake.enabled ? "on" : "off"}, checks ${updated.verify.command === "" ? "off" : updated.verify.command}, services ${updated.services.enabled ? `${updated.services.mode} (${updated.services.trust})` : "off"}`,
+            `floor ${colour.bold(updated.name)}: branch ${updated.defaultBranch}, language ${updated.language}, delivery ${updated.publish.mode}, intake ${updated.intake.enabled ? "on" : "off"}, checks ${updated.verify.command === "" ? "off" : updated.verify.command}, services ${updated.services.enabled ? `${updated.services.mode} (${updated.services.trust})` : "off"}`,
           ],
           updated,
         );

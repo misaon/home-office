@@ -1,21 +1,28 @@
 import {
+  attachmentsNamed,
   evidenceOf,
   fileReport,
   patchTaskArtifacts,
   postAgentMessage,
+  raiseTaskShape,
   recordEvidence,
   transitionTask,
 } from "@ho/core";
 import {
+  type Attachment,
   type CommitSha,
+  compact,
   type HoReportInput,
   type Project,
+  shapeFloorOf,
   SYSTEM_ACTOR,
   type Task,
 } from "@ho/protocol";
 import { pushFromVolume } from "./git-bridge.ts";
 import { pushMirrorBranch } from "./mirrors.ts";
 import { candidateOf, settledTrace } from "./session-candidate.ts";
+import { diffSummary } from "./session-checkout.ts";
+import { traceFor } from "./session-ids.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import type { Outcome } from "./session-run.ts";
 import type { SessionDeps } from "./sessions.ts";
@@ -60,13 +67,43 @@ const record = (
   ctx: SessionContext,
   artifacts: Task["artifacts"],
 ): Promise<Task> =>
-  deps.office.execute(SYSTEM_ACTOR, (m, c) => patchTaskArtifacts(m, ctx.task.id, artifacts, c));
+  deps.office
+    .traced(traceFor(ctx))
+    .execute(SYSTEM_ACTOR, (m, c) => patchTaskArtifacts(m, ctx.task.id, artifacts, c));
+
+const raiseShapeByDiff = async (
+  deps: SessionDeps,
+  ctx: SessionContext,
+  provisioned: Provisioned,
+  project: Project,
+): Promise<void> => {
+  const diff = await diffSummary(deps, provisioned.volume, project.defaultBranch);
+  if (diff === null) {
+    return;
+  }
+  const lines = diff.insertions + diff.deletions;
+  await deps.office
+    .traced(traceFor(ctx))
+    .execute(SYSTEM_ACTOR, (m, c) =>
+      raiseTaskShape(
+        m,
+        ctx.task.id,
+        {
+          floor: shapeFloorOf(lines),
+          reason: `the diff against ${project.defaultBranch} has ${String(diff.files)} file(s) and ${String(lines)} changed line(s)`,
+        },
+        c,
+      ),
+    )
+    .catch(() => null);
+};
 
 const authorEvidence = (
   deps: SessionDeps,
   ctx: SessionContext,
   filed: HoReportInput | null,
   commit: CommitSha,
+  attachments: readonly Attachment[],
 ): Promise<unknown> => {
   const { mandateId } = ctx.task;
   const count = ctx.task.spec?.acceptanceCriteria.length ?? 0;
@@ -89,6 +126,9 @@ const authorEvidence = (
             method: "author",
             verdict: "pass",
             proof: claim.how,
+            fidelity: claim.fidelity,
+            ...compact({ via: claim.via, blocker: claim.blocker }),
+            files: attachmentsNamed(attachments, claim.files),
           }),
         ),
         c,
@@ -116,7 +156,8 @@ async function settleWork(
   outcome: Outcome,
   current: Task,
 ): Promise<void> {
-  const { office, mcp, log } = deps;
+  const { mcp, log } = deps;
+  const office = deps.office.traced(traceFor(ctx));
   const project = office.model.projects.get(ctx.project.id) ?? ctx.project;
   const actor = { kind: "agent", agentId: ctx.agent.id } as const;
   if (current.status !== "in_progress") {
@@ -141,7 +182,8 @@ async function settleWork(
   if (candidate === null) {
     return;
   }
-  await authorEvidence(deps, ctx, filed, candidate.sha);
+  await authorEvidence(deps, ctx, filed, candidate.sha, deps.mcp.reportFiles(provisioned.mcpToken));
+  await raiseShapeByDiff(deps, ctx, provisioned, project);
   const pushMs = await pushBranch(deps, ctx, project, provisioned, candidate.sha);
   await record(deps, ctx, { branch: provisioned.branch, commit: candidate.sha, report: summary });
   if (office.model.tasks.get(ctx.task.id)?.status === "in_progress") {
@@ -165,7 +207,8 @@ export async function settle(
   provisioned: Provisioned,
   outcome: Outcome,
 ): Promise<void> {
-  const { office, mcp } = deps;
+  const { mcp } = deps;
+  const office = deps.office.traced(traceFor(ctx));
   const actor = { kind: "agent", agentId: ctx.agent.id } as const;
   const current = office.model.tasks.get(ctx.task.id);
   if (current === undefined) {
@@ -225,7 +268,8 @@ export async function settle(
       if (
         !bossWillReadItOut &&
         outcome.report.trim() !== "" &&
-        !mcp.replied(provisioned.mcpToken)
+        !mcp.replied(provisioned.mcpToken) &&
+        !mcp.delegated(provisioned.mcpToken)
       ) {
         await office
           .execute(actor, (m, c) =>

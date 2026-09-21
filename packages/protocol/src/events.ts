@@ -8,8 +8,6 @@ import {
   MailAck,
   MailItem,
   Project,
-  Session,
-  SessionRuntime,
   SessionState,
   Task,
   TaskArtifacts,
@@ -38,6 +36,8 @@ import {
   MandateCriterion,
   MandateStatus,
 } from "./mandate.ts";
+import { Session, SessionRuntime } from "./session.ts";
+import { TaskShape } from "./shape.ts";
 import { ReviewStage, SessionServices } from "./roles.ts";
 
 const Envelope = z.object({ id: EventId, at: IsoDateTime, actor: Actor });
@@ -74,6 +74,12 @@ export const DomainEvent = z.discriminatedUnion("type", [
     reason: z.string().max(2000).optional(),
   }),
   event("task.artifacts_changed", { taskId: TaskId, artifacts: TaskArtifacts }),
+  event("task.shape_raised", {
+    taskId: TaskId,
+    from: TaskShape,
+    to: TaskShape,
+    reason: z.string().max(500),
+  }),
   event("task.note_added", { taskId: TaskId, note: TaskNote }),
   event("task.review_recorded", {
     taskId: TaskId,
@@ -130,13 +136,21 @@ export const DomainEvent = z.discriminatedUnion("type", [
     sandboxId: z.string().optional(),
     services: SessionServices.optional(),
     runtime: SessionRuntime.optional(),
-    confirmed: z.object({ model: z.string().optional(), effort: z.string().optional() }).optional(),
+    confirmed: z
+      .object({
+        model: z.string().optional(),
+        effort: z.string().optional(),
+        version: z.string().optional(),
+      })
+      .optional(),
     reason: z.string().max(2000).optional(),
   }),
   event("session.usage_recorded", {
     sessionId: SessionId,
     usage: Usage,
     costUsd: z.number().nonnegative().optional(),
+    costBasis: z.string().max(40).optional(),
+    ttftMs: z.int().nonnegative().optional(),
   }),
   event("session.ended", {
     sessionId: SessionId,

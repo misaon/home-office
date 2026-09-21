@@ -6,6 +6,9 @@ import type {
   Gender,
   Attachment,
   ChatMessageId,
+  EvidenceBlocker,
+  EvidenceFidelity,
+  TaskShape,
   ChatThreadId,
   MandateId,
   MandateStatus,
@@ -48,6 +51,9 @@ export type CriterionEvidence = {
   by: string;
   method: string;
   proof: string;
+  fidelity: EvidenceFidelity | null;
+  blocker: EvidenceBlocker | null;
+  files: readonly Attachment[];
 };
 
 export type Card = {
@@ -65,6 +71,7 @@ export type Card = {
   commit: string | null;
   buildsOn: readonly string[];
   reviews: ReviewPlan;
+  shape: TaskShape;
   missingReviews: readonly ReviewStage[];
   at: string;
 };

@@ -1,4 +1,11 @@
-import type { AcceptancePolicy, Agent, AgentId, SessionMode, Task } from "@ho/protocol";
+import {
+  type AcceptancePolicy,
+  type Agent,
+  type AgentId,
+  SHAPE_BUDGETS,
+  type SessionMode,
+  type Task,
+} from "@ho/protocol";
 import { sessionsOfTask } from "./model/queries.ts";
 import type { ReadModel } from "./model/read-model.ts";
 
@@ -33,18 +40,36 @@ const remainingBudget = (agent: Agent, spent: SpentBudget): RemainingBudget => (
       : Math.max(0, agent.budgets.maxUsdPerTask - spent.costUsd),
 });
 
+const shapeTurns = (
+  task: Pick<Task, "shape">,
+  mode: SessionMode,
+  acceptance: AcceptancePolicy,
+): number | null => {
+  if (mode === "verify") {
+    return acceptance.maxVerifyTurns;
+  }
+  if (mode === "work") {
+    return SHAPE_BUDGETS[task.shape].workTurns;
+  }
+  return mode === "review" ? SHAPE_BUDGETS[task.shape].reviewTurns : null;
+};
+
 export const sessionBudget = (
   model: Pick<ReadModel, "sessions" | "sessionsByTask">,
   agent: Agent,
-  task: Pick<Task, "id" | "reviewRounds">,
+  task: Pick<Task, "id" | "reviewRounds" | "shape">,
   mode: SessionMode,
   acceptance: AcceptancePolicy,
 ): RemainingBudget => {
   const remaining = remainingBudget(agent, spentOnTask(model, task, agent.id));
-  return mode === "verify"
-    ? { ...remaining, turns: Math.min(remaining.turns, acceptance.maxVerifyTurns) }
-    : remaining;
+  const cap = shapeTurns(task, mode, acceptance);
+  return cap === null ? remaining : { ...remaining, turns: Math.min(remaining.turns, cap) };
 };
+
+export const wallMinutesFor = (agent: Agent, task: Pick<Task, "shape" | "kind">): number =>
+  task.kind === "work" || task.kind === "verify"
+    ? Math.min(agent.budgets.maxWallMinutes, SHAPE_BUDGETS[task.shape].wallMinutes)
+    : agent.budgets.maxWallMinutes;
 
 const roundName = (round: number): string =>
   round === 0 ? "this task's first round" : `review round ${String(round)} of this task`;

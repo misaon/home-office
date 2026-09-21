@@ -5,6 +5,7 @@ import {
   createChannel,
   type EventFilter,
   type EventStore,
+  type EventTrace,
   type IdFactory,
   type ReplayProblem,
 } from "@ho/core";
@@ -20,7 +21,8 @@ import { chmod } from "node:fs/promises";
 import { prettifyError, z } from "zod";
 
 const BATCH = 500;
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
+const TRACE_COLUMNS = ["correlation_id", "causation_id"] as const;
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS events (
@@ -29,10 +31,26 @@ const SCHEMA = [
     type text NOT NULL,
     at text NOT NULL,
     actor text NOT NULL,
-    payload text NOT NULL
+    payload text NOT NULL,
+    correlation_id text,
+    causation_id text
   )`,
   "CREATE UNIQUE INDEX IF NOT EXISTS events_id_unique ON events (id)",
 ];
+
+const addMissingColumns = (db: Database): void => {
+  const present = new Set(
+    db
+      .query<{ name: string }, []>("PRAGMA table_info(events)")
+      .all()
+      .map((column) => column.name),
+  );
+  for (const column of TRACE_COLUMNS) {
+    if (!present.has(column)) {
+      db.run(`ALTER TABLE events ADD COLUMN ${column} text`);
+    }
+  }
+};
 
 const Row = z.object({
   seq: z.int(),
@@ -105,6 +123,7 @@ export async function openEventStore(
       for (const statement of SCHEMA) {
         db.run(statement);
       }
+      addMissingColumns(db);
       db.run(`PRAGMA user_version = ${String(SCHEMA_VERSION)}`);
     }
     await restrict(path);
@@ -113,8 +132,11 @@ export async function openEventStore(
     throw error;
   }
 
-  const insert = db.query<{ seq: number }, [string, string, string, string, string]>(
-    "INSERT INTO events (id, type, at, actor, payload) VALUES (?, ?, ?, ?, ?) RETURNING seq",
+  const insert = db.query<
+    { seq: number },
+    [string, string, string, string, string, string | null, string | null]
+  >(
+    "INSERT INTO events (id, type, at, actor, payload, correlation_id, causation_id) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING seq",
   );
   const after = db.query<unknown, [number, number]>(
     "SELECT seq, id, type, at, actor, payload FROM events WHERE seq > ? ORDER BY seq LIMIT ?",
@@ -126,29 +148,32 @@ export async function openEventStore(
     push: (event: StoredEvent) => void;
   }>();
 
-  const appendAll = db.transaction((batch: readonly NewEvent[], at: string): StoredEvent[] =>
-    batch.map((event) => {
-      const id = deps.ids.event();
-      const inserted = insert.get(
-        id,
-        event.type,
-        at,
-        JSON.stringify(event.actor),
-        JSON.stringify(event.payload),
-      );
-      if (inserted === null) {
-        throw new Error("the event log did not return a sequence number");
-      }
-      return StoredEvent.parse({ ...event, id, at, seq: inserted.seq });
-    }),
+  const appendAll = db.transaction(
+    (batch: readonly NewEvent[], at: string, trace: EventTrace): StoredEvent[] =>
+      batch.map((event) => {
+        const id = deps.ids.event();
+        const inserted = insert.get(
+          id,
+          event.type,
+          at,
+          JSON.stringify(event.actor),
+          JSON.stringify(event.payload),
+          trace.correlationId ?? null,
+          trace.causationId ?? null,
+        );
+        if (inserted === null) {
+          throw new Error("the event log did not return a sequence number");
+        }
+        return StoredEvent.parse({ ...event, id, at, seq: inserted.seq });
+      }),
   );
 
   return {
-    append: (batch) => {
+    append: (batch, trace) => {
       if (batch.length === 0) {
         return Promise.resolve([]);
       }
-      const stored = appendAll(batch, deps.clock.now().toISOString());
+      const stored = appendAll(batch, deps.clock.now().toISOString(), trace ?? {});
       for (const event of stored) {
         for (const subscriber of subscribers) {
           if (matches(subscriber.filter, event)) {

@@ -1,6 +1,12 @@
 import { dependenciesOf, type ReadModel } from "@ho/core";
 import type { CommitSha, Task } from "@ho/protocol";
-import { inRepo, prepareRepo, prepareReviewCheckout, run } from "./git-bridge.ts";
+import {
+  inRepo,
+  inspectWorkingTree,
+  prepareRepo,
+  prepareReviewCheckout,
+  run,
+} from "./git-bridge.ts";
 import type { DiffSummary, WorkBase } from "./prompts-shared.ts";
 import type { SessionContext } from "./session-provision.ts";
 import type { SessionDeps } from "./sessions.ts";
@@ -65,7 +71,7 @@ const parseShortstat = (stdout: string): DiffSummary | null => {
   };
 };
 
-const diffSummary = async (
+export const diffSummary = async (
   deps: SessionDeps,
   volume: string,
   defaultBranch: string,
@@ -109,5 +115,11 @@ export async function checkout(
     branch: base?.branch ?? ctx.project.defaultBranch,
     alsoFetch: base?.others ?? [],
   });
-  return { commit: null, base, diff: null, languages: await languagesIn(deps, volume) };
+  const tree = await inspectWorkingTree(deps.provider, deps.config, volume).catch(() => null);
+  return {
+    commit: tree?.sha ?? null,
+    base,
+    diff: null,
+    languages: await languagesIn(deps, volume),
+  };
 }

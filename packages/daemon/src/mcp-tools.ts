@@ -25,6 +25,7 @@ import {
   isSessionActive,
 } from "@ho/protocol";
 import { z } from "zod";
+import { checkFidelity, checkNamedFiles } from "./evidence-fidelity.ts";
 import { recall } from "./recall.ts";
 import { dismiss } from "./mcp-dismiss.ts";
 import { hire } from "./mcp-hire.ts";
@@ -32,6 +33,7 @@ import { report } from "./mcp-report.ts";
 import { ALL, define, type AnyTool, type ToolResult } from "./mcp-tool.ts";
 import { verify } from "./mcp-verify.ts";
 import { publishTask } from "./publish.ts";
+import { voiceFor } from "./voice.ts";
 
 export type { AnyTool, Entry, McpSessionContext, ToolResult } from "./mcp-tool.ts";
 
@@ -161,7 +163,25 @@ const review = define({
   schema: HoReviewInput,
   modes: ["review"],
   run: async (input, office, entry, actor) => {
-    const task = await office.execute(actor, (m, c) => submitReview(m, entry.ctx.taskId, input, c));
+    checkFidelity("criterion", input.criteria, entry.applicationReady, input.verdict === "approve");
+    checkNamedFiles("criterion", input.criteria, input.files);
+    const attachments = await entry.ctx.attachments.collect(entry.ctx.sessionId, input.files);
+    const task = await office.execute(actor, (m, c) =>
+      submitReview(m, entry.ctx.taskId, { ...input, attachments }, c),
+    );
+    if (attachments.length > 0) {
+      const language = office.model.projects.get(entry.ctx.projectId)?.language ?? "en";
+      await office.execute(actor, (m, c) =>
+        postAgentMessage(
+          m,
+          entry.ctx.agentId,
+          voiceFor(language).showResult,
+          entry.ctx.taskId,
+          c,
+          attachments,
+        ),
+      );
+    }
     return `verdict recorded; task is now ${task.status}. Stop now.`;
   },
 });
@@ -174,6 +194,7 @@ const delegate = define({
   modes: ["triage", "plan"],
   run: async (input, office, entry, actor) => {
     const task = await office.execute(actor, (m, c) => delegateTask(m, input, entry.ctx.taskId, c));
+    entry.delegated = true;
     return { taskId: task.id, status: task.status, assigneeId: task.assigneeId ?? null };
   },
 });
@@ -186,6 +207,7 @@ const plan = define({
   modes: ["triage"],
   run: async (input, office, entry, actor) => {
     const task = await office.execute(actor, (m, c) => planTask(m, input, entry.ctx.taskId, c));
+    entry.delegated = true;
     return { taskId: task.id, status: task.status, assigneeId: task.assigneeId ?? null };
   },
 });

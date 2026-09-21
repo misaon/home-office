@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ATTACHMENTS_MAX, AttachmentName } from "./attachments.ts";
+import { Attachment, ATTACHMENTS_MAX } from "./attachments.ts";
 import { Actor, BRIEF_MAX, CommitSha, IsoDateTime } from "./domain.ts";
 import { ChatMessageId, MandateId, ProjectId, SessionId, TaskId } from "./ids.ts";
 import { MailConnector } from "./policies.ts";
@@ -28,6 +28,13 @@ export const EvidenceVerdict = z.enum(["pass", "fail", "not_checked"]);
 export type EvidenceVerdict = z.infer<typeof EvidenceVerdict>;
 
 export const PROOF_MAX = 2000;
+export const VIA_MAX = 300;
+
+export const EvidenceFidelity = z.enum(["live", "substitute", "static"]);
+export type EvidenceFidelity = z.infer<typeof EvidenceFidelity>;
+
+export const EvidenceBlocker = z.enum(["not_prepared", "not_attempted", "attempt_failed"]);
+export type EvidenceBlocker = z.infer<typeof EvidenceBlocker>;
 
 export const Evidence = z.object({
   at: IsoDateTime,
@@ -39,7 +46,10 @@ export const Evidence = z.object({
   method: EvidenceMethod,
   verdict: EvidenceVerdict,
   proof: z.string().max(PROOF_MAX),
-  files: z.array(AttachmentName).max(ATTACHMENTS_MAX).default([]),
+  fidelity: EvidenceFidelity.default("static"),
+  via: z.string().max(VIA_MAX).optional(),
+  blocker: EvidenceBlocker.optional(),
+  files: z.array(Attachment).max(ATTACHMENTS_MAX).default([]),
 });
 export type Evidence = z.infer<typeof Evidence>;
 

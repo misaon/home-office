@@ -26,8 +26,13 @@ export type ReplayProblem = {
   reason: string;
 };
 
+export type EventTrace = {
+  correlationId?: string | undefined;
+  causationId?: string | undefined;
+};
+
 export type EventStore = {
-  append: (events: readonly NewEvent[]) => Promise<StoredEvent[]>;
+  append: (events: readonly NewEvent[], trace?: EventTrace) => Promise<StoredEvent[]>;
   read: (
     afterSeq?: number,
     onUnreadable?: (problem: ReplayProblem) => void,

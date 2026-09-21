@@ -12,6 +12,14 @@ export async function imageHash(api: DockerApi, ref: string): Promise<string | n
   return ImageInspect.parse(await res.json()).Config?.Labels?.[HASH_LABEL] ?? "";
 }
 
+export async function imageId(api: DockerApi, ref: string): Promise<string | null> {
+  const res = await api.maybe("GET", `/images/${encodeURIComponent(ref)}/json`);
+  if (res === null) {
+    return null;
+  }
+  return ImageInspect.parse(await res.json()).Id ?? null;
+}
+
 async function pump(
   stream: ReadableStream<Uint8Array>,
   onLine: (line: string) => void,

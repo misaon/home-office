@@ -15,6 +15,8 @@ export const Usage = z.object({
   cacheReadTokens: z.int().nonnegative(),
   cacheWriteTokens: z.int().nonnegative(),
   turns: z.int().nonnegative(),
+  thinkingTokens: z.int().nonnegative().optional(),
+  apiMs: z.int().nonnegative().optional(),
 });
 export type Usage = z.infer<typeof Usage>;
 
@@ -24,6 +26,8 @@ export const ZERO_USAGE: Usage = {
   cacheReadTokens: 0,
   cacheWriteTokens: 0,
   turns: 0,
+  thinkingTokens: 0,
+  apiMs: 0,
 };
 
 export const addUsage = (a: Usage, b: Usage): Usage => ({
@@ -32,4 +36,6 @@ export const addUsage = (a: Usage, b: Usage): Usage => ({
   cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens,
   cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens,
   turns: a.turns + b.turns,
+  thinkingTokens: (a.thinkingTokens ?? 0) + (b.thinkingTokens ?? 0),
+  apiMs: (a.apiMs ?? 0) + (b.apiMs ?? 0),
 });

@@ -57,7 +57,7 @@ function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX.Elemen
   );
 }
 
-function ChatThumbs({
+export function ChatThumbs({
   attachments,
 }: {
   attachments: readonly Attachment[];

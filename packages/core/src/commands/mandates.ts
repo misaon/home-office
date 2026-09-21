@@ -1,4 +1,5 @@
 import {
+  type Attachment,
   type Baseline,
   type CriterionOrigin,
   compact,
@@ -40,6 +41,11 @@ export const wholeRequestNeedsConditions = (
 ): task is Task & { mandateId: MandateId } =>
   task.mandateId !== undefined &&
   tasksOfMandate(model, { id: task.mandateId }).filter((other) => other.kind === "work").length > 1;
+
+export const attachmentsNamed = (
+  attachments: readonly Attachment[],
+  names: readonly string[],
+): Attachment[] => attachments.filter((attachment) => names.includes(attachment.name));
 
 export const evidenceOf = (
   ctx: CommandContext,

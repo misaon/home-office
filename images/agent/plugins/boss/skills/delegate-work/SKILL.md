@@ -27,6 +27,10 @@ description: Load before the first ho_delegate or ho_plan of a triage session, a
    - `outOfScope`: nearby work you are deliberately leaving out, so the developer does not drift.
    - `context`: only what the repository cannot tell: decisions already made, links, prior art. No
      pasted code.
+   - `shape`: `mechanical` for a rename, a copy or link change, a dependency bump, a one-line fix;
+     `routine` for an ordinary change with logic or layout to get right; `risky` for
+     authentication, payments, data migrations, public APIs, anything hard to reverse. The office
+     sizes budgets, effort and review depth by it and raises it when the diff turns out larger.
    - `qa: true` when a tester can exercise the result (user-visible behaviour, an API or data
      change); `security: true` when the change touches authentication, authorisation, input
      handling, secrets, cryptography, network exposure, dependencies or a hot path. The head of
@@ -35,5 +39,6 @@ description: Load before the first ho_delegate or ho_plan of a triage session, a
      human asked for a pull request, or explicitly for none.
 4. Pick the assignee by fit, then by cost; your own name only when nobody fits. `ho_hire` only for
    a gap that will come back.
-5. Tell the human in one `ho_reply` what you did — one line per task, or who is planning what —
-   then `ho_report` with status done.
+5. `ho_report` with status done and a one-line summary. The office announces every handover in the
+   chat itself, with the assignee and the reviewers, so do not repeat it; `ho_reply` is for a
+   question back or a decision the human needs to know.

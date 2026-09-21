@@ -22,7 +22,15 @@ const nameOf = (snapshot: Snapshot, actor: Actor): string => {
   return actor.kind === "human" ? t("mandate.byHuman") : t("mandate.byOffice");
 };
 
-const NONE: CriterionEvidence = { mark: "open", by: "", method: "", proof: "" };
+const NONE: CriterionEvidence = {
+  mark: "open",
+  by: "",
+  method: "",
+  proof: "",
+  fidelity: null,
+  blocker: null,
+  files: [],
+};
 
 function evidenceFor(
   snapshot: Snapshot,
@@ -46,12 +54,23 @@ function evidenceFor(
       by: nameOf(snapshot, judged.by),
       method: judged.method,
       proof: judged.proof,
+      fidelity: judged.fidelity,
+      blocker: judged.blocker ?? null,
+      files: judged.files,
     };
   }
   const claimed = latest(entries.filter((entry) => entry.method === "author"));
   return claimed === undefined
     ? NONE
-    : { mark: "claimed", by: nameOf(snapshot, claimed.by), method: "author", proof: claimed.proof };
+    : {
+        mark: "claimed",
+        by: nameOf(snapshot, claimed.by),
+        method: "author",
+        proof: claimed.proof,
+        fidelity: claimed.fidelity,
+        blocker: claimed.blocker ?? null,
+        files: claimed.files,
+      };
 }
 
 export const cardEvidence = (snapshot: Snapshot, task: Task): CriterionEvidence[] => {

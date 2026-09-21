@@ -3,6 +3,7 @@ import {
   type Agent,
   type AgentId,
   clip,
+  headline,
   type Project,
   ROLE_TITLE,
   type Session,
@@ -12,7 +13,7 @@ import {
 } from "@ho/protocol";
 import { planPrompt } from "./prompts-plan.ts";
 import { reviewPrompt } from "./prompts-review.ts";
-import type { SessionFacts } from "./prompts-shared.ts";
+import { LANGUAGE_GUIDE, type SessionFacts } from "./prompts-shared.ts";
 import { triagePrompt } from "./prompts-triage.ts";
 import { verifyPrompt } from "./prompts-verify.ts";
 import { workPrompt } from "./prompts-work.ts";
@@ -34,6 +35,7 @@ const common = (agent: Agent, project: Project): string[] => [
   whoAmI(agent, project),
   agent.basePrompt.trim(),
   "Keep tool output small: prefer targeted reads and greps over dumping files. Never print secrets.",
+  LANGUAGE_GUIDE[project.language],
   RECALL,
   skillsGuide(agent),
 ];
@@ -51,8 +53,13 @@ export const systemPrompt = (facts: SessionFacts, model: ReadModel): string =>
     .filter((line) => line !== "")
     .join("\n");
 
-const taskBrief = (task: Task): string =>
-  task.brief.trim() === "" ? task.title : `${task.title}\n\n${task.brief}`;
+const taskBrief = (task: Task): string => {
+  const brief = task.brief.trim();
+  if (brief === "") {
+    return task.title;
+  }
+  return headline(brief, task.title.length) === task.title ? brief : `${task.title}\n\n${brief}`;
+};
 
 const HANDOVER_CHARS = 6000;
 const NOTE_CHARS = 1500;

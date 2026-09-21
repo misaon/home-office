@@ -7,11 +7,11 @@ import {
   MailItemId,
   MandateId,
   ProjectId,
-  SessionId,
   TaskId,
 } from "./ids.ts";
 import {
   AcceptancePolicy,
+  ChatLanguage,
   EnvironmentPolicy,
   HiringPolicy,
   IntakePolicy,
@@ -21,8 +21,9 @@ import {
   ServicesPolicy,
   VerifyPolicy,
 } from "./policies.ts";
-import { AgentRole, ReviewPlan, SessionMode, SessionServices, TaskKind } from "./roles.ts";
-import { Budgets, Usage } from "./usage.ts";
+import { AgentRole, ReviewPlan, TaskKind } from "./roles.ts";
+import { TaskShape } from "./shape.ts";
+import { Budgets } from "./usage.ts";
 
 export * from "./policies.ts";
 export * from "./usage.ts";
@@ -161,6 +162,7 @@ export const Project = z.object({
   name: z.string().min(1).max(80),
   repo: RepoSource,
   defaultBranch: z.string().min(1).default("main"),
+  language: ChatLanguage.default("en"),
   publish: PublishPolicy.prefault({}),
   intake: IntakePolicy.prefault({}),
   hiring: HiringPolicy.prefault({}),
@@ -216,6 +218,7 @@ export const Task = z.object({
   publish: PublishMode.optional(),
   browser: z.boolean().optional(),
   reviews: ReviewPlan.prefault({}),
+  shape: TaskShape.default("routine"),
   rating: TaskRating.optional(),
   reviewRounds: z.int().nonnegative().default(0),
   notes: z.array(TaskNote).default([]),
@@ -264,35 +267,3 @@ export const MailItem = z.object({
   acks: z.array(MailAck).default([]),
 });
 export type MailItem = z.infer<typeof MailItem>;
-
-export const SessionRuntime = z.object({
-  model: z.string().min(1),
-  effort: EffortLevel,
-  promptHash: z.string().min(1),
-  skillPacks: z.array(z.string().min(1)),
-  image: z.string().min(1),
-  confirmedModel: z.string().min(1).optional(),
-  confirmedEffort: z.string().min(1).optional(),
-});
-export type SessionRuntime = z.infer<typeof SessionRuntime>;
-
-export const Session = z.object({
-  id: SessionId,
-  taskId: TaskId,
-  agentId: AgentId,
-  mode: SessionMode.default("work"),
-  state: SessionState,
-  runtimeSessionId: z.string().optional(),
-  sandboxId: z.string().optional(),
-  services: SessionServices.optional(),
-  runtime: SessionRuntime.optional(),
-  threadId: ChatThreadId.optional(),
-  resumedFrom: SessionId.optional(),
-  round: z.int().nonnegative().default(0),
-  usage: Usage,
-  costUsd: z.number().nonnegative().optional(),
-  planPercent: z.number().nonnegative().optional(),
-  startedAt: IsoDateTime,
-  endedAt: IsoDateTime.optional(),
-});
-export type Session = z.infer<typeof Session>;

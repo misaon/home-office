@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { IsoDateTime, Usage } from "./domain.ts";
 import { SessionId } from "./ids.ts";
+import { PlanWindow } from "./plan-usage.ts";
 
 export const RuntimeErrorCode = z.enum([
   "authentication_failed",
@@ -22,6 +23,7 @@ export const RuntimeEvent = z.discriminatedUnion("kind", [
     runtimeSessionId: z.string(),
     model: z.string(),
     effort: z.string().optional(),
+    version: z.string().optional(),
     plugins: z.array(z.string()),
     pluginErrors: z.array(z.string()),
     tools: z.int().nonnegative(),
@@ -53,6 +55,9 @@ export const RuntimeEvent = z.discriminatedUnion("kind", [
     kind: z.literal("usage"),
     usage: Usage,
     costUsd: z.number().nonnegative().optional(),
+    costBasis: z.string().optional(),
+    ttftMs: z.int().nonnegative().optional(),
+    wallMs: z.int().nonnegative().optional(),
   }),
   z.object({
     kind: z.literal("context"),
@@ -61,6 +66,18 @@ export const RuntimeEvent = z.discriminatedUnion("kind", [
     cost: z.object({ amount: z.number(), currency: z.string() }).nullable(),
   }),
   z.object({ kind: z.literal("rate_limited"), retryAt: IsoDateTime.nullable() }),
+  z.object({
+    kind: z.literal("background_done"),
+    id: z.string(),
+    status: z.string(),
+    exitCode: z.int().nullable(),
+    summary: z.string(),
+  }),
+  z.object({
+    kind: z.literal("plan_window"),
+    fiveHour: PlanWindow.nullable(),
+    sevenDay: PlanWindow.nullable(),
+  }),
   z.object({
     kind: z.literal("result"),
     ok: z.boolean(),

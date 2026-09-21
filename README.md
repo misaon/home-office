@@ -69,6 +69,11 @@ the secretary and an obvious change to the right developer, and hands everything
 who reads the repository and creates the tasks. Delegation takes a goal in one sentence and acceptance
 criteria written so that someone else can check them, plus what must not change and what is
 deliberately out of scope. If nobody can write a checkable criterion, they ask you instead of guessing.
+Every task also carries a shape: `mechanical` (a rename, a copy change, a dependency bump), `routine`
+(an ordinary change with logic to get right) or `risky` (authentication, payments, migrations, public
+APIs). The shape sizes the turn and time budgets, the effort and the depth of review, a risky task gets
+an independent verification even on its own, and the office raises the shape when the diff turns out
+larger than announced.
 
 **Your checks are the gate, and they gate a commit.** Set one command per floor — `bun run check`,
 `make test`, whatever you already use. When the agent reports, the office reads the exact commit at
@@ -197,6 +202,7 @@ branch, publish and intake policy, budgets, and the staff to hire:
   "version": 1,
   "name": "Home Office",
   "defaultBranch": "main",
+  "language": "cs",
   "publish": { "mode": "pull-request", "draft": true },
   "verify": { "command": "bun run check" },
   "acceptance": { "verify": "integration", "maxFixRounds": 2, "maxVerifyTurns": 60 },
@@ -218,7 +224,10 @@ only starts once the repository is marked `"trust": "trusted"`, in this file, in
 each entry has a `role` from boss, secretary, analyst, backend, frontend, devops, qa, security, head
 or developer, and a floor whose file names no staff keeps the default team. No credential ever goes in
 it — only which provider an agent uses, which is enough for the daemon to find the key in the Keychain.
-A gitignored `.ho/config.local.json` layers over it for one machine.
+A gitignored `.ho/config.local.json` layers over it for one machine. `language` (`en` or `cs`, `en` by
+default) is the language of everything the office writes into the chat and of what the agents write
+to you: status lines, reports, review findings and pull-request descriptions. Code, identifiers,
+branch names and commit messages stay English.
 
 `acceptance` says when a request counts as done. `verify` is `integration` by default: a separate
 verification session runs only when the request became several tasks, against the conditions the
@@ -232,7 +241,8 @@ otherwise, marks a condition about delivery as not checked because the office pr
 and the pull request after the verdict, and files what it has before the turns run out.
 
 `environment` describes how this project is set up and checked, once, for every agent that touches
-it. `setup` runs before each work, review and verification session in the agent's own sandbox
+it. `setup` runs before each work, review and verification session in the agent's own sandbox, against
+a package cache the whole floor shares, so the second install of the same lockfile is a copy, not a download;
 (dependencies, toolchains), `services` when the floor's private engine is on, `seed` after them
 (migrations, fixtures); `run` starts the application in the background and `ready` waits for a URL
 or a command to answer, so the agent finds it running and is told where its log is. `checks` names
@@ -293,7 +303,8 @@ daemon:
   _mandate_: the request in the human's own words, the conditions of done the boss or the analyst
   states, every task it spawned, and one evidence record per acceptance criterion — who judged it,
   on which commit, by what method (the floor's checks, the author's own account, a reviewer, the
-  final verifier) and with what proof. Reviewers file a judgement per criterion with their verdict,
+  final verifier), on what basis (the running application, a substitute page or code alone, and
+  why it was not the application), with what proof and which screenshots. Reviewers file a judgement per criterion with their verdict,
   and an approval that leaves a criterion failing is refused. `ho mandate list` and
   `ho mandate show <mandate>` print them.
 - **Session traces.** `$HO_HOME/traces/<session id>.jsonl` keeps what each agent saw and did: the

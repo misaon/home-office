@@ -65,6 +65,10 @@ function applyTaskEvent(model: ReadModel, event: TaskEvent): void {
       model.tasks.set(task.id, { ...touched, artifacts: event.payload.artifacts });
       break;
     }
+    case "task.shape_raised": {
+      model.tasks.set(task.id, { ...touched, shape: event.payload.to });
+      break;
+    }
     case "task.note_added": {
       model.tasks.set(task.id, { ...touched, notes: [...task.notes, event.payload.note] });
       break;
@@ -140,6 +144,7 @@ const TOUCHES: Readonly<Record<StoredEvent["type"], Collection | null>> = {
   "task.reviewer_assigned": "tasks",
   "task.status_changed": "tasks",
   "task.artifacts_changed": "tasks",
+  "task.shape_raised": "tasks",
   "task.note_added": "tasks",
   "task.review_recorded": "tasks",
   "task.review_waived": "tasks",
@@ -207,6 +212,7 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
     case "task.reviewer_assigned":
     case "task.status_changed":
     case "task.artifacts_changed":
+    case "task.shape_raised":
     case "task.note_added":
     case "task.removed":
     case "task.rated":

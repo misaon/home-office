@@ -27,13 +27,15 @@ export type FloorJobs = { stop: () => Promise<void>; planUsage: () => PlanUsageS
 export async function startFloorJobs(deps: Deps): Promise<FloorJobs> {
   const { office, sessions, provider, config, gate, home, log } = deps;
   await hireDefaultTeams(office, log);
-  const voice = startBossVoice(office, gate, log);
+  const voice = startBossVoice(office, log);
   const scheduler = startScheduler(office, sessions, config, gate, log);
   const steward = new MandateSteward({ office, provider, config, home, log });
   steward.start();
   const officeFiles = new OfficeConfigSync(office, home, log);
   officeFiles.start();
-  const plan = new PlanUsageMeter(office, log, config.plan.enabled);
+  const plan = new PlanUsageMeter(office, log, config.plan.enabled, (signal) =>
+    sessions.stream(null, signal),
+  );
   plan.start();
   return {
     planUsage: () => plan.status(),
@@ -42,6 +44,7 @@ export async function startFloorJobs(deps: Deps): Promise<FloorJobs> {
       await officeFiles.stop();
       await steward.stop();
       await scheduler.stop();
+      gate.close();
       await voice.stop();
     },
   };

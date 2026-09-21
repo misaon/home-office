@@ -7,6 +7,7 @@ import {
   sessionBudget,
   startSession,
   transitionTask,
+  wallMinutesFor,
 } from "@ho/core";
 import {
   compact,
@@ -126,9 +127,9 @@ export class SessionManager {
         "the session starts with few turns left in this round",
       );
     }
-    const session = await office.execute(SYSTEM_ACTOR, (m, ctx) =>
-      startSession(m, { taskId, agentId, mode }, ctx),
-    );
+    const session = await office
+      .traced({ correlationId: task.mandateId })
+      .execute(SYSTEM_ACTOR, (m, ctx) => startSession(m, { taskId, agentId, mode }, ctx));
     const previous =
       session.resumedFrom === undefined
         ? undefined
@@ -154,14 +155,11 @@ export class SessionManager {
       throw new Error(reason, { cause: error });
     }
     const controller = new AbortController();
+    const wallMinutes = wallMinutesFor(agent, task);
     const wall = setTimeout(() => {
-      log.warn({ sessionId: session.id, taskId }, "wall-time budget exhausted");
-      controller.abort(
-        new Error(
-          `wall-time budget of ${String(agent.budgets.maxWallMinutes)} minute(s) exhausted`,
-        ),
-      );
-    }, agent.budgets.maxWallMinutes * 60_000);
+      log.warn({ sessionId: session.id, taskId, wallMinutes }, "wall-time budget exhausted");
+      controller.abort(new Error(`wall-time budget of ${String(wallMinutes)} minute(s) exhausted`));
+    }, wallMinutes * 60_000);
     if (this.#stopping) {
       controller.abort(new Error("daemon is stopping"));
     }
@@ -186,7 +184,7 @@ export class SessionManager {
       taskId,
       controller,
       done,
-      spent: { toolCalls: 0, costUsd: null },
+      spent: { toolCalls: 0, costUsd: null, overheadWarned: false },
     });
     return session;
   }
@@ -228,9 +226,10 @@ export class SessionManager {
   }
 
   #end(sessionId: SessionId, ending: Ending): Promise<Session> {
-    return this.#deps.office.execute(SYSTEM_ACTOR, (m, ctx) =>
-      endSession(m, { sessionId, state: ending.state, ...compact({ reason: ending.reason }) }, ctx),
-    );
+    const input = { sessionId, state: ending.state, ...compact({ reason: ending.reason }) };
+    return this.#deps.office
+      .traced({ causationId: sessionId })
+      .execute(SYSTEM_ACTOR, (m, ctx) => endSession(m, input, ctx));
   }
 
   async #block(taskId: TaskId, reason: string): Promise<void> {
@@ -258,7 +257,7 @@ export class SessionManager {
       this.#deps,
       ctx,
       event,
-      running?.spent ?? { toolCalls: 0, costUsd: null },
+      running?.spent ?? { toolCalls: 0, costUsd: null, overheadWarned: false },
     );
     if (reason !== null) {
       running?.controller.abort(new Error(reason));

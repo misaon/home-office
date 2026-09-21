@@ -1,4 +1,11 @@
-import { type Actor, clip, errorMessage, type HoReportInput, type SessionMode } from "@ho/protocol";
+import {
+  type Actor,
+  type Attachment,
+  clip,
+  errorMessage,
+  type HoReportInput,
+  type SessionMode,
+} from "@ho/protocol";
 import { McpServer, WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import type { Logger } from "./logger.ts";
 import { type Entry, type McpSessionContext, text, TOOLS, type ToolResult } from "./mcp-tools.ts";
@@ -43,7 +50,15 @@ export class McpGateway {
 
   register(ctx: McpSessionContext): string {
     const token = mintToken();
-    this.#entries.set(token, { ctx, replied: false, report: null, skills: this.#skills });
+    this.#entries.set(token, {
+      ctx,
+      replied: false,
+      delegated: false,
+      applicationReady: false,
+      report: null,
+      reportFiles: [],
+      skills: this.#skills,
+    });
     return token;
   }
 
@@ -55,8 +70,27 @@ export class McpGateway {
     return this.#entries.get(token)?.replied ?? false;
   }
 
+  delegated(token: string): boolean {
+    return this.#entries.get(token)?.delegated ?? false;
+  }
+
   report(token: string): HoReportInput | null {
     return this.#entries.get(token)?.report ?? null;
+  }
+
+  skillVersions(packs: readonly string[]): Promise<Record<string, string>> {
+    return this.#skills.versions(packs);
+  }
+
+  reportFiles(token: string): readonly Attachment[] {
+    return this.#entries.get(token)?.reportFiles ?? [];
+  }
+
+  markApplication(token: string, ready: boolean): void {
+    const entry = this.#entries.get(token);
+    if (entry !== undefined) {
+      entry.applicationReady = ready;
+    }
   }
 
   async handle(req: Request): Promise<Response> {
@@ -82,6 +116,10 @@ export class McpGateway {
       { instructions: INSTRUCTIONS[mode] },
     );
     const actor: Actor = { kind: "agent", agentId: entry.ctx.agentId };
+    const office = this.#office.traced({
+      correlationId: entry.ctx.mandateId,
+      causationId: sessionId,
+    });
     for (const tool of TOOLS) {
       if (
         !tool.modes.includes(mode) ||
@@ -99,7 +137,7 @@ export class McpGateway {
             "mcp tool called",
           );
           try {
-            const answer = text(await tool.handle(input, this.#office, entry, actor));
+            const answer = text(await tool.handle(input, office, entry, actor));
             const ms = elapsedMs(started);
             this.#traces.mcp(sessionId, { tool: tool.name, ok: true, ms });
             this.#log.debug(

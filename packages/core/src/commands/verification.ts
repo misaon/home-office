@@ -43,6 +43,7 @@ const checksEvidence = (
             method: "checks",
             verdict,
             proof: clip(proof, PROOF_MAX),
+            fidelity: "live",
           }),
         ),
       ];

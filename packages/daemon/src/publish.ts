@@ -3,7 +3,7 @@ import { githubRepoFromUrl, HUMAN_ACTOR, type Project, type TaskId } from "@ho/p
 import { exec } from "./host-exec.ts";
 import { daemonLog } from "./logger.ts";
 import { pushLocalBranch, pushMirrorBranch } from "./mirrors.ts";
-import type { Office } from "./office.ts";
+import type { Commands } from "./office.ts";
 
 const GH_TIMEOUT_MS = 120_000;
 
@@ -11,19 +11,30 @@ export type Published = { branch: string; prUrl: string | null };
 
 const UNSEEN = /could not resolve to a repository|not found|HTTP 404/iu;
 
-let signedIn: Promise<string[]> | null = null;
-let worked: string | null = null;
+type Accounts = { names: string[]; active: string | null };
 
-const readAccounts = async (): Promise<string[]> => {
+let signedIn: Promise<Accounts> | null = null;
+const worked = new Map<string, string>();
+
+const readAccounts = async (): Promise<Accounts> => {
   const status = await exec(["gh", "auth", "status"], { timeoutMs: 10_000 });
-  const seen = `${status.stdout}\n${status.stderr}`;
-  return [...seen.matchAll(/account (?<name>[\w.-]+)/gu)]
-    .map((found) => found.groups?.["name"] ?? "")
-    .filter((name) => name !== "");
+  const names: string[] = [];
+  let active: string | null = null;
+  let current: string | null = null;
+  for (const line of `${status.stdout}\n${status.stderr}`.split("\n")) {
+    const name = /account (?<name>[\w.-]+)/u.exec(line)?.groups?.["name"];
+    if (name !== undefined) {
+      current = name;
+      names.push(name);
+    } else if (current !== null && /Active account: true/u.test(line)) {
+      active = current;
+    }
+  }
+  return { names, active };
 };
 
-const accounts = (): Promise<string[]> => {
-  signedIn ??= readAccounts().catch(() => []);
+const accounts = (): Promise<Accounts> => {
+  signedIn ??= readAccounts().catch((): Accounts => ({ names: [], active: null }));
   return signedIn;
 };
 
@@ -35,55 +46,72 @@ const tokenFor = async (account: string): Promise<string | null> => {
   return result.code === 0 && result.stdout !== "" ? result.stdout : null;
 };
 
-async function gh(args: readonly string[], cwd: string | undefined, what: string): Promise<string> {
-  const known = worked === null ? null : await tokenFor(worked);
-  const first = await exec(["gh", ...args], {
+const attempt = (
+  args: readonly string[],
+  cwd: string | undefined,
+  token: string | null,
+): ReturnType<typeof exec> =>
+  exec(["gh", ...args], {
     cwd,
     timeoutMs: GH_TIMEOUT_MS,
-    ...(known === null ? {} : { env: { GH_TOKEN: known, GITHUB_TOKEN: known } }),
+    ...(token === null ? {} : { env: { GH_TOKEN: token, GITHUB_TOKEN: token } }),
   });
+
+async function gh(
+  args: readonly string[],
+  cwd: string | undefined,
+  what: string,
+  scope: string,
+): Promise<string> {
+  const { names, active } = await accounts();
+  const known = worked.get(scope) ?? null;
+  const knownToken = known === null ? null : await tokenFor(known);
+  const first = await attempt(args, cwd, knownToken);
+  const used = knownToken === null ? active : known;
   if (first.code === 0) {
+    if (used !== null) {
+      worked.set(scope, used);
+    }
     return first.stdout;
   }
   const complaint = first.stderr || first.stdout;
   if (!UNSEEN.test(complaint)) {
     throw new Error(`gh ${what} failed (${String(first.code)}): ${complaint.slice(0, 500)}`);
   }
-  for (const account of await accounts()) {
-    if (account === worked) {
+  const failed = new Set(used === null ? [] : [used]);
+  for (const account of names) {
+    if (failed.has(account)) {
       continue;
     }
     const token = await tokenFor(account);
     if (token === null) {
       continue;
     }
-    const again = await exec(["gh", ...args], {
-      cwd,
-      timeoutMs: GH_TIMEOUT_MS,
-      env: { GH_TOKEN: token, GITHUB_TOKEN: token },
-    });
+    const again = await attempt(args, cwd, token);
     if (again.code === 0) {
-      worked = account;
-      daemonLog()?.info({ account, what }, "gh fell back to another signed-in account");
+      worked.set(scope, account);
+      daemonLog()?.info({ account, what, scope }, "gh fell back to another signed-in account");
       return again.stdout;
     }
+    failed.add(account);
   }
-  const tried = await accounts();
-  const names = tried.join(", ");
+  const listed = names.length === 0 ? "none found" : names.join(", ");
   throw new Error(
-    `gh ${what} failed (${String(first.code)}): ${complaint.slice(0, 400)}\n  tried every signed-in account (${names === "" ? "none found" : names}); none can see this repository`,
+    `gh ${what} failed (${String(first.code)}): ${complaint.slice(0, 400)}\n  tried every signed-in account (${listed}); none can see this repository`,
   );
 }
 
-const repoTarget = (project: Project): { cwd: string | undefined; target: string[] } => {
+type RepoTarget = { cwd: string | undefined; target: string[]; scope: string };
+
+const repoTarget = (project: Project): RepoTarget => {
   if (project.repo.kind === "local") {
-    return { cwd: project.repo.path, target: [] };
+    return { cwd: project.repo.path, target: [], scope: project.repo.path };
   }
   const repo = githubRepoFromUrl(project.repo.url);
   if (repo === null) {
     throw new Error("pull requests need a GitHub URL");
   }
-  return { cwd: undefined, target: ["--repo", repo] };
+  return { cwd: undefined, target: ["--repo", repo], scope: repo.split("/")[0] ?? repo };
 };
 
 export type PullRequestContent = { title: string; body: string };
@@ -93,7 +121,7 @@ export async function openPullRequest(
   content: PullRequestContent,
   branch: string,
 ): Promise<string | null> {
-  const { cwd, target } = repoTarget(project);
+  const { cwd, target, scope } = repoTarget(project);
   const existing = await gh(
     [
       "pr",
@@ -112,6 +140,7 @@ export async function openPullRequest(
     ],
     cwd,
     "pr list",
+    scope,
   );
   if (existing !== "") {
     return existing;
@@ -133,6 +162,7 @@ export async function openPullRequest(
     ],
     cwd,
     "pr create",
+    scope,
   );
   return created.split("\n").findLast((line) => line.startsWith("https://")) ?? null;
 }
@@ -148,7 +178,7 @@ const pushBranchToOrigin = async (
 };
 
 export async function publishTask(
-  office: Office,
+  office: Commands,
   home: string,
   taskId: TaskId,
 ): Promise<Published> {

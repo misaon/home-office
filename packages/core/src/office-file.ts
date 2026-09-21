@@ -66,6 +66,7 @@ export function officeFileFrom(project: Project, agents: readonly Agent[]): Offi
     version: 1,
     name: project.name,
     defaultBranch: project.defaultBranch,
+    language: project.language,
     publish: project.publish,
     intake: project.intake,
     services: project.services,

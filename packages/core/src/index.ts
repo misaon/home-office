@@ -15,6 +15,7 @@ export * from "./commands/ratings.ts";
 export * from "./commands/sessions.ts";
 export * from "./commands/staffing.ts";
 export * from "./commands/task-checks.ts";
+export * from "./commands/task-shape.ts";
 export * from "./commands/tasks.ts";
 export * from "./commands/verification.ts";
 export * from "./escalate.ts";

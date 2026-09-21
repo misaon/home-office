@@ -26,11 +26,13 @@ import { AgentId, ChatThreadId, MandateId, ProjectId, SessionId, TaskId } from "
 import { MandateStatus } from "./mandate.ts";
 import { patchOf } from "./patch.ts";
 import { ReviewPlan, ReviewStage } from "./roles.ts";
+import { TaskShape } from "./shape.ts";
 
 const ProjectFields = Project.pick({
   name: true,
   repo: true,
   defaultBranch: true,
+  language: true,
   publish: true,
   intake: true,
   hiring: true,
@@ -66,7 +68,9 @@ export const DirectoryPick = z.discriminatedUnion("status", [
   z.object({ status: z.literal("unavailable"), message: z.string() }),
 ]);
 export type DirectoryPick = z.infer<typeof DirectoryPick>;
-const ProjectPatch = patchOf(Project.pick({ name: true, repo: true, defaultBranch: true })).extend({
+const ProjectPatch = patchOf(
+  Project.pick({ name: true, repo: true, defaultBranch: true, language: true }),
+).extend({
   publish: patchOf(PublishPolicy).optional(),
   intake: patchOf(IntakePolicy).optional(),
   hiring: patchOf(HiringPolicy).optional(),
@@ -122,6 +126,7 @@ export const TaskCreateInput = z.object({
   title: Task.shape.title,
   brief: Task.shape.brief.default(""),
   priority: TaskPriority.default("normal"),
+  shape: TaskShape.default("routine"),
   assigneeId: AgentId.optional(),
   browser: z.boolean().optional(),
   reviews: ReviewPlan.optional(),

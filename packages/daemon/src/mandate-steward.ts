@@ -30,6 +30,7 @@ import {
   type StewardDeps,
 } from "./mandate-actions.ts";
 import { decisionBrief, failureReason } from "./mandate-report.ts";
+import { noticeUnconfiguredFloor } from "./floor-notice.ts";
 import { followEvents, type Office } from "./office.ts";
 
 const FOLLOWED: readonly StoredEvent["type"][] = [
@@ -149,6 +150,7 @@ export class MandateSteward {
       return;
     }
     this.#baseline(mandate, project);
+    await noticeUnconfiguredFloor(this.#deps, mandate, project);
     const assessment = assessMandate(office.model, mandate, project.acceptance);
     log.debug(
       { mandateId, status: mandate.status, round: mandate.round, assessment: assessment.kind },
@@ -204,7 +206,7 @@ export class MandateSteward {
     mandate: Mandate,
     assessment: Extract<Assessment, { kind: "verify" }>,
   ): Promise<void> {
-    const { office } = this.#deps;
+    const office = this.#deps.office.traced({ correlationId: mandate.id });
     if (mandate.acceptance.length === 0) {
       await office.execute(SYSTEM_ACTOR, (m, c) =>
         stateAcceptance(
@@ -248,7 +250,8 @@ export class MandateSteward {
     reason: string,
     assessment: Failed | null,
   ): Promise<void> {
-    const { office, log } = this.#deps;
+    const { log } = this.#deps;
+    const office = this.#deps.office.traced({ correlationId: mandate.id });
     const tasks = tasksOfMandate(office.model, mandate);
     const decisions = tasks.filter(
       (task) => task.kind === "triage" && task.source.kind === "mandate",

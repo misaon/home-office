@@ -2,6 +2,7 @@ import {
   formatReviewNote,
   type Agent,
   type AgentRole,
+  type Attachment,
   compact,
   conflict,
   type CriterionJudgement,
@@ -18,7 +19,8 @@ import {
 import { awaitsAnswer, membersOf } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, err, ok, type Result } from "../result.ts";
-import { evidenceEvent, evidenceOf, wholeRequestNeedsConditions } from "./mandates.ts";
+import { wholeRequestNeedsConditions } from "./mandates.ts";
+import { reviewEvidence } from "./review-evidence.ts";
 import { missingReviewReason, reviewPlanOf } from "./review-plan.ts";
 import { handoffEvent, note, noteEvent, statusChange, withTask } from "./shared.ts";
 import { readTask } from "./tasks.ts";
@@ -52,33 +54,6 @@ const judgeCriteria = (
           `judge every acceptance criterion: ${missing.map(String).join(", ")} missing; not_checked with the reason counts`,
         ),
       );
-};
-
-const reviewEvidence = (
-  model: ReadModel,
-  ctx: CommandContext,
-  task: Task,
-  judgements: readonly CriterionJudgement[],
-): NewEvent[] => {
-  const { mandateId } = task;
-  const { commit } = task.artifacts;
-  if (mandateId === undefined || commit === undefined || !model.mandates.has(mandateId)) {
-    return [];
-  }
-  return judgements.map((judgement) =>
-    evidenceEvent(
-      ctx,
-      mandateId,
-      evidenceOf(ctx, {
-        taskId: task.id,
-        commit,
-        criterion: judgement.index - 1,
-        method: "review",
-        verdict: judgement.verdict,
-        proof: judgement.evidence,
-      }),
-    ),
-  );
 };
 
 const REVIEW_ROLES: ReadonlySet<AgentRole> = new Set(REVIEW_STAGES);
@@ -173,7 +148,7 @@ export function fileReport(
 export function submitReview(
   model: ReadModel,
   taskId: TaskId,
-  input: HoReviewInput,
+  input: HoReviewInput & { attachments?: readonly Attachment[] },
   ctx: CommandContext,
 ): CommandResult<Task> {
   return withTask(model, taskId, (task) => {
@@ -195,7 +170,7 @@ export function submitReview(
     const rounds = input.verdict === "approve" ? task.reviewRounds : task.reviewRounds + 1;
     const { commit } = task.artifacts;
     const events: NewEvent[] = [
-      ...reviewEvidence(model, ctx, task, judged.value),
+      ...reviewEvidence(model, ctx, task, judged.value, input.attachments ?? []),
       noteEvent(ctx, task, {
         ...note(ctx, "review", formatReviewNote(input.verdict, input.findings)),
         ...compact({ commit }),

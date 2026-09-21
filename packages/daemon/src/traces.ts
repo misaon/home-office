@@ -1,7 +1,9 @@
 import type { RunnerLine } from "@ho/core";
 import type { RuntimeEvent, SessionId } from "@ho/protocol";
-import { appendFile, chmod, mkdir, readdir, stat, unlink } from "node:fs/promises";
+import { appendFile, chmod, mkdir, readdir, rm, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
+import { redactSecrets, SECRET_MIN_CHARS } from "./trace-redaction.ts";
+import { idleWaitSeconds, masksExitCode } from "./waste.ts";
 
 export type TraceLine = RunnerLine | { stream: "stdin"; text: string };
 
@@ -13,6 +15,11 @@ export type TraceCounters = {
   runtimeErrors: number;
   mcpCalls: number;
   mcpRejections: number;
+  toolMs: number;
+  idleWaits: number;
+  idleWaitSeconds: number;
+  maskedChecks: number;
+  backgroundTasks: number;
 };
 
 type TraceRecord = Record<string, unknown> & { kind: string };
@@ -24,13 +31,11 @@ type Open = {
   summary: Record<string, unknown>;
   counters: TraceCounters;
   secrets: Set<string>;
+  pending: Map<string, { name: string; at: number }>;
 };
 
 const INDEX_FILE = "index.jsonl";
-const SUFFIX = ".jsonl";
-const DAY_MS = 24 * 60 * 60 * 1000;
-const SECRET_MIN_CHARS = 8;
-const REDACTED = "***";
+const ARTIFACTS_DIR = "artifacts";
 const RECORDED_EVENTS = new Set<RuntimeEvent["kind"]>([
   "init",
   "usage",
@@ -39,41 +44,12 @@ const RECORDED_EVENTS = new Set<RuntimeEvent["kind"]>([
   "result",
   "error",
   "permission_request",
+  "background_done",
 ]);
-
-const CREDENTIAL_SHAPES: readonly RegExp[] = [
-  /Bearer [A-Za-z0-9._~+/=-]{8,}/gu,
-  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/gu,
-  /\bsk-ant-[A-Za-z0-9_-]{8,}/gu,
-  /\bsk-[A-Za-z0-9_-]{20,}/gu,
-  /\bgh[pousr]_[A-Za-z0-9]{20,}/gu,
-  /\bgithub_pat_[A-Za-z0-9_]{20,}/gu,
-  /\bAKIA[0-9A-Z]{16}\b/gu,
-  /\bAIza[0-9A-Za-z_-]{30,}/gu,
-  /\bxox[abprs]-[A-Za-z0-9-]{10,}/gu,
-  /\/\/[^\s/@"]+:[^\s/@"]+@/gu,
-];
-
-export const redactSecrets = (text: string, secrets: ReadonlySet<string>): string => {
-  let redacted = text;
-  for (const secret of secrets) {
-    redacted = redacted.replaceAll(secret, REDACTED);
-    redacted = redacted.replaceAll(JSON.stringify(secret).slice(1, -1), REDACTED);
-  }
-  for (const shape of CREDENTIAL_SHAPES) {
-    redacted = redacted.replaceAll(shape, (match) =>
-      match.startsWith("Bearer ")
-        ? `Bearer ${REDACTED}`
-        : match.startsWith("//")
-          ? `//${REDACTED}@`
-          : REDACTED,
-    );
-  }
-  return redacted;
-};
-
+const SUFFIX = ".jsonl";
+const DAY_MS = 24 * 60 * 60 * 1000;
 const partialDelta = (text: string): boolean =>
-  text.startsWith('{"type":"stream_event"') ||
+  (text.startsWith('{"type":"stream_event"') && !text.includes('"type":"message_delta"')) ||
   text.includes('"sessionUpdate":"agent_message_chunk"');
 
 const freshCounters = (): TraceCounters => ({
@@ -84,6 +60,11 @@ const freshCounters = (): TraceCounters => ({
   runtimeErrors: 0,
   mcpCalls: 0,
   mcpRejections: 0,
+  toolMs: 0,
+  idleWaits: 0,
+  idleWaitSeconds: 0,
+  maskedChecks: 0,
+  backgroundTasks: 0,
 });
 
 const settle = (result: number | Promise<number>): void => {
@@ -121,6 +102,7 @@ export class TraceStore {
       summary: {},
       counters: freshCounters(),
       secrets: new Set(),
+      pending: new Map(),
     };
     this.#open.set(sessionId, open);
     this.#emit(open, { kind: "open", ...header });
@@ -175,11 +157,27 @@ export class TraceStore {
     const { counters } = open;
     if (event.kind === "tool_call") {
       counters.toolCalls[event.name] = (counters.toolCalls[event.name] ?? 0) + 1;
+      open.pending.set(event.id, { name: event.name, at: Date.now() });
+      const seconds = idleWaitSeconds(event.name, event.input);
+      if (seconds > 0) {
+        counters.idleWaits += 1;
+        counters.idleWaitSeconds += seconds;
+      }
+      if (masksExitCode(event.name, event.input)) {
+        counters.maskedChecks += 1;
+      }
       return;
     }
     if (event.kind === "tool_result") {
       if (!event.ok) {
         counters.toolErrors += 1;
+      }
+      const started = open.pending.get(event.id);
+      if (started !== undefined) {
+        open.pending.delete(event.id);
+        const ms = Date.now() - started.at;
+        counters.toolMs += ms;
+        this.#emit(open, { kind: "tool", id: event.id, tool: started.name, ok: event.ok, ms });
       }
       return;
     }
@@ -187,10 +185,25 @@ export class TraceStore {
       counters.rateLimits += 1;
     } else if (event.kind === "error") {
       counters.runtimeErrors += 1;
+    } else if (event.kind === "background_done") {
+      counters.backgroundTasks += 1;
     }
     if (RECORDED_EVENTS.has(event.kind)) {
       this.#emit(open, { kind: "event", event });
     }
+  }
+
+  async writeArtifact(sessionId: SessionId, name: string, text: string): Promise<string | null> {
+    const open = this.#open.get(sessionId);
+    if (open === undefined) {
+      return null;
+    }
+    const dir = join(this.#dir, ARTIFACTS_DIR, sessionId);
+    await mkdir(dir, { recursive: true, mode: 0o700 });
+    const path = join(dir, name);
+    await Bun.write(path, redactSecrets(text, open.secrets));
+    await chmod(path, 0o600).catch(() => undefined);
+    return path;
   }
 
   mcp(
@@ -240,12 +253,27 @@ export class TraceStore {
     let removed = 0;
     for (const name of await readdir(this.#dir).catch((): string[] => [])) {
       const path = join(this.#dir, name);
-      if (name === INDEX_FILE || !name.endsWith(SUFFIX) || live.has(path)) {
+      if (
+        name === INDEX_FILE ||
+        name === ARTIFACTS_DIR ||
+        !name.endsWith(SUFFIX) ||
+        live.has(path)
+      ) {
         continue;
       }
       const info = await stat(path).catch(() => null);
       if (info !== null && info.mtimeMs < cutoff) {
         await unlink(path).catch(() => undefined);
+        removed += 1;
+      }
+    }
+    const artifacts = join(this.#dir, ARTIFACTS_DIR);
+    const openIds = new Set<string>(this.#open.keys());
+    for (const name of await readdir(artifacts).catch((): string[] => [])) {
+      const path = join(artifacts, name);
+      const info = await stat(path).catch(() => null);
+      if (info !== null && info.mtimeMs < cutoff && !openIds.has(name)) {
+        await rm(path, { recursive: true, force: true }).catch(() => undefined);
         removed += 1;
       }
     }

@@ -140,6 +140,7 @@ export function openFixTask(
       source: { kind: "mandate", mandateId },
       assigneeId: original.assigneeId,
       priority: original.priority,
+      shape: original.shape,
       publish: original.publish,
       browser: original.browser,
       reviews: original.reviews,

@@ -18,6 +18,7 @@ import {
   type SessionContext,
   sessionServicesOf,
 } from "./session-provision.ts";
+import { idsOf, traceFor } from "./session-ids.ts";
 import { explainExit } from "./session-record.ts";
 import { openRuntime, prepare, type Prepared } from "./session-runtime.ts";
 import { settle } from "./session-settle.ts";
@@ -125,8 +126,7 @@ async function runPrompt(
     const ms = elapsedMs(started);
     deps.log.info(
       {
-        sessionId: ctx.session.id,
-        taskId: ctx.task.id,
+        ...idsOf(ctx),
         mode: ctx.session.mode,
         ms,
         turns: outcome.turns,
@@ -163,9 +163,11 @@ const setState = (
   state: SessionState,
   extra: { sandboxId?: string; services?: SessionServices; runtime?: SessionRuntime } = {},
 ): Promise<unknown> =>
-  deps.office.execute(SYSTEM_ACTOR, (m, c) =>
-    changeSessionState(m, { sessionId: ctx.session.id, state, ...extra }, c),
-  );
+  deps.office
+    .traced(traceFor(ctx))
+    .execute(SYSTEM_ACTOR, (m, c) =>
+      changeSessionState(m, { sessionId: ctx.session.id, state, ...extra }, c),
+    );
 
 export async function runSession(
   deps: SessionDeps,
@@ -187,6 +189,7 @@ export async function runSession(
       return null;
     },
   );
+  deps.mcp.markApplication(provisioned.mcpToken, environment?.application?.ready === true);
   const prepared = prepare(deps, ctx, provisioned, environment);
   await setState(deps, ctx, "starting", {
     sandboxId: provisioned.sandbox.id,

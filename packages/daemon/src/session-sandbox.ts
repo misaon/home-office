@@ -1,10 +1,12 @@
 import type { SandboxSpec } from "@ho/core";
 import { type Agent, CHAT_INBOX_DIR, CHAT_OUTBOX_DIR, imageRefFor, PROVIDERS } from "@ho/protocol";
+import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import type { DaemonConfig } from "./config.ts";
 import { type GitIdentity, REPO_IN_VOLUME } from "./git-bridge.ts";
 import { LABELS } from "./labels.ts";
 import type { SessionContext } from "./session-provision.ts";
 import { engineEnv, type TaskEnginePlan } from "./task-engine.ts";
+import { CACHE_IN_VOLUME } from "./volumes.ts";
 
 const gitIdentity = (
   agent: Agent,
@@ -28,10 +30,11 @@ export const sandboxSpec = (
   ctx: SessionContext,
   volume: string,
   stateVolume: string,
+  cacheVolume: string,
   gatewayUrl: string,
   token: string,
   engine: TaskEnginePlan | null,
-  chat: { outbox: string; inbox: string },
+  chat: { outbox: string; inbox: string; browser: string },
   committer: GitIdentity | null,
 ): SandboxSpec => ({
   name: `ho-session-${ctx.session.id.slice(-12)}`,
@@ -52,17 +55,20 @@ export const sandboxSpec = (
     [LABELS.managed]: "true",
     [LABELS.kind]: "session",
     [LABELS.session]: ctx.session.id,
+    [LABELS.task]: ctx.task.id,
     [LABELS.project]: ctx.project.id,
   },
   network: config.docker.network,
   volumes: [
     { name: volume, target: "/work" },
+    { name: cacheVolume, target: CACHE_IN_VOLUME },
     { name: stateVolume, target: PROVIDERS[ctx.agent.provider].stateDir },
     ...(engine === null ? [] : [{ name: engine.socketVolume, target: engine.socketDir }]),
   ],
   binds: [
     { source: chat.inbox, target: CHAT_INBOX_DIR, readonly: true },
     { source: chat.outbox, target: CHAT_OUTBOX_DIR, readonly: false },
+    { source: chat.browser, target: BROWSER_OUTPUT_DIR, readonly: false },
   ],
   tmpfs: {
     "/tmp": "rw,nosuid,size=256m",
