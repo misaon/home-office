@@ -112,6 +112,7 @@ export const verify: AnyTool = define({
       ];
       return recordEvidence(m, mandate.id, entries, c);
     });
+    entry.verdict = true;
     await office.execute(actor, (m, c) =>
       postAgentMessage(m, entry.ctx.agentId, input.summary, entry.ctx.taskId, c, files),
     );

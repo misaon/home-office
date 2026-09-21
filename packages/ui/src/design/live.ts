@@ -110,6 +110,8 @@ function cardOf(task: Task, snapshot: Snapshot): Card {
   };
 }
 
+const TROUBLE_LINE = /^(?:🚧|❌)/u;
+
 function messageOf(message: ChatMessage, snapshot: Snapshot): Message {
   const mine = message.author.kind === "human";
   const who =
@@ -119,10 +121,12 @@ function messageOf(message: ChatMessage, snapshot: Snapshot): Message {
     !mine && task !== undefined && awaitsAnswer(task)
       ? { taskId: task.id, who: who ?? task.title }
       : undefined;
+  const trouble = !mine && TROUBLE_LINE.test(message.text);
   return {
     id: message.id,
     mine,
     ...(who === undefined ? {} : { who }),
+    ...(trouble ? { tone: "trouble" as const } : {}),
     at: message.at,
     time: clock(message.at, true),
     text: message.text,

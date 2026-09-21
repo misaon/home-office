@@ -1,4 +1,4 @@
-import { bossOf, postAgentMessage, tasksOfMandate } from "@ho/core";
+import { bossOf, postAgentMessage } from "@ho/core";
 import {
   environmentDescribed,
   errorMessage,
@@ -20,8 +20,7 @@ const noticed = new Set<MandateId>();
 async function post(deps: StewardDeps, mandate: Mandate, project: Project): Promise<void> {
   const { office, home, log } = deps;
   const boss = bossOf(office.model, project.id);
-  const started = tasksOfMandate(office.model, mandate).some((task) => task.kind === "work");
-  if (boss === undefined || started || mandate.round > 0) {
+  if (boss === undefined || mandate.round > 0) {
     return;
   }
   const suggestions = await suggestEnvironment(

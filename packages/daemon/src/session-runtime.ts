@@ -103,6 +103,7 @@ export const openRuntime = async (
   prepared: Prepared,
   secrets: Readonly<Record<string, string>>,
   resume: string | null,
+  turns: number | null = null,
 ): Promise<RuntimeSession> => {
   const mcpServers = {
     ho: {
@@ -120,7 +121,7 @@ export const openRuntime = async (
     auth: ctx.agent.auth,
     model: prepared.runtime.model,
     effort: prepared.runtime.effort,
-    maxTurns: Math.max(1, ctx.budget.turns),
+    maxTurns: Math.max(1, turns ?? ctx.budget.turns),
     maxUsd: ctx.budget.usd,
     allowWrites: ctx.session.mode === "work",
     systemPromptAppendix: prepared.appendix,

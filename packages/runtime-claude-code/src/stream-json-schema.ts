@@ -82,7 +82,7 @@ export const StreamLine = z.discriminatedUnion("type", [
     type: z.literal("stream_event"),
     event: z.object({
       type: z.string(),
-      delta: z.object({ type: z.string(), text: z.string().optional() }).optional(),
+      delta: z.object({ type: z.string().optional(), text: z.string().optional() }).optional(),
     }),
   }),
   z.object({

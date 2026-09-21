@@ -1,6 +1,7 @@
 import { changeSessionState, rateLimitedReason, recordSessionUsage } from "@ho/core";
 import { budgetGuaranteesFor, clip, compact, type RuntimeEvent, SYSTEM_ACTOR } from "@ho/protocol";
 import { idsOf, traceFor } from "./session-ids.ts";
+import { GRACE_TURNS } from "./session-run.ts";
 import type { SessionContext } from "./session-provision.ts";
 import type { SessionDeps } from "./sessions.ts";
 import { idleWaitSeconds, masksExitCode } from "./waste.ts";
@@ -137,7 +138,8 @@ const overBudget = (
         "the session is past three quarters of the turns its shape allows",
       );
     }
-    return guarantees.turns === "office" && spent.toolCalls > ctx.budget.turns
+    const allowed = ctx.budget.turns + (ctx.session.mode === "work" ? 0 : GRACE_TURNS);
+    return guarantees.turns === "office" && spent.toolCalls > allowed
       ? `turn budget exhausted: ${String(spent.toolCalls)} tool calls against ${String(ctx.budget.turns)} allowed for this task`
       : null;
   }

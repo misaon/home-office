@@ -50,6 +50,15 @@ const roundsGuide = (f: SessionFacts, model: ReadModel): string => {
     : `request_changes sends the work back to the author; it can do so ${String(left)} more time(s) before the task is blocked.`;
 };
 
+const shapeGuide = (f: SessionFacts): string => {
+  if (f.task.shape === "mechanical") {
+    return "This task is mechanical: review it by reading the diff against the criteria and by running only what the sandbox already has. Do not install dependencies or build to review it; judge what you could not exercise with fidelity static and blocker not_attempted, and file the verdict well within your turns.";
+  }
+  return f.task.shape === "risky"
+    ? "This task is risky: exercise every criterion yourself before you approve, and prefer request_changes over a pass you cannot back with what you saw."
+    : "";
+};
+
 const checksGuide = (f: SessionFacts): string =>
   f.project.verify.command === ""
     ? "This floor runs no automatic checks: nothing was verified before you. Run the repository's own tests and checks yourself and treat their result as part of your verdict."
@@ -67,6 +76,7 @@ export const reviewPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   environmentGuide(f, model),
   `Start with \`git -C ${REPO_IN_VOLUME} diff ${f.project.defaultBranch}...HEAD --stat\`, then the diff file by file; read surrounding code only where needed. If ${f.project.defaultBranch} is missing locally, review the branch's own commits with \`git log -p\`.`,
   changeSizeGuide(f.diff, f.project.defaultBranch),
+  shapeGuide(f),
   checksGuide(f),
   focus(f.agent),
   chainGuide(model, f.task, f.agent),

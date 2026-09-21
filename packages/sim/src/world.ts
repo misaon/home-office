@@ -35,6 +35,9 @@ export type Step =
       to: Point;
       path: Point[] | null;
       blockedMs?: number;
+      stuckMs?: number;
+      retries?: number;
+      yieldUntil?: number | undefined;
       replan?: boolean;
     }
   | { kind: "dwell"; activity: Activity; facing: Facing | null; until: number | null; ms: number }

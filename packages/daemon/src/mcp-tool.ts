@@ -33,6 +33,7 @@ export type Entry = {
   replied: boolean;
   delegated: boolean;
   applicationReady: boolean;
+  verdict: boolean;
   report: HoReportInput | null;
   reportFiles: Attachment[];
   skills: SkillLibrary;
