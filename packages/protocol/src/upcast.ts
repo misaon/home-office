@@ -95,7 +95,10 @@ const dropNamedEvidenceFiles: Migration = {
     }
     return {
       ...event,
-      payload: { ...payload, evidence: { ...evidence, files: files.filter(isRecord) } },
+      payload: {
+        ...payload,
+        evidence: { ...evidence, files: files.filter((file) => isRecord(file)) },
+      },
     };
   },
 };
