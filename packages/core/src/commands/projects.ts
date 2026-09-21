@@ -103,7 +103,12 @@ export function updateProject(
     }
     const project: Project = {
       ...current,
-      ...compact({ name: patch.name, repo: patch.repo, defaultBranch: patch.defaultBranch }),
+      ...compact({
+        name: patch.name,
+        repo: patch.repo,
+        defaultBranch: patch.defaultBranch,
+        language: patch.language,
+      }),
       publish: patched(current.publish, patch.publish),
       intake: patched(current.intake, patch.intake),
       hiring: patched(current.hiring, patch.hiring),

@@ -197,6 +197,7 @@ branch, publish and intake policy, budgets, and the staff to hire:
   "version": 1,
   "name": "Home Office",
   "defaultBranch": "main",
+  "language": "cs",
   "publish": { "mode": "pull-request", "draft": true },
   "verify": { "command": "bun run check" },
   "acceptance": { "verify": "integration", "maxFixRounds": 2, "maxVerifyTurns": 60 },
@@ -218,7 +219,10 @@ only starts once the repository is marked `"trust": "trusted"`, in this file, in
 each entry has a `role` from boss, secretary, analyst, backend, frontend, devops, qa, security, head
 or developer, and a floor whose file names no staff keeps the default team. No credential ever goes in
 it — only which provider an agent uses, which is enough for the daemon to find the key in the Keychain.
-A gitignored `.ho/config.local.json` layers over it for one machine.
+A gitignored `.ho/config.local.json` layers over it for one machine. `language` (`en` or `cs`, `en` by
+default) is the language of everything the office writes into the chat and of what the agents write
+to you: status lines, reports, review findings and pull-request descriptions. Code, identifiers,
+branch names and commit messages stay English.
 
 `acceptance` says when a request counts as done. `verify` is `integration` by default: a separate
 verification session runs only when the request became several tasks, against the conditions the

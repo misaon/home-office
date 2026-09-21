@@ -3,6 +3,7 @@ import { AuthKind, BASE_PROMPT_MAX, Budgets, EffortLevel, Gender, ProviderId } f
 import { ProjectId } from "./ids.ts";
 import {
   AcceptancePolicy,
+  ChatLanguage,
   EnvironmentPolicy,
   IntakePolicy,
   PublishPolicy,
@@ -37,6 +38,7 @@ export const OfficeFile = z.strictObject({
   version: z.literal(1),
   name: z.string().min(1).max(80).optional(),
   defaultBranch: z.string().min(1).optional(),
+  language: ChatLanguage.optional(),
   publish: PublishPolicy.optional(),
   intake: IntakePolicy.optional(),
   services: ServicesPolicy.optional(),

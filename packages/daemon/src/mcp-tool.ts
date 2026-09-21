@@ -28,6 +28,7 @@ export type McpSessionContext = {
 export type Entry = {
   ctx: McpSessionContext;
   replied: boolean;
+  delegated: boolean;
   report: HoReportInput | null;
   skills: SkillLibrary;
 };

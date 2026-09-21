@@ -1,8 +1,15 @@
 import type { Assessment, ReadModel, TaskCriteria } from "@ho/core";
-import { clip, type Evidence, type Mandate, type Task } from "@ho/protocol";
+import { clip, type Evidence, headline, type Mandate, type Task } from "@ho/protocol";
 
 const PROOF_MAX = 300;
 const REPORT_MAX = 1200;
+const TITLE_MAX = 80;
+
+export const pullRequestTitle = (mandate: Mandate, tasks: readonly Task[]): string => {
+  const work = tasks.filter((task) => task.kind === "work");
+  const only = work.length === 1 ? work[0] : undefined;
+  return only === undefined ? headline(mandate.request, TITLE_MAX) : only.title;
+};
 
 type Model = Pick<ReadModel, "agents" | "formerAgents">;
 

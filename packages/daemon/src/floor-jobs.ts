@@ -27,7 +27,7 @@ export type FloorJobs = { stop: () => Promise<void>; planUsage: () => PlanUsageS
 export async function startFloorJobs(deps: Deps): Promise<FloorJobs> {
   const { office, sessions, provider, config, gate, home, log } = deps;
   await hireDefaultTeams(office, log);
-  const voice = startBossVoice(office, gate, log);
+  const voice = startBossVoice(office, log);
   const scheduler = startScheduler(office, sessions, config, gate, log);
   const steward = new MandateSteward({ office, provider, config, home, log });
   steward.start();
@@ -42,6 +42,7 @@ export async function startFloorJobs(deps: Deps): Promise<FloorJobs> {
       await officeFiles.stop();
       await steward.stop();
       await scheduler.stop();
+      gate.close();
       await voice.stop();
     },
   };

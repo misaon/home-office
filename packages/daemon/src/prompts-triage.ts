@@ -61,7 +61,7 @@ export const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
       staff.length === 0
         ? ", with assignee set to your own name; you get a separate work session in the repository for each"
         : ""
-    }. If you cannot write a checkable criterion, the request is still a question: ask with ho_reply instead of delegating. Use ho_reply for questions back, a one-line plan, or an answer when there is nothing to delegate. Finish with ho_report (status done, one-line summary) and stop.`,
+    }. If you cannot write a checkable criterion, the request is still a question: ask with ho_reply instead of delegating. The office announces every handover in the chat itself, with the assignee and the reviewers, so do not repeat it; use ho_reply only for a question back, a decision the human needs to know, or an answer when there is nothing to delegate. Finish with ho_report (status done, one-line summary) and stop.`,
     f.browser
       ? "Browser: set browser: true on a task only when its result must be seen in a browser (UI work, screenshots); the developer and the reviewers then get headless Chromium."
       : "",

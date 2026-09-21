@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const ChatLanguage = z.enum(["en", "cs"]);
+export type ChatLanguage = z.infer<typeof ChatLanguage>;
+
 export const PublishMode = z.enum(["branch", "pull-request"]);
 export type PublishMode = z.infer<typeof PublishMode>;
 

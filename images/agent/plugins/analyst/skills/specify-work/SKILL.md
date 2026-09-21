@@ -36,5 +36,6 @@ description: Load at the start of every plan session, before the first ho_delega
    `browser: true` only for work that must be seen in a browser. A flag names a role the floor must
    have: when `ho_delegate` refuses because nobody holds it, hire that role first or set the flag
    false and say why in `context`; a review is never skipped silently.
-8. Report: one `ho_reply` with the plan — one line per task: title, assignee, QA and security
-   flags, what it builds on — then `ho_report` with status done and the same summary.
+8. Report: `ho_report` with status done and a one-line summary. The office announces each task in
+   the chat with its assignee and reviewers, so do not list them again; `ho_reply` is for a
+   question or a decision the human needs to know.

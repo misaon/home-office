@@ -19,7 +19,7 @@ import { runBaseline } from "./baseline.ts";
 import type { DaemonConfig } from "./config.ts";
 import type { Logger } from "./logger.ts";
 import { integrateMandate } from "./mandate-integrate.ts";
-import { conflictReason, pullRequestBody } from "./mandate-report.ts";
+import { conflictReason, pullRequestBody, pullRequestTitle } from "./mandate-report.ts";
 import { pushLocalBranch } from "./mirrors.ts";
 import type { Office } from "./office.ts";
 import { openPullRequest } from "./publish.ts";
@@ -146,7 +146,10 @@ export async function fulfil(
       }
       const prUrl = await openPullRequest(
         project,
-        { title: mandate.title, body: pullRequestBody(office.model, mandate, tasks) },
+        {
+          title: pullRequestTitle(mandate, tasks),
+          body: pullRequestBody(office.model, mandate, tasks),
+        },
         branch,
       );
       if (prUrl !== null) {

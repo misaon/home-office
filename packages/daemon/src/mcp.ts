@@ -43,7 +43,13 @@ export class McpGateway {
 
   register(ctx: McpSessionContext): string {
     const token = mintToken();
-    this.#entries.set(token, { ctx, replied: false, report: null, skills: this.#skills });
+    this.#entries.set(token, {
+      ctx,
+      replied: false,
+      delegated: false,
+      report: null,
+      skills: this.#skills,
+    });
     return token;
   }
 
@@ -53,6 +59,10 @@ export class McpGateway {
 
   replied(token: string): boolean {
     return this.#entries.get(token)?.replied ?? false;
+  }
+
+  delegated(token: string): boolean {
+    return this.#entries.get(token)?.delegated ?? false;
   }
 
   report(token: string): HoReportInput | null {

@@ -225,7 +225,8 @@ export async function settle(
       if (
         !bossWillReadItOut &&
         outcome.report.trim() !== "" &&
-        !mcp.replied(provisioned.mcpToken)
+        !mcp.replied(provisioned.mcpToken) &&
+        !mcp.delegated(provisioned.mcpToken)
       ) {
         await office
           .execute(actor, (m, c) =>

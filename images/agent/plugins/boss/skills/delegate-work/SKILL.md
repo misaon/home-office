@@ -35,5 +35,6 @@ description: Load before the first ho_delegate or ho_plan of a triage session, a
      human asked for a pull request, or explicitly for none.
 4. Pick the assignee by fit, then by cost; your own name only when nobody fits. `ho_hire` only for
    a gap that will come back.
-5. Tell the human in one `ho_reply` what you did — one line per task, or who is planning what —
-   then `ho_report` with status done.
+5. `ho_report` with status done and a one-line summary. The office announces every handover in the
+   chat itself, with the assignee and the reviewers, so do not repeat it; `ho_reply` is for a
+   question back or a decision the human needs to know.

@@ -1,15 +1,20 @@
 import { type ReadModel, tasksOfMandate } from "@ho/core";
-import type { Mandate, MandateStatus } from "@ho/protocol";
+import {
+  clip,
+  type Evidence,
+  type Mandate,
+  type MandateStatus,
+  type Project,
+  type Task,
+} from "@ho/protocol";
 import { formatDuration, timingOf } from "./task-timing.ts";
+import { bold, type ChecksState, quoteTitle, type Voice } from "./voice.ts";
 
-const bold = (text: string): string => `**${text}**`;
+const REPORT_MAX = 1500;
+const LEAD_MAX = 160;
+const TASKS_LISTED_MAX = 4;
 
-const quote = (mandate: Mandate): string => `**“${mandate.title}”**`;
-
-export const pullRequestLink = (url: string): string => {
-  const number = /\/pull\/(?<number>\d+)/u.exec(url)?.groups?.["number"];
-  return number === undefined ? `[pull request](${url})` : `pull request [#${number}](${url})`;
-};
+const quote = (mandate: Mandate): string => quoteTitle(mandate.title);
 
 const verifiedCount = (mandate: Mandate): number =>
   mandate.acceptance.filter((_, index) =>
@@ -23,10 +28,61 @@ const verifiedCount = (mandate: Mandate): number =>
     ),
   ).length;
 
-const plural = (count: number, word: string): string =>
-  `${String(count)} ${word}${count === 1 ? "" : "s"}`;
+const checksState = (mandate: Mandate, project: Project): ChecksState => {
+  if (project.verify.command === "") {
+    return "none";
+  }
+  const checks = mandate.evidence.filter(
+    (entry) => entry.method === "checks" && entry.commit === mandate.artifacts.commit,
+  );
+  if (checks.length === 0) {
+    return "not_run";
+  }
+  return checks.every((entry) => entry.verdict === "pass") ? "passed" : "failed";
+};
 
-const fulfilledLines = (model: ReadModel, mandate: Mandate, at: string): string => {
+const namesBy = (model: ReadModel, entries: readonly Evidence[]): string[] => {
+  const names = new Set<string>();
+  for (const entry of entries) {
+    if (entry.by.kind !== "agent") {
+      continue;
+    }
+    const agent = model.agents.get(entry.by.agentId) ?? model.formerAgents.get(entry.by.agentId);
+    if (agent !== undefined) {
+      names.add(agent.name);
+    }
+  }
+  return [...names].map((name) => bold(name));
+};
+
+const lead = (report: string): string =>
+  report
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line !== "" && !line.startsWith("#")) ?? "";
+
+const account = (model: ReadModel, mandate: Mandate): string => {
+  const work = tasksOfMandate(model, mandate).filter((task) => task.kind === "work");
+  const only = work.length === 1 ? work[0] : undefined;
+  if (only !== undefined) {
+    return clip(only.artifacts.report ?? "", REPORT_MAX);
+  }
+  return work
+    .slice(0, TASKS_LISTED_MAX)
+    .map((task: Task) => {
+      const summary = task.artifacts.report === undefined ? "" : lead(task.artifacts.report);
+      return `• ${bold(task.title)}${summary === "" ? "" : `: ${clip(summary, LEAD_MAX)}`}`;
+    })
+    .join("\n");
+};
+
+const fulfilledLines = (
+  model: ReadModel,
+  voice: Voice,
+  mandate: Mandate,
+  project: Project,
+  at: string,
+): string => {
   const root = model.tasks.get(mandate.rootTaskId);
   const since = root === undefined ? null : timingOf(model, root, at).sinceRequestMs;
   const spent = tasksOfMandate(model, mandate).reduce(
@@ -36,15 +92,33 @@ const fulfilledLines = (model: ReadModel, mandate: Mandate, at: string): string 
     },
     { agentMs: 0, sessions: 0 },
   );
-  const conditions = mandate.acceptance.length;
-  const { prUrl, branch } = mandate.artifacts;
+  const { prUrl, branch, commit } = mandate.artifacts;
+  const approved = namesBy(
+    model,
+    mandate.evidence.filter((entry) => entry.method === "review" && entry.verdict === "pass"),
+  );
+  const verified = namesBy(
+    model,
+    mandate.evidence.filter(
+      (entry) =>
+        entry.method === "verification" && entry.verdict === "pass" && entry.commit === commit,
+    ),
+  );
+  const report = account(model, mandate);
   return [
-    `✅ Your request ${quote(mandate)} is done${conditions === 0 ? "" : `: ${String(verifiedCount(mandate))} of ${plural(conditions, "condition")} verified on the combined result`}.`,
+    voice.requestDone(quote(mandate), verifiedCount(mandate), mandate.acceptance.length),
     since === null
       ? ""
-      : `⏱️ From the request to here: ${bold(formatDuration(since))}; ${plural(spent.sessions, "session")} spent ${formatDuration(spent.agentMs)} on it${mandate.round === 0 ? "" : ` across ${plural(mandate.round, "fix round")}`}.`,
-    prUrl === undefined ? "" : `🔗 ${pullRequestLink(prUrl)}`,
-    branch === undefined ? "" : `🌿 Branch \`${branch}\``,
+      : voice.timing(
+          formatDuration(since),
+          spent.sessions,
+          formatDuration(spent.agentMs),
+          mandate.round,
+        ),
+    report === "" ? "" : `\n${report}\n`,
+    voice.outcome(checksState(mandate, project), approved, verified),
+    prUrl === undefined ? "" : voice.pullRequest(prUrl),
+    branch === undefined ? "" : voice.branch(branch),
   ]
     .filter((line) => line !== "")
     .join("\n");
@@ -52,7 +126,9 @@ const fulfilledLines = (model: ReadModel, mandate: Mandate, at: string): string 
 
 export function mandateStatusLine(
   model: ReadModel,
+  voice: Voice,
   mandate: Mandate,
+  project: Project,
   to: MandateStatus,
   reason: string | undefined,
   at: string,
@@ -61,16 +137,20 @@ export function mandateStatusLine(
     const verifying = tasksOfMandate(model, mandate).findLast((task) => task.kind === "verify");
     const verifier =
       verifying?.assigneeId === undefined ? undefined : model.agents.get(verifying.assigneeId);
-    return `🧪 Every task for ${quote(mandate)} is done; ${bold(verifier?.name ?? "a colleague")} is verifying the whole result against ${plural(mandate.acceptance.length, "condition")}.`;
+    return voice.verifying(
+      quote(mandate),
+      verifier === undefined ? null : bold(verifier.name),
+      mandate.acceptance.length,
+    );
   }
   if (to === "fulfilled") {
-    return fulfilledLines(model, mandate, at);
+    return fulfilledLines(model, voice, mandate, project, at);
   }
   if (to === "blocked") {
-    return `🚧 ${quote(mandate)} is blocked${reason === undefined ? "" : `: ${reason}`}`;
+    return voice.mandateBlocked(quote(mandate), reason);
   }
   return null;
 }
 
-export const roundLine = (mandate: Mandate, round: number, reason: string): string =>
-  `🔁 Round ${String(round)} for ${quote(mandate)}: the combined result failed verification.\n${reason}`;
+export const roundLine = (voice: Voice, mandate: Mandate, round: number, reason: string): string =>
+  voice.round(round, quote(mandate), reason);

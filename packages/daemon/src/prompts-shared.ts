@@ -4,6 +4,7 @@ import {
   type Attachment,
   CHAT_INBOX_DIR,
   CHAT_OUTBOX_DIR,
+  type ChatLanguage,
   clip,
   type CommitSha,
   isSessionActive,
@@ -16,6 +17,11 @@ import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import type { EnvironmentReport } from "./environment-report.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import type { LspLanguage } from "./skill-pack.ts";
+
+export const LANGUAGE_GUIDE: Readonly<Record<ChatLanguage, string>> = {
+  en: "Language: write to the human, your reports and your review findings in English.",
+  cs: "Language: write to the human, your reports and your review findings in Czech; code, identifiers, paths, branch names and commit messages stay English.",
+};
 
 export type Services =
   | { kind: "off" }

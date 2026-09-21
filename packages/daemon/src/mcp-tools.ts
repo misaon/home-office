@@ -174,6 +174,7 @@ const delegate = define({
   modes: ["triage", "plan"],
   run: async (input, office, entry, actor) => {
     const task = await office.execute(actor, (m, c) => delegateTask(m, input, entry.ctx.taskId, c));
+    entry.delegated = true;
     return { taskId: task.id, status: task.status, assigneeId: task.assigneeId ?? null };
   },
 });
@@ -186,6 +187,7 @@ const plan = define({
   modes: ["triage"],
   run: async (input, office, entry, actor) => {
     const task = await office.execute(actor, (m, c) => planTask(m, input, entry.ctx.taskId, c));
+    entry.delegated = true;
     return { taskId: task.id, status: task.status, assigneeId: task.assigneeId ?? null };
   },
 });

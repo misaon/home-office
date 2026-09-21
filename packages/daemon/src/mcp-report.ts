@@ -1,8 +1,7 @@
 import { fileReport, patchTaskArtifacts, postAgentMessage } from "@ho/core";
 import { HoReportInput } from "@ho/protocol";
 import { type AnyTool, define } from "./mcp-tool.ts";
-
-const SHOW_RESULT = "Have a look at the result:";
+import { voiceFor } from "./voice.ts";
 
 export const report: AnyTool = define({
   name: "ho_report",
@@ -25,8 +24,16 @@ export const report: AnyTool = define({
         patchTaskArtifacts(m, entry.ctx.taskId, { report: input.summary }, c),
       );
       if (files.length > 0) {
+        const language = office.model.projects.get(entry.ctx.projectId)?.language ?? "en";
         await office.execute(actor, (m, c) =>
-          postAgentMessage(m, entry.ctx.agentId, SHOW_RESULT, entry.ctx.taskId, c, files),
+          postAgentMessage(
+            m,
+            entry.ctx.agentId,
+            voiceFor(language).showResult,
+            entry.ctx.taskId,
+            c,
+            files,
+          ),
         );
       }
       entry.report = input;

@@ -12,6 +12,7 @@ import {
 } from "./ids.ts";
 import {
   AcceptancePolicy,
+  ChatLanguage,
   EnvironmentPolicy,
   HiringPolicy,
   IntakePolicy,
@@ -161,6 +162,7 @@ export const Project = z.object({
   name: z.string().min(1).max(80),
   repo: RepoSource,
   defaultBranch: z.string().min(1).default("main"),
+  language: ChatLanguage.default("en"),
   publish: PublishPolicy.prefault({}),
   intake: IntakePolicy.prefault({}),
   hiring: HiringPolicy.prefault({}),

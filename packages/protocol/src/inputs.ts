@@ -31,6 +31,7 @@ const ProjectFields = Project.pick({
   name: true,
   repo: true,
   defaultBranch: true,
+  language: true,
   publish: true,
   intake: true,
   hiring: true,
@@ -66,7 +67,9 @@ export const DirectoryPick = z.discriminatedUnion("status", [
   z.object({ status: z.literal("unavailable"), message: z.string() }),
 ]);
 export type DirectoryPick = z.infer<typeof DirectoryPick>;
-const ProjectPatch = patchOf(Project.pick({ name: true, repo: true, defaultBranch: true })).extend({
+const ProjectPatch = patchOf(
+  Project.pick({ name: true, repo: true, defaultBranch: true, language: true }),
+).extend({
   publish: patchOf(PublishPolicy).optional(),
   intake: patchOf(IntakePolicy).optional(),
   hiring: patchOf(HiringPolicy).optional(),

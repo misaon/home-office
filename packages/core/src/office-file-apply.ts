@@ -67,6 +67,10 @@ function planProject(
     patch.defaultBranch = file.defaultBranch;
     plan.changes.push(`branch: ${project.defaultBranch} → ${file.defaultBranch}`);
   }
+  if (file.language !== undefined && file.language !== project.language) {
+    patch.language = file.language;
+    plan.changes.push(`language: ${project.language} → ${file.language}`);
+  }
   if (file.publish !== undefined && !jsonEqual(file.publish, project.publish)) {
     patch.publish = file.publish;
     plan.changes.push(`publish: ${publishText(project.publish)} → ${publishText(file.publish)}`);

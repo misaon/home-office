@@ -55,6 +55,7 @@ function seed(agents: number, tasks: number): StoredEvent[] {
         name: "Bench",
         repo: { kind: "local", path: "/tmp/bench" },
         defaultBranch: "main",
+        language: "en",
         publish: { mode: "branch", draft: true },
         intake: {
           enabled: false,
