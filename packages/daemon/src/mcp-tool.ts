@@ -1,6 +1,7 @@
 import type {
   Actor,
   AgentId,
+  Attachment,
   HoReportInput,
   MandateId,
   ProjectId,
@@ -31,7 +32,9 @@ export type Entry = {
   ctx: McpSessionContext;
   replied: boolean;
   delegated: boolean;
+  applicationReady: boolean;
   report: HoReportInput | null;
+  reportFiles: Attachment[];
   skills: SkillLibrary;
 };
 export type ToolResult = { content: { type: "text"; text: string }[]; isError?: true };

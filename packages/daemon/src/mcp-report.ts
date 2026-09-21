@@ -1,5 +1,6 @@
 import { fileReport, patchTaskArtifacts, postAgentMessage } from "@ho/core";
 import { HoReportInput } from "@ho/protocol";
+import { checkFidelity, checkNamedFiles } from "./evidence-fidelity.ts";
 import { type AnyTool, define } from "./mcp-tool.ts";
 import { voiceFor } from "./voice.ts";
 
@@ -19,6 +20,8 @@ export const report: AnyTool = define({
           "a work session ends with status review or blocked; the office decides when a task is done",
         );
       }
+      checkFidelity("criterion", input.criteria ?? [], false, false);
+      checkNamedFiles("criterion", input.criteria ?? [], input.files);
       const files = await entry.ctx.attachments.collect(entry.ctx.sessionId, input.files);
       await office.execute(actor, (m, c) =>
         patchTaskArtifacts(m, entry.ctx.taskId, { report: input.summary }, c),
@@ -37,6 +40,7 @@ export const report: AnyTool = define({
         );
       }
       entry.report = input;
+      entry.reportFiles = files;
       return `report received${files.length === 0 ? "" : ` with ${String(files.length)} file(s) for the human`}; the office runs the floor's checks, pushes your commits and hands the task on. Stop working now.`;
     }
     const task = await office.execute(actor, (m, c) => fileReport(m, entry.ctx.taskId, input, c));

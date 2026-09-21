@@ -117,6 +117,7 @@ export async function integrate(
             criterion: null,
             method: "checks",
             verdict: checks.ok ? "pass" : "fail",
+            fidelity: "live",
             proof: checks.ok
               ? `\`${checks.command}\` passed on the integrated commit in ${seconds} s`
               : `\`${checks.command}\` failed on the integrated commit:\n${checks.output}`,
@@ -153,7 +154,7 @@ export async function fulfil(
         project,
         {
           title: pullRequestTitle(mandate, tasks),
-          body: pullRequestBody(office.model, mandate, tasks),
+          body: pullRequestBody(office.model, mandate, tasks, project),
         },
         branch,
       );

@@ -1,4 +1,5 @@
 import {
+  attachmentsNamed,
   evidenceOf,
   fileReport,
   patchTaskArtifacts,
@@ -7,7 +8,9 @@ import {
   transitionTask,
 } from "@ho/core";
 import {
+  type Attachment,
   type CommitSha,
+  compact,
   type HoReportInput,
   type Project,
   SYSTEM_ACTOR,
@@ -70,6 +73,7 @@ const authorEvidence = (
   ctx: SessionContext,
   filed: HoReportInput | null,
   commit: CommitSha,
+  attachments: readonly Attachment[],
 ): Promise<unknown> => {
   const { mandateId } = ctx.task;
   const count = ctx.task.spec?.acceptanceCriteria.length ?? 0;
@@ -92,6 +96,9 @@ const authorEvidence = (
             method: "author",
             verdict: "pass",
             proof: claim.how,
+            fidelity: claim.fidelity,
+            ...compact({ via: claim.via, blocker: claim.blocker }),
+            files: attachmentsNamed(attachments, claim.files),
           }),
         ),
         c,
@@ -145,7 +152,7 @@ async function settleWork(
   if (candidate === null) {
     return;
   }
-  await authorEvidence(deps, ctx, filed, candidate.sha);
+  await authorEvidence(deps, ctx, filed, candidate.sha, deps.mcp.reportFiles(provisioned.mcpToken));
   const pushMs = await pushBranch(deps, ctx, project, provisioned, candidate.sha);
   await record(deps, ctx, { branch: provisioned.branch, commit: candidate.sha, report: summary });
   if (office.model.tasks.get(ctx.task.id)?.status === "in_progress") {

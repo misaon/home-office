@@ -1,7 +1,7 @@
 import type { TaskNote } from "@ho/protocol";
 import { expect, test } from "bun:test";
 import { handoverLines } from "./prompts.ts";
-import { redactSecrets } from "./traces.ts";
+import { redactSecrets } from "./trace-redaction.ts";
 
 test("a session's own secrets never reach the trace, escaped or not", () => {
   const secrets = new Set(["sk-ant-api03-verysecretvalue", 'quo"ted-secret-value']);

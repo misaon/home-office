@@ -89,7 +89,7 @@ test("an approval records the commit it judged and passes it down the chain unch
     submitReview(
       model,
       taskId,
-      { verdict: "approve", findings: "holds", criteria: [] },
+      { verdict: "approve", findings: "holds", criteria: [], files: [] },
       { ids, now: NOW, actor: { kind: "agent", agentId: OTTO.id } },
     ),
   );

@@ -1,11 +1,20 @@
-import { evidenceOf, fileReport, postAgentMessage, recordEvidence, tasksOfMandate } from "@ho/core";
 import {
+  attachmentsNamed,
+  evidenceOf,
+  fileReport,
+  postAgentMessage,
+  recordEvidence,
+  tasksOfMandate,
+} from "@ho/core";
+import {
+  compact,
   type CriterionJudgement,
   type Evidence,
   HoVerifyInput,
   type Mandate,
   type Task,
 } from "@ho/protocol";
+import { checkFidelity, checkNamedFiles } from "./evidence-fidelity.ts";
 import { type AnyTool, define } from "./mcp-tool.ts";
 
 const numbers = (judgements: readonly { index: number }[]): string =>
@@ -66,8 +75,10 @@ export const verify: AnyTool = define({
     if (input.verdict === "pass" && failing.length > 0) {
       throw new Error(`condition ${numbers(failing)} fails; the verdict cannot be pass`);
     }
+    const judgements = [...input.criteria, ...input.taskCriteria];
+    checkFidelity("condition", judgements, entry.applicationReady, input.verdict === "pass");
+    checkNamedFiles("condition", judgements, input.files);
     const files = await entry.ctx.attachments.collect(entry.ctx.sessionId, input.files);
-    const names = files.map((file) => file.name);
     await office.execute(actor, (m, c) => {
       const entries: Evidence[] = [
         ...input.criteria.map((judgement) =>
@@ -78,7 +89,9 @@ export const verify: AnyTool = define({
             method: "verification",
             verdict: judgement.verdict,
             proof: judgement.evidence,
-            files: names,
+            fidelity: judgement.fidelity,
+            ...compact({ via: judgement.via, blocker: judgement.blocker }),
+            files: attachmentsNamed(files, judgement.files),
           }),
         ),
         ...input.taskCriteria.map((judgement) => {
@@ -91,7 +104,9 @@ export const verify: AnyTool = define({
             method: "verification",
             verdict: judgement.verdict,
             proof: judgement.evidence,
-            files: names,
+            fidelity: judgement.fidelity,
+            ...compact({ via: judgement.via, blocker: judgement.blocker }),
+            files: attachmentsNamed(files, judgement.files),
           });
         }),
       ];

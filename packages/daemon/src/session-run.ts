@@ -189,6 +189,7 @@ export async function runSession(
       return null;
     },
   );
+  deps.mcp.markApplication(provisioned.mcpToken, environment?.application?.ready === true);
   const prepared = prepare(deps, ctx, provisioned, environment);
   await setState(deps, ctx, "starting", {
     sandboxId: provisioned.sandbox.id,

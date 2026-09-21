@@ -1,5 +1,6 @@
 import type { SandboxSpec } from "@ho/core";
 import { type Agent, CHAT_INBOX_DIR, CHAT_OUTBOX_DIR, imageRefFor, PROVIDERS } from "@ho/protocol";
+import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import type { DaemonConfig } from "./config.ts";
 import { type GitIdentity, REPO_IN_VOLUME } from "./git-bridge.ts";
 import { LABELS } from "./labels.ts";
@@ -31,7 +32,7 @@ export const sandboxSpec = (
   gatewayUrl: string,
   token: string,
   engine: TaskEnginePlan | null,
-  chat: { outbox: string; inbox: string },
+  chat: { outbox: string; inbox: string; browser: string },
   committer: GitIdentity | null,
 ): SandboxSpec => ({
   name: `ho-session-${ctx.session.id.slice(-12)}`,
@@ -64,6 +65,7 @@ export const sandboxSpec = (
   binds: [
     { source: chat.inbox, target: CHAT_INBOX_DIR, readonly: true },
     { source: chat.outbox, target: CHAT_OUTBOX_DIR, readonly: false },
+    { source: chat.browser, target: BROWSER_OUTPUT_DIR, readonly: false },
   ],
   tmpfs: {
     "/tmp": "rw,nosuid,size=256m",

@@ -69,7 +69,7 @@ const announceProvisioned = (
 type Wired = {
   issued: ReturnType<RunnerGatewayIssue>;
   mcpToken: string;
-  chat: { outbox: string; inbox: string };
+  chat: { outbox: string; inbox: string; browser: string };
 };
 
 type RunnerGatewayIssue = SessionDeps["gateway"]["issue"];
@@ -105,7 +105,8 @@ async function wire(
     attachmentsOfTask(deps.office.model, ctx.task),
   );
   stack.defer(() => deps.attachments.closeInbox(ctx.session.id));
-  return { issued, mcpToken, chat: { outbox, inbox } };
+  const browser = await deps.attachments.openBrowserDir(ctx.session.id);
+  return { issued, mcpToken, chat: { outbox, inbox, browser } };
 }
 
 export async function provision(deps: SessionDeps, ctx: SessionContext): Promise<Provisioned> {

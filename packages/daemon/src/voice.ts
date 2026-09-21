@@ -41,6 +41,7 @@ export type Voice = {
     checks: ChecksState,
     approvedBy: readonly string[],
     verifiedBy: readonly string[],
+    substitute: boolean,
   ) => string;
   mandateBlocked: (mandate: string, reason: string | undefined) => string;
   round: (round: number, mandate: string, reason: string) => string;
@@ -121,11 +122,12 @@ const EN: Voice = {
         ? ""
         : `: ${String(verified)} of ${pluralEn(conditions, "condition")} verified on the combined result`
     }.`,
-  outcome: (checks, approvedBy, verifiedBy) =>
+  outcome: (checks, approvedBy, verifiedBy, substitute) =>
     [
       `🧪 Checks: ${EN_CHECKS[checks]}`,
       approvedBy.length === 0 ? "" : `review approved by ${joinWith(approvedBy, "and")}`,
       verifiedBy.length === 0 ? "" : `whole result verified by ${joinWith(verifiedBy, "and")}`,
+      substitute ? "judged on a substitute or on code alone, not on the running application" : "",
     ]
       .filter((part) => part !== "")
       .join(" · "),
@@ -208,11 +210,12 @@ const CS: Voice = {
         ? ""
         : `: ${String(verified)} z ${conditions === 1 ? "1 podmínky" : `${String(conditions)} podmínek`} ověřeno na spojeném výsledku`
     }.`,
-  outcome: (checks, approvedBy, verifiedBy) =>
+  outcome: (checks, approvedBy, verifiedBy, substitute) =>
     [
       `🧪 Kontroly: ${CS_CHECKS[checks]}`,
       approvedBy.length === 0 ? "" : `review schváleno: ${joinWith(approvedBy, "a")}`,
       verifiedBy.length === 0 ? "" : `celek ověřil tým: ${joinWith(verifiedBy, "a")}`,
+      substitute ? "posouzeno na náhradním náhledu nebo jen z kódu, ne na běžící aplikaci" : "",
     ]
       .filter((part) => part !== "")
       .join(" · "),

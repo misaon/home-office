@@ -104,6 +104,11 @@ const fulfilledLines = (
         entry.method === "verification" && entry.verdict === "pass" && entry.commit === commit,
     ),
   );
+  const judged = mandate.evidence.filter(
+    (entry) =>
+      (entry.method === "review" || entry.method === "verification") && entry.verdict === "pass",
+  );
+  const substitute = judged.length > 0 && judged.every((entry) => entry.fidelity !== "live");
   const report = account(model, mandate);
   return [
     voice.requestDone(quote(mandate), verifiedCount(mandate), mandate.acceptance.length),
@@ -116,7 +121,7 @@ const fulfilledLines = (
           mandate.round,
         ),
     report === "" ? "" : `\n${report}\n`,
-    voice.outcome(checksState(mandate, project), approved, verified),
+    voice.outcome(checksState(mandate, project), approved, verified, substitute),
     prUrl === undefined ? "" : voice.pullRequest(prUrl),
     branch === undefined ? "" : voice.branch(branch),
   ]

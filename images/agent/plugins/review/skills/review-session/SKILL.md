@@ -29,8 +29,12 @@ description: "Load at the start of every review session, before the skill of you
    review-branch for the head of development — for what to look for. This skill is only the
    mechanics.
 6. Evidence per criterion: for each acceptance criterion, note the code and the evidence (a test you
-   ran, a command's output, a screenshot) that satisfies it. A criterion without evidence is a
-   finding, not a pass.
+   ran, a command's output, a screenshot) that satisfies it, and its fidelity: `live` when you
+   exercised the running application, `substitute` when you served a stand-in page, `static` when
+   you judged from code and build output; with a blocker saying why it was not live. When the
+   briefing says the office started the application, judge on it: a pass judged on a substitute is
+   refused then. A criterion without evidence is a finding, not a pass. Copy the screenshots the
+   human should see into /out/chat and name them in `files`.
 7. Findings: numbered, ordered by severity, each `path:line — what is wrong — what would satisfy
 the criterion`; for behaviour, steps to reproduce, expected and actual. Style the formatter and
    the linter already settle is not a finding, and neither is work the task did not ask for.

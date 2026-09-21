@@ -6,6 +6,8 @@ import type {
   Gender,
   Attachment,
   ChatMessageId,
+  EvidenceBlocker,
+  EvidenceFidelity,
   ChatThreadId,
   MandateId,
   MandateStatus,
@@ -48,6 +50,9 @@ export type CriterionEvidence = {
   by: string;
   method: string;
   proof: string;
+  fidelity: EvidenceFidelity | null;
+  blocker: EvidenceBlocker | null;
+  files: readonly Attachment[];
 };
 
 export type Card = {

@@ -58,6 +58,7 @@ export const prepare = (
       preview: ctx.project.preview,
       services: provisioned.services,
       environment,
+      network: deps.config.docker.network === "none" ? "none" : "bridge",
     },
     deps.office.model,
   );

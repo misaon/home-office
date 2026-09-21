@@ -3,6 +3,7 @@ import { enEditor } from "./en-editor.ts";
 import { enOffice } from "./en-office.ts";
 import { enStaff } from "./en-staff.ts";
 import { enSetup } from "./en-setup.ts";
+import { enMandate } from "./en-mandate.ts";
 
 export const en = {
   common: {
@@ -69,32 +70,7 @@ export const en = {
     male: "male",
     neutral: "neutral",
   },
-  mandate: {
-    title: "Request",
-    status: {
-      open: "open",
-      verifying: "verifying",
-      fulfilled: "done",
-      blocked: "blocked",
-      abandoned: "abandoned",
-    },
-    round: "round {{count}}",
-    conditions: "Conditions of done",
-    noConditions: "The tasks' own acceptance criteria are the conditions.",
-    tasks: "Tasks",
-    pass: "verified by {{name}}",
-    fail: "failed for {{name}}",
-    claimed: "claimed by {{name}}, not verified yet",
-    open: "not verified yet",
-    partOf: "Part of the request “{{title}}”",
-    pullRequest: "Pull request",
-    abandon: "Abandon",
-    abandonTitle: "Abandon this request?",
-    abandonBody: "Open tasks of “{{title}}” are cancelled and nothing more is delegated for it.",
-    abandoned: "Request abandoned",
-    byHuman: "you",
-    byOffice: "the office",
-  },
+  mandate: enMandate,
   board: {
     filters: "Filter the board by status",
     remove: "Remove",

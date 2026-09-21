@@ -55,10 +55,39 @@ export type SessionFacts = {
   preview: Preview;
   services: Services;
   environment: EnvironmentReport | null;
+  network: "bridge" | "none";
 };
 
 export const SANDBOX =
   "Sandbox: only /work and /tmp are writable; the rest of the filesystem, including your home directory, is read-only. Package caches already point into /work/.cache and survive between your sessions on this task. The git remote is a path this sandbox cannot reach, so fetch, pull and push fail, and there is no gh; the office moves commits for you. Nothing runs here besides what this briefing lists: no Docker engine unless a Services line says so, so do not spend turns probing for one. Databases: PostgreSQL 17, MariaDB, Redis and SQLite are installed but not running; `ho-db postgres start`, `ho-db mariadb start` or `ho-db redis start` brings one up on 127.0.0.1 at its default port without a password (user agent for PostgreSQL, root for MariaDB), keeps its data under /work/.db across your sessions on this task and prints the connection URL; `ho-db <engine> status` and `stop` exist too. Each shell command runs in a fresh shell, so a variable or a background job from one command is gone in the next.";
+
+const applicationCapability = (f: SessionFacts): string => {
+  const application = f.environment?.application ?? null;
+  if (application !== null) {
+    return application.ready
+      ? `application started by the office${application.url === null ? "" : ` at ${application.url}`}`
+      : "application start attempted by the office and not ready";
+  }
+  return f.project.environment.run === undefined
+    ? "no run command configured, so nothing describes how to start the application"
+    : `run command configured (\`${f.project.environment.run}\`), not started`;
+};
+
+export const capabilitiesGuide = (f: SessionFacts): string =>
+  [
+    "Capabilities, as the office set them up:",
+    f.network === "none"
+      ? "no outbound network"
+      : "outbound internet yes (the git remote and gh excepted)",
+    f.browser ? "browser yes" : "no browser",
+    f.services.kind === "ready" ? "Docker engine yes" : "no Docker engine",
+    "databases on demand with ho-db",
+    f.preview.enabled ? `preview port ${String(f.preview.port)}` : "no preview port",
+    applicationCapability(f),
+  ].join(" · ");
+
+export const FIDELITY_GUIDE =
+  "Every criterion judgement carries fidelity: live when you exercised the running application (the one the office started, or the one you started with the environment's run command); substitute when you served a stand-in page, a mock or extracted markup instead; static when you judged from code, templates, build output or tests alone. Give via: the exact command or URL. When fidelity is not live, give blocker: not_prepared (the briefing describes no way to run it), not_attempted (a way existed and you did not use it; say why), or attempt_failed (you tried the described way and it failed; say how). A substitute is never presented as the application: never replace a link, an asset or a request with a placeholder and call it verified. Name the screenshots that back a judgement in its files, copied into /out/chat and listed in the call's files.";
 
 const LSP_NAMES: Readonly<Record<LspLanguage, string>> = {
   typescript: "TypeScript and JavaScript",
@@ -148,7 +177,7 @@ export const authorClaims = (model: ReadModel, task: Task): ReadonlyMap<number, 
       entry.commit === commit &&
       entry.criterion !== null
     ) {
-      claims.set(entry.criterion, entry.proof);
+      claims.set(entry.criterion, `[${entry.fidelity}] ${entry.proof}`);
     }
   }
   return claims;

@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { evidenceBasis } from "./evidence-basis.ts";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CriterionEvidence, Request } from "./data.ts";
@@ -44,9 +45,10 @@ function EvidenceNote({ evidence }: { evidence: CriterionEvidence }): React.JSX.
         : evidence.mark === "claimed"
           ? t("mandate.claimed", { name: evidence.by })
           : t("mandate.open");
+  const basis = evidenceBasis(t, evidence);
   return (
     <div className={SUB} title={evidence.proof === "" ? undefined : evidence.proof}>
-      {text}
+      {basis === "" ? text : `${text} · ${basis}`}
     </div>
   );
 }

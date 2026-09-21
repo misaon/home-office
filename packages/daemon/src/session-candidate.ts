@@ -61,6 +61,11 @@ async function verified(
     );
     return { kind: "unavailable", reason };
   }
+  const outputFile = await deps.traces.writeArtifact(
+    ctx.session.id,
+    `checks-${String(attempt)}.log`,
+    result.transcript,
+  );
   const facts = {
     sessionId: ctx.session.id,
     taskId: ctx.task.id,
@@ -70,6 +75,7 @@ async function verified(
     exitCode: result.exitCode,
     ms: result.ms,
     attempt,
+    outputFile,
   };
   deps.traces.write(ctx.session.id, { kind: "verify", ...facts }, true);
   if (result.ok) {

@@ -4,7 +4,9 @@ import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import { environmentGuide } from "./prompts-environment.ts";
 import {
   browserGuide,
+  capabilitiesGuide,
   criteriaGuide,
+  FIDELITY_GUIDE,
   dependenciesGuide,
   filesGuide,
   lspGuide,
@@ -20,7 +22,7 @@ const COMMIT_RULE =
 
 const verifyGuide = (project: Project, task: Task): string => {
   if (project.verify.command === "") {
-    return `This floor has no check command: the office publishes your HEAD commit without running anything, records that fact on the task, and tells the reviewers so. Before you report, run the checks the package you changed already defines — its build and test scripts, the linters its configuration names — and nothing more: do not survey the repository's tooling, and do not try to run an application whose services this sandbox does not have. ${COMMIT_RULE}`;
+    return `This floor has no check command: the office publishes your HEAD commit without running anything, records that fact on the task, and tells the reviewers so. Before you report, run the checks the package you changed already defines — its build and test scripts, the linters its configuration names — and nothing more: do not survey the repository's tooling, and do not try to run an application whose services this sandbox does not have; when you then judge a visible criterion without the running application, say so with fidelity substitute or static and its blocker. ${COMMIT_RULE}`;
   }
   const left = Math.max(0, project.verify.maxAttempts - verifyAttempts(task));
   return `Done means \`${project.verify.command}\` passes. Run it yourself before you report. The office runs it again on your HEAD commit in a container with no network and an empty home directory, so everything the command needs must live under ${REPO_IN_VOLUME}; a failure comes back to you with the output, ${String(left)} more time(s) before the task is blocked. ${COMMIT_RULE}`;
@@ -50,13 +52,14 @@ const reviewersGuide = (model: ReadModel, task: Task): string => {
 };
 
 const PROTOCOL = [
-  "Protocol: when the work is committed, call ho_report with status review, and in criteria how you verified each acceptance criterion yourself (the command you ran or the page you opened, and what you saw); then stop, leaving nothing uncommitted. If you are stuck on a decision only the human can make, commit what you have, call ho_ask_human and stop; you are resumed with the answer. If a colleague on this floor is better suited, commit and call ho_handoff with a clear brief.",
+  "Protocol: when the work is committed, call ho_report with status review, and in criteria how you verified each acceptance criterion yourself (the command you ran or the page you opened, what you saw, and with which fidelity); then stop, leaving nothing uncommitted. If you are stuck on a decision only the human can make, commit what you have, call ho_ask_human and stop; you are resumed with the answer. If a colleague on this floor is better suited, commit and call ho_handoff with a clear brief.",
   "When things go wrong: a tool error names what was wrong with the call, so fix the input and retry once, then report blocked with the message. If the branch already contains the work, verify it and report review saying so. If the brief is wrong rather than unclear, ask the human instead of guessing. If you find a credential in the repository, leave it in place, never print it, and name the file in your report.",
 ];
 
 export const workPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   `The repository is checked out at ${REPO_IN_VOLUME} on branch ${f.branch}. Work only inside it and commit with clear Conventional Commit messages.`,
   SANDBOX,
+  capabilitiesGuide(f),
   repoRules(f.agent),
   lspGuide(f.languages),
   browserGuide(f.browser, true),
@@ -71,5 +74,6 @@ export const workPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   publishGuide(f.task, f.project),
   reviewersGuide(model, f.task),
   filesGuide(f.files),
+  FIDELITY_GUIDE,
   ...PROTOCOL,
 ];

@@ -1,4 +1,11 @@
-import { type Actor, clip, errorMessage, type HoReportInput, type SessionMode } from "@ho/protocol";
+import {
+  type Actor,
+  type Attachment,
+  clip,
+  errorMessage,
+  type HoReportInput,
+  type SessionMode,
+} from "@ho/protocol";
 import { McpServer, WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import type { Logger } from "./logger.ts";
 import { type Entry, type McpSessionContext, text, TOOLS, type ToolResult } from "./mcp-tools.ts";
@@ -47,7 +54,9 @@ export class McpGateway {
       ctx,
       replied: false,
       delegated: false,
+      applicationReady: false,
       report: null,
+      reportFiles: [],
       skills: this.#skills,
     });
     return token;
@@ -67,6 +76,17 @@ export class McpGateway {
 
   report(token: string): HoReportInput | null {
     return this.#entries.get(token)?.report ?? null;
+  }
+
+  reportFiles(token: string): readonly Attachment[] {
+    return this.#entries.get(token)?.reportFiles ?? [];
+  }
+
+  markApplication(token: string, ready: boolean): void {
+    const entry = this.#entries.get(token);
+    if (entry !== undefined) {
+      entry.applicationReady = ready;
+    }
   }
 
   async handle(req: Request): Promise<Response> {

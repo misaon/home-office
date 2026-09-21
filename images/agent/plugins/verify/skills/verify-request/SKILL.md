@@ -16,8 +16,9 @@ result. You wrote none of it, and you change nothing: an edit in /work/repo reac
    running and its log is named: use it. When the environment names a run command, start it once
    with that command and leave it running. When neither is there, do not try to boot it — no
    installing services, no guessing at configuration, no second attempt — and verify statically:
-   templates, build output, tests, rendered files, saying in the evidence that the judgement is
-   static. When the briefing lists services, use them; never probe for what it does not list.
+   templates, build output, tests, rendered files, with fidelity `static` and blocker
+   `not_prepared` on each such judgement. When the briefing lists services, use them; never probe
+   for what it does not list.
 3. Take each condition in turn and exercise it: the happy path exactly as worded, then the
    unhappy paths it implies (empty input, invalid input, a missing record, a denied permission),
    then the state after the action (what was stored, what was sent, what the next screen shows).
@@ -68,7 +69,8 @@ Not acceptable:
 ## When you are stuck
 
 If the briefing gives no way to run the application, do not build one: judge each condition on
-what the repository shows — templates, build output, tests — and say so in the evidence. A
+what the repository shows — templates, build output, tests — with fidelity `static` and the
+blocker `not_prepared`. A
 condition that only a running application could show is then a `fail` with that reason. A
 condition about delivery — a branch, a pull request, a link, a report — is `not_checked`: the
 office produces those after your verdict. If the request itself is ambiguous, judge it as worded

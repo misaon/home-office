@@ -5,8 +5,10 @@ import { environmentGuide } from "./prompts-environment.ts";
 import {
   authorClaims,
   browserGuide,
+  capabilitiesGuide,
   changeSizeGuide,
   criteriaGuide,
+  FIDELITY_GUIDE,
   lspGuide,
   repoRules,
   SANDBOX,
@@ -56,6 +58,7 @@ const checksGuide = (f: SessionFacts): string =>
 export const reviewPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   `You are reviewing commit ${f.commit ?? "at the tip of the branch"} on branch ${f.branch}, checked out in your own copy of the repository at ${REPO_IN_VOLUME} (base branch: ${f.project.defaultBranch}). The office recorded that commit when the author reported; only it is published and reviewed, and nothing you change in this copy reaches it.`,
   SANDBOX,
+  capabilitiesGuide(f),
   repoRules(f.agent),
   lspGuide(f.languages),
   browserGuide(f.browser, false),
@@ -74,5 +77,6 @@ export const reviewPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   ),
   "Flag only what affects correctness, safety or the stated criteria, not style the checks already settle. You may install dependencies, run commands, tests and the application in this copy; an edit here is yours alone and never reaches the branch, so a fix you want is a finding, not a commit.",
   `Task under review: ${f.task.title}`,
-  `Protocol: call ho_review exactly once with verdict approve or request_changes, numbered findings (file:line), and criteria: one judgement per acceptance criterion by its number — pass with what you ran or opened and saw, fail with what you saw instead, not_checked with why your stage does not cover it. The office keeps these as evidence on this commit and refuses approve while a criterion fails. Then stop. ${roundsGuide(f, model)}`,
+  FIDELITY_GUIDE,
+  `Protocol: call ho_review exactly once with verdict approve or request_changes, numbered findings (file:line), criteria: one judgement per acceptance criterion by its number — pass with what you ran or opened and saw, fail with what you saw instead, not_checked with why your stage does not cover it — each with its fidelity, and in files the screenshots the human should see. The office keeps these as evidence on this commit; it refuses approve while a criterion fails, and while a pass rests on a substitute or on code alone although the office started the application and it answers. Then stop. ${roundsGuide(f, model)}`,
 ];

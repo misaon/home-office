@@ -1,7 +1,8 @@
 import type { RunnerLine } from "@ho/core";
 import type { RuntimeEvent, SessionId } from "@ho/protocol";
-import { appendFile, chmod, mkdir, readdir, stat, unlink } from "node:fs/promises";
+import { appendFile, chmod, mkdir, readdir, rm, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
+import { redactSecrets, SECRET_MIN_CHARS } from "./trace-redaction.ts";
 import { idleWaitSeconds, masksExitCode } from "./waste.ts";
 
 export type TraceLine = RunnerLine | { stream: "stdin"; text: string };
@@ -34,10 +35,7 @@ type Open = {
 };
 
 const INDEX_FILE = "index.jsonl";
-const SUFFIX = ".jsonl";
-const DAY_MS = 24 * 60 * 60 * 1000;
-const SECRET_MIN_CHARS = 8;
-const REDACTED = "***";
+const ARTIFACTS_DIR = "artifacts";
 const RECORDED_EVENTS = new Set<RuntimeEvent["kind"]>([
   "init",
   "usage",
@@ -48,38 +46,8 @@ const RECORDED_EVENTS = new Set<RuntimeEvent["kind"]>([
   "permission_request",
   "background_done",
 ]);
-
-const CREDENTIAL_SHAPES: readonly RegExp[] = [
-  /Bearer [A-Za-z0-9._~+/=-]{8,}/gu,
-  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/gu,
-  /\bsk-ant-[A-Za-z0-9_-]{8,}/gu,
-  /\bsk-[A-Za-z0-9_-]{20,}/gu,
-  /\bgh[pousr]_[A-Za-z0-9]{20,}/gu,
-  /\bgithub_pat_[A-Za-z0-9_]{20,}/gu,
-  /\bAKIA[0-9A-Z]{16}\b/gu,
-  /\bAIza[0-9A-Za-z_-]{30,}/gu,
-  /\bxox[abprs]-[A-Za-z0-9-]{10,}/gu,
-  /\/\/[^\s/@"]+:[^\s/@"]+@/gu,
-];
-
-export const redactSecrets = (text: string, secrets: ReadonlySet<string>): string => {
-  let redacted = text;
-  for (const secret of secrets) {
-    redacted = redacted.replaceAll(secret, REDACTED);
-    redacted = redacted.replaceAll(JSON.stringify(secret).slice(1, -1), REDACTED);
-  }
-  for (const shape of CREDENTIAL_SHAPES) {
-    redacted = redacted.replaceAll(shape, (match) =>
-      match.startsWith("Bearer ")
-        ? `Bearer ${REDACTED}`
-        : match.startsWith("//")
-          ? `//${REDACTED}@`
-          : REDACTED,
-    );
-  }
-  return redacted;
-};
-
+const SUFFIX = ".jsonl";
+const DAY_MS = 24 * 60 * 60 * 1000;
 const partialDelta = (text: string): boolean =>
   (text.startsWith('{"type":"stream_event"') && !text.includes('"type":"message_delta"')) ||
   text.includes('"sessionUpdate":"agent_message_chunk"');
@@ -225,6 +193,19 @@ export class TraceStore {
     }
   }
 
+  async writeArtifact(sessionId: SessionId, name: string, text: string): Promise<string | null> {
+    const open = this.#open.get(sessionId);
+    if (open === undefined) {
+      return null;
+    }
+    const dir = join(this.#dir, ARTIFACTS_DIR, sessionId);
+    await mkdir(dir, { recursive: true, mode: 0o700 });
+    const path = join(dir, name);
+    await Bun.write(path, redactSecrets(text, open.secrets));
+    await chmod(path, 0o600).catch(() => undefined);
+    return path;
+  }
+
   mcp(
     sessionId: SessionId,
     record: { tool: string; ok: boolean; ms: number; error?: string },
@@ -272,12 +253,27 @@ export class TraceStore {
     let removed = 0;
     for (const name of await readdir(this.#dir).catch((): string[] => [])) {
       const path = join(this.#dir, name);
-      if (name === INDEX_FILE || !name.endsWith(SUFFIX) || live.has(path)) {
+      if (
+        name === INDEX_FILE ||
+        name === ARTIFACTS_DIR ||
+        !name.endsWith(SUFFIX) ||
+        live.has(path)
+      ) {
         continue;
       }
       const info = await stat(path).catch(() => null);
       if (info !== null && info.mtimeMs < cutoff) {
         await unlink(path).catch(() => undefined);
+        removed += 1;
+      }
+    }
+    const artifacts = join(this.#dir, ARTIFACTS_DIR);
+    const openIds = new Set<string>(this.#open.keys());
+    for (const name of await readdir(artifacts).catch((): string[] => [])) {
+      const path = join(artifacts, name);
+      const info = await stat(path).catch(() => null);
+      if (info !== null && info.mtimeMs < cutoff && !openIds.has(name)) {
+        await rm(path, { recursive: true, force: true }).catch(() => undefined);
         removed += 1;
       }
     }

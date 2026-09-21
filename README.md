@@ -297,7 +297,8 @@ daemon:
   _mandate_: the request in the human's own words, the conditions of done the boss or the analyst
   states, every task it spawned, and one evidence record per acceptance criterion — who judged it,
   on which commit, by what method (the floor's checks, the author's own account, a reviewer, the
-  final verifier) and with what proof. Reviewers file a judgement per criterion with their verdict,
+  final verifier), on what basis (the running application, a substitute page or code alone, and
+  why it was not the application), with what proof and which screenshots. Reviewers file a judgement per criterion with their verdict,
   and an approval that leaves a criterion failing is refused. `ho mandate list` and
   `ho mandate show <mandate>` print them.
 - **Session traces.** `$HO_HOME/traces/<session id>.jsonl` keeps what each agent saw and did: the

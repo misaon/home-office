@@ -1,5 +1,6 @@
 import { isTerminal, type PruneReport, type ReadModel, type SandboxProvider } from "@ho/core";
 import { errorMessage } from "@ho/protocol";
+import type { AttachmentStore } from "./attachments.ts";
 import type { DaemonConfig } from "./config.ts";
 import { LABELS, MANAGED } from "./labels.ts";
 import type { Logger } from "./logger.ts";
@@ -103,16 +104,18 @@ export function startGc(
   log: Logger,
   traces: TraceStore,
   model: ReadModel,
+  attachments: AttachmentStore,
 ): { stop: () => Promise<void>; runOnce: () => Promise<PruneReport> } {
   const collect = async (): Promise<PruneReport> => {
     const started = Bun.nanoseconds();
     const report = await collectGarbage(provider, config, model, log);
     const prunedTraces = await traces.prune(config.retention.traceDays);
+    const prunedBrowser = await attachments.pruneBrowser(config.retention.traceDays);
     const counts = {
       containers: report.containers.length,
       volumes: report.volumes.length,
       images: report.images.length,
-      traces: prunedTraces,
+      traces: prunedTraces + prunedBrowser,
     };
     log.debug({ ...counts, ms: elapsedMs(started) }, "gc ran");
     if (counts.containers + counts.volumes + counts.images + counts.traces > 0) {

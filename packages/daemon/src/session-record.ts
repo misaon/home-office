@@ -1,7 +1,7 @@
 import { annotateTask } from "@ho/core";
 import { type Agent, type Project, type Session, SYSTEM_ACTOR, type Task } from "@ho/protocol";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
-import { idsOf } from "./session-ids.ts";
+import { idsOf, traceFor } from "./session-ids.ts";
 import type { Ending } from "./session-run.ts";
 import type { SessionDeps } from "./sessions.ts";
 import type { TraceCounters } from "./traces.ts";
@@ -47,6 +47,37 @@ export const traceHeader = (
   },
 });
 
+const CONSOLE_NOTE_LINES = 3;
+
+async function noteBrowser(deps: SessionDeps, ctx: SessionContext): Promise<void> {
+  const browser = await deps.attachments.browserDiagnostics(ctx.session.id).catch(() => null);
+  if (
+    browser === null ||
+    (browser.screenshots.length === 0 && browser.consoleErrors.length === 0)
+  ) {
+    return;
+  }
+  deps.traces.write(ctx.session.id, { kind: "browser", ...browser }, true);
+  if (browser.consoleErrors.length === 0) {
+    return;
+  }
+  const first = browser.consoleErrors.slice(0, CONSOLE_NOTE_LINES).join(" | ");
+  await deps.office
+    .traced(traceFor(ctx))
+    .execute(SYSTEM_ACTOR, (m, c) =>
+      annotateTask(
+        m,
+        ctx.task.id,
+        {
+          kind: "info",
+          text: `the browser console logged ${String(browser.consoleErrors.length)} error line(s) during ${ctx.agent.name}'s ${ctx.session.mode} session: ${first}`,
+        },
+        c,
+      ),
+    )
+    .catch(() => null);
+}
+
 export async function recordSessionEnd(
   deps: SessionDeps,
   ctx: SessionContext,
@@ -56,6 +87,7 @@ export async function recordSessionEnd(
   const { office, log, traces } = deps;
   const sessionId = ctx.session.id;
   const stored = office.model.sessions.get(sessionId);
+  await noteBrowser(deps, ctx);
   const counters: TraceCounters | null = await traces
     .close(sessionId, {
       state: ending.state,
