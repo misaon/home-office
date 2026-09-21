@@ -221,6 +221,7 @@ export class Bridge {
       case "mandate.round_opened":
       case "session.state_changed":
       case "session.usage_recorded":
+      case "session.plan_recorded":
       case "task.artifacts_changed":
       case "task.assigned":
       case "task.removed":

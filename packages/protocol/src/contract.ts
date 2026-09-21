@@ -46,6 +46,7 @@ import {
   UsageSummary,
   UsageSummaryInput,
 } from "./inputs.ts";
+import { PlanUsageStatus } from "./plan-usage.ts";
 
 const base = oc.errors(RPC_ERRORS);
 
@@ -119,6 +120,7 @@ export const contract = {
   },
   usage: {
     summary: base.input(UsageSummaryInput).output(UsageSummary),
+    plan: base.output(PlanUsageStatus),
   },
   evals: {
     scorecard: base.input(EvalInput).output(EvalScorecard),

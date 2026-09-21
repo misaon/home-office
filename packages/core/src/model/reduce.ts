@@ -161,6 +161,7 @@ const TOUCHES: Readonly<Record<StoredEvent["type"], Collection | null>> = {
   "session.state_changed": "sessions",
   "session.usage_recorded": "sessions",
   "session.ended": "sessions",
+  "session.plan_recorded": "sessions",
 };
 
 export function applyEvent(model: ReadModel, event: StoredEvent): void {
@@ -261,7 +262,8 @@ export function applyEvent(model: ReadModel, event: StoredEvent): void {
     case "session.started":
     case "session.state_changed":
     case "session.usage_recorded":
-    case "session.ended": {
+    case "session.ended":
+    case "session.plan_recorded": {
       applySessionEvent(model, event);
       break;
     }

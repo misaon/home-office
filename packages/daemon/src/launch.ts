@@ -3,7 +3,7 @@ import { createDockerProvider } from "@ho/sandbox-docker";
 import { createSecretStore } from "@ho/secrets";
 import { type DaemonConfig, loadConfig } from "./config.ts";
 import { type DaemonInfo, removeDaemonInfo, writeDaemonInfo } from "./daemon-info.ts";
-import { startFloorJobs } from "./floor-jobs.ts";
+import { type FloorJobs, startFloorJobs } from "./floor-jobs.ts";
 import { startGc } from "./gc.ts";
 import { type DirectoryPicker, osascriptDirectoryPicker } from "./host-dialog.ts";
 import { IntakeService } from "./intake.ts";
@@ -120,6 +120,7 @@ export async function launchDaemon(
   const gc = startGc(provider, config, log, traces, office.model);
   cleanup.defer(() => gc.stop());
   const startedAt = clock.now().toISOString();
+  const jobs: { current: FloorJobs | null } = { current: null };
   const remote = await RemoteService.open(home, clock, log);
   const server = startServer({
     host: config.host,
@@ -143,6 +144,8 @@ export async function launchDaemon(
       startedAt,
       gc: gc.runOnce,
       pickDirectory: options.pickDirectory ?? osascriptDirectoryPicker,
+      planUsage: () =>
+        jobs.current?.planUsage() ?? { kind: "off", reason: "the office is still starting" },
       remote,
       log,
     },
@@ -169,8 +172,9 @@ export async function launchDaemon(
   cleanup.defer(() => removeDaemonInfo(home));
   intake.start();
   cleanup.defer(() => intake.stop());
-  const jobs = await startFloorJobs({ office, sessions, provider, config, gate, home, log });
-  cleanup.defer(() => jobs.stop());
+  const floorJobs = await startFloorJobs({ office, sessions, provider, config, gate, home, log });
+  jobs.current = floorJobs;
+  cleanup.defer(() => floorJobs.stop());
   let stopping: Promise<void> | null = null;
   const stop = (): Promise<void> => {
     if (stopping === null) {

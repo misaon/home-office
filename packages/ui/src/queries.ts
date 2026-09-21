@@ -34,6 +34,12 @@ export const layoutsQuery = queryOptions({
   queryFn: ({ signal }) => requireClient().layouts.list(undefined, { signal }),
 });
 
+export const planUsageQuery = queryOptions({
+  queryKey: ["plan-usage"],
+  queryFn: ({ signal }) => requireClient().usage.plan(undefined, { signal }),
+  refetchInterval: 30_000,
+});
+
 export const usageQuery = (hours: number): UseQueryOptions<UsageSummary> => ({
   queryKey: ["usage", hours],
   queryFn: ({ signal }) =>

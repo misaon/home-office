@@ -54,3 +54,6 @@ export const MODE_OF_KIND: Readonly<Record<TaskKind, SessionMode>> = {
   plan: "plan",
   verify: "verify",
 };
+
+export const SessionServices = z.enum(["ready", "failed", "untrusted"]);
+export type SessionServices = z.infer<typeof SessionServices>;

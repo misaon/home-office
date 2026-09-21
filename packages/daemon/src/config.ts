@@ -56,6 +56,11 @@ export const DaemonConfig = z.object({
       dir: z.string().min(1).nullable().default(null),
     })
     .prefault({}),
+  plan: z
+    .object({
+      enabled: z.boolean().default(true),
+    })
+    .prefault({}),
   browser: z
     .object({
       enabled: z.boolean().default(true),

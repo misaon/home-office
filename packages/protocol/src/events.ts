@@ -10,7 +10,6 @@ import {
   Project,
   Session,
   SessionRuntime,
-  SessionServices,
   SessionState,
   Task,
   TaskArtifacts,
@@ -39,7 +38,7 @@ import {
   MandateCriterion,
   MandateStatus,
 } from "./mandate.ts";
-import { ReviewStage } from "./roles.ts";
+import { ReviewStage, SessionServices } from "./roles.ts";
 
 const Envelope = z.object({ id: EventId, at: IsoDateTime, actor: Actor });
 
@@ -144,6 +143,10 @@ export const DomainEvent = z.discriminatedUnion("type", [
     state: z.enum(["stopped", "failed"]),
     endedAt: IsoDateTime,
     reason: z.string().max(2000).optional(),
+  }),
+  event("session.plan_recorded", {
+    sessionId: SessionId,
+    percent: z.number().nonnegative(),
   }),
 ]);
 export type DomainEvent = z.infer<typeof DomainEvent>;

@@ -79,5 +79,9 @@ export function applySessionEvent(model: ReadModel, event: SessionEvent): void {
       trackSessionState(model, ended);
       break;
     }
+    case "session.plan_recorded": {
+      model.sessions.set(session.id, { ...session, planPercent: event.payload.percent });
+      break;
+    }
   }
 }

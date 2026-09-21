@@ -259,6 +259,16 @@ The point of the office is that an agent's mistake stays inside a box.
 Every state change in the office is an event appended to a local SQLite log, so the board, the floor
 and the usage panel are all views of one history — and you can replay exactly what happened.
 
+**Your plan limit, next to the stop button.** When a colleague works on a Claude subscription, the
+office reads the login that Claude Code keeps on this Mac (the Keychain item
+`Claude Code-credentials`, read-only, never stored or logged) and asks the same endpoint `/usage`
+asks, once a minute while sessions run. The chat shows how much of your five-hour window the current
+or the last task drew: the window's growth while its sessions ran, split by tokens when tasks run in
+parallel. The usage popover shows both windows with their reset times. That login expires every few
+hours; run `claude` once and it refreshes itself. `"plan": { "enabled": false }` in
+`$HO_HOME/config.json` turns the meter off. Anthropic does not document the endpoint, so it may
+change.
+
 ## What the office records
 
 Everything stays under `$HO_HOME` (`~/.config/home-office` by default) and is readable without the

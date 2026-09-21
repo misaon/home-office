@@ -36,7 +36,15 @@ export const csOffice = {
     context: "kontext {{percent}} %",
     chipTitle: "Spotřeba",
     chipNote:
-      "Co tato kancelář naměřila za poslední den. Kvótu tarifu jí žádný poskytovatel neřekne, takže ji neukazuje.",
+      "Co tato kancelář naměřila za poslední den. Měřiče plánu čtou přihlášení Claude Code na tomto Macu, stejná čísla jako /usage.",
+    planFive: "Plán · 5 h",
+    planWeek: "Plán · 7 d",
+    planResets: "reset za {{when}}",
+    planShareTitle: "{{title}}: {{percent}} % z tvého 5h okna plánu; okno je na {{five}} %",
+    planNoTask: "Tvé 5h okno plánu je na {{five}} %; žádný task tohoto vlákna z něj zatím nečerpal",
+    planSignIn:
+      "Přihlas Claude Code na tomto Macu (spusť jednou claude), aby se ukázal limit plánu.",
+    planUnavailable: "Limit plánu není dostupný: {{message}}",
     in: "in",
     day: "24 h",
     byAgent: "Po zaměstnancích",

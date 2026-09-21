@@ -21,7 +21,7 @@ import {
   ServicesPolicy,
   VerifyPolicy,
 } from "./policies.ts";
-import { AgentRole, ReviewPlan, SessionMode, TaskKind } from "./roles.ts";
+import { AgentRole, ReviewPlan, SessionMode, SessionServices, TaskKind } from "./roles.ts";
 import { Budgets, Usage } from "./usage.ts";
 
 export * from "./policies.ts";
@@ -265,9 +265,6 @@ export const MailItem = z.object({
 });
 export type MailItem = z.infer<typeof MailItem>;
 
-export const SessionServices = z.enum(["ready", "failed", "untrusted"]);
-export type SessionServices = z.infer<typeof SessionServices>;
-
 export const SessionRuntime = z.object({
   model: z.string().min(1),
   effort: EffortLevel,
@@ -294,6 +291,7 @@ export const Session = z.object({
   round: z.int().nonnegative().default(0),
   usage: Usage,
   costUsd: z.number().nonnegative().optional(),
+  planPercent: z.number().nonnegative().optional(),
   startedAt: IsoDateTime,
   endedAt: IsoDateTime.optional(),
 });

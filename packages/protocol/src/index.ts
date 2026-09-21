@@ -16,6 +16,7 @@ export * from "./office-layout.ts";
 export * from "./office-layout-text.ts";
 export * from "./office-layout-write.ts";
 export * from "./patch.ts";
+export * from "./plan-usage.ts";
 export * from "./providers.ts";
 export * from "./remote.ts";
 export * from "./repo.ts";

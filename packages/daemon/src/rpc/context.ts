@@ -5,6 +5,7 @@ import type { DirectoryPicker } from "../host-dialog.ts";
 import type { IntakeService } from "../intake.ts";
 import type { Logger } from "../logger.ts";
 import type { OfficeGate } from "../office-gate.ts";
+import type { PlanUsageStatus } from "@ho/protocol";
 import type { Office } from "../office.ts";
 import type { Resources } from "../paths.ts";
 import type { RemoteCaller } from "../remote-peers.ts";
@@ -26,6 +27,7 @@ export type RpcContext = {
   startedAt: string;
   gc: () => Promise<{ containers: string[]; volumes: string[]; images: string[] }>;
   pickDirectory: DirectoryPicker;
+  planUsage: () => PlanUsageStatus;
   remote: RemoteService;
   device?: RemoteCaller;
   log: Logger;

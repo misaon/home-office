@@ -21,7 +21,7 @@ import { ago, clock, elapsed, since } from "./clock.ts";
 import { cardEvidence } from "./live-mandates.ts";
 import { type Activity, transcriptOf } from "./transcript.ts";
 
-function useNow(everyMs = 30_000): number {
+export function useNow(everyMs = 30_000): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => {
