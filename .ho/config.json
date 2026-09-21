@@ -3,6 +3,7 @@
   "version": 1,
   "name": "Home Office",
   "defaultBranch": "main",
+  "language": "cs",
   "publish": { "mode": "pull-request", "draft": true },
   "intake": { "enabled": false },
   "services": { "enabled": false, "mode": "rootless" },
