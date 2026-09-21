@@ -6,9 +6,10 @@ import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import { openingMessage, systemPrompt } from "./prompts.ts";
 import type { Provisioned, SessionContext } from "./session-provision.ts";
 import type { SessionDeps } from "./sessions.ts";
-import { lspPacksFor, skillPacksFor } from "./skill-pack.ts";
+import { lspPluginsFor, skillPacksFor } from "./skill-pack.ts";
 
 const PLUGINS_ROOT = "/opt/ho/plugins";
+const LSP_ROOT = "/opt/ho/lsp";
 const HASH_CHARS = 12;
 
 export type Prepared = {
@@ -16,6 +17,7 @@ export type Prepared = {
   message: string;
   browser: boolean;
   packs: string[];
+  lsp: string[];
   runtime: SessionRuntime;
 };
 
@@ -38,10 +40,8 @@ export const prepare = (
   environment: EnvironmentReport | null,
 ): Prepared => {
   const browser = browserFor(deps, ctx);
-  const packs = [
-    ...skillPacksFor(ctx.agent, ctx.session.mode),
-    ...lspPacksFor(ctx.agent.provider, provisioned.languages),
-  ];
+  const packs = skillPacksFor(ctx.agent, ctx.session.mode);
+  const lsp = lspPluginsFor(ctx.agent.provider, provisioned.languages);
   const appendix = systemPrompt(
     {
       agent: ctx.agent,
@@ -64,6 +64,7 @@ export const prepare = (
   return {
     browser,
     packs,
+    lsp,
     appendix,
     message: openingMessage(ctx.task, ctx.session.mode, ctx.previous, ctx.agent.id),
     runtime: {
@@ -110,7 +111,10 @@ export const openRuntime = (
     systemPromptAppendix: prepared.appendix,
     cwd: REPO_IN_VOLUME,
     resume,
-    pluginDirs: prepared.packs.map((pack) => `${PLUGINS_ROOT}/${pack}`),
+    pluginDirs: [
+      ...prepared.packs.map((pack) => `${PLUGINS_ROOT}/${pack}`),
+      ...prepared.lsp.map((language) => `${LSP_ROOT}/${language}`),
+    ],
     mcpServers,
   };
   const runtime = {

@@ -30,5 +30,7 @@ export const languagesOf = (rootFiles: readonly string[]): LspLanguage[] =>
     LSP_MARKERS[language].some((marker) => rootFiles.includes(marker)),
   );
 
-export const lspPacksFor = (provider: ProviderId, languages: readonly LspLanguage[]): string[] =>
-  provider === "claude-code" ? languages.map((language) => `lsp-${language}`) : [];
+export const lspPluginsFor = (
+  provider: ProviderId,
+  languages: readonly LspLanguage[],
+): LspLanguage[] => (provider === "claude-code" ? [...languages] : []);

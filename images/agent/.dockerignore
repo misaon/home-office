@@ -3,8 +3,14 @@
 !.dockerignore
 !bin/
 !bin/ho-runner.js
+!bin/ho-db
 !plugins/
 !plugins/**
+!lsp/
+!lsp/**
+!lsp-servers/
+!lsp-servers/package.json
+!lsp-servers/package-lock.json
 !mcp/
 !mcp/package.json
 !mcp/package-lock.json

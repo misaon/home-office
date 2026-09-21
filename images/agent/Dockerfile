@@ -40,15 +40,19 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
  && test -f node_modules/@playwright/mcp/cli.js \
  && test -f node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
-    npm install -g pnpm@12.5.1 typescript-language-server@6.0.0 typescript@7.0.2 \
-      pyright@1.1.414 intelephense@1.18.5 --no-audit --no-fund \
- && pnpm --version \
- && typescript-language-server --version \
- && test -x "$(command -v pyright-langserver)" \
- && test -x "$(command -v intelephense)"
+    npm install -g pnpm@12.5.1 --no-audit --no-fund \
+ && pnpm --version
+COPY lsp-servers/package*.json /opt/ho/lsp-servers/
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    cd /opt/ho/lsp-servers \
+ && npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
+ && test -x node_modules/.bin/typescript-language-server \
+ && test -x node_modules/.bin/pyright-langserver \
+ && test -x node_modules/.bin/intelephense
 COPY --chmod=0644 bin/ho-runner.js /usr/local/bin/ho-runner.js
 COPY --chmod=0755 bin/ho-db /usr/local/bin/ho-db
 COPY plugins/ /opt/ho/plugins/
+COPY lsp/ /opt/ho/lsp/
 ENV HOME=/home/agent \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
     PUPPETEER_SKIP_DOWNLOAD=1 \
@@ -62,7 +66,7 @@ ENV HOME=/home/agent \
     BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 \
     PIP_CACHE_DIR=/work/.cache/pip \
     GIT_CONFIG_GLOBAL=/tmp/gitconfig \
-    PATH=/opt/ho/provider/node_modules/.bin:$PATH
+    PATH=/opt/ho/provider/node_modules/.bin:/opt/ho/lsp-servers/node_modules/.bin:$PATH
 WORKDIR /work
 CMD ["bun", "/usr/local/bin/ho-runner.js"]
 
