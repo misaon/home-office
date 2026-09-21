@@ -70,7 +70,7 @@ function HeaderTabs(): React.JSX.Element {
         }
       }}
       render={<nav />}
-      className="w-550 flex-[0_0_550px] border-l border-line flex relative"
+      className="w-(--panel) flex-[0_0_var(--panel)] border-l border-line flex relative"
     >
       <Tabs.List aria-label={t("nav.label")} className="flex flex-1 relative">
         <div className={`${MARKER} h-2 bg-accent shadow-tab translate-x-(--slide)`} style={slide} />

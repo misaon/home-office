@@ -185,10 +185,10 @@ export class SessionManager {
     return true;
   }
 
-  steer(taskId: TaskId, text: string): SessionId | null {
+  steer(taskId: TaskId, text: string, shown: string): SessionId | null {
     for (const [sessionId, running] of this.#running) {
       if (running.taskId === taskId && running.held.runtime?.send(text) === true) {
-        this.#emit(sessionId, { kind: "steer", text });
+        this.#emit(sessionId, { kind: "steer", text: shown });
         return sessionId;
       }
     }

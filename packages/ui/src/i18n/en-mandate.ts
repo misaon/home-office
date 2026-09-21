@@ -29,4 +29,7 @@ export const enMandate = {
   abandoned: "Request abandoned",
   byHuman: "you",
   byOffice: "the office",
+  progress: "{{done}} of {{total}} conditions verified",
+  expand: "Show the request",
+  collapse: "Hide the request",
 };

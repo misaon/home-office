@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useUi } from "../store.ts";
 import { Board } from "./board.tsx";
 import { Chat } from "./chat.tsx";
+import { PanelResizer } from "./panel-resize.tsx";
 import { Settings } from "./settings.tsx";
 import { AgentSheet } from "./sheet-agent.tsx";
 import { TaskSheet } from "./sheet-task.tsx";
@@ -11,7 +12,7 @@ import { useFloor } from "./live.ts";
 import { useDesign } from "./store.ts";
 
 const ASIDE =
-  "w-550 flex-[0_0_550px] border-l border-line bg-[linear-gradient(180deg,var(--color-panel),var(--color-ground-deep)_60%)] flex flex-col min-h-0 relative overflow-hidden";
+  "w-(--panel) flex-[0_0_var(--panel)] border-l border-line bg-[linear-gradient(180deg,var(--color-panel),var(--color-ground-deep)_60%)] flex flex-col min-h-0 relative overflow-hidden";
 
 export function Panel(): React.JSX.Element | null {
   const tab = useDesign((s) => s.tab);
@@ -45,6 +46,7 @@ export function Panel(): React.JSX.Element | null {
 
   return (
     <aside className={ASIDE}>
+      <PanelResizer />
       <div className="absolute top-0 left-0 right-0 h-120 bg-[linear-gradient(180deg,var(--color-accent-a05),transparent)] pointer-events-none" />
       {tab === "Chat" ? <Chat floor={floor} /> : null}
       {tab === "Board" ? <Board floor={floor} /> : null}

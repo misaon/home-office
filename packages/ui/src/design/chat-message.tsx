@@ -1,140 +1,102 @@
-import { type Message } from "./data.ts";
-import { CircleQuestionMark, FileText } from "lucide-react";
-import { MONO } from "./tokens.ts";
+import { CircleQuestionMark } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { type Attachment, isImageType } from "@ho/protocol";
-import { useAttachmentUrl } from "../attachments.ts";
-import { useDesign } from "./store.ts";
+import { ROLE_KEY } from "../i18n/labels.ts";
+import { Avatar } from "./avatar.tsx";
+import { CopyButton } from "./chat-copy.tsx";
+import { ChatThumbs } from "./chat-thumbs.tsx";
+import type { Message } from "./data.ts";
 import { RichText } from "./markdown.tsx";
+import { DISPLAY, MONO } from "./tokens.ts";
 
-const FRAME =
-  "block w-full mt-10 h-118 rounded-10 cursor-pointer overflow-hidden p-0 border border-accent-a30 bg-sunk transition-all duration-220";
+const SHELL = "group relative flex flex-col animate-lift-450";
 
-const FILE =
-  "flex items-center gap-8 w-full mt-10 py-8 px-10 rounded-10 cursor-pointer border border-accent-a30 bg-sunk text-left transition-all duration-220";
+const HEAD = "flex items-center gap-7 mb-6 px-2";
 
-function ChatThumb({ attachment }: { attachment: Attachment }): React.JSX.Element {
-  const { t } = useTranslation();
-  const set = useDesign((s) => s.set);
-  const image = isImageType(attachment.mime);
-  const url = useAttachmentUrl(attachment, image);
+const NAME = `${DISPLAY} font-semibold text-12h text-ink-pale`;
 
-  if (!image) {
-    return (
-      <button
-        type="button"
-        title={attachment.name}
-        onClick={() => {
-          set({ lightbox: attachment });
-        }}
-        className={`hover:border-accent-a70 ${FILE}`}
-      >
-        <FileText size={13} strokeWidth={1.4} className="flex-[0_0_auto] text-accent-quote" />
-        <span
-          className={`flex-1 min-w-0 ${MONO} text-10h text-accent-quote overflow-hidden text-ellipsis whitespace-nowrap`}
-        >
-          {attachment.name}
-        </span>
-        <span className={`${MONO} text-9h text-ink-label flex-[0_0_auto]`}>{t("chat.open")}</span>
-      </button>
-    );
-  }
-  return (
-    <button
-      type="button"
-      title={attachment.name}
-      onClick={() => {
-        set({ lightbox: attachment });
-      }}
-      className={`hover:border-accent-a70 hover:scale-101 ${FRAME}`}
-    >
-      {url === null ? (
-        <span className={`${MONO} text-10 text-accent-quote`}>{t("common.checking")}</span>
-      ) : (
-        <img src={url} alt={attachment.name} className="w-full h-full object-cover block" />
-      )}
-    </button>
-  );
-}
+const ROLE = `${MONO} text-9h h-16 px-6 rounded-pill bg-edge-lit text-ink-faint flex items-center leading-none`;
 
-export function ChatThumbs({
-  attachments,
-}: {
-  attachments: readonly Attachment[];
-}): React.JSX.Element | null {
-  const [only] = attachments;
-  if (only === undefined) {
-    return null;
-  }
-  if (attachments.length === 1) {
-    return <ChatThumb attachment={only} />;
-  }
-  return (
-    <div className="grid grid-cols-2 gap-8 mt-10 [&>*]:mt-0">
-      {attachments.map((attachment) => (
-        <ChatThumb key={attachment.id} attachment={attachment} />
-      ))}
-    </div>
-  );
-}
+const TIME = `${MONO} text-10 tracking-mono text-ink-idle`;
 
-const META = `${MONO} text-10 tracking-mono`;
 const BODY = "text-13h leading-text text-pretty";
 
-const MINE =
-  "max-w-[90%] ml-auto py-11 px-13 rounded-15 rounded-br-5 bg-[linear-gradient(160deg,var(--color-accent-a17),var(--color-accent-a08))] border border-accent-a30";
+const BUBBLE =
+  "relative py-11 px-14 rounded-16 border shadow-[inset_0_1px_0_var(--color-glint-a05)]";
 
-const THEIRS =
-  "max-w-[92%] mr-auto py-11 px-13 rounded-15 rounded-bl-5 bg-toast border border-border";
+const MINE = `${BUBBLE} max-w-[88%] ml-auto rounded-br-6 border-accent-a30 bg-[linear-gradient(160deg,var(--color-accent-a17),var(--color-accent-a08))]`;
 
-const ASKING =
-  "max-w-[92%] mr-auto py-11 px-13 rounded-15 rounded-bl-5 bg-toast border border-warn";
+const THEIRS = `${BUBBLE} max-w-[92%] mr-auto rounded-bl-6`;
 
-const TROUBLE =
-  "max-w-[92%] mr-auto py-11 px-13 rounded-15 rounded-bl-5 bg-bad-a12 border border-bad-a45";
+const PLAIN = `${THEIRS} border-border bg-[linear-gradient(180deg,var(--color-raised),var(--color-toast))]`;
+
+const ASKING = `${THEIRS} border-warn bg-[linear-gradient(180deg,var(--color-raised),var(--color-toast))]`;
+
+const TROUBLE = `${THEIRS} border-bad-a45 bg-bad-a12`;
 
 const ASK_TAG = "flex items-center gap-6 mt-8 text-10h text-warn";
 
+const COPY = "absolute top-7 right-7";
+
 const bubbleOf = (message: Message): string =>
-  message.asks === undefined ? (message.tone === "trouble" ? TROUBLE : THEIRS) : ASKING;
+  message.asks === undefined ? (message.tone === "trouble" ? TROUBLE : PLAIN) : ASKING;
 
 export function ChatMessage({
   message,
   boss,
+  continued,
 }: {
   message: Message;
   boss: string;
+  continued: boolean;
 }): React.JSX.Element {
   const { t } = useTranslation();
-  return (
-    <div className="flex flex-col animate-lift-450">
-      {message.mine ? (
-        <div className={MINE}>
-          <div className={`${META} text-accent-quote mb-5`}>
-            {t("chat.you")} · <span>{message.time}</span>
+  if (message.mine) {
+    return (
+      <div className={`${SHELL} items-end ${continued ? "-mt-4" : ""}`}>
+        {continued ? null : (
+          <div className={HEAD}>
+            <span className={NAME}>{t("chat.you")}</span>
+            <span className={TIME}>{message.time}</span>
           </div>
+        )}
+        <div className={MINE}>
           <div className={`${BODY} text-ink-bright`}>
             <RichText text={message.text} />
           </div>
           <ChatThumbs attachments={message.attachments} />
+          <CopyButton text={message.text} className={COPY} />
         </div>
-      ) : (
-        <div className={bubbleOf(message)}>
-          <div className={`${META} text-ink-label mb-6`}>
-            <span>{message.who ?? boss}</span> · <span>{message.time}</span>
-          </div>
-          <div className={`${BODY} text-ink-soft`}>
-            <RichText text={message.text} />
-          </div>
-          <ChatThumbs attachments={message.attachments} />
-          {message.asks === undefined ? null : (
-            <div className={ASK_TAG}>
-              <CircleQuestionMark size={11} strokeWidth={1.5} />
-              <span>{t("chat.awaitingAnswer")}</span>
-            </div>
+      </div>
+    );
+  }
+  const name = message.who ?? boss;
+  return (
+    <div className={`${SHELL} ${continued ? "-mt-4" : ""}`}>
+      {continued ? null : (
+        <div className={HEAD}>
+          {message.role === undefined ? null : (
+            <Avatar initial={name.charAt(0).toUpperCase()} role={message.role} size="sm" />
           )}
+          <span className={NAME}>{name}</span>
+          {message.role === undefined ? null : (
+            <span className={ROLE}>{t(ROLE_KEY[message.role])}</span>
+          )}
+          <span className={TIME}>{message.time}</span>
         </div>
       )}
+      <div className={bubbleOf(message)}>
+        <div className={`${BODY} text-ink-soft`}>
+          <RichText text={message.text} />
+        </div>
+        <ChatThumbs attachments={message.attachments} />
+        {message.asks === undefined ? null : (
+          <div className={ASK_TAG}>
+            <CircleQuestionMark size={11} strokeWidth={1.5} />
+            <span>{t("chat.awaitingAnswer")}</span>
+          </div>
+        )}
+        <CopyButton text={message.text} className={COPY} />
+      </div>
     </div>
   );
 }

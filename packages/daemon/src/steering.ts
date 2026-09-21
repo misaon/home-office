@@ -16,7 +16,11 @@ export function startSteering(
     }
     const author =
       note.author.kind === "agent" ? office.model.agents.get(note.author.agentId) : undefined;
-    const sessionId = sessions.steer(taskId, steerMessage(author?.name ?? "the boss", note.text));
+    const sessionId = sessions.steer(
+      taskId,
+      steerMessage(author?.name ?? "the boss", note.text),
+      note.text,
+    );
     if (sessionId === null) {
       log.info({ taskId }, "no session runs for the task; the instruction waits for the next one");
       return;

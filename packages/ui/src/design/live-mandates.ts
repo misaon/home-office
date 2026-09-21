@@ -89,16 +89,22 @@ const tasksOf = (snapshot: Snapshot, mandate: Mandate): Task[] =>
     .toSorted((a, b) => a.createdAt.localeCompare(b.createdAt));
 
 function requestOf(snapshot: Snapshot, mandate: Mandate): Request {
+  const conditions = mandate.acceptance.map((criterion, index) => ({
+    text: criterion.text,
+    evidence: evidenceFor(snapshot, mandate, undefined, index, mandate.artifacts.commit),
+  }));
   return {
     id: mandate.id,
     title: mandate.title,
     request: mandate.request,
     status: mandate.status,
     round: mandate.round,
-    conditions: mandate.acceptance.map((criterion, index) => ({
-      text: criterion.text,
-      evidence: evidenceFor(snapshot, mandate, undefined, index, mandate.artifacts.commit),
-    })),
+    open: isMandateOpen(mandate.status),
+    progress: {
+      done: conditions.filter((condition) => condition.evidence.mark === "pass").length,
+      total: conditions.length,
+    },
+    conditions,
     tasks: tasksOf(snapshot, mandate).map((task) => ({
       id: task.id,
       title: task.title,
@@ -112,18 +118,17 @@ function requestOf(snapshot: Snapshot, mandate: Mandate): Request {
   };
 }
 
-export function useThreadRequests(floorId: ProjectId, thread: ThreadPick | "new"): Request[] {
+export function useThreadRequest(floorId: ProjectId, thread: ThreadPick | "new"): Request | null {
   const snapshot = useUi((s) => s.snapshot);
-  return [...snapshot.mandates.values()]
+  const [newest] = [...snapshot.mandates.values()]
     .filter((mandate) => {
       const root = snapshot.tasks.get(mandate.rootTaskId);
       return (
         mandate.projectId === floorId &&
-        isMandateOpen(mandate.status) &&
         root !== undefined &&
         (threadOfTask(snapshot, root) ?? "main") === thread
       );
     })
-    .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .map((mandate) => requestOf(snapshot, mandate));
+    .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return newest === undefined ? null : requestOf(snapshot, newest);
 }

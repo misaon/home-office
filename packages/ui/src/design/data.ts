@@ -19,7 +19,10 @@ import type {
   TaskId,
   TaskStatus,
   AgentRole,
+  SessionId,
+  SessionMode,
 } from "@ho/protocol";
+import type { Step } from "./transcript.ts";
 
 export type Lane = "queued" | "running" | "blocked" | "done";
 
@@ -95,12 +98,16 @@ export type Request = {
   prUrl: string | null;
   branch: string | null;
   when: string;
+  open: boolean;
+  progress: { done: number; total: number };
 };
 
 export type Message = {
   id: ChatMessageId;
   mine: boolean;
   who?: string;
+  role?: AgentRole;
+  kind?: "status";
   at: string;
   time: string;
   text: string;
@@ -108,6 +115,30 @@ export type Message = {
   asks?: { taskId: TaskId; who: string };
   tone?: "trouble";
   attachments: readonly Attachment[];
+};
+
+export type SessionOutcome = "running" | "done" | "failed";
+
+export type SessionCard = {
+  id: SessionId;
+  agentId: AgentId;
+  name: string;
+  initial: string;
+  role: AgentRole;
+  mode: SessionMode;
+  model: string;
+  effort: string;
+  live: boolean;
+  outcome: SessionOutcome;
+  startedAt: string;
+  since: string;
+  costUsd: number | null;
+  turns: number;
+  taskTitle: string;
+  traced: boolean;
+  steps: readonly Step[];
+  activity: string | null;
+  text: string;
 };
 
 export type ThreadPick = ChatThreadId | "main";

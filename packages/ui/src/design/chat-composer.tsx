@@ -8,7 +8,7 @@ import { requireClient } from "../rpc.ts";
 import { ChatAttachment } from "./chat-attachment.tsx";
 import { fitToText, onEnter, onTab } from "./chat-editing.ts";
 import { ChatToolbar } from "./chat-toolbar.tsx";
-import type { Floor, Message, ThreadPick } from "./data.ts";
+import type { Floor, Message, SessionCard, ThreadPick } from "./data.ts";
 import { type Design, useDesign, useOfficeMutation } from "./store.ts";
 
 const BOX = "relative rounded-15 p-12 transition-[border-color,background,box-shadow] duration-250";
@@ -66,10 +66,12 @@ export function ChatComposer({
   floor,
   active,
   pending,
+  running,
 }: {
   floor: Floor;
   active: ThreadPick | "new";
   pending: NonNullable<Message["asks"]> | null;
+  running: SessionCard | undefined;
 }): React.JSX.Element {
   const { t } = useTranslation();
   const draft = useDesign((s) => s.draft);
@@ -162,13 +164,15 @@ export function ChatComposer({
             onTab(e, write);
             onEnter(e, submit, write);
           }}
-          placeholder={t(
+          placeholder={
             pending !== null
-              ? "chat.placeholderAnswer"
-              : active === "new" || active === "main"
-                ? "chat.placeholderNew"
-                : "chat.placeholder",
-          )}
+              ? t("chat.placeholderAnswer")
+              : running !== undefined
+                ? t("chat.placeholderRunning", { name: running.name })
+                : active === "new" || active === "main"
+                  ? t("chat.placeholderNew")
+                  : t("chat.placeholder")
+          }
           className={`${INPUT} placeholder:text-ink-ghost`}
         />
         <ChatToolbar floor={floor} active={active} onSend={submit} onAttach={attach} />
