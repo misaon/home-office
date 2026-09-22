@@ -1,7 +1,7 @@
 import { Agent, AgentRole, SessionMode } from "@ho/protocol";
 import { rolePack } from "@ho/core";
 import { expect, test } from "bun:test";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { skillPacksFor } from "./skill-pack.ts";
 import { SkillLibrary } from "./skills.ts";
@@ -14,10 +14,14 @@ const packs = readdirSync(PLUGINS, { withFileTypes: true })
   .map((entry) => entry.name)
   .toSorted();
 
-const skillDirs = (pack: string): string[] =>
-  readdirSync(join(PLUGINS, pack, "skills"), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name);
+const skillDirs = (pack: string): string[] => {
+  const dir = join(PLUGINS, pack, "skills");
+  return existsSync(dir)
+    ? readdirSync(dir, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+    : [];
+};
 
 test("every pack that ships holds at least one skill the library can read", async () => {
   expect(packs.length).toBeGreaterThan(0);

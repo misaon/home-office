@@ -28,7 +28,8 @@ description: Load at the start of every work session and again before ho_report.
 6. Read the check's exit code, not its last lines: run it plainly, without `| tail` or `| head`,
    or prefix `set -o pipefail;` when you must trim the output, so that a failure reaches you as a
    non-zero exit. Never wait with `sleep`: a background command tells you when it completes, and a
-   port is watched with a bounded `curl` loop. Fix, commit, run it again. Never delete or weaken a
+   port is watched with a bounded `curl` loop. The office refuses both kinds of command before
+   they run and tells you what to do instead; rewrite the command rather than argue with it. Fix, commit, run it again. Never delete or weaken a
    test or a check to make it pass; if a check is wrong, say so in the report.
 7. Check what the change made untrue before you report it: the README, whatever the repository keeps
    as documentation, and the help text of any command you altered. A change to what someone
