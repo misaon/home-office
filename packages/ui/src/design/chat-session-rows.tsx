@@ -1,3 +1,4 @@
+import type { TaskId } from "@ho/protocol";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { diffOf } from "./diff.ts";
@@ -12,8 +13,12 @@ const TOOL = `${MONO} text-10h text-accent-quote flex-[0_0_auto]`;
 
 const DETAIL = `${MONO} text-10h text-ink-label flex-1 min-w-0 ${ELLIPSIS}`;
 
-const STEER =
-  "flex items-start gap-7 min-w-0 py-6 px-9 rounded-9 border border-mode-plan/35 bg-mode-plan/10 text-11h leading-text text-ink-soft";
+const NOTE =
+  "flex items-start gap-7 min-w-0 py-6 px-9 rounded-9 border text-11h leading-text text-ink-soft";
+
+const STEER = `${NOTE} border-mode-plan/35 bg-mode-plan/10`;
+
+const REMINDER = `${NOTE} border-accent-a30 bg-accent-a08`;
 
 const CHANGE =
   "flex items-center gap-7 min-w-0 w-full py-4 px-7 -mx-7 rounded-7 border-0 bg-transparent text-left cursor-pointer transition-colors duration-200";
@@ -54,7 +59,13 @@ function Mark({ ok }: { ok: boolean | null }): React.JSX.Element {
   );
 }
 
-export function ChangeRow({ change }: { change: FileChange }): React.JSX.Element {
+export function ChangeRow({
+  change,
+  taskId,
+}: {
+  change: FileChange;
+  taskId: TaskId;
+}): React.JSX.Element {
   const { t } = useTranslation();
   const set = useDesign((s) => s.set);
   const { added, removed } = diffOf(change);
@@ -64,7 +75,7 @@ export function ChangeRow({ change }: { change: FileChange }): React.JSX.Element
       type="button"
       title={t("diff.title")}
       onClick={() => {
-        set({ diff: change });
+        set({ diff: { change, taskId } });
       }}
       className={`hover:bg-accent-a08 ${CHANGE}`}
     >
@@ -90,11 +101,12 @@ export function ChangeRow({ change }: { change: FileChange }): React.JSX.Element
 
 export function StepRow({ step }: { step: Step }): React.JSX.Element {
   const { t } = useTranslation();
-  if (step.kind === "steer") {
+  if (step.kind !== "tool") {
+    const steer = step.kind === "steer";
     return (
-      <div className={STEER} title={t("chat.steer")}>
+      <div className={steer ? STEER : REMINDER} title={t(steer ? "chat.steer" : "chat.reminder")}>
         <span className="flex-[0_0_auto]" aria-hidden="true">
-          📨
+          {steer ? "📨" : "⏱"}
         </span>
         <span className="min-w-0 flex-1">{step.detail}</span>
       </div>

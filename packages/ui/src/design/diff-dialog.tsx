@@ -1,10 +1,11 @@
+import { Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { requireClient } from "../rpc.ts";
 import { Modal } from "./dialog-sheet.tsx";
 import { type DiffLine, type DiffRow, diffOf, hunksOf } from "./diff.ts";
-import type { FileChange } from "./live.ts";
 import { Segmented } from "./segmented.tsx";
-import { useDesign } from "./store.ts";
+import { type DiffPick, useDesign, useOfficeMutation } from "./store.ts";
 import { MONO } from "./tokens.ts";
 
 const SHEET =
@@ -33,7 +34,13 @@ const FOOT =
   "flex-[0_0_auto] flex items-center gap-10 py-12 px-16 bg-card-lit border-t border-border";
 
 const CLOSE =
-  "py-8 px-13 rounded-9 border-0 bg-accent text-accent-ink text-12 font-semibold cursor-pointer whitespace-nowrap";
+  "py-8 px-13 rounded-9 border-0 bg-accent text-accent-ink text-12 font-semibold cursor-pointer whitespace-nowrap flex-[0_0_auto]";
+
+const NOTE =
+  "flex-1 min-w-0 h-32 py-0 px-11 rounded-10 bg-sunk border border-border-strong text-12h placeholder:text-ink-ghost";
+
+const SEND =
+  "w-32 h-32 flex-[0_0_32px] grid place-items-center border-0 rounded-10 bg-accent text-accent-ink cursor-pointer transition-all duration-220 disabled:opacity-40";
 
 type View = "changes" | "whole";
 
@@ -65,8 +72,59 @@ function Row({
   );
 }
 
-export function DiffDialog({ change }: { change: FileChange }): React.JSX.Element {
+function NoteToAgent({ pick }: { pick: DiffPick }): React.JSX.Element {
   const { t } = useTranslation();
+  const flash = useDesign((s) => s.flash);
+  const [text, setText] = useState("");
+  const send = useOfficeMutation({
+    mutationFn: (note: string) =>
+      requireClient().tasks.comment({ id: pick.taskId, path: pick.change.path, text: note }),
+    onSuccess: () => {
+      setText("");
+      flash(t("diff.commentSent"));
+    },
+  });
+  const submit = (): void => {
+    const note = text.trim();
+    if (note !== "") {
+      send.mutate(note);
+    }
+  };
+  return (
+    <div className="flex-1 min-w-0 flex items-center gap-8">
+      <input
+        value={text}
+        onChange={(event) => {
+          setText(event.target.value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            submit();
+          }
+        }}
+        placeholder={t("diff.commentPlaceholder")}
+        title={t("diff.commentHint")}
+        aria-label={t("diff.comment")}
+        className={NOTE}
+      />
+      <button
+        type="button"
+        aria-label={t("diff.comment")}
+        title={t("diff.commentHint")}
+        disabled={send.isPending || text.trim() === ""}
+        onClick={submit}
+        className={SEND}
+      >
+        <Send size={13} strokeWidth={1.7} />
+      </button>
+    </div>
+  );
+}
+
+export function DiffDialog({ pick }: { pick: DiffPick }): React.JSX.Element {
+  const { t } = useTranslation();
+  const { change } = pick;
   const set = useDesign((s) => s.set);
   const [view, setView] = useState<View>("whole");
   const first = useRef<HTMLDivElement>(null);
@@ -80,6 +138,12 @@ export function DiffDialog({ change }: { change: FileChange }): React.JSX.Elemen
   useEffect(() => {
     first.current?.scrollIntoView({ block: "center" });
   }, [view, change]);
+
+  const notice = change.truncated
+    ? t("diff.truncated")
+    : diff.added + diff.removed === 0
+      ? t("diff.unchanged")
+      : null;
 
   return (
     <Modal open label={t("diff.title")} onClose={close}>
@@ -122,23 +186,15 @@ export function DiffDialog({ change }: { change: FileChange }): React.JSX.Elemen
             ))
           )}
         </div>
-        {change.truncated || diff.added + diff.removed === 0 ? (
-          <div className={FOOT}>
-            <span className="flex-1 min-w-0 text-11h text-ink-meta">
-              {change.truncated ? t("diff.truncated") : t("diff.unchanged")}
-            </span>
-            <button type="button" onClick={close} className={CLOSE}>
-              {t("common.close")}
-            </button>
-          </div>
-        ) : (
-          <div className={FOOT}>
-            <span className="flex-1" />
-            <button type="button" onClick={close} className={CLOSE}>
-              {t("common.close")}
-            </button>
-          </div>
-        )}
+        <div className={FOOT}>
+          {notice === null ? null : (
+            <span className="flex-[0_0_auto] max-w-[40%] text-11h text-ink-meta">{notice}</span>
+          )}
+          <NoteToAgent pick={pick} />
+          <button type="button" onClick={close} className={CLOSE}>
+            {t("common.close")}
+          </button>
+        </div>
       </div>
     </Modal>
   );

@@ -6,7 +6,13 @@ import {
   type RuntimeSession,
   setbacksOf,
 } from "@ho/core";
-import { compact, imageRefFor, PROVIDERS, type SessionRuntime } from "@ho/protocol";
+import {
+  compact,
+  economyModelFor,
+  imageRefFor,
+  PROVIDERS,
+  type SessionRuntime,
+} from "@ho/protocol";
 import { browserMcpServers } from "./browser.ts";
 import type { EnvironmentReport } from "./environment-report.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
@@ -39,6 +45,11 @@ const browserFor = (deps: SessionDeps, ctx: SessionContext): boolean =>
 
 const setbacksFor = (ctx: SessionContext): number =>
   ctx.session.mode === "work" ? setbacksOf(ctx.task) : 0;
+
+const modelFor = (ctx: SessionContext): string =>
+  ctx.session.mode === "work" && ctx.task.shape === "mechanical" && setbacksFor(ctx) === 0
+    ? (economyModelFor(ctx.agent.provider, ctx.agent.model) ?? ctx.agent.model)
+    : ctx.agent.model;
 
 export const prepare = (
   deps: SessionDeps,
@@ -77,7 +88,7 @@ export const prepare = (
     appendix,
     message: openingMessage(ctx.task, ctx.session.mode, ctx.previous, ctx.agent.id),
     runtime: {
-      model: ctx.agent.model,
+      model: modelFor(ctx),
       effort: escalatedEffort(
         shapedEffort(
           ctx.agent.effort,

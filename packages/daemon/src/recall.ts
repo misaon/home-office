@@ -18,6 +18,7 @@ export type RecallHit = {
   daysAgo: number;
   report: string;
   findings: readonly string[];
+  rating: { verdict: "good" | "bad"; note: string } | null;
 };
 
 const tokens = (text: string): string[] =>
@@ -35,7 +36,7 @@ const findingsOf = (task: Task): string[] =>
     .map((entry) => entry.text);
 
 const documentOf = (task: Task): string =>
-  [task.title, task.brief, reportOf(task), ...findingsOf(task)].join("\n");
+  [task.title, task.brief, reportOf(task), ...findingsOf(task), task.rating?.note ?? ""].join("\n");
 
 const ENDED: ReadonlySet<Task["status"]> = new Set(["done", "blocked", "failed", "cancelled"]);
 
@@ -117,6 +118,8 @@ export function recall(
       taskId: task.id,
       title: task.title,
       status: task.status,
+      rating:
+        task.rating === undefined ? null : { verdict: task.rating.verdict, note: task.rating.note },
       who:
         task.assigneeId === undefined
           ? "unassigned"

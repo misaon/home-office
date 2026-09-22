@@ -29,6 +29,7 @@ function cardOf(
   return {
     id: session.id,
     agentId: agent.id,
+    taskId: task.id,
     name: agent.name,
     initial: agent.name.charAt(0).toUpperCase(),
     role: agent.role,
@@ -43,7 +44,7 @@ function cardOf(
     turns: session.usage.turns,
     taskTitle: task.title,
     traced: events !== undefined,
-    steps: live ? steps : steps.filter((step) => step.change !== null || step.kind === "steer"),
+    steps: live ? steps : steps.filter((step) => step.change !== null || step.kind !== "tool"),
     activity: live ? activity : null,
     text,
   };

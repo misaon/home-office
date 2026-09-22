@@ -130,6 +130,11 @@ export const cs: typeof en = {
     hidden_few: "{{count}} nezměněné řádky",
     hidden_many: "{{count}} nezměněných řádků",
     hidden_other: "{{count}} nezměněných řádků",
+    comment: "Poslat agentovi poznámku",
+    commentPlaceholder: "Napište agentovi, co v tomto souboru změnit…",
+    commentSent: "Poznámka odeslána agentovi",
+    commentHint:
+      "Poznámka dorazí kolegovi, který na tom právě pracuje, nebo otevře jeho příští session.",
   },
   settings: {
     credentials: "Přihlašovací údaje",

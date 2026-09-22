@@ -65,6 +65,7 @@ export const csChat: typeof enChat = {
   sessionDone: "hotovo",
   sessionFailed: "skončila chybou",
   steer: "Pokyn od šéfa",
+  reminder: "Připomínka od office",
   effort: "effort {{level}}",
   resizePanel: "Změnit šířku panelu",
   resizeHint: "Tažením změníte šířku panelu; dvojklik ji vrátí",

@@ -18,6 +18,7 @@ const FORMAT: {
     `${tag} usage ${JSON.stringify(e.usage)}${e.costUsd === undefined ? "" : ` $${e.costUsd.toFixed(3)}${e.costBasis === undefined ? "" : ` (${e.costBasis})`}`}`,
   activity: (e, tag) => `${tag} … ${e.text}`,
   steer: (e, tag) => `${tag} 📨 ${e.text.slice(0, 200)}`,
+  reminder: (e, tag) => `${tag} ⏱ ${e.text.slice(0, 200)}`,
   background_done: (e, tag) =>
     `${tag} ⏳ background ${e.status}${e.exitCode === null ? "" : ` (exit ${String(e.exitCode)})`} ${e.summary}`,
   plan_window: (e, tag) =>

@@ -18,6 +18,8 @@ export const PANEL_WIDTH = { min: 440, max: 900, initial: 550 } as const;
 
 type AgentDialog = { mode: "new" } | { mode: "edit"; id: AgentId };
 
+export type DiffPick = { change: FileChange; taskId: TaskId };
+
 export type AgentDraft = {
   name: string;
   role: AgentRole;
@@ -39,7 +41,7 @@ export type Design = {
   searchOpen: boolean;
   attachment: Attachment | null;
   lightbox: Attachment | null;
-  diff: FileChange | null;
+  diff: DiffPick | null;
   sheet: Sheet;
   sheetDraft: Member | null;
   agentDlg: AgentDialog | null;

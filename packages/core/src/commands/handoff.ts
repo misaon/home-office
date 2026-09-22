@@ -9,6 +9,7 @@ import {
   NOTE_MAX,
   questionReason,
   type Task,
+  type TaskCommentInput,
   type TaskId,
   type TaskStatus,
 } from "@ho/protocol";
@@ -153,6 +154,46 @@ export function steerTask(
     }
     return ok({
       events: [noteEvent(ctx, task, note(ctx, "steer", instruction.slice(0, NOTE_MAX)))],
+      read: readTask(task.id),
+    });
+  });
+}
+
+export function commentOnChange(
+  model: ReadModel,
+  input: TaskCommentInput,
+  ctx: CommandContext,
+): CommandResult<Task> {
+  if (ctx.actor.kind !== "human") {
+    return err(conflict("only the human comments on a change from the office"));
+  }
+  return withTask(model, input.id, (task) => {
+    if (!STEERABLE.has(task.kind) || isTerminal(task.status)) {
+      return err(
+        conflict(
+          `task "${task.title}" is ${task.status}; only open work and plan tasks take comments`,
+        ),
+      );
+    }
+    const message: ChatMessage = {
+      id: ctx.ids.chatMessage(),
+      projectId: task.projectId,
+      author: { kind: "human" },
+      text: `💬 \`${input.path}\`\n${input.text}`,
+      attachments: [],
+      taskId: task.id,
+      ...compact({ threadId: threadOfTask(model, task) }),
+      at: ctx.now,
+    };
+    return ok({
+      events: [
+        chatEvent(ctx, message),
+        noteEvent(
+          ctx,
+          task,
+          note(ctx, "steer", `About \`${input.path}\`: ${input.text}`.slice(0, NOTE_MAX)),
+        ),
+      ],
       read: readTask(task.id),
     });
   });

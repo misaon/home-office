@@ -130,6 +130,10 @@ export const en = {
     hidden_few: "{{count}} unchanged lines",
     hidden_many: "{{count}} unchanged lines",
     hidden_other: "{{count}} unchanged lines",
+    comment: "Send a note to the agent",
+    commentPlaceholder: "Tell the agent what to change in this file…",
+    commentSent: "Note sent to the agent",
+    commentHint: "The note reaches the colleague working on it now, or opens their next session.",
   },
   settings: {
     credentials: "Credentials",

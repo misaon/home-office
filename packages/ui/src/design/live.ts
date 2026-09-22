@@ -185,8 +185,6 @@ function floorOf(project: Project, snapshot: Snapshot, now: number): Floor {
   };
 }
 
-export type { FileChange } from "./transcript.ts";
-
 export function useAgentWork(agentId: AgentId): { id: TaskId; when: string; title: string }[] {
   const snapshot = useUi((s) => s.snapshot);
   const now = useNow();

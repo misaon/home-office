@@ -122,6 +122,7 @@ export type SessionOutcome = "running" | "done" | "failed";
 export type SessionCard = {
   id: SessionId;
   agentId: AgentId;
+  taskId: TaskId;
   name: string;
   initial: string;
   role: AgentRole;

@@ -166,7 +166,7 @@ function Footer({ card, changed }: { card: SessionCard; changed: number }): Reac
 export function ChatSessionCard({ card }: { card: SessionCard }): React.JSX.Element {
   const changes = latestChanges(card.steps);
   const tools = card.steps.filter((step) => step.kind === "tool" && step.change === null);
-  const steers = card.steps.filter((step) => step.kind === "steer");
+  const notes = card.steps.filter((step) => step.kind !== "tool");
   return (
     <article id={`session-${card.id}`} className={`${CARD} ${EDGE[card.outcome]}`}>
       <Header card={card} />
@@ -175,11 +175,11 @@ export function ChatSessionCard({ card }: { card: SessionCard }): React.JSX.Elem
         {changes.length === 0 ? null : (
           <div className={FILES}>
             {changes.map((change) => (
-              <ChangeRow key={change.path} change={change} />
+              <ChangeRow key={change.path} change={change} taskId={card.taskId} />
             ))}
           </div>
         )}
-        {steers.map((step) => (
+        {notes.map((step) => (
           <StepRow key={step.id} step={step} />
         ))}
         {card.live && tools.length > 0 ? (

@@ -4,7 +4,7 @@ export type FileChange = Extract<RuntimeEvent, { kind: "file_change" }>;
 
 export type Step = {
   id: string;
-  kind: "tool" | "steer";
+  kind: "tool" | "steer" | "reminder";
   tool: string;
   detail: string;
   ok: boolean | null;
@@ -60,7 +60,7 @@ export function transcriptOf(events: readonly LiveEvent[]): Transcript {
   const steps = new Map<string, Step>();
   let text = "";
   let activity: string | null = null;
-  let steers = 0;
+  let notes = 0;
   for (const { event } of events) {
     if (event.kind === "tool_call") {
       activity = null;
@@ -91,13 +91,13 @@ export function transcriptOf(events: readonly LiveEvent[]): Transcript {
       text += event.text;
     } else if (event.kind === "activity") {
       activity = event.text;
-    } else if (event.kind === "steer") {
-      steers += 1;
-      const id = `steer-${String(steers)}`;
+    } else if (event.kind === "steer" || event.kind === "reminder") {
+      notes += 1;
+      const id = `${event.kind}-${String(notes)}`;
       steps.set(id, {
         id,
-        kind: "steer",
-        tool: "steer",
+        kind: event.kind,
+        tool: event.kind,
         detail: shorten(event.text, STEER_MAX),
         ok: true,
         change: null,

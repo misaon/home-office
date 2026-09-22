@@ -29,7 +29,7 @@ const verifyGuide = (project: Project, task: Task): string => {
 };
 
 const budgetGuide = (f: SessionFacts): string =>
-  `Budget: this is a ${f.task.shape} task, so you have ${String(f.budget.turns)} tool turns left in this round and ${String(f.budget.wallMinutes)} minutes for this session. Commit at every working checkpoint: uncommitted changes are lost when the budget runs out, committed ones are kept for the next session.`;
+  `Budget: this is a ${f.task.shape} task, so you have ${String(f.budget.turns)} tool turns left in this round and ${String(f.budget.wallMinutes)} minutes for this session. Commit at every working checkpoint: uncommitted changes are lost when the budget runs out, committed ones are kept for the next session. The office checks in halfway through your turns and ten turns before the end with what is left.`;
 
 const publishGuide = (task: Task, project: Project): string =>
   (task.publish ?? project.publish.mode) === "pull-request"

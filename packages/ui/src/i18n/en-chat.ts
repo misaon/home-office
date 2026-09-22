@@ -63,6 +63,7 @@ export const enChat = {
   sessionDone: "finished",
   sessionFailed: "ended with an error",
   steer: "Instruction from the boss",
+  reminder: "Office reminder",
   effort: "effort {{level}}",
   resizePanel: "Resize the panel",
   resizeHint: "Drag to resize the panel; double-click to reset",

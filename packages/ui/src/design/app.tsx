@@ -86,7 +86,7 @@ export function App(): React.JSX.Element {
         />
       ) : null}
       {lightbox === null ? null : <Lightbox attachment={lightbox} />}
-      {diff === null ? null : <DiffDialog change={diff} />}
+      {diff === null ? null : <DiffDialog pick={diff} />}
       <FloorOverlays />
       <NewFloor />
       <Setup />

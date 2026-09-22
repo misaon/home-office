@@ -26,6 +26,7 @@ type ProviderDescriptor = {
   defaultModel: string;
   freeFormModels: boolean;
   effortLevels: readonly EffortLevel[];
+  economyModels: Readonly<Record<string, string>>;
   guarantees: BudgetGuarantees;
   stateDir: string;
   scratchDirs: readonly string[];
@@ -60,6 +61,7 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     defaultModel: "sonnet",
     freeFormModels: true,
     effortLevels: EffortLevel.options,
+    economyModels: { "*": "haiku" },
     guarantees: { turns: "runtime", usd: "runtime" },
     stateDir: `${HOME}/.claude`,
     scratchDirs: [],
@@ -83,6 +85,7 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     defaultModel: "anthropic/claude-sonnet-5",
     freeFormModels: true,
     effortLevels: [],
+    economyModels: { anthropic: "anthropic/claude-haiku-4-5" },
     guarantees: ACP_GUARANTEES,
     stateDir: `${HOME}/.local/share/opencode`,
     scratchDirs: [`${HOME}/.cache`, `${HOME}/.config/opencode`],
@@ -105,6 +108,7 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     defaultModel: "gemini-3.8-flash",
     freeFormModels: true,
     effortLevels: [],
+    economyModels: { "*": "gemini-3.5-flash-lite" },
     guarantees: ACP_GUARANTEES,
     stateDir: `${HOME}/.gemini`,
     scratchDirs: [`${HOME}/.cache`],
@@ -121,6 +125,7 @@ export const PROVIDERS: Readonly<Record<ProviderId, ProviderDescriptor>> = {
     defaultModel: "default",
     freeFormModels: true,
     effortLevels: ["low", "medium", "high", "xhigh"],
+    economyModels: {},
     guarantees: ACP_GUARANTEES,
     stateDir: `${HOME}/.codex`,
     scratchDirs: [`${HOME}/.cache`],
@@ -185,3 +190,10 @@ export function imageRefFor(base: string, variant: ProviderId): string {
     ? `${base.slice(0, colon)}-${variant}${base.slice(colon)}`
     : `${base}-${variant}`;
 }
+
+export const economyModelFor = (provider: ProviderId, model: string): string | null => {
+  const table = PROVIDERS[provider].economyModels;
+  const slash = model.indexOf("/");
+  const economy = table[slash === -1 ? "*" : model.slice(0, slash)] ?? table["*"];
+  return economy === undefined || economy === model ? null : economy;
+};

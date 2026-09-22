@@ -145,6 +145,12 @@ export const TaskRateInput = z.object({
   note: TaskRating.shape.note,
 });
 export type TaskRateInput = z.infer<typeof TaskRateInput>;
+export const TaskCommentInput = z.object({
+  id: TaskId,
+  path: z.string().min(1).max(500),
+  text: z.string().trim().min(1).max(4000),
+});
+export type TaskCommentInput = z.infer<typeof TaskCommentInput>;
 export const TaskListInput = z.object({
   projectId: ProjectId.optional(),
   status: z.array(TaskStatus).min(1).optional(),
