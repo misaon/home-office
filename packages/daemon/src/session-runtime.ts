@@ -58,7 +58,7 @@ export const prepare = (
   environment: EnvironmentReport | null,
 ): Prepared => {
   const browser = browserFor(deps, ctx);
-  const packs = skillPacksFor(ctx.agent, ctx.session.mode);
+  const packs = skillPacksFor(ctx.agent, ctx.session.mode, provisioned.languages);
   const lsp = lspPluginsFor(ctx.agent.provider, provisioned.languages);
   const appendix = systemPrompt(
     {

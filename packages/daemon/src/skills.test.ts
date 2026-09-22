@@ -73,7 +73,7 @@ const agentOf = (role: AgentRole): Agent =>
 test("every role in every session mode is given something to read", async () => {
   for (const mode of SessionMode.options) {
     for (const role of AgentRole.options) {
-      const index = await library.index(skillPacksFor(agentOf(role), mode));
+      const index = await library.index(skillPacksFor(agentOf(role), mode, []));
       expect(index.length, `${role} in a ${mode} session sees no skill`).toBeGreaterThan(0);
     }
   }

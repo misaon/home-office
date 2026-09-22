@@ -85,6 +85,7 @@ async function wire(
   deps: SessionDeps,
   ctx: SessionContext,
   stack: AsyncDisposableStack,
+  languages: readonly RepositoryLanguage[],
 ): Promise<Wired> {
   const { gateway, mcp, home } = deps;
   const issued = gateway.issue(ctx.session.id, ctx.signal);
@@ -97,7 +98,7 @@ async function wire(
     projectId: ctx.project.id,
     mode: ctx.session.mode,
     provider: ctx.agent.provider,
-    skillPacks: skillPacksFor(ctx.agent, ctx.session.mode),
+    skillPacks: skillPacksFor(ctx.agent, ctx.session.mode, languages),
     attachments: deps.attachments,
     home,
   });
@@ -184,7 +185,7 @@ export async function provision(deps: SessionDeps, ctx: SessionContext): Promise
   await using stack = new AsyncDisposableStack();
   const plan =
     engineRequest === null ? null : await prepareTaskEngine(provider, engineRequest, stack);
-  const wired = await wire(deps, ctx, stack);
+  const wired = await wire(deps, ctx, stack, checked.languages);
   const sandbox = await provider.start(
     sandboxSpec(
       config,

@@ -10,14 +10,23 @@ const MODE_PACK: Readonly<Record<SessionMode, string | null>> = {
 
 const OFFICE_PACK = "office";
 
-export const skillPacksFor = (agent: Agent, mode: SessionMode): string[] => {
-  const packs = [OFFICE_PACK, MODE_PACK[mode], agent.skillPack].filter(
+export type RepositoryLanguage = "typescript" | "python" | "php" | "java";
+
+const LANGUAGE_PACK: Readonly<Partial<Record<RepositoryLanguage, string>>> = { java: "java" };
+
+export const skillPacksFor = (
+  agent: Agent,
+  mode: SessionMode,
+  languages: readonly RepositoryLanguage[],
+): string[] => {
+  const modePack = MODE_PACK[mode];
+  const languagePacks =
+    modePack === null ? [] : languages.map((language) => LANGUAGE_PACK[language] ?? null);
+  const packs = [OFFICE_PACK, modePack, ...languagePacks, agent.skillPack].filter(
     (pack): pack is string => pack !== null && pack !== "none",
   );
   return [...new Set(packs)];
 };
-
-export type RepositoryLanguage = "typescript" | "python" | "php" | "java";
 
 const REPOSITORY_LANGUAGES: readonly RepositoryLanguage[] = ["typescript", "python", "php", "java"];
 
