@@ -8,6 +8,8 @@
 !plugins/**
 !lsp/
 !lsp/**
+!java/
+!java/**
 !lsp-servers/
 !lsp-servers/package.json
 !lsp-servers/package-lock.json

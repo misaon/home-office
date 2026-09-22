@@ -1,0 +1,8 @@
+{
+  "name": "ho-lsp-java",
+  "description": "Home Office: Eclipse JDT language server for Java symbol navigation and diagnostics after every edit",
+  "version": "0.1.0",
+  "author": {
+    "name": "Home Office"
+  }
+}

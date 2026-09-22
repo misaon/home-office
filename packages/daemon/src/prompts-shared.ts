@@ -17,7 +17,7 @@ import {
 import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import type { EnvironmentReport } from "./environment-report.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
-import type { LspLanguage } from "./skill-pack.ts";
+import type { RepositoryLanguage } from "./skill-pack.ts";
 
 export const LANGUAGE_GUIDE: Readonly<Record<ChatLanguage, string>> = {
   en: "Language: write to the human, your reports and your review findings in English.",
@@ -51,7 +51,7 @@ export type SessionFacts = {
   commit: CommitSha | null;
   base: WorkBase | null;
   diff: DiffSummary | null;
-  languages: readonly LspLanguage[];
+  languages: readonly RepositoryLanguage[];
   browser: boolean;
   preview: Preview;
   services: Services;
@@ -91,16 +91,29 @@ export const capabilitiesGuide = (f: SessionFacts): string =>
 export const FIDELITY_GUIDE =
   "Every criterion judgement carries fidelity: live when you exercised the running application (the one the office started, or the one you started with the environment's run command); substitute when you served a stand-in page, a mock or extracted markup instead; static when you judged from code, templates, build output or tests alone. Give via: the exact command or URL. When fidelity is not live, give blocker: not_prepared (the briefing describes no way to run it), not_attempted (a way existed and you did not use it; say why), or attempt_failed (you tried the described way and it failed; say how). A substitute is never presented as the application: never replace a link, an asset or a request with a placeholder and call it verified. Name the screenshots that back a judgement in its files, copied into /out/chat and listed in the call's files.";
 
-const LSP_NAMES: Readonly<Record<LspLanguage, string>> = {
+const LSP_NAMES: Readonly<Record<RepositoryLanguage, string>> = {
   typescript: "TypeScript and JavaScript",
   python: "Python",
   php: "PHP",
+  java: "Java",
 };
 
-export const lspGuide = (languages: readonly LspLanguage[]): string =>
+export const lspGuide = (languages: readonly RepositoryLanguage[]): string =>
   languages.length === 0
     ? ""
     : `Code navigation: the LSP tool is on for ${languages.map((language) => LSP_NAMES[language]).join(", ")} — go to definition, find references, hover for types, and diagnostics pushed to you after every edit. Use it for symbol lookups instead of grep, and fix the diagnostics it reports before you move on.`;
+
+const TOOLCHAIN_NOTES: Readonly<Partial<Record<RepositoryLanguage, string>>> = {
+  java: "Java toolchain: JDK 21 is JAVA_HOME and on PATH; JDK 17 and JDK 25 are installed under /usr/lib/jvm/java-17-openjdk and /usr/lib/jvm/java-25-openjdk, where Gradle toolchains and Maven's toolchains.xml find them, so a project that asks for one of those versions builds without downloading anything. Build with the repository's own wrapper (./gradlew, ./mvnw) when it has one; gradle and mvn are installed for the rest. Gradle's user home is /work/.cache/gradle and Maven's local repository /work/.cache/maven/repository: both are shared by every session on this floor and mounted into the container that re-runs the check command, so what resolved once stays resolved, and a wrapper downloads its distribution into that cache the first time. Keep the project's own JVM memory settings and run one build at a time; the sandbox has a few GiB in total. Testcontainers and other suites that start containers need the Docker engine a Services line names; without one they cannot run here, so run the rest and say in your report which suites you could not.",
+};
+
+export const toolchainGuide = (languages: readonly RepositoryLanguage[]): string =>
+  languages
+    .flatMap((language) => {
+      const note = TOOLCHAIN_NOTES[language];
+      return note === undefined ? [] : [note];
+    })
+    .join(" ");
 
 export const repoRules = (agent: Agent): string =>
   agent.provider === "claude-code"

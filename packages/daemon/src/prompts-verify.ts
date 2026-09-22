@@ -14,6 +14,7 @@ import {
   serveGuide,
   servicesGuide,
   type SessionFacts,
+  toolchainGuide,
 } from "./prompts-shared.ts";
 
 const REPORT_HEADLINE_MAX = 160;
@@ -85,6 +86,7 @@ export const verifyPrompt = (f: SessionFacts, model: ReadModel): string[] => {
     capabilitiesGuide(f),
     repoRules(f.agent),
     lspGuide(f.languages),
+    toolchainGuide(f.languages),
     browserGuide(f.browser, true),
     serveGuide(f.preview, f.browser),
     servicesGuide(f.services),

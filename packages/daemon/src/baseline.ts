@@ -5,8 +5,7 @@ import { inspectWorkingTree, prepareRepo } from "./git-bridge.ts";
 import { LABELS } from "./labels.ts";
 import { sourcePathFor } from "./mirrors.ts";
 import { elapsedMs } from "./timing.ts";
-import { commandSpec } from "./verify.ts";
-import { CACHE_IN_VOLUME, cacheVolumeFor } from "./volumes.ts";
+import { cacheMountFor, commandSpec } from "./verify.ts";
 
 const SUFFIX_CHARS = 12;
 const TAIL_MAX = 2000;
@@ -39,7 +38,7 @@ async function runSetup(
   for (const command of project.environment.setup) {
     const result = await provider.run(
       commandSpec(config, volume, "baseline-setup", command, config.docker.network, [
-        { name: cacheVolumeFor(project.id), target: CACHE_IN_VOLUME },
+        cacheMountFor(project),
       ]),
       Math.max(MIN_STEP_MS, budgetMs - elapsedMs(started)),
     );
@@ -61,7 +60,9 @@ async function runChecks(
   for (const check of plannedChecks(project)) {
     const started = Bun.nanoseconds();
     const result = await provider.run(
-      commandSpec(config, volume, `baseline-${check.name}`, check.command, "none"),
+      commandSpec(config, volume, `baseline-${check.name}`, check.command, "none", [
+        cacheMountFor(project),
+      ]),
       project.verify.timeoutSeconds * 1000,
     );
     outcomes.push({

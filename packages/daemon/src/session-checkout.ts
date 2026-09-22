@@ -10,7 +10,7 @@ import {
 import type { DiffSummary, WorkBase } from "./prompts-shared.ts";
 import type { SessionContext } from "./session-provision.ts";
 import type { SessionDeps } from "./sessions.ts";
-import { languagesOf, LSP_MARKERS, type LspLanguage } from "./skill-pack.ts";
+import { LANGUAGE_MARKERS, languagesOf, type RepositoryLanguage } from "./skill-pack.ts";
 
 const baseOf = (model: ReadModel, task: Task): WorkBase | null => {
   const landed = dependenciesOf(model, task)
@@ -43,15 +43,17 @@ export type Checkout = {
   commit: CommitSha | null;
   base: WorkBase | null;
   diff: DiffSummary | null;
-  languages: readonly LspLanguage[];
+  languages: readonly RepositoryLanguage[];
 };
 
-const MARKERS = Object.values(LSP_MARKERS).flat();
+const MARKER_PATHSPECS = Object.values(LANGUAGE_MARKERS)
+  .flat()
+  .flatMap((marker) => [marker, `*/${marker}`]);
 
-const languagesIn = async (deps: SessionDeps, volume: string): Promise<LspLanguage[]> => {
+const languagesIn = async (deps: SessionDeps, volume: string): Promise<RepositoryLanguage[]> => {
   const result = await run(
     deps.provider,
-    inRepo(deps.config, volume, "markers", ["ls-files", "--", ...MARKERS]),
+    inRepo(deps.config, volume, "markers", ["ls-files", "--", ...MARKER_PATHSPECS]),
   );
   return result.ok ? languagesOf(result.stdout.split("\n").filter((line) => line !== "")) : [];
 };

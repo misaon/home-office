@@ -20,9 +20,10 @@ description: Load at the start of every work session and again before ho_report.
    commit at HEAD, and only from a clean tree: a file left modified or untracked when you report
    comes back to you as a failed check, so `git status --short` must be empty before `ho_report`.
 5. Before you report, run the floor's check command exactly as given. The office re-runs it in a
-   container with no network and an empty home directory, so a check that downloads something or
-   needs a global tool fails there even if it passed for you; keep everything it needs under
-   /work/repo. When the floor has no check command, run only what the package you changed already
+   container with no network, an empty home directory and the floor's cache at /work/.cache, so a
+   check that downloads something it has not cached, or needs a global tool, fails there even if it
+   passed for you; keep everything it needs under /work/repo or in that cache. When the floor has no
+   check command, run only what the package you changed already
    defines and stop there: no tour of the repository's tooling, no attempt to run an application
    whose services you do not have.
 6. Read the check's exit code, not its last lines: run it plainly, without `| tail` or `| head`,

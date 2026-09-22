@@ -80,16 +80,16 @@ export const DaemonConfig = z.object({
     .prefault({}),
   limits: z
     .object({
-      memoryMb: z.int().positive().default(3072),
+      memoryMb: z.int().positive().default(4096),
       cpus: z.number().positive().default(2),
       pids: z.int().positive().default(2048),
     })
     .prefault({}),
   verify: z
     .object({
-      memoryMb: z.int().positive().default(3072),
+      memoryMb: z.int().positive().default(4096),
       cpus: z.number().positive().default(2),
-      pids: z.int().positive().default(1024),
+      pids: z.int().positive().default(2048),
     })
     .prefault({}),
 });

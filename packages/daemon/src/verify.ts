@@ -17,6 +17,7 @@ import {
   type TaskEngineRequest,
 } from "./task-engine.ts";
 import { elapsedMs } from "./timing.ts";
+import { CACHE_IN_VOLUME, cacheVolumeFor } from "./volumes.ts";
 
 const OUTPUT_MAX = 6000;
 const TRANSCRIPT_MAX = 512 * 1024;
@@ -109,6 +110,11 @@ export const commandSpec = (
     volumes,
   });
 
+export const cacheMountFor = (project: Pick<Project, "id">): VolumeMount => ({
+  name: cacheVolumeFor(project.id),
+  target: CACHE_IN_VOLUME,
+});
+
 const verifySpec = (
   config: DaemonConfig,
   project: Project,
@@ -117,7 +123,7 @@ const verifySpec = (
 ): SandboxSpec => {
   const { command } = project.verify;
   if (engine === null) {
-    return commandSpec(config, volume, "verify", command, "none");
+    return commandSpec(config, volume, "verify", command, "none", [cacheMountFor(project)]);
   }
   return containerSpec(config, volume, "verify", "none", {
     cmd: ["/bin/sh", "-c", WAIT_FOR_ENGINE],
@@ -126,7 +132,7 @@ const verifySpec = (
       HO_VERIFY_COMMAND: command,
       HO_ENGINE_WAIT_SECONDS: String(Math.ceil(config.services.startTimeoutMs / 1000)),
     },
-    volumes: [{ name: engine.socketVolume, target: engine.socketDir }],
+    volumes: [cacheMountFor(project), { name: engine.socketVolume, target: engine.socketDir }],
   });
 };
 

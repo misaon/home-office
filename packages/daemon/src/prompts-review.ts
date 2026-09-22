@@ -15,6 +15,7 @@ import {
   serveGuide,
   servicesGuide,
   type SessionFacts,
+  toolchainGuide,
 } from "./prompts-shared.ts";
 
 const FOCUS: Partial<Record<AgentRole, string>> = {
@@ -70,6 +71,7 @@ export const reviewPrompt = (f: SessionFacts, model: ReadModel): string[] => [
   capabilitiesGuide(f),
   repoRules(f.agent),
   lspGuide(f.languages),
+  toolchainGuide(f.languages),
   browserGuide(f.browser, false),
   serveGuide(f.preview, f.browser),
   servicesGuide(f.services),

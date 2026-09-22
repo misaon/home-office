@@ -255,11 +255,16 @@ The agent image carries what a sandbox usually lacks. **Databases without compos
 MariaDB, Redis and SQLite are installed; `ho-db postgres start`, `ho-db mariadb start` or
 `ho-db redis start` brings one up on `127.0.0.1` at its default port without a password, keeps its
 data in the task's volume under `/work/.db` and prints the connection URL — put the command in
-`environment.services` and every session finds the database running. **Language servers:** the
-image ships `typescript-language-server`, Pyright and Intelephense; a repository whose root has a
-`package.json` or `tsconfig.json`, a `pyproject.toml`, `requirements.txt` or `setup.py`, or a
-`composer.json` gets the matching LSP plugin loaded into every Claude Code session, so agents
-navigate by symbol instead of grepping and see type errors pushed to them after each edit.
+`environment.services` and every session finds the database running. **A Java toolchain:** OpenJDK
+17, 21 and 25 under `/usr/lib/jvm` (21 is `JAVA_HOME`), Maven and Gradle for a repository without a
+wrapper, a `toolchains.xml` that names all three JDKs, and Gradle's user home and Maven's local
+repository redirected into the floor's shared cache under `/work/.cache`, which the check container
+mounts too, so a wrapper's distribution and every dependency download once per floor. **Language
+servers:** the image ships `typescript-language-server`, Pyright, Intelephense and Eclipse JDT.LS; a
+repository with a `package.json` or `tsconfig.json`, a `pyproject.toml`, `requirements.txt` or
+`setup.py`, a `composer.json`, or a `pom.xml`, `build.gradle` or `settings.gradle` anywhere in its
+tree gets the matching LSP plugin loaded into every Claude Code session, so agents navigate by symbol
+instead of grepping and see type errors pushed to them after each edit.
 
 ## What runs where
 
@@ -270,7 +275,7 @@ The point of the office is that an agent's mistake stays inside a box.
 | **The agent**                     | Its own container: a non-root user, a read-only root filesystem, memory, CPU and PID limits, scratch directories on tmpfs, and no bind mount into your filesystem except a read-only inbox for the files you attach in chat and the files colleagues reported on the same request |
 | **Your checkout**                 | Never touched. The repository is cloned into a task volume, and finished work arrives as a new `ho/task-<id>` branch, or `ho/mandate-<id>` when several tasks were merged for one request — your working tree and index are exactly where you left them                           |
 | **Every git operation**           | A separate short-lived container with **no network at all** and hooks disabled                                                                                                                                                                                                    |
-| **Your check command**            | The same: no network, a fresh container, the agent's volume at a clean checkout of the commit that gets published; a floor with services gets the task's private engine attached, still without network                                                                           |
+| **Your check command**            | The same: no network, a fresh container, the agent's volume at a clean checkout of the commit that gets published, plus the floor's shared package cache at `/work/.cache`; a floor with services gets the task's private engine attached, still without network                  |
 | **Every review**                  | Its own volume with the verified commit checked out, separate from the author's; caches and dependencies survive between reviewers, edits go nowhere                                                                                                                              |
 | **Secrets**                       | The macOS Keychain, handed to the sandbox as environment and nowhere else — not in process arguments, Docker labels, the event log or the office's own logs                                                                                                                       |
 | **The daemon**                    | Bound to `127.0.0.1` behind a bearer token. Nothing listens outward                                                                                                                                                                                                               |
