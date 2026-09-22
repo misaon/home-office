@@ -1,6 +1,5 @@
 import {
   type AgentRuntime,
-  createChannel,
   endSession,
   type SandboxProvider,
   type SecretStore,
@@ -30,10 +29,11 @@ import type { Office } from "./office.ts";
 import type { RunnerGateway } from "./runner-gateway.ts";
 import { createRuntimes } from "./runtimes.ts";
 import { handleRuntimeEvent, type Spent } from "./session-events.ts";
-import type { Provisioned, SessionContext } from "./session-provision.ts";
+import type { SessionContext } from "./session-provision.ts";
 import { recordSessionEnd, traceHeader } from "./session-record.ts";
+import { LiveFeed } from "./session-feed.ts";
 import { recoverSessions } from "./session-recover.ts";
-import { type Ending, runSession } from "./session-run.ts";
+import { type Ending, type Held, runSession } from "./session-run.ts";
 import { elapsedMs } from "./timing.ts";
 import type { TraceStore } from "./traces.ts";
 
@@ -55,18 +55,17 @@ export type SessionDeps = {
 
 const LOW_TURNS = 20;
 
-type Subscriber = { sessionId: SessionId | null; push: (event: LiveEvent) => void };
-
 type Running = {
   taskId: TaskId;
   controller: AbortController;
   done: Promise<void>;
   spent: Spent;
+  held: Held;
 };
 
 export class SessionManager {
   readonly #deps: SessionDeps;
-  readonly #subscribers = new Set<Subscriber>();
+  readonly #feed = new LiveFeed(() => this.#deps.office.clock.now());
   readonly #running = new Map<SessionId, Running>();
   #stopping = false;
   readonly #starting = new Set<Promise<Session>>();
@@ -84,21 +83,7 @@ export class SessionManager {
   }
 
   stream(sessionId: SessionId | null, signal?: AbortSignal): AsyncIterable<LiveEvent> {
-    const subscriber: Subscriber = {
-      sessionId,
-      push: (event) => {
-        channel.push(event);
-      },
-    };
-    const channel = createChannel<LiveEvent>(signal, {
-      onClose: () => {
-        this.#subscribers.delete(subscriber);
-      },
-    });
-    if (!channel.closed) {
-      this.#subscribers.add(subscriber);
-    }
-    return channel.iterate();
+    return this.#feed.stream(sessionId, signal);
   }
 
   start(taskId: TaskId, agentId: Session["agentId"], mode: SessionMode): Promise<Session> {
@@ -172,7 +157,8 @@ export class SessionManager {
       signal: controller.signal,
       budget,
     };
-    const done = this.#run(ctx)
+    const held: Held = { provisioned: null, runtime: null };
+    const done = this.#run(ctx, held)
       .catch((error: unknown) => {
         log.error({ sessionId: session.id, err: errorMessage(error) }, "session teardown failed");
       })
@@ -185,6 +171,7 @@ export class SessionManager {
       controller,
       done,
       spent: { toolCalls: 0, costUsd: null, overheadWarned: false },
+      held,
     });
     return session;
   }
@@ -196,6 +183,16 @@ export class SessionManager {
     }
     running.controller.abort(new Error("stopped by the human"));
     return true;
+  }
+
+  steer(taskId: TaskId, text: string, shown: string): SessionId | null {
+    for (const [sessionId, running] of this.#running) {
+      if (running.taskId === taskId && running.held.runtime?.send(text) === true) {
+        this.#emit(sessionId, { kind: "steer", text: shown });
+        return sessionId;
+      }
+    }
+    return null;
   }
 
   async stopTask(taskId: TaskId): Promise<void> {
@@ -217,12 +214,7 @@ export class SessionManager {
   }
 
   #emit(sessionId: SessionId, event: RuntimeEvent): void {
-    const live: LiveEvent = { sessionId, at: this.#deps.office.clock.now().toISOString(), event };
-    for (const subscriber of this.#subscribers) {
-      if (subscriber.sessionId === null || subscriber.sessionId === sessionId) {
-        subscriber.push(live);
-      }
-    }
+    this.#feed.push(sessionId, event);
   }
 
   #end(sessionId: SessionId, ending: Ending): Promise<Session> {
@@ -264,21 +256,13 @@ export class SessionManager {
     }
   }
 
-  async #run(ctx: SessionContext): Promise<void> {
+  async #run(ctx: SessionContext, held: Held): Promise<void> {
     const { log } = this.#deps;
     const sessionId = ctx.session.id;
     const started = Bun.nanoseconds();
-    const held: { provisioned: Provisioned | null } = { provisioned: null };
     let ending: Ending;
     try {
-      ending = await runSession(
-        this.#deps,
-        ctx,
-        (provisioned) => {
-          held.provisioned = provisioned;
-        },
-        (event) => this.#onEvent(ctx, event),
-      );
+      ending = await runSession(this.#deps, ctx, held, (event) => this.#onEvent(ctx, event));
     } catch (error) {
       const message = errorMessage(error).slice(0, 2000);
       log.error({ sessionId, taskId: ctx.task.id, err: message }, "session failed");

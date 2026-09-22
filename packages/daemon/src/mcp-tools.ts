@@ -19,7 +19,6 @@ import {
   HoPlanInput,
   HoPublishInput,
   HoRecallInput,
-  HoReplyInput,
   HoReviewInput,
   HoTaskStatusInput,
   isSessionActive,
@@ -29,6 +28,7 @@ import { checkFidelity, checkNamedFiles } from "./evidence-fidelity.ts";
 import { recall } from "./recall.ts";
 import { dismiss } from "./mcp-dismiss.ts";
 import { hire } from "./mcp-hire.ts";
+import { reply, steer } from "./mcp-chat.ts";
 import { report } from "./mcp-report.ts";
 import { ALL, define, type AnyTool, type ToolResult } from "./mcp-tool.ts";
 import { verify } from "./mcp-verify.ts";
@@ -173,14 +173,9 @@ const review = define({
     if (attachments.length > 0) {
       const language = office.model.projects.get(entry.ctx.projectId)?.language ?? "en";
       await office.execute(actor, (m, c) =>
-        postAgentMessage(
-          m,
-          entry.ctx.agentId,
-          voiceFor(language).showResult,
-          entry.ctx.taskId,
-          c,
+        postAgentMessage(m, entry.ctx.agentId, voiceFor(language).showResult, entry.ctx.taskId, c, {
           attachments,
-        ),
+        }),
       );
     }
     return `verdict recorded; task is now ${task.status}. Stop now.`;
@@ -210,22 +205,6 @@ const plan = define({
     const task = await office.execute(actor, (m, c) => planTask(m, input, entry.ctx.taskId, c));
     entry.delegated = true;
     return { taskId: task.id, status: task.status, assigneeId: task.assigneeId ?? null };
-  },
-});
-
-const reply = define({
-  name: "ho_reply",
-  description:
-    "Say something to the human in the office chat: a question back, a one-line plan, or an answer when there is nothing to delegate.",
-  schema: HoReplyInput,
-  modes: ["triage", "plan"],
-  run: async (input, office, entry, actor) => {
-    const files = await entry.ctx.attachments.collect(entry.ctx.sessionId, input.files);
-    await office.execute(actor, (m, c) =>
-      postAgentMessage(m, entry.ctx.agentId, input.text, entry.ctx.taskId, c, files),
-    );
-    entry.replied = true;
-    return `posted${files.length === 0 ? "" : ` with ${String(files.length)} file(s)`}`;
   },
 });
 
@@ -282,6 +261,7 @@ export const TOOLS: readonly AnyTool[] = [
   hire,
   dismiss,
   reply,
+  steer,
   publish,
   listSkills,
   getSkill,

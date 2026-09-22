@@ -216,13 +216,18 @@ export function triageMessage(
   });
 }
 
+export type AgentMessageOptions = {
+  attachments?: readonly Attachment[] | undefined;
+  kind?: ChatMessage["kind"] | undefined;
+};
+
 export function postAgentMessage(
   model: ReadModel,
   agentId: AgentId,
   text: string,
   taskId: TaskId | undefined,
   ctx: CommandContext,
-  attachments: readonly Attachment[] = [],
+  options: AgentMessageOptions = {},
 ): CommandResult<ChatMessage> {
   return withAgent(model, agentId, (agent) => {
     const task = taskId === undefined ? undefined : model.tasks.get(taskId);
@@ -231,7 +236,8 @@ export function postAgentMessage(
       projectId: agent.projectId,
       author: { kind: "agent", agentId },
       text,
-      attachments: [...attachments],
+      attachments: [...(options.attachments ?? [])],
+      ...compact({ kind: options.kind }),
       ...(taskId === undefined ? {} : { taskId }),
       ...compact({ threadId: task === undefined ? undefined : threadOfTask(model, task) }),
       at: ctx.now,

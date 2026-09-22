@@ -1,5 +1,5 @@
-import { membersOf, type ReadModel, tasksOf } from "@ho/core";
-import { type AgentRole, CHAT_OUTBOX_DIR } from "@ho/protocol";
+import { isTerminal, membersOf, type ReadModel, tasksOf, threadOfTask } from "@ho/core";
+import { type AgentRole, CHAT_OUTBOX_DIR, ROLE_TITLE } from "@ho/protocol";
 import { BROWSER_OUTPUT_DIR } from "./browser.ts";
 import { REPO_IN_VOLUME } from "./git-bridge.ts";
 import {
@@ -32,6 +32,26 @@ const steeringGuide = (f: SessionFacts, model: ReadModel): string => {
   return `Steering: this is the office reopening the request "${mandate?.title ?? f.task.title}" (fix round ${String(mandate?.round ?? 0)}), not a new message from the human; your opening message says what failed and the evidence. Decide how it continues: ho_delegate a fix to the right colleague with dependsOn set to the task it corrects, so the branch continues from that result and the fix joins this request by itself, or ho_report blocked with the one question the human must answer. Do not ho_plan again unless the plan itself was wrong, and do not call ho_publish: the pull request opens by itself once the request is verified, and a round closed without new work blocks the request.`;
 };
 
+const inFlightGuide = (f: SessionFacts, model: ReadModel): string => {
+  const thread = threadOfTask(model, f.task);
+  const open = tasksOf(model, f.project.id).filter(
+    (task) =>
+      task.id !== f.task.id &&
+      (task.kind === "work" || task.kind === "plan") &&
+      !isTerminal(task.status) &&
+      threadOfTask(model, task) === thread,
+  );
+  if (open.length === 0) {
+    return "";
+  }
+  const lines = open.map((task) => {
+    const worker = task.assigneeId === undefined ? undefined : model.agents.get(task.assigneeId);
+    const who = worker === undefined ? "unassigned" : `${worker.name} (${ROLE_TITLE[worker.role]})`;
+    return `- "${task.title}" — ${task.status}, ${who}, taskId ${task.id}`;
+  });
+  return `Work in flight in this conversation:\n${lines.join("\n")}\nWhen the human's message bears on one of these tasks, pass it on with ho_steer (taskId, instruction in English): the colleague gets it inside their running session at their next step, or at the start of their next session when nobody is running right now; then tell the human with ho_reply what you passed on and to whom. A message that changes what the task is for is a new ho_delegate or a question back, not a steer, and a message that only needs an answer gets ho_reply.`;
+};
+
 const deliveryGuide = (f: SessionFacts): string =>
   f.project.publish.mode === "pull-request"
     ? "Delivery: every finished task is pushed to its branch, and one pull request for the whole request opens by itself once the request is verified. Tell the human the link arrives then; ho_publish opens a pull request for a single finished task early and is for when the human asks for exactly that."
@@ -46,6 +66,7 @@ export const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
   return [
     `You run this floor. The human writes to you in the floor's chat; you turn requests into work for your team. The repository is checked out at ${REPO_IN_VOLUME} (branch ${f.project.defaultBranch}, ${String(open)} open task(s)) for planning only: read what you need to route a request and to write a precise brief, do not modify or commit anything here — work happens in separate sessions.`,
     steeringGuide(f, model),
+    inFlightGuide(f, model),
     `Team on this floor:\n${
       staff.join("\n") ||
       (f.project.hiring.enabled
@@ -63,7 +84,7 @@ export const triagePrompt = (f: SessionFacts, model: ReadModel): string[] => {
       staff.length === 0
         ? ", with assignee set to your own name; you get a separate work session in the repository for each"
         : ""
-    }. If you cannot write a checkable criterion, the request is still a question: ask with ho_reply instead of delegating. The office announces every handover in the chat itself, with the assignee and the reviewers, so do not repeat it; use ho_reply only for a question back, a decision the human needs to know, or an answer when there is nothing to delegate. Finish with ho_report (status done, one-line summary) and stop.`,
+    }. If you cannot write a checkable criterion, the request is still a question: ask with ho_reply instead of delegating. The office announces every handover in the chat itself, with the assignee and the reviewers, so do not repeat it; use ho_reply only for a question back, a decision the human needs to know, an answer when there is nothing to delegate, or to confirm what you passed on with ho_steer. Finish with ho_report (status done, one-line summary) and stop.`,
     f.browser
       ? "Browser: set browser: true on a task only when its result must be seen in a browser (UI work, screenshots); the developer and the reviewers then get headless Chromium."
       : "",

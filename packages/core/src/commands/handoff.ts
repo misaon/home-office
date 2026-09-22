@@ -16,7 +16,7 @@ import { findAgentByRef, threadOfTask } from "../model/queries.ts";
 import type { ReadModel } from "../model/read-model.ts";
 import { type CommandContext, type CommandResult, err, ok } from "../result.ts";
 import { chatEvent, handoffEvent, note, noteEvent, statusChange, withTask } from "./shared.ts";
-import { canTransition, readTask } from "./tasks.ts";
+import { canTransition, isTerminal, readTask } from "./tasks.ts";
 
 export function handoffTask(
   model: ReadModel,
@@ -125,5 +125,35 @@ export function answerQuestion(
       events.push(statusChange(ctx, task, to, "answered"));
     }
     return ok({ events, read: readTaskAndMessage(task.id, message) });
+  });
+}
+
+const STEERABLE: ReadonlySet<Task["kind"]> = new Set(["work", "plan"]);
+
+export function steerTask(
+  model: ReadModel,
+  taskId: TaskId,
+  instruction: string,
+  ctx: CommandContext,
+): CommandResult<Task> {
+  const boss = ctx.actor.kind === "agent" ? model.agents.get(ctx.actor.agentId) : undefined;
+  if (boss?.role !== "boss") {
+    return err(conflict("only the boss passes instructions into work in flight"));
+  }
+  return withTask(model, taskId, (task) => {
+    if (task.projectId !== boss.projectId) {
+      return err(notFound("task", `${taskId} (on this floor)`));
+    }
+    if (!STEERABLE.has(task.kind) || isTerminal(task.status)) {
+      return err(
+        conflict(
+          `task "${task.title}" is ${task.status}; only open work and plan tasks take instructions`,
+        ),
+      );
+    }
+    return ok({
+      events: [noteEvent(ctx, task, note(ctx, "steer", instruction.slice(0, NOTE_MAX)))],
+      read: readTask(task.id),
+    });
   });
 }

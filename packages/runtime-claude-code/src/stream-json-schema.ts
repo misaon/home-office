@@ -52,6 +52,7 @@ export const SystemLine = z.object({
   tool_use_id: z.string().optional(),
   status: z.string().optional(),
   summary: z.string().optional(),
+  detail: z.string().nullable().optional(),
 });
 
 export const ResultLine = z.object({

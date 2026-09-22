@@ -86,6 +86,12 @@ const traceOf = (event: RuntimeEvent): Record<string, unknown> | null => {
         summary: shorten(event.summary),
       };
     }
+    case "activity": {
+      return { text: event.text };
+    }
+    case "steer": {
+      return { text: shorten(event.text) };
+    }
     case "plan_window": {
       return null;
     }

@@ -45,6 +45,7 @@ const RECORDED_EVENTS = new Set<RuntimeEvent["kind"]>([
   "error",
   "permission_request",
   "background_done",
+  "steer",
 ]);
 const SUFFIX = ".jsonl";
 const DAY_MS = 24 * 60 * 60 * 1000;

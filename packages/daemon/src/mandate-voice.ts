@@ -1,4 +1,4 @@
-import { type ReadModel, tasksOfMandate } from "@ho/core";
+import { type ReadModel, STALLED_TASK_REASON, tasksOfMandate } from "@ho/core";
 import {
   clip,
   type Evidence,
@@ -152,7 +152,9 @@ export function mandateStatusLine(
     return fulfilledLines(model, voice, mandate, project, at);
   }
   if (to === "blocked") {
-    return voice.mandateBlocked(quote(mandate), reason);
+    return reason?.startsWith(STALLED_TASK_REASON) === true
+      ? null
+      : voice.mandateBlocked(quote(mandate), reason);
   }
   return null;
 }

@@ -58,6 +58,9 @@ export const closingMessage = (mode: "review" | "verify"): string =>
     ? "Your turn budget for this review is spent. Call ho_review now, with the verdict you can defend from what you have already seen: approve only when every criterion holds on evidence you saw; otherwise request_changes, and judge each criterion you could not exercise as not_checked with fidelity static and blocker not_attempted, saying what is missing. Make no other tool call."
     : "Your turn budget for this verification is spent. Call ho_verify now, with the verdict you can defend from what you have already seen: pass only when every condition holds on evidence you saw; otherwise fail, and judge each condition you could not exercise with fidelity static and blocker not_attempted, saying what is missing. Make no other tool call.";
 
+export const steerMessage = (from: string, instruction: string): string =>
+  `Message from ${from}, the boss, while you work:\n\n${instruction}\n\nTake it into account from here on. The task and its acceptance criteria stay as briefed, and so does the way your session ends; if this changes what done means, say so in your report or your verdict.`;
+
 const taskBrief = (task: Task): string => {
   const brief = task.brief.trim();
   if (brief === "") {
@@ -76,6 +79,7 @@ const URGENCY: Readonly<Record<TaskNote["kind"], number>> = {
   review: 0,
   question: 1,
   answer: 1,
+  steer: 1,
   handoff: 2,
   info: 3,
   report: 4,

@@ -229,6 +229,18 @@ export const HoReplyInput = z.object({
 });
 export type HoReplyInput = z.infer<typeof HoReplyInput>;
 
+export const HoSteerInput = z.object({
+  taskId: TaskId.describe("The task in flight the instruction is for, as your briefing lists it"),
+  instruction: z
+    .string()
+    .min(1)
+    .max(4000)
+    .describe(
+      "What the colleague working on it should know or do from here on, in your own words; the office delivers it into their running session",
+    ),
+});
+export type HoSteerInput = z.infer<typeof HoSteerInput>;
+
 export const HoGetSkillInput = z.object({
   name: z.string().min(1).max(64).describe("Skill name exactly as ho_list_skills reported it"),
 });

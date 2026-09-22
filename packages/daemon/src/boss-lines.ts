@@ -48,9 +48,7 @@ const mandateTaskDone = (
   const remaining = work.filter(
     (other) => other.id !== task.id && other.status !== "done" && other.status !== "cancelled",
   ).length;
-  return remaining === 0
-    ? voice.taskDoneAllDone(quote(task))
-    : voice.taskDoneRemaining(quote(task), remaining);
+  return remaining === 0 ? null : voice.taskDoneRemaining(quote(task), remaining);
 };
 
 const doneLines = (
@@ -110,7 +108,9 @@ export function statusLine(
   const worker = bold(nameOf(model, voice, task.assigneeId));
   const mine = task.assigneeId === boss.id;
   if (to === "in_progress") {
-    return mine ? null : voice.working(whoWorks(model, voice, task.assigneeId), quote(task));
+    return mine || task.source.kind === "delegation"
+      ? null
+      : voice.working(whoWorks(model, voice, task.assigneeId), quote(task));
   }
   if (to === "review") {
     return voice.finished(

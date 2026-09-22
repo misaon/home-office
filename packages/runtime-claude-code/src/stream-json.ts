@@ -26,6 +26,9 @@ const SILENT_SYSTEM = new Set([
   "task_updated",
   "background_tasks_changed",
   "vcs_state_changed",
+  "hook_started",
+  "hook_response",
+  "post_turn_summary",
 ]);
 const EXIT_CODE = /exit code (?<code>-?\d+)/u;
 const PERCENT_DECIMALS = 10;
@@ -120,6 +123,10 @@ const systemEvents = (
         summary: clip(summary, SUMMARY_MAX),
       },
     ];
+  }
+  if (line.subtype === "task_summary") {
+    const detail = line.detail ?? "";
+    return detail === "" ? [] : [{ kind: "activity", text: clip(detail, SUMMARY_MAX) }];
   }
   if (!SILENT_SYSTEM.has(line.subtype)) {
     onIgnored(raw);

@@ -135,7 +135,7 @@ export const TaskArtifacts = z.object({
 });
 export type TaskArtifacts = z.infer<typeof TaskArtifacts>;
 
-const TaskNoteKind = z.enum(["handoff", "review", "question", "answer", "report", "info"]);
+const TaskNoteKind = z.enum(["handoff", "review", "question", "answer", "report", "info", "steer"]);
 
 export const NOTE_MAX = 8000;
 
@@ -231,12 +231,15 @@ export const Task = z.object({
 });
 export type Task = z.infer<typeof Task>;
 
+const ChatMessageKind = z.enum(["status"]);
+
 export const ChatMessage = z.object({
   id: ChatMessageId,
   projectId: ProjectId,
   author: Author,
   text: z.string().min(1).max(20_000),
   attachments: Attachments,
+  kind: ChatMessageKind.optional(),
   taskId: TaskId.optional(),
   threadId: ChatThreadId.optional(),
   at: IsoDateTime,

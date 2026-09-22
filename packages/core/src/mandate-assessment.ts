@@ -23,6 +23,8 @@ export type Assessment =
 
 const SETTLED: ReadonlySet<Task["status"]> = new Set(["done", "cancelled"]);
 
+export const STALLED_TASK_REASON = "a task is blocked or failed";
+
 const latest = (entries: readonly Evidence[]): Evidence | undefined =>
   entries.toSorted((a, b) => b.at.localeCompare(a.at))[0];
 
@@ -178,7 +180,7 @@ export function assessMandate(
     (task) => task.status === "failed" || (task.status === "blocked" && !awaitsAnswer(task)),
   );
   if (stuck.length > 0) {
-    return { kind: "stalled", tasks: stuck, reason: "a task is blocked or failed" };
+    return { kind: "stalled", tasks: stuck, reason: STALLED_TASK_REASON };
   }
   const planning = tasks.some((task) => task.kind === "plan" && !SETTLED.has(task.status));
   if (open.length > 0 || planning || work.length === 0) {

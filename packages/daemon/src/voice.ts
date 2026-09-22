@@ -32,7 +32,6 @@ export type Voice = {
   approvedNext: (reviewer: string, task: string, next: string) => string;
   taskDone: (task: string) => string;
   taskDoneRemaining: (task: string, remaining: number) => string;
-  taskDoneAllDone: (task: string) => string;
   timing: (since: string, sessions: number, spent: string, rounds: number) => string;
   pullRequest: (url: string) => string;
   branch: (branch: string) => string;
@@ -111,8 +110,6 @@ const EN: Voice = {
   taskDone: (task) => `✅ ${task} is done.`,
   taskDoneRemaining: (task, remaining) =>
     `✅ ${task} is done; ${pluralEn(remaining, "task")} of the request remain${remaining === 1 ? "s" : ""}.`,
-  taskDoneAllDone: (task) =>
-    `✅ ${task} is done; every task of the request is done, so the office now integrates and verifies the whole.`,
   timing: (since, sessions, spent, rounds) =>
     `⏱️ From the request to here: ${bold(since)}; ${pluralEn(sessions, "session")} spent ${spent} on it${rounds === 0 ? "" : ` across ${pluralEn(rounds, "fix round")}`}.`,
   pullRequest: (url) => `🔗 ${pullRequestLink(url)}`,
@@ -208,8 +205,6 @@ const CS: Voice = {
   taskDone: (task) => `✅ ${task} je hotový.`,
   taskDoneRemaining: (task, remaining) =>
     `✅ ${task} je hotový; z požadavku ${remaining === 1 ? "zbývá" : "zbývají"} ${pluralCs(remaining, "úkol", "úkoly", "úkolů")}.`,
-  taskDoneAllDone: (task) =>
-    `✅ ${task} je hotový; všechny úkoly požadavku jsou hotové, office teď spojí větve a ověří celek.`,
   timing: (since, sessions, spent, rounds) =>
     `⏱️ Od zadání sem: ${bold(since)} · čas agentů ${spent} · relace: ${String(sessions)}${rounds === 0 ? "" : ` · opravná kola: ${String(rounds)}`}`,
   pullRequest: (url) => `🔗 ${pullRequestLink(url)}`,

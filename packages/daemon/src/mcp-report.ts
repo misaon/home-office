@@ -35,7 +35,7 @@ export const report: AnyTool = define({
             voiceFor(language).showResult,
             entry.ctx.taskId,
             c,
-            files,
+            { attachments: files },
           ),
         );
       }

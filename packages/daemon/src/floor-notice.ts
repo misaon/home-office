@@ -36,7 +36,9 @@ async function post(deps: StewardDeps, mandate: Mandate, project: Project): Prom
   );
   await office
     .traced({ correlationId: mandate.id })
-    .execute(SYSTEM_ACTOR, (m, c) => postAgentMessage(m, boss.id, text, mandate.rootTaskId, c));
+    .execute(SYSTEM_ACTOR, (m, c) =>
+      postAgentMessage(m, boss.id, text, mandate.rootTaskId, c, { kind: "status" }),
+    );
 }
 
 export async function noticeUnconfiguredFloor(

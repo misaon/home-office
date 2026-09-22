@@ -114,7 +114,9 @@ export const verify: AnyTool = define({
     });
     entry.verdict = true;
     await office.execute(actor, (m, c) =>
-      postAgentMessage(m, entry.ctx.agentId, input.summary, entry.ctx.taskId, c, files),
+      postAgentMessage(m, entry.ctx.agentId, input.summary, entry.ctx.taskId, c, {
+        attachments: files,
+      }),
     );
     const filed = await office.execute(actor, (m, c) =>
       fileReport(m, entry.ctx.taskId, { status: "done", summary: input.summary }, c),

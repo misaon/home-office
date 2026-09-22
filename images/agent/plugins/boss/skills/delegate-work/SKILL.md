@@ -42,3 +42,6 @@ description: Load before the first ho_delegate or ho_plan of a triage session, a
 5. `ho_report` with status done and a one-line summary. The office announces every handover in the
    chat itself, with the assignee and the reviewers, so do not repeat it; `ho_reply` is for a
    question back or a decision the human needs to know.
+6. When the human writes while a task of this conversation is in flight, `ho_steer` passes the
+   instruction into that colleague's running session; confirm with `ho_reply` what you passed on
+   and to whom. A message that changes what the task is for is a new task, not a steer.

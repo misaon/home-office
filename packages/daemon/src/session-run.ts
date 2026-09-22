@@ -28,6 +28,8 @@ import { elapsedMs } from "./timing.ts";
 
 export type Outcome = { report: string; failure: string | null };
 
+export type Held = { provisioned: Provisioned | null; runtime: RuntimeSession | null };
+
 export const GRACE_TURNS = 2;
 
 type Consumed = Outcome & {
@@ -99,6 +101,7 @@ async function verdictGrace(
   secrets: Readonly<Record<string, string>>,
   outcome: Consumed,
   onEvent: (event: RuntimeEvent) => Promise<void>,
+  held: Held,
 ): Promise<Consumed> {
   const { mode } = ctx.session;
   if (
@@ -124,11 +127,13 @@ async function verdictGrace(
     runtimeSessionId,
     GRACE_TURNS,
   );
+  held.runtime = grace;
   let closing: Consumed;
   try {
     closing = await consume(grace, ctx, closingMessage(mode), onEvent);
   } finally {
     grace.close();
+    held.runtime = null;
   }
   const filed = deps.mcp.verdictFiled(provisioned.mcpToken);
   deps.traces.write(ctx.session.id, { kind: "grace", turns: closing.turns, filed }, true);
@@ -142,6 +147,7 @@ async function runPrompt(
   prepared: Prepared,
   secrets: Readonly<Record<string, string>>,
   onEvent: (event: RuntimeEvent) => Promise<void>,
+  held: Held,
 ): Promise<Outcome> {
   const resume = ctx.previous?.runtimeSessionId ?? null;
   deps.traces.write(ctx.session.id, {
@@ -152,11 +158,13 @@ async function runPrompt(
   const started = Bun.nanoseconds();
   try {
     const first = await openRuntime(deps, ctx, provisioned, prepared, secrets, resume);
+    held.runtime = first;
     let outcome: Consumed;
     try {
       outcome = await consume(first, ctx, prepared.message, onEvent);
     } finally {
       first.close();
+      held.runtime = null;
     }
     if (resume !== null && !outcome.sawInit && outcome.failure !== null && !ctx.signal.aborted) {
       deps.log.warn(
@@ -169,6 +177,7 @@ async function runPrompt(
         "resume failed; starting a fresh conversation",
       );
       const fresh = await openRuntime(deps, ctx, provisioned, prepared, secrets, null);
+      held.runtime = fresh;
       try {
         outcome = await consume(
           fresh,
@@ -178,9 +187,10 @@ async function runPrompt(
         );
       } finally {
         fresh.close();
+        held.runtime = null;
       }
     }
-    outcome = await verdictGrace(deps, ctx, provisioned, prepared, secrets, outcome, onEvent);
+    outcome = await verdictGrace(deps, ctx, provisioned, prepared, secrets, outcome, onEvent, held);
     const ms = elapsedMs(started);
     deps.log.info(
       {
@@ -230,13 +240,13 @@ const setState = (
 export async function runSession(
   deps: SessionDeps,
   ctx: SessionContext,
-  hold: (provisioned: Provisioned) => void,
+  held: Held,
   onEvent: (event: RuntimeEvent) => Promise<void>,
 ): Promise<Ending> {
   const secretEnv = await secretEnvFor(deps.secrets, ctx.agent);
   deps.traces.protect(ctx.session.id, Object.values(secretEnv));
   const provisioned = await provision(deps, ctx);
-  hold(provisioned);
+  held.provisioned = provisioned;
   deps.traces.protect(ctx.session.id, [provisioned.mcpToken]);
   const environment = await prepareEnvironment(deps, ctx, provisioned).catch(
     (error: unknown): null => {
@@ -264,7 +274,7 @@ export async function runSession(
     },
     "runner connected",
   );
-  const outcome = await runPrompt(deps, ctx, provisioned, prepared, secretEnv, onEvent);
+  const outcome = await runPrompt(deps, ctx, provisioned, prepared, secretEnv, onEvent, held);
   await setState(deps, ctx, "stopping");
   await settle(deps, ctx, provisioned, outcome);
   return {

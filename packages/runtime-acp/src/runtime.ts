@@ -31,6 +31,7 @@ export function createAcpRuntime(preset: AcpPreset, options: AcpRuntimeOptions):
       }
       return {
         prompt: createPrompt(office, spec, preset, negotiated, exited),
+        send: () => false,
         close: () => {
           office.conn.close();
           channel.closeStdin();
