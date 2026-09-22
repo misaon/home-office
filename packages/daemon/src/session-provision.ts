@@ -23,7 +23,7 @@ import type { RunnerConnection } from "./runner-gateway.ts";
 import { checkout } from "./session-checkout.ts";
 import { sandboxSpec } from "./session-sandbox.ts";
 import type { SessionDeps } from "./sessions.ts";
-import { type LspLanguage, skillPacksFor } from "./skill-pack.ts";
+import { type RepositoryLanguage, skillPacksFor } from "./skill-pack.ts";
 import { prepareTaskEngine, startServices, type TaskEngineRequest } from "./task-engine.ts";
 import { stopwatch } from "./timing.ts";
 import { cacheVolumeFor, reviewVolumeFor, taskVolumeFor } from "./volumes.ts";
@@ -49,7 +49,7 @@ export type Provisioned = {
   commit: CommitSha | null;
   base: WorkBase | null;
   diff: DiffSummary | null;
-  languages: readonly LspLanguage[];
+  languages: readonly RepositoryLanguage[];
   imageId: string | null;
   sourcePath: string;
   mcpToken: string;

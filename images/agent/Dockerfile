@@ -4,6 +4,9 @@ ARG TARGETARCH
 ARG BUN_VERSION=1.4.2
 ARG BUN_SHA256_ARM64=71760b6c8ea30623b81a4907cb815d48e2ea266f2e73e751534a44a0607950df
 ARG BUN_SHA256_AMD64=4835eca59d6da70f4674f5642f6e459dcadab773695b2ed9922d131057989742
+ARG JDTLS_VERSION=1.61.0
+ARG JDTLS_BUILD=202609031315
+ARG JDTLS_SHA256=338e7e73d61836651ba2453919a0d34fa763eb4e7c03342092309bffb8934c64
 RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
     { [ "$TARGETARCH" = arm64 ] || [ "$TARGETARCH" = amd64 ]; } \
       || { echo "the agent image builds for arm64 and amd64, not $TARGETARCH" >&2; exit 1; } \
@@ -18,8 +21,9 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
       php85-session php85-simplexml php85-sockets php85-sodium php85-tokenizer php85-xml \
       php85-xmlreader php85-xmlwriter php85-zip php85-bcmath composer \
       sqlite postgresql17 postgresql17-client postgresql17-contrib mariadb mariadb-client redis \
+      openjdk17-jdk openjdk21-jdk openjdk25-jdk maven gradle \
  && adduser -D -u 1000 agent \
- && mkdir -p /work /home/agent/.cache /opt/ho/plugins /opt/ho/mcp \
+ && mkdir -p /work/.cache /home/agent/.cache /opt/ho/plugins /opt/ho/mcp \
  && chown -R agent:agent /work /home/agent
 RUN if [ "$TARGETARCH" = arm64 ]; then \
       build=bun-linux-aarch64-musl; sum="$BUN_SHA256_ARM64"; \
@@ -49,6 +53,20 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
  && test -x node_modules/.bin/typescript-language-server \
  && test -x node_modules/.bin/pyright-langserver \
  && test -x node_modules/.bin/intelephense
+RUN wget -qO /tmp/jdtls.tar.gz "https://download.eclipse.org/jdtls/milestones/${JDTLS_VERSION}/jdt-language-server-${JDTLS_VERSION}-${JDTLS_BUILD}.tar.gz" \
+ && echo "${JDTLS_SHA256}  /tmp/jdtls.tar.gz" | sha256sum -c - \
+ && mkdir -p /opt/ho/jdtls \
+ && tar -xzf /tmp/jdtls.tar.gz -C /opt/ho/jdtls \
+ && rm /tmp/jdtls.tar.gz \
+ && chmod 0755 /opt/ho/jdtls/bin/jdtls \
+ && ln -s /opt/ho/jdtls/bin/jdtls /usr/local/bin/jdtls \
+ && jdtls -h >/dev/null \
+ && test -x /usr/lib/jvm/java-17-openjdk/bin/javac \
+ && test -x /usr/lib/jvm/java-21-openjdk/bin/javac \
+ && test -x /usr/lib/jvm/java-25-openjdk/bin/javac \
+ && test -x /usr/share/java/maven-3/bin/mvn
+COPY java/toolchains.xml /usr/share/java/maven-3/conf/toolchains.xml
+COPY --chown=agent:agent java/toolchains.xml /home/agent/.m2/toolchains.xml
 COPY --chmod=0644 bin/ho-runner.js /usr/local/bin/ho-runner.js
 COPY --chmod=0755 bin/ho-db /usr/local/bin/ho-db
 COPY plugins/ /opt/ho/plugins/
@@ -66,7 +84,11 @@ ENV HOME=/home/agent \
     BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 \
     PIP_CACHE_DIR=/work/.cache/pip \
     GIT_CONFIG_GLOBAL=/tmp/gitconfig \
-    PATH=/opt/ho/provider/node_modules/.bin:/opt/ho/lsp-servers/node_modules/.bin:$PATH
+    JAVA_HOME=/usr/lib/jvm/java-21-openjdk \
+    GRADLE_USER_HOME=/work/.cache/gradle \
+    MAVEN_USER_HOME=/work/.cache/maven \
+    MAVEN_OPTS=-Dmaven.repo.local=/work/.cache/maven/repository \
+    PATH=/opt/ho/provider/node_modules/.bin:/opt/ho/lsp-servers/node_modules/.bin:/usr/lib/jvm/java-21-openjdk/bin:$PATH
 WORKDIR /work
 CMD ["bun", "/usr/local/bin/ho-runner.js"]
 

@@ -1,0 +1,16 @@
+{
+  "java": {
+    "command": "jdtls",
+    "args": [
+      "-configuration",
+      "/work/.cache/jdtls/config",
+      "-data",
+      "/work/.cache/jdtls/workspace"
+    ],
+    "extensionToLanguage": {
+      ".java": "java"
+    },
+    "startupTimeout": 120000,
+    "shutdownTimeout": 10000
+  }
+}

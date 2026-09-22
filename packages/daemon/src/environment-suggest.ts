@@ -23,6 +23,31 @@ const OTHER_LOCKS: Readonly<Record<string, string>> = {
   "go.sum": "go mod download",
 };
 
+type BuildTool = {
+  markers: readonly string[];
+  wrapper: string;
+  tool: string;
+  setup: string;
+  checks: Readonly<Record<string, string>>;
+};
+
+const BUILD_TOOLS: readonly BuildTool[] = [
+  {
+    markers: ["pom.xml"],
+    wrapper: "mvnw",
+    tool: "mvn",
+    setup: "-B -ntp -q test-compile",
+    checks: { test: "-B -ntp test", verify: "-B -ntp verify" },
+  },
+  {
+    markers: ["settings.gradle", "settings.gradle.kts", "build.gradle", "build.gradle.kts"],
+    wrapper: "gradlew",
+    tool: "gradle",
+    setup: "-q testClasses",
+    checks: { test: "test", check: "check" },
+  },
+];
+
 export type EnvironmentSuggestion = {
   dir: string;
   setup: string[];
@@ -36,8 +61,39 @@ const dirOf = (path: string): string => {
 
 const depthOf = (dir: string): number => (dir === "" ? 0 : dir.split("/").length);
 
+const ancestorsOf = (dir: string): string[] => {
+  if (dir === "") {
+    return [];
+  }
+  const parts = dir.split("/");
+  return parts.map((_, index) => parts.slice(0, index).join("/"));
+};
+
 const inDir = (dir: string, command: string): string =>
   dir === "" ? command : `cd ${dir} && ${command}`;
+
+const buildToolOf = (names: ReadonlySet<string>): BuildTool | undefined =>
+  BUILD_TOOLS.find((tool) => tool.markers.some((marker) => names.has(marker)));
+
+const rootBuildToolOf = (
+  byDir: ReadonlyMap<string, ReadonlySet<string>>,
+  dir: string,
+): BuildTool | undefined => {
+  const names = byDir.get(dir);
+  const tool = names === undefined ? undefined : buildToolOf(names);
+  const nested = ancestorsOf(dir).some((ancestor) => {
+    const above = byDir.get(ancestor);
+    return above !== undefined && buildToolOf(above) === tool;
+  });
+  return nested ? undefined : tool;
+};
+
+const buildCommand = (
+  dir: string,
+  names: ReadonlySet<string>,
+  tool: BuildTool,
+  args: string,
+): string => inDir(dir, `${names.has(tool.wrapper) ? `./${tool.wrapper}` : tool.tool} ${args}`);
 
 const scriptsOf = async (
   path: string,
@@ -89,16 +145,23 @@ export async function suggestEnvironment(
   const suggestions: EnvironmentSuggestion[] = [];
   for (const [dir, names] of [...byDir.entries()].toSorted(([a], [b]) => a.localeCompare(b))) {
     const manager = MANAGERS.find((candidate) => names.has(candidate.lock));
+    const build = rootBuildToolOf(byDir, dir);
     const setup = [
       ...(manager === undefined ? [] : [inDir(dir, manager.setup)]),
       ...Object.entries(OTHER_LOCKS)
         .filter(([lock]) => names.has(lock))
         .map(([, command]) => inDir(dir, command)),
+      ...(build === undefined ? [] : [buildCommand(dir, names, build, build.setup)]),
     ];
     if (setup.length === 0) {
       continue;
     }
     const checks: Record<string, string> = {};
+    if (build !== undefined) {
+      for (const [name, args] of Object.entries(build.checks)) {
+        checks[name] = buildCommand(dir, names, build, args);
+      }
+    }
     if (manager !== undefined && names.has("package.json")) {
       const scripts = await scriptsOf(
         sourcePath,

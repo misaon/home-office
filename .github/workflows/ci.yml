@@ -160,7 +160,7 @@ jobs:
           docker run --rm ho/agent:ci 2>&1 \
             | grep -q "HO_GATEWAY and HO_SESSION_TOKEN are required"
           docker run --rm --entrypoint sh ho/agent:ci -c \
-            'claude --version && python3 -m pip --version && gcc --version && test -d /usr/share/zoneinfo'
+            'claude --version && python3 -m pip --version && gcc --version && test -d /usr/share/zoneinfo && java -version && mvn -v && gradle --version && jdtls -h >/dev/null'
           docker run --rm --entrypoint sh ho/agent-opencode:ci -c 'opencode --version'
           docker run --rm --entrypoint sh ho/agent-gemini-cli:ci -c 'gemini --version'
           docker run --rm --entrypoint sh ho/agent-codex:ci -c 'codex-acp --version && codex --version'

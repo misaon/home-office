@@ -17,22 +17,27 @@ export const skillPacksFor = (agent: Agent, mode: SessionMode): string[] => {
   return [...new Set(packs)];
 };
 
-export type LspLanguage = "typescript" | "python" | "php";
+export type RepositoryLanguage = "typescript" | "python" | "php" | "java";
 
-const LSP_LANGUAGES: readonly LspLanguage[] = ["typescript", "python", "php"];
+const REPOSITORY_LANGUAGES: readonly RepositoryLanguage[] = ["typescript", "python", "php", "java"];
 
-export const LSP_MARKERS: Readonly<Record<LspLanguage, readonly string[]>> = {
+export const LANGUAGE_MARKERS: Readonly<Record<RepositoryLanguage, readonly string[]>> = {
   typescript: ["tsconfig.json", "jsconfig.json", "package.json"],
   python: ["pyproject.toml", "requirements.txt", "setup.py", "setup.cfg", "Pipfile"],
   php: ["composer.json"],
+  java: ["pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts"],
 };
 
-export const languagesOf = (rootFiles: readonly string[]): LspLanguage[] =>
-  LSP_LANGUAGES.filter((language) =>
-    LSP_MARKERS[language].some((marker) => rootFiles.includes(marker)),
+const basenameOf = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
+
+export const languagesOf = (files: readonly string[]): RepositoryLanguage[] => {
+  const names = new Set(files.map((file) => basenameOf(file)));
+  return REPOSITORY_LANGUAGES.filter((language) =>
+    LANGUAGE_MARKERS[language].some((marker) => names.has(marker)),
   );
+};
 
 export const lspPluginsFor = (
   provider: ProviderId,
-  languages: readonly LspLanguage[],
-): LspLanguage[] => (provider === "claude-code" ? [...languages] : []);
+  languages: readonly RepositoryLanguage[],
+): RepositoryLanguage[] => (provider === "claude-code" ? [...languages] : []);
