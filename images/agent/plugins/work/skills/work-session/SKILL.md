@@ -12,8 +12,9 @@ description: Load at the start of every work session and again before ho_report.
    manager. Caches live in /work/.cache and survive between your sessions; your home directory is
    read-only, so anything that insists on writing there needs a path under /work or /tmp instead.
 3. Load the skill for the kind of change in front of you when your pack has one (backend-change,
-   frontend-change, devops-change, general-change, small-errand); it names what the reviewers of that kind of change
-   look for.
+   frontend-change, devops-change, general-change, small-errand), and java-change when the
+   repository builds with Gradle or Maven; it names what the reviewers of that kind of change look
+   for.
 4. Work in small steps and commit each one that leaves the repository consistent, with a
    Conventional Commit message. An uncommitted change is lost when the turn or time budget ends; a
    committed one is pushed by the office even then. The office verifies and publishes exactly the

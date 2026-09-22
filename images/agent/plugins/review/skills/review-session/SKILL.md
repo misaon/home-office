@@ -26,8 +26,8 @@ description: "Load at the start of every review session, before the skill of you
    the container ends with your session, and `pkill -f` would kill your own shell. When the change
    touches what a user sees, load `web-interface-guidelines` and check the diff against it.
 5. Then load the skill of your role — test-branch for QA, audit-branch for the security engineer,
-   review-branch for the head of development — for what to look for. This skill is only the
-   mechanics.
+   review-branch for the head of development — for what to look for, and java-review when the diff
+   touches Java. This skill is only the mechanics.
 6. Evidence per criterion: for each acceptance criterion, note the code and the evidence (a test you
    ran, a command's output, a screenshot) that satisfies it, and its fidelity: `live` when you
    exercised the running application, `substitute` when you served a stand-in page, `static` when

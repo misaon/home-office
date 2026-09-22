@@ -13,6 +13,13 @@
     "images/agent/plugins/frontend/skills/vercel-react-best-practices/**",
     "images/agent/plugins/frontend/skills/vercel-composition-patterns/**",
     "images/agent/plugins/frontend/skills/vue-patterns/**",
-    "images/agent/plugins/frontend/skills/make-interfaces-feel-better/**"
+    "images/agent/plugins/frontend/skills/make-interfaces-feel-better/**",
+    "images/agent/plugins/java/skills/java-coding-standards/**",
+    "images/agent/plugins/java/skills/jpa-patterns/**",
+    "images/agent/plugins/java/skills/springboot-patterns/**",
+    "images/agent/plugins/java/skills/springboot-security/**",
+    "images/agent/plugins/java/skills/springboot-tdd/**",
+    "images/agent/plugins/java/skills/quarkus-patterns/**",
+    "images/agent/plugins/java/skills/quarkus-security/**"
   ]
 }

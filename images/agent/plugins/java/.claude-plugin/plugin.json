@@ -1,0 +1,8 @@
+{
+  "name": "ho-java",
+  "description": "Home Office Java pack: building, testing and reviewing Gradle and Maven projects in the sandbox, with Spring Boot, Quarkus and JPA patterns",
+  "version": "0.1.0",
+  "author": {
+    "name": "Home Office"
+  }
+}
