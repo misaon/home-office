@@ -70,6 +70,7 @@
     "devkit": "bun run scripts/devkit.ts",
     "spike:task-engine": "bun run spikes/task-engine/src/run.ts",
     "bench": "bun run spikes/bench/src/run.ts",
+    "bench:regression": "bun run spikes/regression/src/run.ts",
     "spike:acp-mock": "bun run spikes/s6-acp-mock/src/run.ts",
     "spike:remote-tunnel": "bun run spikes/remote-tunnel/src/run.ts",
     "relay": "bun run apps/relay/src/main.ts",

@@ -1,6 +1,7 @@
 import {
   assignTask,
   clearFinishedTasks,
+  commentOnChange,
   createTask,
   rateTask,
   removeTask,
@@ -44,6 +45,9 @@ export const taskRoutes = {
   ),
   waiveReview: base.tasks.waiveReview.handler(({ input, context }) =>
     context.office.execute(HUMAN_ACTOR, (m, ctx) => waiveReview(m, input, ctx)),
+  ),
+  comment: base.tasks.comment.handler(({ input, context }) =>
+    context.office.execute(HUMAN_ACTOR, (m, ctx) => commentOnChange(m, input, ctx)),
   ),
   remove: base.tasks.remove.handler(async ({ input, context }) => {
     await context.sessions.stopTask(input.id);

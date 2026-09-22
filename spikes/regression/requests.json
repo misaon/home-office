@@ -1,0 +1,16 @@
+{
+  "requests": [
+    {
+      "key": "contributing",
+      "text": "Add a CONTRIBUTING.md at the repository root that explains how to install the project, run it and run its checks, taken from the README and the package scripts. Change no other file."
+    },
+    {
+      "key": "readme-typos",
+      "text": "Fix the spelling mistakes in the README and change nothing else."
+    },
+    {
+      "key": "changelog",
+      "text": "Add a CHANGELOG.md with an Unreleased section listing the last five commits as bullet points in Conventional Commit style. Change no other file."
+    }
+  ]
+}

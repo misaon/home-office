@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { newDraft } from "./agent-dialog.tsx";
 import { Plus } from "lucide-react";
 import { TeamRow } from "./team-row.tsx";
+import { useUi } from "../store.ts";
 import { useDesign } from "./store.ts";
 import { type Chip, FilterChips } from "./filter-chips.tsx";
 import { DISPLAY, TOP } from "./tokens.ts";
@@ -79,6 +80,8 @@ export function Team({ floor }: { floor: Floor }): React.JSX.Element {
     });
   };
   const open = (person: Member): void => {
+    useUi.getState().selectAgent(person.id);
+    useUi.getState().follow(person.id);
     set({
       sheet: { type: "agent", id: person.id },
       sheetDraft: { ...person },

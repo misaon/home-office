@@ -1,16 +1,11 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { evidenceBasis } from "./evidence-basis.ts";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { CriterionEvidence, Request } from "./data.ts";
 import { requireClient } from "../rpc.ts";
+import type { CriterionEvidence, Request } from "./data.ts";
+import { evidenceBasis } from "./evidence-basis.ts";
 import { useDesign, useOfficeMutation } from "./store.ts";
-import { CARD, ELLIPSIS, MONO } from "./tokens.ts";
+import { ELLIPSIS, MONO } from "./tokens.ts";
 
-const HEAD =
-  "flex items-center gap-8 w-full py-9 px-12 border-0 bg-transparent text-left text-12h text-ink-pale cursor-pointer select-none";
 const TAG = `${MONO} text-9h py-3 px-8 rounded-6 bg-edge-lit text-ink-faint flex-[0_0_auto]`;
-const BODY = "px-12 pb-11 flex flex-col gap-9";
 const CAPTION = `${MONO} text-10 tracking-caps uppercase text-ink-label`;
 const ROW = "flex gap-8 items-start text-12h text-ink-dim leading-body";
 const SUB = `${MONO} text-10 text-ink-meta mt-2 ${ELLIPSIS}`;
@@ -25,14 +20,6 @@ const MARK: Readonly<Record<CriterionEvidence["mark"], { glyph: string; tone: st
   fail: { glyph: "✗", tone: "text-bad-soft" },
   claimed: { glyph: "◔", tone: "text-warn" },
   open: { glyph: "○", tone: "text-ink-faint" },
-};
-
-const STATUS_TONE: Readonly<Record<Request["status"], string>> = {
-  open: "bg-accent-a14 text-accent-soft",
-  verifying: "bg-accent-a14 text-accent-soft",
-  fulfilled: "bg-good-a12 text-good-soft",
-  blocked: "bg-bad-a12 text-bad",
-  abandoned: "bg-chip text-ink-faint",
 };
 
 function EvidenceNote({ evidence }: { evidence: CriterionEvidence }): React.JSX.Element {
@@ -137,77 +124,52 @@ function Footer({ request }: { request: Request }): React.JSX.Element {
         <span className={`${MONO} text-10 text-ink-meta ${ELLIPSIS}`}>{request.branch}</span>
       )}
       <span className="flex-1" />
-      <button
-        type="button"
-        disabled={abandon.isPending}
-        className={ABANDON}
-        onClick={() => {
-          confirm({
-            title: t("mandate.abandonTitle"),
-            body: t("mandate.abandonBody", { title: request.title }),
-            okLabel: t("mandate.abandon"),
-            act: () => {
-              abandon.mutate();
-            },
-          });
-        }}
-      >
-        {t("mandate.abandon")}
-      </button>
+      {request.open ? (
+        <button
+          type="button"
+          disabled={abandon.isPending}
+          className={ABANDON}
+          onClick={() => {
+            confirm({
+              title: t("mandate.abandonTitle"),
+              body: t("mandate.abandonBody", { title: request.title }),
+              okLabel: t("mandate.abandon"),
+              act: () => {
+                abandon.mutate();
+              },
+            });
+          }}
+        >
+          {t("mandate.abandon")}
+        </button>
+      ) : null}
     </div>
   );
 }
 
-export function RequestCard({ request }: { request: Request }): React.JSX.Element {
+export function RequestBody({ request }: { request: Request }): React.JSX.Element {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(true);
-  const toggle = (): void => {
-    setOpen((shown) => !shown);
-  };
   return (
-    <div className={CARD}>
-      <button type="button" className={HEAD} onClick={toggle}>
-        {open ? (
-          <ChevronDown size={13} aria-hidden="true" />
+    <>
+      <div>
+        <div className={CAPTION}>{t("mandate.conditions")}</div>
+        {request.conditions.length === 0 ? (
+          <div className="text-12h text-ink-dim leading-body mt-4">{t("mandate.noConditions")}</div>
         ) : (
-          <ChevronRight size={13} aria-hidden="true" />
+          <ol className="list-none m-0 p-0 mt-4 flex flex-col gap-6">
+            {request.conditions.map((condition, index) => (
+              <Condition
+                key={condition.text}
+                index={index}
+                text={condition.text}
+                evidence={condition.evidence}
+              />
+            ))}
+          </ol>
         )}
-        <span className={`${MONO} text-10 text-ink-label uppercase tracking-caps flex-[0_0_auto]`}>
-          {t("mandate.title")}
-        </span>
-        <span className={`flex-1 min-w-0 ${ELLIPSIS}`}>{request.title}</span>
-        <span className={`${TAG} ${STATUS_TONE[request.status]}`}>
-          {t(`mandate.status.${request.status}`)}
-        </span>
-        {request.round === 0 ? null : (
-          <span className={TAG}>{t("mandate.round", { count: request.round })}</span>
-        )}
-      </button>
-      {open ? (
-        <div className={BODY}>
-          <div>
-            <div className={CAPTION}>{t("mandate.conditions")}</div>
-            {request.conditions.length === 0 ? (
-              <div className="text-12h text-ink-dim leading-body mt-4">
-                {t("mandate.noConditions")}
-              </div>
-            ) : (
-              <ol className="list-none m-0 p-0 mt-4 flex flex-col gap-6">
-                {request.conditions.map((condition, index) => (
-                  <Condition
-                    key={condition.text}
-                    index={index}
-                    text={condition.text}
-                    evidence={condition.evidence}
-                  />
-                ))}
-              </ol>
-            )}
-          </div>
-          <Tasks request={request} />
-          <Footer request={request} />
-        </div>
-      ) : null}
-    </div>
+      </div>
+      <Tasks request={request} />
+      <Footer request={request} />
+    </>
   );
 }

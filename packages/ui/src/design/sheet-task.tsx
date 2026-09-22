@@ -4,7 +4,7 @@ import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FIELD } from "./controls.tsx";
-import { ChatThumbs } from "./chat-message.tsx";
+import { ChatThumbs } from "./chat-thumbs.tsx";
 import type { Card, CriterionEvidence, Floor } from "./data.ts";
 import { evidenceBasis } from "./evidence-basis.ts";
 import { requireClient } from "../rpc.ts";

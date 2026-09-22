@@ -99,12 +99,14 @@ type UiState = {
   snapshot: Snapshot;
   live: ReadonlyMap<SessionId, readonly LiveEvent[]>;
   selectedAgentId: AgentId | null;
+  followAgentId: AgentId | null;
   floorId: ProjectId | null;
   addProjectOpen: boolean;
   setupOpen: boolean;
   setConnection: (connection: Connection) => void;
   setReplayed: (replayed: boolean) => void;
   selectAgent: (agentId: AgentId | null) => void;
+  follow: (agentId: AgentId | null) => void;
   selectFloor: (floorId: ProjectId | null) => void;
   setAddProjectOpen: (open: boolean) => void;
   setSetupOpen: (open: boolean) => void;
@@ -119,6 +121,7 @@ export const useUi = create<UiState>()(
       snapshot: takeSnapshot(null),
       live: new Map(),
       selectedAgentId: null,
+      followAgentId: null,
       floorId: null,
       addProjectOpen: false,
       setupOpen: false,
@@ -139,8 +142,11 @@ export const useUi = create<UiState>()(
       selectAgent: (selectedAgentId) => {
         set({ selectedAgentId });
       },
+      follow: (followAgentId) => {
+        set({ followAgentId });
+      },
       selectFloor: (floorId) => {
-        set({ floorId, selectedAgentId: null });
+        set({ floorId, selectedAgentId: null, followAgentId: null });
       },
       setAddProjectOpen: (addProjectOpen) => {
         set({ addProjectOpen });

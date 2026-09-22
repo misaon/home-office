@@ -2,8 +2,9 @@ import { Toggle } from "@base-ui/react/toggle";
 import { Minus, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { AgentId } from "@ho/protocol";
 import type { OfficeHandle } from "../office/scene.ts";
+import { useUi } from "../store.ts";
+import type { Floor } from "./data.ts";
 import { bossOf, useFloor } from "./live.ts";
 import { useDesign } from "./store.ts";
 
@@ -37,29 +38,30 @@ function Round({
   );
 }
 
-function FollowBoss({
-  id,
-  name,
+function FollowAgent({
+  floor,
   office,
 }: {
-  id: AgentId;
-  name: string;
+  floor: Floor;
   office: OfficeHandle | null;
-}): React.JSX.Element {
+}): React.JSX.Element | null {
   const { t } = useTranslation();
   const flash = useDesign((s) => s.flash);
-  const [on, setOn] = useState(office?.following() === id);
+  const followAgentId = useUi((s) => s.followAgentId);
+  const target = floor.team.find((member) => member.id === followAgentId) ?? bossOf(floor);
+  if (target === undefined) {
+    return null;
+  }
   return (
     <Toggle
-      pressed={on}
+      pressed={followAgentId !== null}
       onPressedChange={(next) => {
-        setOn(next);
-        office?.follow(next ? id : null);
-        flash(next ? t("stage.following", { name }) : t("stage.released"));
+        office?.follow(next ? target.id : null);
+        flash(next ? t("stage.following", { name: target.name }) : t("stage.released"));
       }}
       className={`${WIDE} bg-transparent text-ink-quiet data-pressed:bg-accent-a16 data-pressed:text-accent-soft`}
     >
-      {t("stage.follow", { name })}
+      {t("stage.follow", { name: target.name })}
     </Toggle>
   );
 }
@@ -75,7 +77,6 @@ export function StageCamera({
   const floor = useFloor();
   const set = useDesign((s) => s.set);
   const [zoom, setZoom] = useState(100);
-  const boss = floor === null ? undefined : bossOf(floor);
 
   useEffect(() => {
     if (office === null) {
@@ -118,9 +119,7 @@ export function StageCamera({
       >
         {t("stage.fit")}
       </button>
-      {boss === undefined ? null : (
-        <FollowBoss key={boss.id} id={boss.id} name={boss.name} office={office} />
-      )}
+      {floor === null ? null : <FollowAgent floor={floor} office={office} />}
       {internal ? (
         <button
           type="button"

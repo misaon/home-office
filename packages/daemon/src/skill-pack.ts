@@ -8,8 +8,10 @@ const MODE_PACK: Readonly<Record<SessionMode, string | null>> = {
   verify: "verify",
 };
 
+const OFFICE_PACK = "office";
+
 export const skillPacksFor = (agent: Agent, mode: SessionMode): string[] => {
-  const packs = [MODE_PACK[mode], agent.skillPack].filter(
+  const packs = [OFFICE_PACK, MODE_PACK[mode], agent.skillPack].filter(
     (pack): pack is string => pack !== null && pack !== "none",
   );
   return [...new Set(packs)];

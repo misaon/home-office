@@ -12,7 +12,8 @@
     "packages/sandbox-docker/src",
     "packages/secrets/src",
     "packages/store/src",
-    "spikes/*/src"
+    "spikes/*/src",
+    "images/agent/plugins/office/hooks"
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tscache/root.tsbuildinfo"

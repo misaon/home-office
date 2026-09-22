@@ -51,7 +51,6 @@ function RemoveThread({
   size: "chip" | "menu";
 }): React.JSX.Element {
   const { t } = useTranslation();
-  const confirm = useDesign((s) => s.confirm);
   const flash = useDesign((s) => s.flash);
   const drop = useOfficeMutation({
     mutationFn: (id: ThreadPick) =>
@@ -71,14 +70,7 @@ function RemoveThread({
       disabled={drop.isPending}
       onClick={(event) => {
         event.stopPropagation();
-        confirm({
-          title: t("chat.clearTitle"),
-          body: t("chat.clearConfirm", { count: thread.count }),
-          okLabel: t("chat.clear"),
-          act: () => {
-            drop.mutate(thread.id);
-          },
-        });
+        drop.mutate(thread.id);
       }}
       className={`hover:text-bad-soft ${DROP} ${size === "chip" ? "w-18 h-18 flex-[0_0_18px]" : "w-22 h-22 flex-[0_0_22px]"}`}
     >

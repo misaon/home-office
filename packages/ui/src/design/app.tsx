@@ -58,11 +58,12 @@ export function App(): React.JSX.Element {
   const editor = useDesign((s) => s.editor);
   const ask = useDesign((s) => s.ask);
   const set = useDesign((s) => s.set);
+  const panelWidth = useDesign((s) => s.panelWidth);
   useSetupAutoOpen();
   useDevReload();
 
   return (
-    <div className={SHELL}>
+    <div className={SHELL} style={{ "--panel": `${String(panelWidth)}px` }}>
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         <div className={GLOW_A} />
         <div className={GLOW_B} />
@@ -85,7 +86,7 @@ export function App(): React.JSX.Element {
         />
       ) : null}
       {lightbox === null ? null : <Lightbox attachment={lightbox} />}
-      {diff === null ? null : <DiffDialog change={diff} />}
+      {diff === null ? null : <DiffDialog pick={diff} />}
       <FloorOverlays />
       <NewFloor />
       <Setup />

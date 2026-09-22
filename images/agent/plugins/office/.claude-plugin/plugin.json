@@ -1,0 +1,8 @@
+{
+  "name": "ho-office",
+  "description": "Home Office floor rules enforced before a tool runs: no idle sleeps, no check whose exit code a pipe hides",
+  "version": "0.1.0",
+  "author": {
+    "name": "Home Office"
+  }
+}

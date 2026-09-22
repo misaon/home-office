@@ -28,11 +28,12 @@ import type { McpGateway } from "./mcp.ts";
 import type { Office } from "./office.ts";
 import type { RunnerGateway } from "./runner-gateway.ts";
 import { createRuntimes } from "./runtimes.ts";
-import { handleRuntimeEvent, type Spent } from "./session-events.ts";
+import { freshSpent, handleRuntimeEvent, type Spent } from "./session-events.ts";
 import type { SessionContext } from "./session-provision.ts";
 import { recordSessionEnd, traceHeader } from "./session-record.ts";
 import { LiveFeed } from "./session-feed.ts";
 import { recoverSessions } from "./session-recover.ts";
+import { watchWall } from "./session-reminders.ts";
 import { type Ending, type Held, runSession } from "./session-run.ts";
 import { elapsedMs } from "./timing.ts";
 import type { TraceStore } from "./traces.ts";
@@ -61,6 +62,7 @@ type Running = {
   done: Promise<void>;
   spent: Spent;
   held: Held;
+  wallMinutes: number;
 };
 
 export class SessionManager {
@@ -141,10 +143,19 @@ export class SessionManager {
     }
     const controller = new AbortController();
     const wallMinutes = wallMinutesFor(agent, task);
-    const wall = setTimeout(() => {
-      log.warn({ sessionId: session.id, taskId, wallMinutes }, "wall-time budget exhausted");
-      controller.abort(new Error(`wall-time budget of ${String(wallMinutes)} minute(s) exhausted`));
-    }, wallMinutes * 60_000);
+    const held: Held = { provisioned: null, runtime: null };
+    const releaseWall = watchWall(
+      wallMinutes,
+      controller,
+      () => held.runtime,
+      (text) => {
+        this.#emit(session.id, { kind: "reminder", text });
+        log.info({ sessionId: session.id, taskId, wallMinutes }, "wall-time reminder sent");
+      },
+      () => {
+        log.warn({ sessionId: session.id, taskId, wallMinutes }, "wall-time budget exhausted");
+      },
+    );
     if (this.#stopping) {
       controller.abort(new Error("daemon is stopping"));
     }
@@ -157,21 +168,21 @@ export class SessionManager {
       signal: controller.signal,
       budget,
     };
-    const held: Held = { provisioned: null, runtime: null };
     const done = this.#run(ctx, held)
       .catch((error: unknown) => {
         log.error({ sessionId: session.id, err: errorMessage(error) }, "session teardown failed");
       })
       .finally(() => {
-        clearTimeout(wall);
+        releaseWall();
         this.#running.delete(session.id);
       });
     this.#running.set(session.id, {
       taskId,
       controller,
       done,
-      spent: { toolCalls: 0, costUsd: null, overheadWarned: false },
+      spent: freshSpent(),
       held,
+      wallMinutes,
     });
     return session;
   }
@@ -249,7 +260,14 @@ export class SessionManager {
       this.#deps,
       ctx,
       event,
-      running?.spent ?? { toolCalls: 0, costUsd: null, overheadWarned: false },
+      running?.spent ?? freshSpent(),
+      {
+        send: (text) => running?.held.runtime?.send(text) === true,
+        emit: (nudge) => {
+          this.#emit(ctx.session.id, nudge);
+        },
+        wallMinutes: running?.wallMinutes ?? 0,
+      },
     );
     if (reason !== null) {
       running?.controller.abort(new Error(reason));

@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.tscache/spikes-regression.tsbuildinfo"
+  },
+  "include": ["src"]
+}

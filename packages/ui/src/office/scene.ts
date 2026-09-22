@@ -186,18 +186,17 @@ export function startOffice(host: HTMLElement): OfficeHandle {
       useDesign.getState().flash(t("app.officeFailed", { message: errorMessage(error) }));
     }
   };
-  let followed: AgentId | null = null;
   let unsubscribe: (() => void) | null = null;
   let elapsedMs = 0;
   const drawFrame = (dtMs: number): void => {
     try {
       bridge.tick(dtMs);
       elapsedMs += dtMs;
-      const { floorId, selectedAgentId } = useUi.getState();
+      const { floorId, selectedAgentId, followAgentId } = useUi.getState();
       scene.showFloor(floorId);
       scene.update(bridge.world, selectedAgentId, elapsedMs);
-      if (followed !== null) {
-        const actor = bridge.world.actors.get(followed);
+      if (followAgentId !== null) {
+        const actor = bridge.world.actors.get(followAgentId);
         if (actor !== undefined && !actor.hidden && actor.floorId === floorId) {
           const at = bridge.positionOf(actor);
           scene.centreOnWorld(at.x * CELL_PX, at.y * CELL_PX);
@@ -262,13 +261,13 @@ export function startOffice(host: HTMLElement): OfficeHandle {
       scene.zoomView(1 / ZOOM_STEP);
     },
     fit: () => {
-      followed = null;
+      useUi.getState().follow(null);
       scene.fitView();
     },
     follow: (agentId) => {
-      followed = agentId;
+      useUi.getState().follow(agentId);
     },
-    following: () => followed,
+    following: () => useUi.getState().followAgentId,
     percent: () => scene.camera.percent,
   };
 }

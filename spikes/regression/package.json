@@ -1,0 +1,14 @@
+{
+  "name": "@ho/spike-regression",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ho/core": "workspace:*",
+    "@ho/daemon": "workspace:*",
+    "@ho/protocol": "workspace:*",
+    "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
+    "zod": "catalog:"
+  }
+}

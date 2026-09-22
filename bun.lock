@@ -205,6 +205,18 @@
         "@ho/sim": "workspace:*",
       },
     },
+    "spikes/regression": {
+      "name": "@ho/spike-regression",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ho/core": "workspace:*",
+        "@ho/daemon": "workspace:*",
+        "@ho/protocol": "workspace:*",
+        "@orpc/client": "catalog:",
+        "@orpc/contract": "catalog:",
+        "zod": "catalog:",
+      },
+    },
     "spikes/remote-tunnel": {
       "name": "@ho/spike-remote-tunnel",
       "version": "0.0.0",
@@ -333,6 +345,8 @@
     "@ho/sim": ["@ho/sim@workspace:packages/sim"],
 
     "@ho/spike-bench": ["@ho/spike-bench@workspace:spikes/bench"],
+
+    "@ho/spike-regression": ["@ho/spike-regression@workspace:spikes/regression"],
 
     "@ho/spike-remote-tunnel": ["@ho/spike-remote-tunnel@workspace:spikes/remote-tunnel"],
 

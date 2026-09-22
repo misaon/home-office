@@ -1,17 +1,14 @@
 import { Popover } from "@base-ui/react/popover";
 import type { PlanUsageStatus } from "@ho/protocol";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowUp, ChartNoAxesColumn, Gauge, Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { planUsageQuery } from "../queries.ts";
 import { UsageMenu, useContextFill } from "./chat-usage-menu.tsx";
 import type { Floor, ThreadPick } from "./data.ts";
-import { ArrowUp, ChartNoAxesColumn, Gauge, Plus, Square } from "lucide-react";
-import { MONO } from "./tokens.ts";
 import { formatShare, type PlanShare, useThreadPlanShare } from "./live-plan.ts";
-import { useThreadSession } from "./live.ts";
-import { planUsageQuery } from "../queries.ts";
-import { requireClient } from "../rpc.ts";
-import { useDesign, useOfficeMutation } from "./store.ts";
+import { MONO } from "./tokens.ts";
 
 const planLabel = (status: PlanUsageStatus, share: PlanShare | null): string => {
   if (status.kind !== "ok") {
@@ -44,7 +41,6 @@ export function ChatToolbar({
   const [usageOpen, setUsageOpen] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const fill = useContextFill(floor.id);
-  const running = useThreadSession(floor.id, active);
   const plan = useQuery(planUsageQuery);
   const share = useThreadPlanShare(floor.id, active, plan.data);
   const planTitle =
@@ -61,14 +57,6 @@ export function ChatToolbar({
                 percent: formatShare(share.percent),
                 five: Math.round(plan.data.usage.fiveHour?.percent ?? 0),
               });
-  const flash = useDesign((s) => s.flash);
-  const stop = useOfficeMutation({
-    mutationFn: (id: NonNullable<typeof running>["sessionId"]) =>
-      requireClient().sessions.stop({ id }),
-    onSuccess: () => {
-      flash(t("chat.stopped", { name: running?.name ?? "" }));
-    },
-  });
 
   return (
     <div className="flex items-center gap-8">
@@ -122,30 +110,15 @@ export function ChatToolbar({
           <span className={`${MONO} text-10h`}>{planLabel(plan.data, share)}</span>
         </span>
       )}
-      {running === null ? (
-        <button
-          type="button"
-          aria-label={t("chat.sendHint")}
-          title={t("chat.sendHint")}
-          onClick={onSend}
-          className={`hover:-translate-y-2 hover:scale-106 hover:shadow-lift-md ${SEND}`}
-        >
-          <ArrowUp size={13} strokeWidth={1.8} />
-        </button>
-      ) : (
-        <button
-          type="button"
-          aria-label={t("chat.stopOk", { name: running.name })}
-          title={t("chat.stopTitle", { name: running.name })}
-          disabled={stop.isPending}
-          onClick={() => {
-            stop.mutate(running.sessionId);
-          }}
-          className={`hover:scale-106 ${SEND} bg-bad-mid text-accent-ink-deep`}
-        >
-          <Square size={11} strokeWidth={0} fill="currentColor" />
-        </button>
-      )}
+      <button
+        type="button"
+        aria-label={t("chat.sendHint")}
+        title={t("chat.sendHint")}
+        onClick={onSend}
+        className={`hover:-translate-y-2 hover:scale-106 hover:shadow-lift-md ${SEND}`}
+      >
+        <ArrowUp size={13} strokeWidth={1.8} />
+      </button>
     </div>
   );
 }

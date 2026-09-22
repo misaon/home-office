@@ -80,6 +80,7 @@ export const RuntimeEvent = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("activity"), text: z.string() }),
   z.object({ kind: z.literal("steer"), text: z.string() }),
+  z.object({ kind: z.literal("reminder"), text: z.string() }),
   z.object({
     kind: z.literal("result"),
     ok: z.boolean(),

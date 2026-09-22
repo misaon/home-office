@@ -112,6 +112,11 @@ const recallPast = define({
           for (const finding of hit.findings) {
             lines.push(`Review: ${finding}`);
           }
+          if (hit.rating !== null) {
+            lines.push(
+              `Human rating: ${hit.rating.verdict}${hit.rating.note === "" ? "" : ` — ${hit.rating.note}`}`,
+            );
+          }
           return lines.join("\n");
         })
         .join("\n\n"),

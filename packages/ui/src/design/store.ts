@@ -14,7 +14,11 @@ export type Tab = "Chat" | "Board" | "Team" | "Usage" | "Settings";
 type Sheet = { type: "task"; id: TaskId } | { type: "agent"; id: Member["id"] } | null;
 export type Window = "24 h" | "7 d" | "all";
 
+export const PANEL_WIDTH = { min: 440, max: 900, initial: 550 } as const;
+
 type AgentDialog = { mode: "new" } | { mode: "edit"; id: AgentId };
+
+export type DiffPick = { change: FileChange; taskId: TaskId };
 
 export type AgentDraft = {
   name: string;
@@ -37,7 +41,7 @@ export type Design = {
   searchOpen: boolean;
   attachment: Attachment | null;
   lightbox: Attachment | null;
-  diff: FileChange | null;
+  diff: DiffPick | null;
   sheet: Sheet;
   sheetDraft: Member | null;
   agentDlg: AgentDialog | null;
@@ -47,6 +51,7 @@ export type Design = {
   ask: Ask | null;
   usageView: "Tokens" | "Resources";
   win: Window;
+  panelWidth: number;
 
   set: (patch: Partial<Design> | ((state: Design) => Partial<Design>)) => void;
   confirm: (ask: Ask) => void;
@@ -76,6 +81,7 @@ const INITIAL = {
   ask: null,
   usageView: "Tokens",
   win: "24 h",
+  panelWidth: PANEL_WIDTH.initial,
 } satisfies Partial<Design>;
 
 export const useDesign = create<Design>()(
@@ -107,6 +113,7 @@ export const useDesign = create<Design>()(
         teamFilter: state.teamFilter,
         usageView: state.usageView,
         win: state.win,
+        panelWidth: state.panelWidth,
       }),
     },
   ),

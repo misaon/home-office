@@ -31,4 +31,7 @@ export const csMandate: typeof enMandate = {
   abandoned: "Zadání zrušeno",
   byHuman: "vy",
   byOffice: "kancelář",
+  progress: "{{done}} z {{total}} podmínek ověřeno",
+  expand: "Rozbalit zadání",
+  collapse: "Sbalit zadání",
 };
